@@ -67,7 +67,7 @@ if [ "$REALM_EXISTS" = "200" ]; then
               {
                 "type": "password",
                 "value": "admin123",
-                "temporary": true
+                "temporary": false
               }
             ]
           }' > /dev/null
@@ -93,7 +93,7 @@ if [ "$REALM_EXISTS" = "200" ]; then
                 }
               ]' > /dev/null
             
-            echo "Emergency admin user created successfully (password: admin123, must be changed on first login)"
+            echo "Emergency admin user created successfully (password: admin123, no password change required)"
             echo "WARNING: Change the default admin password immediately for security!"
         else
             echo "Failed to create admin user"
@@ -136,7 +136,7 @@ else
               {
                 "type": "password",
                 "value": "admin123",
-                "temporary": true
+                "temporary": false
               }
             ]
           }' > /dev/null
@@ -162,7 +162,7 @@ else
                 }
               ]' > /dev/null
             
-            echo "Initial admin user created successfully (password: admin123, must be changed on first login)"
+            echo "Initial admin user created successfully (password: admin123, no password change required)"
             echo "WARNING: Change the default admin password immediately for security!"
         else
             echo "Failed to create admin user"
