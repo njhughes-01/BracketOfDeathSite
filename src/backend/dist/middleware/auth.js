@@ -1,24 +1,75 @@
 "use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.requireAdmin = exports.optionalAuth = exports.requireAuth = exports.isAuthorizedUser = exports.verifyGoogleToken = void 0;
-// Mock authentication for development - replace with Google OAuth in production
-const verifyGoogleToken = async (token) => {
-    // TODO: Implement actual Google token verification
-    if (token === 'mock-admin-token') {
-        return {
-            email: 'admin@example.com',
-            googleId: 'mock-admin-id',
-            name: 'Admin User',
-            picture: '',
-        };
-    }
-    throw new Error('Invalid token');
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
 };
-exports.verifyGoogleToken = verifyGoogleToken;
-// Check if user is authorized
-const isAuthorizedUser = (email) => {
-    const authorizedUsers = process.env.AUTHORIZED_USERS?.split(',') || ['admin@example.com'];
-    return authorizedUsers.map(u => u.trim().toLowerCase()).includes(email.toLowerCase());
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.requireAdmin = exports.optionalAuth = exports.requireAuth = exports.isAuthorizedUser = exports.hasAdminRole = exports.verifyKeycloakToken = void 0;
+const jsonwebtoken_1 = __importDefault(require("jsonwebtoken"));
+const jwks_rsa_1 = __importDefault(require("jwks-rsa"));
+// JWKS client for validating Keycloak tokens
+const client = (0, jwks_rsa_1.default)({
+    jwksUri: `${process.env.KEYCLOAK_URL}/realms/${process.env.KEYCLOAK_REALM}/protocol/openid-connect/certs`,
+    requestHeaders: {},
+    timeout: 30000,
+});
+// Get signing key for JWT verification
+const getKey = (header, callback) => {
+    client.getSigningKey(header.kid, (err, key) => {
+        if (err) {
+            callback(err);
+            return;
+        }
+        const signingKey = key?.getPublicKey();
+        callback(null, signingKey);
+    });
+};
+// Verify Keycloak JWT token
+const verifyKeycloakToken = async (token) => {
+    return new Promise((resolve, reject) => {
+        // First, let's decode the token to see what audience it has
+        const decoded = jsonwebtoken_1.default.decode(token, { complete: true });
+        console.log('Token decoded:', JSON.stringify(decoded?.payload, null, 2));
+        jsonwebtoken_1.default.verify(token, getKey, {
+            // Don't validate audience since Keycloak uses 'azp' (authorized party) instead of 'aud'
+            issuer: `${process.env.KEYCLOAK_URL}/realms/${process.env.KEYCLOAK_REALM}`,
+            algorithms: ['RS256'],
+        }, (err, decoded) => {
+            if (err) {
+                reject(err);
+                return;
+            }
+            // Manually validate the authorized party (azp) since Keycloak uses this instead of audience
+            const decodedToken = decoded;
+            const expectedClient = process.env.KEYCLOAK_CLIENT_ID || 'bod-app';
+            if (decodedToken.azp && decodedToken.azp !== expectedClient) {
+                reject(new Error(`Invalid client. Expected: ${expectedClient}, got: ${decodedToken.azp}`));
+                return;
+            }
+            resolve(decodedToken);
+        });
+    });
+};
+exports.verifyKeycloakToken = verifyKeycloakToken;
+// Check if user has admin role
+const hasAdminRole = (token) => {
+    // Check realm roles
+    const realmRoles = token.realm_access?.roles || [];
+    if (realmRoles.includes('admin')) {
+        return true;
+    }
+    // Check client roles
+    const clientId = process.env.KEYCLOAK_CLIENT_ID || 'bod-app';
+    const clientRoles = token.resource_access?.[clientId]?.roles || [];
+    return clientRoles.includes('admin');
+};
+exports.hasAdminRole = hasAdminRole;
+// Check if user is authorized (has user or admin role)
+const isAuthorizedUser = (token) => {
+    const realmRoles = token.realm_access?.roles || [];
+    const clientId = process.env.KEYCLOAK_CLIENT_ID || 'bod-app';
+    const clientRoles = token.resource_access?.[clientId]?.roles || [];
+    const allRoles = [...realmRoles, ...clientRoles];
+    return allRoles.includes('user') || allRoles.includes('admin');
 };
 exports.isAuthorizedUser = isAuthorizedUser;
 // Authentication middleware
@@ -42,11 +93,13 @@ const requireAuth = async (req, res, next) => {
             res.status(401).json(response);
             return;
         }
-        // Verify the token
-        const userInfo = await (0, exports.verifyGoogleToken)(token);
+        // Verify the Keycloak token
+        console.log('Attempting to verify token:', token.substring(0, 20) + '...');
+        console.log('JWKS URI:', `${process.env.KEYCLOAK_URL}/realms/${process.env.KEYCLOAK_REALM}/protocol/openid-connect/certs`);
+        const tokenData = await (0, exports.verifyKeycloakToken)(token);
         // Check if user is authorized
-        const isAuthorized = (0, exports.isAuthorizedUser)(userInfo.email);
-        if (!isAuthorized) {
+        const authorized = (0, exports.isAuthorizedUser)(tokenData);
+        if (!authorized) {
             const response = {
                 success: false,
                 error: 'Access denied. User not authorized.',
@@ -56,13 +109,21 @@ const requireAuth = async (req, res, next) => {
         }
         // Add user info to request
         req.user = {
-            email: userInfo.email,
-            googleId: userInfo.googleId,
+            id: tokenData.sub,
+            email: tokenData.email,
+            username: tokenData.preferred_username,
+            name: tokenData.name || `${tokenData.given_name || ''} ${tokenData.family_name || ''}`.trim(),
             isAuthorized: true,
+            isAdmin: (0, exports.hasAdminRole)(tokenData),
+            roles: [
+                ...(tokenData.realm_access?.roles || []),
+                ...(tokenData.resource_access?.[process.env.KEYCLOAK_CLIENT_ID || 'bod-app']?.roles || [])
+            ],
         };
         next();
     }
     catch (error) {
+        console.error('Auth middleware error:', error);
         const response = {
             success: false,
             error: 'Invalid or expired token',
@@ -79,12 +140,19 @@ const optionalAuth = async (req, _res, next) => {
             const token = authHeader.substring(7);
             if (token) {
                 try {
-                    const userInfo = await (0, exports.verifyGoogleToken)(token);
-                    const isAuthorized = (0, exports.isAuthorizedUser)(userInfo.email);
+                    const tokenData = await (0, exports.verifyKeycloakToken)(token);
+                    const authorized = (0, exports.isAuthorizedUser)(tokenData);
                     req.user = {
-                        email: userInfo.email,
-                        googleId: userInfo.googleId,
-                        isAuthorized,
+                        id: tokenData.sub,
+                        email: tokenData.email,
+                        username: tokenData.preferred_username,
+                        name: tokenData.name || `${tokenData.given_name || ''} ${tokenData.family_name || ''}`.trim(),
+                        isAuthorized: authorized,
+                        isAdmin: (0, exports.hasAdminRole)(tokenData),
+                        roles: [
+                            ...(tokenData.realm_access?.roles || []),
+                            ...(tokenData.resource_access?.[process.env.KEYCLOAK_CLIENT_ID || 'bod-app']?.roles || [])
+                        ],
                     };
                 }
                 catch (error) {
@@ -105,9 +173,8 @@ exports.optionalAuth = optionalAuth;
 const requireAdmin = async (req, res, next) => {
     // First check authentication
     await (0, exports.requireAuth)(req, res, () => {
-        // Add additional admin checks here if needed
-        // For now, all authorized users are considered admins
-        if (req.user && req.user.isAuthorized) {
+        // Check if user has admin role
+        if (req.user && req.user.isAdmin) {
             next();
         }
         else {

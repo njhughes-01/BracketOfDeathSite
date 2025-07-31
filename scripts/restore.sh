@@ -16,7 +16,7 @@ if [ $# -eq 0 ]; then
 fi
 
 BACKUP_FILE="$1"
-CONTAINER_NAME="bod-mongodb"
+CONTAINER_NAME="mongodb"
 DB_NAME="bracket_of_death"
 DB_USER="bodadmin"
 DB_PASS="bodpassword123"

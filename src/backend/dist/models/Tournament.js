@@ -11,12 +11,8 @@ const calculateTournamentStats = (tournament) => {
     if (tournament.date && typeof tournament.date === 'string') {
         tournament.date = new Date(tournament.date);
     }
-    // Auto-generate BOD number if not provided
-    if (!tournament.bodNumber) {
-        const year = tournament.date.getFullYear();
-        const month = tournament.date.getMonth() + 1;
-        tournament.bodNumber = parseInt(`${year}${month.toString().padStart(2, '0')}`);
-    }
+    // BOD number should be provided and sequential (1, 2, 3, etc.)
+    // No auto-generation needed
     // Normalize format
     if (tournament.format) {
         tournament.format = tournament.format.trim();
@@ -30,7 +26,6 @@ const tournamentSchema = new mongoose_1.Schema({
     date: {
         type: Date,
         required: [true, common_1.ErrorMessages.REQUIRED],
-        index: true,
         validate: {
             validator: (date) => {
                 const minDate = new Date('2009-01-01');
@@ -44,10 +39,8 @@ const tournamentSchema = new mongoose_1.Schema({
     bodNumber: {
         type: Number,
         required: [true, common_1.ErrorMessages.REQUIRED],
-        unique: true,
-        index: true,
-        min: [200901, 'BOD number must be valid (format: YYYYMM)'],
-        validate: (0, base_1.createNumericValidator)(200901),
+        min: [1, 'BOD number must be a positive integer starting from 1'],
+        validate: (0, base_1.createNumericValidator)(1),
     },
     format: {
         type: String,
@@ -56,7 +49,6 @@ const tournamentSchema = new mongoose_1.Schema({
             values: tournament_1.TournamentFormats,
             message: `Format must be one of: ${tournament_1.TournamentFormats.join(', ')}`,
         },
-        index: true,
     },
     location: {
         type: String,
@@ -89,25 +81,92 @@ const tournamentSchema = new mongoose_1.Schema({
             message: 'Photo albums must be a valid URL',
         },
     },
+    status: {
+        type: String,
+        enum: {
+            values: tournament_1.TournamentStatuses,
+            message: `Status must be one of: ${tournament_1.TournamentStatuses.join(', ')}`,
+        },
+        default: 'scheduled',
+    },
+    players: [{
+            type: mongoose_1.Schema.Types.ObjectId,
+            ref: 'Player',
+        }],
+    maxPlayers: {
+        type: Number,
+        min: [2, 'Tournament must allow at least 2 players'],
+        max: [64, 'Tournament cannot exceed 64 players'],
+        validate: {
+            validator: function (value) {
+                if (!value)
+                    return true;
+                // Must be a power of 2 for bracket tournaments
+                return Number.isInteger(Math.log2(value));
+            },
+            message: 'Maximum players must be a power of 2 (2, 4, 8, 16, 32, 64)',
+        },
+    },
+    champion: {
+        playerId: {
+            type: mongoose_1.Schema.Types.ObjectId,
+            ref: 'Player',
+        },
+        playerName: String,
+        tournamentResult: {
+            type: mongoose_1.Schema.Types.ObjectId,
+            ref: 'TournamentResult',
+        },
+    },
 }, base_1.baseSchemaOptions);
-// Custom validation for BOD number format
+// Custom validation for BOD number format - supports both sequential (1, 2, 3...) and legacy YYYYMM format
 tournamentSchema.path('bodNumber').validate(function (bodNumber) {
+    // Sequential format: positive integers starting from 1
+    if (bodNumber >= 1 && bodNumber <= 999999) {
+        return Number.isInteger(bodNumber);
+    }
+    // Legacy YYYYMM format validation (for backwards compatibility)
     const bodStr = bodNumber.toString();
-    if (bodStr.length !== 6)
-        return false;
-    const year = parseInt(bodStr.substring(0, 4));
-    const month = parseInt(bodStr.substring(4, 6));
-    return year >= 2009 && month >= 1 && month <= 12;
-}, 'BOD number must be in format YYYYMM');
-// Custom validation for date and BOD number consistency
-tournamentSchema.path('date').validate(function (date) {
-    if (!this.bodNumber)
+    if (bodStr.length === 6) {
+        const year = parseInt(bodStr.substring(0, 4));
+        const month = parseInt(bodStr.substring(4, 6));
+        return year >= 2009 && month >= 1 && month <= 12;
+    }
+    return false;
+}, 'BOD number must be a positive integer or legacy YYYYMM format');
+// Validation for players array
+tournamentSchema.path('players').validate(function (players) {
+    if (!players || !this.maxPlayers)
         return true;
-    const bodStr = this.bodNumber.toString();
-    const bodYear = parseInt(bodStr.substring(0, 4));
-    const bodMonth = parseInt(bodStr.substring(4, 6));
-    return date.getFullYear() === bodYear && (date.getMonth() + 1) === bodMonth;
-}, 'Date must match BOD number year and month');
+    return players.length <= this.maxPlayers;
+}, 'Tournament exceeds maximum player limit');
+// Validation for status transitions
+tournamentSchema.path('status').validate(function (newStatus) {
+    if (this.isNew)
+        return true; // Allow any status for new tournaments
+    const currentStatus = this._original?.status;
+    if (!currentStatus)
+        return true;
+    // Define valid status transitions
+    const validTransitions = {
+        'scheduled': ['open', 'cancelled'],
+        'open': ['active', 'cancelled', 'scheduled'],
+        'active': ['completed', 'cancelled'],
+        'completed': [], // Completed tournaments cannot change status
+        'cancelled': ['scheduled', 'open'], // Can be rescheduled
+    };
+    return validTransitions[currentStatus]?.includes(newStatus) ?? false;
+}, 'Invalid status transition');
+// Remove strict date/BOD number consistency validation since we now support sequential numbering
+// tournamentSchema.path('date').validate(function (date: Date) {
+//   if (!this.bodNumber) return true;
+//   
+//   const bodStr = this.bodNumber.toString();
+//   const bodYear = parseInt(bodStr.substring(0, 4));
+//   const bodMonth = parseInt(bodStr.substring(4, 6));
+//   
+//   return date.getFullYear() === bodYear && (date.getMonth() + 1) === bodMonth;
+// }, 'Date must match BOD number year and month');
 // Virtual for formatted date
 tournamentSchema.virtual('formattedDate').get(function () {
     return this.date.toLocaleDateString('en-US', {
@@ -135,11 +194,33 @@ tournamentSchema.virtual('season').get(function () {
         return 'Fall';
     return 'Winter';
 });
+// Virtual for current player count
+tournamentSchema.virtual('currentPlayerCount').get(function () {
+    return this.players?.length || 0;
+});
+// Virtual for checking if tournament is full
+tournamentSchema.virtual('isFull').get(function () {
+    if (!this.maxPlayers)
+        return false;
+    return (this.players?.length || 0) >= this.maxPlayers;
+});
+// Virtual for checking if tournament can start
+tournamentSchema.virtual('canStart').get(function () {
+    const playerCount = this.players?.length || 0;
+    return this.status === 'open' && playerCount >= 2 && playerCount <= (this.maxPlayers || 64);
+});
 // Add methods and statics
 tournamentSchema.methods = { ...base_1.baseMethods };
 tournamentSchema.statics = { ...base_1.baseStatics };
 // Pre-save middleware
 tournamentSchema.pre('save', (0, base_1.createPreSaveMiddleware)(calculateTournamentStats));
+// Middleware to track original status for validation
+tournamentSchema.pre('save', function () {
+    if (!this.isNew && this.isModified('status')) {
+        this._original = this._original || {};
+        this._original.status = this.get('status', null, { getters: false });
+    }
+});
 tournamentSchema.pre('findOneAndUpdate', function () {
     this.setOptions({ runValidators: true });
 });
@@ -149,8 +230,11 @@ tournamentSchema.pre('findOneAndUpdate', function () {
     { fields: { date: -1 } },
     { fields: { format: 1 } },
     { fields: { location: 1 } },
+    { fields: { status: 1 } },
     { fields: { date: -1, format: 1 } },
+    { fields: { status: 1, date: -1 } },
     { fields: { createdAt: -1 } },
+    { fields: { 'champion.playerId': 1 } },
 ]);
 // Text index for search
 tournamentSchema.index({

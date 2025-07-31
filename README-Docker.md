@@ -24,7 +24,7 @@ This guide explains how to deploy and manage the Bracket of Death tennis tournam
 
 3. **Access the application:**
    - Frontend: http://localhost:8080
-   - Backend API: http://localhost:3000/api
+   - Backend API: http://localhost:8080/api (proxied)
    - MongoDB: localhost:27017
 
 The first startup will automatically import all your JSON tournament data into the database. This process runs only once.
@@ -121,7 +121,7 @@ docker-compose logs data-init
 
 ```bash
 # MongoDB shell access
-docker exec -it bod-mongodb mongosh -u bodadmin -p bodpassword123 --authenticationDatabase admin
+docker exec -it mongodb mongosh -u bodadmin -p bodpassword123 --authenticationDatabase admin
 
 # Direct database connection
 # Host: localhost:27017
@@ -156,7 +156,7 @@ docker-compose up data-init --force-recreate
 **3. Frontend not loading:**
 ```bash
 # Check if backend is healthy
-curl http://localhost:3000/api/health
+curl http://localhost:8080/api/health
 
 # Restart frontend
 docker-compose restart frontend
@@ -165,7 +165,7 @@ docker-compose restart frontend
 **4. Database connection issues:**
 ```bash
 # Check MongoDB health
-docker exec bod-mongodb mongosh --eval "db.adminCommand('ping')"
+docker exec mongodb mongosh --eval "db.adminCommand('ping')"
 
 # Check backend can connect to database
 docker-compose logs backend | grep -i mongo

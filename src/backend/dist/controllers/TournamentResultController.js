@@ -13,7 +13,7 @@ class TournamentResultController extends base_1.BaseController {
     // Override buildFilter for tournament result-specific filtering
     buildFilter(query) {
         const filter = {};
-        const { page, limit, sort, select, populate, q, ...filterParams } = query;
+        const { page, limit, sort, select, populate, q, year, ...filterParams } = query;
         // Tournament ID filtering
         if (filterParams.tournamentId) {
             filter.tournamentId = new mongoose_1.Types.ObjectId(filterParams.tournamentId);
@@ -89,10 +89,11 @@ class TournamentResultController extends base_1.BaseController {
             const options = {
                 page: parseInt(req.query.page) || 1,
                 limit: parseInt(req.query.limit) || 10,
-                sort: req.query.sort || '-createdAt',
+                sort: req.query.sort || '-tournament.date',
                 select: req.query.select,
             };
             const filter = this.buildFilter(req.query);
+            const year = req.query.year;
             // Use aggregation for better performance with populated data
             const pipeline = [
                 { $match: filter },
@@ -130,20 +131,59 @@ class TournamentResultController extends base_1.BaseController {
                         },
                     },
                 },
+            ];
+            // Add year filtering after lookup if specified
+            if (year) {
+                const yearInt = parseInt(year);
+                pipeline.push({
+                    $match: {
+                        'tournament.date': {
+                            $gte: new Date(`${yearInt}-01-01`),
+                            $lte: new Date(`${yearInt}-12-31`),
+                        },
+                    },
+                });
+            }
+            pipeline.push({
+                $project: {
+                    tournamentDetails: 0,
+                    playerDetails: 0,
+                },
+            }, { $sort: this.parseSortString(options.sort) }, { $skip: (options.page - 1) * options.limit }, { $limit: options.limit });
+            // Create count pipeline for accurate total with year filtering
+            const countPipeline = [
+                { $match: filter },
                 {
-                    $project: {
-                        tournamentDetails: 0,
-                        playerDetails: 0,
+                    $lookup: {
+                        from: 'tournaments',
+                        localField: 'tournamentId',
+                        foreignField: '_id',
+                        as: 'tournament',
                     },
                 },
-                { $sort: this.parseSortString(options.sort) },
-                { $skip: (options.page - 1) * options.limit },
-                { $limit: options.limit },
+                {
+                    $addFields: {
+                        tournament: { $arrayElemAt: ['$tournament', 0] },
+                    },
+                },
             ];
-            const [results, total] = await Promise.all([
+            if (year) {
+                const yearInt = parseInt(year);
+                countPipeline.push({
+                    $match: {
+                        'tournament.date': {
+                            $gte: new Date(`${yearInt}-01-01`),
+                            $lte: new Date(`${yearInt}-12-31`),
+                        },
+                    },
+                });
+            }
+            countPipeline.push({ $count: 'total' });
+            const [results, totalResult] = await Promise.all([
                 TournamentResult_1.TournamentResult.aggregate(pipeline),
-                TournamentResult_1.TournamentResult.countDocuments(filter),
+                TournamentResult_1.TournamentResult.aggregate(countPipeline),
             ]);
+            const total = totalResult.length > 0 ? totalResult[0].total : 0;
             const pages = Math.ceil(total / options.limit);
             const response = {
                 success: true,
@@ -199,7 +239,7 @@ class TournamentResultController extends base_1.BaseController {
             const results = await TournamentResult_1.TournamentResult.find({
                 players: { $in: [playerId] }
             })
-                .populate('tournamentId', 'date format location bodNumber')
+                .populate('tournamentId')
                 .populate('players', 'name')
                 .sort({ 'tournament.date': -1 });
             // Calculate player statistics across all tournaments
@@ -444,7 +484,9 @@ class TournamentResultController extends base_1.BaseController {
         parts.forEach(part => {
             const trimmed = part.trim();
             if (trimmed.startsWith('-')) {
-                sort[trimmed.substring(1)] = -1;
+                const field = trimmed.substring(1);
+                // Handle nested field references
+                sort[field] = -1;
             }
             else {
                 sort[trimmed] = 1;

@@ -76,5 +76,7 @@ export interface ITournamentResultFilter {
         $gte?: number;
         $lte?: number;
     };
+    'tournament.date'?: any;
+    [key: string]: any;
 }
 //# sourceMappingURL=tournamentResult.d.ts.map

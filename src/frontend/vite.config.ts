@@ -12,9 +12,15 @@ export default defineConfig({
     allowedHosts,
     proxy: {
       '/api': {
-        target: 'http://bod-backend:3000',
+        target: 'http://backend:3000',
         changeOrigin: true,
         secure: false,
+      },
+      '/auth': {
+        target: 'http://keycloak:8080',
+        changeOrigin: true,
+        secure: false,
+        rewrite: (path) => path.replace(/^\/auth/, ''),
       }
     }
   },

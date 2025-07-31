@@ -4,6 +4,7 @@ import helmet from 'helmet';
 import compression from 'compression';
 import rateLimit from 'express-rate-limit';
 import morgan from 'morgan';
+// Remove proxy import
 import { config } from 'dotenv';
 import { connectToDatabase } from './config/database';
 import { errorHandler } from './middleware/errorHandler';
@@ -19,7 +20,10 @@ const PORT = process.env.PORT || 3000;
 
 // Security middleware
 app.use(helmet());
-app.use(cors());
+app.use(cors({
+  origin: process.env.CORS_ORIGIN?.split(',') || ['http://localhost:8080'],
+  credentials: true,
+}));
 app.use(compression());
 
 // Rate limiting (more permissive for development)
@@ -40,6 +44,8 @@ app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 // Global middleware
 app.use(sanitizeInput);
 app.use(validatePagination);
+
+// Remove proxy - frontend talks directly to services
 
 // Health check endpoint
 app.get('/api/health', (_req, res) => {

@@ -14,13 +14,28 @@ import type {
   TournamentResultFilters,
   PaginationOptions,
 } from '../types/api';
+import type {
+  User,
+  CreateUserInput,
+  UpdateUserInput,
+  UserFilters,
+  ResetPasswordInput,
+  UserRole,
+} from '../types/user';
+
+// Global token getter function - will be set by AuthContext
+let getKeycloakToken: (() => string | undefined) | null = null;
+
+export const setTokenGetter = (getter: () => string | undefined) => {
+  getKeycloakToken = getter;
+};
 
 class ApiClient {
   private client: AxiosInstance;
 
   constructor() {
     this.client = axios.create({
-      baseURL: import.meta.env.VITE_API_URL || 'http://localhost:3333/api',
+      baseURL: import.meta.env.VITE_API_URL || '/api',
       timeout: 10000,
       headers: {
         'Content-Type': 'application/json',
@@ -30,7 +45,13 @@ class ApiClient {
     // Request interceptor to add auth token
     this.client.interceptors.request.use(
       (config) => {
-        const token = localStorage.getItem('authToken');
+        const token = getKeycloakToken?.();
+        console.log('API Request:', {
+          url: config.url,
+          hasTokenGetter: !!getKeycloakToken,
+          hasToken: !!token,
+          tokenStart: token ? token.substring(0, 20) : 'none'
+        });
         if (token) {
           config.headers.Authorization = `Bearer ${token}`;
         }
@@ -44,8 +65,8 @@ class ApiClient {
       (response) => response,
       async (error) => {
         if (error.response?.status === 401) {
-          localStorage.removeItem('authToken');
-          window.location.href = '/login';
+          // Token expired or invalid - Keycloak will handle this
+          console.warn('Authentication failed - redirecting to login');
         }
         
         // Handle rate limiting (429 errors)
@@ -242,17 +263,74 @@ class ApiClient {
     return this.get<ApiResponse>(`/tournament-results/leaderboard?${params.toString()}`);
   }
 
-  // Authentication methods
-  setAuthToken(token: string): void {
-    localStorage.setItem('authToken', token);
+  // Admin API methods
+  async updateTournamentStatus(id: string, status: string): Promise<ApiResponse<Tournament>> {
+    return this.put<ApiResponse<Tournament>>(`/admin/tournaments/${id}/status`, { status });
   }
 
-  removeAuthToken(): void {
-    localStorage.removeItem('authToken');
+  async addPlayersToTournament(id: string, playerIds: string[]): Promise<ApiResponse<Tournament>> {
+    return this.post<ApiResponse<Tournament>>(`/admin/tournaments/${id}/players`, { playerIds });
   }
 
-  getAuthToken(): string | null {
-    return localStorage.getItem('authToken');
+  async removePlayerFromTournament(id: string, playerId: string): Promise<ApiResponse<Tournament>> {
+    return this.delete<ApiResponse<Tournament>>(`/admin/tournaments/${id}/players/${playerId}`);
+  }
+
+  async generateTournamentMatches(id: string, bracketType = 'single-elimination'): Promise<ApiResponse<{ tournament: Tournament; matches: any[] }>> {
+    return this.post<ApiResponse<{ tournament: Tournament; matches: any[] }>>(`/admin/tournaments/${id}/generate-matches`, { bracketType });
+  }
+
+  async updateMatchScore(matchId: string, team1Score?: number, team2Score?: number, notes?: string): Promise<ApiResponse<any>> {
+    return this.put<ApiResponse<any>>(`/admin/tournaments/matches/${matchId}`, { team1Score, team2Score, notes });
+  }
+
+  async finalizeTournament(id: string): Promise<ApiResponse<Tournament>> {
+    return this.put<ApiResponse<Tournament>>(`/admin/tournaments/${id}/finalize`);
+  }
+
+  async getTournamentWithMatches(id: string): Promise<ApiResponse<{ tournament: Tournament; matches: any[]; results: any[] }>> {
+    return this.get<ApiResponse<{ tournament: Tournament; matches: any[]; results: any[] }>>(`/admin/tournaments/${id}/details`);
+  }
+
+  // User Management API methods
+  async getUsers(filters?: UserFilters): Promise<ApiResponse<User[]>> {
+    const params = new URLSearchParams();
+    if (filters) {
+      Object.entries(filters).forEach(([key, value]) => {
+        if (value !== undefined && value !== null) {
+          params.append(key, value.toString());
+        }
+      });
+    }
+    return this.get<ApiResponse<User[]>>(`/admin/users?${params.toString()}`);
+  }
+
+  async getUser(id: string): Promise<ApiResponse<User>> {
+    return this.get<ApiResponse<User>>(`/admin/users/${id}`);
+  }
+
+  async createUser(data: CreateUserInput): Promise<ApiResponse<User>> {
+    return this.post<ApiResponse<User>>('/admin/users', data);
+  }
+
+  async updateUser(id: string, data: UpdateUserInput): Promise<ApiResponse<User>> {
+    return this.put<ApiResponse<User>>(`/admin/users/${id}`, data);
+  }
+
+  async deleteUser(id: string): Promise<ApiResponse> {
+    return this.delete<ApiResponse>(`/admin/users/${id}`);
+  }
+
+  async resetUserPassword(id: string, data: ResetPasswordInput): Promise<ApiResponse> {
+    return this.post<ApiResponse>(`/admin/users/${id}/password`, data);
+  }
+
+  async updateUserRoles(id: string, roles: string[]): Promise<ApiResponse> {
+    return this.put<ApiResponse>(`/admin/users/${id}/roles`, { roles });
+  }
+
+  async getAvailableRoles(): Promise<ApiResponse<UserRole[]>> {
+    return this.get<ApiResponse<UserRole[]>>('/admin/users/roles');
   }
 
   // Health check

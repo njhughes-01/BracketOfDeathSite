@@ -17,6 +17,7 @@ export interface PaginatedResponse<T> extends ApiResponse<T[]> {
 
 // Player types
 export interface Player {
+  _id: string;
   id: string;
   name: string;
   bodsPlayed: number;
@@ -51,7 +52,8 @@ export interface PlayerInput {
 
 // Tournament types
 export interface Tournament {
-  id:string;
+  _id: string;
+  id: string;
   name: string;
   date: string;
   bodNumber: number;
@@ -60,6 +62,15 @@ export interface Tournament {
   advancementCriteria: string;
   notes?: string;
   photoAlbums?: string;
+  status: 'scheduled' | 'open' | 'active' | 'completed' | 'cancelled';
+  players?: Array<{ _id: string; name: string; }>;
+  maxPlayers?: number;
+  currentPlayerCount?: number;
+  champion?: {
+    playerId: string;
+    playerName: string;
+    tournamentResult?: string;
+  };
   createdAt: string;
   updatedAt: string;
 }

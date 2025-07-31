@@ -61,17 +61,17 @@ docker-compose ps
 ### 6. Access Your Application
 
 - **Frontend UI**: http://localhost:8080
-- **Backend API**: http://localhost:3000/api/health
+- **Backend API**: Available via proxy at http://localhost:8080/api/health
 - **MongoDB**: localhost:27017 (if you need direct access)
 
 ## Expected Output During Startup
 
 ### MongoDB Initialization:
 ```
-bod-mongodb | Starting MongoDB initialization...
-bod-mongodb | Created database: bracket_of_death
-bod-mongodb | Created user: bodapp
-bod-mongodb | MongoDB initialization completed successfully!
+mongodb | Starting MongoDB initialization...
+mongodb | Created database: bracket_of_death
+mongodb | Created user: bodapp
+mongodb | MongoDB initialization completed successfully!
 ```
 
 ### Data Import:
@@ -87,16 +87,16 @@ bod-data-init | Data import completed successfully!
 
 ### Backend Startup:
 ```
-bod-backend | Server starting...
-bod-backend | Connected to MongoDB
-bod-backend | Server running on port 3000
+backend | Server starting...
+backend | Connected to MongoDB
+backend | Server running on port 3000
 ```
 
 ### Frontend Build:
 ```
-bod-frontend | Building application...
-bod-frontend | Build completed successfully
-bod-frontend | Starting nginx...
+frontend | Building application...
+frontend | Build completed successfully
+frontend | Starting nginx...
 ```
 
 ## Verification Steps
@@ -104,10 +104,10 @@ bod-frontend | Starting nginx...
 ### 1. Test the API
 ```bash
 # Check backend health
-curl http://localhost:3000/api/health
+curl http://localhost:8080/api/health
 
 # Check players endpoint
-curl http://localhost:3000/api/players | jq
+curl http://localhost:8080/api/players | jq
 ```
 
 ### 2. Test the Frontend
@@ -118,7 +118,7 @@ curl http://localhost:3000/api/players | jq
 ### 3. Verify Data Import
 ```bash
 # Connect to MongoDB and check data
-docker exec -it bod-mongodb mongosh -u bodadmin -p bodpassword123 --authenticationDatabase admin
+docker exec -it mongodb mongosh -u bodadmin -p bodpassword123 --authenticationDatabase admin
 
 # In MongoDB shell:
 use bracket_of_death
@@ -180,7 +180,7 @@ db.tournamentresults.countDocuments() // Should show results
 
 ✅ **All services show "healthy" status**  
 ✅ **Frontend loads at http://localhost:8080**  
-✅ **API responds at http://localhost:3000/api/health**  
+✅ **API responds at http://localhost:8080/api/health**  
 ✅ **Players page shows imported player data**  
 ✅ **Tournaments page shows your tournament history**  
 

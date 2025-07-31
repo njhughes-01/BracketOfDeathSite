@@ -1,25 +1,104 @@
 import { Response, NextFunction } from 'express';
+import jwt from 'jsonwebtoken';
+import jwksClient from 'jwks-rsa';
+import axios from 'axios';
 import { RequestWithAuth } from '../controllers/base';
 import { ApiResponse } from '../types/common';
 
-// Mock authentication for development - replace with Google OAuth in production
-export const verifyGoogleToken = async (token: string) => {
-  // TODO: Implement actual Google token verification
-  if (token === 'mock-admin-token') {
-    return {
-      email: 'admin@example.com',
-      googleId: 'mock-admin-id',
-      name: 'Admin User',
-      picture: '',
+interface KeycloakToken {
+  sub: string;
+  email: string;
+  preferred_username: string;
+  given_name?: string;
+  family_name?: string;
+  name?: string;
+  realm_access?: {
+    roles: string[];
+  };
+  resource_access?: {
+    [key: string]: {
+      roles: string[];
     };
-  }
-  throw new Error('Invalid token');
+  };
+}
+
+// JWKS client for validating Keycloak tokens
+const client = jwksClient({
+  jwksUri: `${process.env.KEYCLOAK_URL}/realms/${process.env.KEYCLOAK_REALM}/protocol/openid-connect/certs`,
+  requestHeaders: {},
+  timeout: 30000,
+});
+
+// Get signing key for JWT verification
+const getKey = (header: any, callback: any) => {
+  client.getSigningKey(header.kid, (err, key) => {
+    if (err) {
+      callback(err);
+      return;
+    }
+    const signingKey = key?.getPublicKey();
+    callback(null, signingKey);
+  });
 };
 
-// Check if user is authorized
-export const isAuthorizedUser = (email: string): boolean => {
-  const authorizedUsers = process.env.AUTHORIZED_USERS?.split(',') || ['admin@example.com'];
-  return authorizedUsers.map(u => u.trim().toLowerCase()).includes(email.toLowerCase());
+// Verify Keycloak JWT token
+export const verifyKeycloakToken = async (token: string): Promise<KeycloakToken> => {
+  return new Promise((resolve, reject) => {
+    // First, let's decode the token to see what audience it has
+    const decoded = jwt.decode(token, { complete: true });
+    console.log('Token decoded:', JSON.stringify(decoded?.payload, null, 2));
+    
+    jwt.verify(
+      token,
+      getKey,
+      {
+        // Don't validate audience since Keycloak uses 'azp' (authorized party) instead of 'aud'
+        issuer: `${process.env.KEYCLOAK_URL}/realms/${process.env.KEYCLOAK_REALM}`,
+        algorithms: ['RS256'],
+      },
+      (err, decoded) => {
+        if (err) {
+          reject(err);
+          return;
+        }
+        
+        // Manually validate the authorized party (azp) since Keycloak uses this instead of audience
+        const decodedToken = decoded as KeycloakToken & { azp?: string };
+        const expectedClient = process.env.KEYCLOAK_CLIENT_ID || 'bod-app';
+        
+        if (decodedToken.azp && decodedToken.azp !== expectedClient) {
+          reject(new Error(`Invalid client. Expected: ${expectedClient}, got: ${decodedToken.azp}`));
+          return;
+        }
+        
+        resolve(decodedToken);
+      }
+    );
+  });
+};
+
+// Check if user has admin role
+export const hasAdminRole = (token: KeycloakToken): boolean => {
+  // Check realm roles
+  const realmRoles = token.realm_access?.roles || [];
+  if (realmRoles.includes('admin')) {
+    return true;
+  }
+  
+  // Check client roles
+  const clientId = process.env.KEYCLOAK_CLIENT_ID || 'bod-app';
+  const clientRoles = token.resource_access?.[clientId]?.roles || [];
+  return clientRoles.includes('admin');
+};
+
+// Check if user is authorized (has user or admin role)
+export const isAuthorizedUser = (token: KeycloakToken): boolean => {
+  const realmRoles = token.realm_access?.roles || [];
+  const clientId = process.env.KEYCLOAK_CLIENT_ID || 'bod-app';
+  const clientRoles = token.resource_access?.[clientId]?.roles || [];
+  
+  const allRoles = [...realmRoles, ...clientRoles];
+  return allRoles.includes('user') || allRoles.includes('admin');
 };
 
 // Authentication middleware
@@ -51,13 +130,15 @@ export const requireAuth = async (
       return;
     }
 
-    // Verify the token
-    const userInfo = await verifyGoogleToken(token);
+    // Verify the Keycloak token
+    console.log('Attempting to verify token:', token.substring(0, 20) + '...');
+    console.log('JWKS URI:', `${process.env.KEYCLOAK_URL}/realms/${process.env.KEYCLOAK_REALM}/protocol/openid-connect/certs`);
+    const tokenData = await verifyKeycloakToken(token);
     
     // Check if user is authorized
-    const isAuthorized = isAuthorizedUser(userInfo.email);
+    const authorized = isAuthorizedUser(tokenData);
     
-    if (!isAuthorized) {
+    if (!authorized) {
       const response: ApiResponse = {
         success: false,
         error: 'Access denied. User not authorized.',
@@ -68,13 +149,21 @@ export const requireAuth = async (
 
     // Add user info to request
     req.user = {
-      email: userInfo.email,
-      googleId: userInfo.googleId,
+      id: tokenData.sub,
+      email: tokenData.email,
+      username: tokenData.preferred_username,
+      name: tokenData.name || `${tokenData.given_name || ''} ${tokenData.family_name || ''}`.trim(),
       isAuthorized: true,
+      isAdmin: hasAdminRole(tokenData),
+      roles: [
+        ...(tokenData.realm_access?.roles || []),
+        ...(tokenData.resource_access?.[process.env.KEYCLOAK_CLIENT_ID || 'bod-app']?.roles || [])
+      ],
     };
 
     next();
   } catch (error) {
+    console.error('Auth middleware error:', error);
     const response: ApiResponse = {
       success: false,
       error: 'Invalid or expired token',
@@ -97,13 +186,20 @@ export const optionalAuth = async (
       
       if (token) {
         try {
-          const userInfo = await verifyGoogleToken(token);
-          const isAuthorized = isAuthorizedUser(userInfo.email);
+          const tokenData = await verifyKeycloakToken(token);
+          const authorized = isAuthorizedUser(tokenData);
           
           req.user = {
-            email: userInfo.email,
-            googleId: userInfo.googleId,
-            isAuthorized,
+            id: tokenData.sub,
+            email: tokenData.email,
+            username: tokenData.preferred_username,
+            name: tokenData.name || `${tokenData.given_name || ''} ${tokenData.family_name || ''}`.trim(),
+            isAuthorized: authorized,
+            isAdmin: hasAdminRole(tokenData),
+            roles: [
+              ...(tokenData.realm_access?.roles || []),
+              ...(tokenData.resource_access?.[process.env.KEYCLOAK_CLIENT_ID || 'bod-app']?.roles || [])
+            ],
           };
         } catch (error) {
           // Invalid token, but don't fail the request
@@ -127,9 +223,8 @@ export const requireAdmin = async (
 ): Promise<void> => {
   // First check authentication
   await requireAuth(req, res, () => {
-    // Add additional admin checks here if needed
-    // For now, all authorized users are considered admins
-    if (req.user && req.user.isAuthorized) {
+    // Check if user has admin role
+    if (req.user && req.user.isAdmin) {
       next();
     } else {
       const response: ApiResponse = {

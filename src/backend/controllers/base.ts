@@ -4,9 +4,13 @@ import { ApiResponse, PaginationOptions } from '../types/common';
 
 export interface RequestWithAuth extends Request {
   user?: {
+    id: string;
     email: string;
-    googleId: string;
+    username: string;
+    name: string;
     isAuthorized: boolean;
+    isAdmin: boolean;
+    roles: string[];
   };
 }
 
@@ -32,9 +36,45 @@ export class BaseController<T extends Document> {
       // Build filter from query parameters
       const filter = this.buildFilter(req.query);
 
-      const result = await (this.model as any).paginate(filter, options);
+      // Check if the model has paginate method, otherwise use regular find
+      if (typeof (this.model as any).paginate === 'function') {
+        const result = await (this.model as any).paginate(filter, options);
+        res.status(200).json(result);
+      } else {
+        // Fallback for models without pagination
+        const skip = (options.page - 1) * options.limit;
+        let query = this.model.find(filter);
+        
+        if (options.select) {
+          query = query.select(options.select);
+        }
+        
+        if (options.sort) {
+          query = query.sort(options.sort);
+        }
+        
+        const [docs, totalDocs] = await Promise.all([
+          query.skip(skip).limit(options.limit).exec(),
+          this.model.countDocuments(filter)
+        ]);
 
-      res.status(200).json(result);
+        const totalPages = Math.ceil(totalDocs / options.limit);
+        
+        const result = {
+          docs,
+          totalDocs,
+          limit: options.limit,
+          page: options.page,
+          totalPages,
+          hasNextPage: options.page < totalPages,
+          hasPrevPage: options.page > 1,
+          nextPage: options.page < totalPages ? options.page + 1 : null,
+          prevPage: options.page > 1 ? options.page - 1 : null,
+          pagingCounter: skip + 1,
+        };
+        
+        res.status(200).json(result);
+      }
     } catch (error) {
       next(error);
     }

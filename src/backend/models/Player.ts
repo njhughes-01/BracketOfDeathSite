@@ -37,8 +37,6 @@ const playerSchema = new Schema<IPlayer>(
       type: String,
       required: [true, ErrorMessages.REQUIRED],
       trim: true,
-      unique: true,
-      index: true,
       validate: createStringValidator(2, 100),
     },
     bodsPlayed: {

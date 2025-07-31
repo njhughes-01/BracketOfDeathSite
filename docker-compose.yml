@@ -1,5 +1,52 @@
 services:
-  # MongoDB Database
+  # Keycloak Authentication Server (internal only)
+  keycloak:
+    image: quay.io/keycloak/keycloak:23.0
+    container_name: bod-keycloak
+    restart: unless-stopped
+    command: ["start-dev"]
+    environment:
+      KEYCLOAK_ADMIN: ${KEYCLOAK_ADMIN_USER}
+      KEYCLOAK_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD}
+      KC_DB: postgres
+      KC_DB_URL: jdbc:postgresql://keycloak-db:5432/keycloak
+      KC_DB_USERNAME: ${KEYCLOAK_DB_USER}
+      KC_DB_PASSWORD: ${KEYCLOAK_DB_PASSWORD}
+      KC_HOSTNAME_STRICT: false
+      KC_HOSTNAME_STRICT_HTTPS: false
+      KC_HTTP_ENABLED: true
+    # No external port exposure - accessed via backend proxy
+    depends_on:
+      keycloak-db:
+        condition: service_healthy
+    networks:
+      - bod-network
+    healthcheck:
+      test: ["CMD-SHELL", "echo > /dev/tcp/localhost/8080"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+
+  # Keycloak Database
+  keycloak-db:
+    image: postgres:15
+    container_name: bod-keycloak-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: keycloak
+      POSTGRES_USER: ${KEYCLOAK_DB_USER}
+      POSTGRES_PASSWORD: ${KEYCLOAK_DB_PASSWORD}
+    volumes:
+      - keycloak-db-data:/var/lib/postgresql/data
+    networks:
+      - bod-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${KEYCLOAK_DB_USER} -d keycloak"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  # MongoDB Database (internal only)
   mongodb:
     image: mongo:7.0
     container_name: bod-mongodb
@@ -11,8 +58,7 @@ services:
       MONGO_INITDB_ROOT_USERNAME: ${MONGO_INITDB_ROOT_USERNAME}
       MONGO_INITDB_ROOT_PASSWORD: ${MONGO_INITDB_ROOT_PASSWORD}
       MONGO_INITDB_DATABASE: ${MONGO_INITDB_DATABASE}
-    ports:
-      - "${MONGODB_PORT}:27017"
+    # No external port - accessed via service name
     volumes:
       # Use Docker volume instead of bind mount to avoid permission issues
       - mongodb-data:/data/db
@@ -28,6 +74,28 @@ services:
       timeout: 10s
       retries: 5
 
+  # Keycloak Initialization Service (runs once)
+  keycloak-init:
+    build:
+      context: .
+      dockerfile: scripts/Dockerfile.keycloak-init
+    container_name: bod-keycloak-init
+    depends_on:
+      keycloak:
+        condition: service_healthy
+    env_file:
+      - .env
+    environment:
+      KEYCLOAK_ADMIN_USER: ${KEYCLOAK_ADMIN_USER}
+      KEYCLOAK_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD}
+      KEYCLOAK_CLIENT_SECRET: ${KEYCLOAK_CLIENT_SECRET}
+    volumes:
+      - ./scripts:/scripts:ro
+    networks:
+      - bod-network
+    restart: "no"
+    entrypoint: ["/bin/sh", "/scripts/init-keycloak.sh"]
+
   # Data Initialization Service (runs once)
   data-init:
     build:
@@ -42,13 +110,13 @@ services:
     environment:
       MONGODB_URI: ${MONGODB_URI}
     volumes:
-      - ./json/fixed:/app/data:ro
-      - ./data/init-status:/app/status
+      - ./json:/app/data:ro
+      - data-init-status:/app/status
     networks:
       - bod-network
     restart: "no"
 
-  # Backend API
+  # Backend API (internal only)
   backend:
     build:
       context: ./src/backend
@@ -60,6 +128,8 @@ services:
         condition: service_healthy
       data-init:
         condition: service_completed_successfully
+      keycloak-init:
+        condition: service_completed_successfully
     env_file:
       - .env
     environment:
@@ -68,8 +138,11 @@ services:
       MONGODB_URI: ${MONGODB_URI}
       JWT_SECRET: ${JWT_SECRET}
       CORS_ORIGIN: ${CORS_ORIGIN}
-    ports:
-      - "${BACKEND_EXTERNAL_PORT}:${BACKEND_PORT}"
+      KEYCLOAK_URL: ${KEYCLOAK_URL}
+      KEYCLOAK_REALM: ${KEYCLOAK_REALM}
+      KEYCLOAK_CLIENT_ID: ${KEYCLOAK_CLIENT_ID}
+      KEYCLOAK_CLIENT_SECRET: ${KEYCLOAK_CLIENT_SECRET}
+    # No external port - accessed via service name from frontend
     volumes:
       # Backend logs
       - ./data/logs/backend:/app/logs
@@ -95,12 +168,15 @@ services:
       - .env
     environment:
       VITE_API_URL: ${VITE_API_URL}
+      VITE_KEYCLOAK_URL: ${VITE_KEYCLOAK_URL}
+      VITE_KEYCLOAK_REALM: ${KEYCLOAK_REALM}
+      VITE_KEYCLOAK_CLIENT_ID: ${KEYCLOAK_CLIENT_ID}
     ports:
       - "${FRONTEND_EXTERNAL_PORT}:${FRONTEND_PORT}"
     networks:
       - bod-network
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:5173"]
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://0.0.0.0:5173"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -108,10 +184,13 @@ services:
 networks:
   bod-network:
     driver: bridge
-    name: bob-network
 
 volumes:
   mongodb-data:
     driver: local
   mongodb-logs:
+    driver: local
+  keycloak-db-data:
+    driver: local
+  data-init-status:
     driver: local

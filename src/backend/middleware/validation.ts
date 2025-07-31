@@ -1,25 +1,54 @@
 import { Request, Response, NextFunction } from 'express';
 import { Types } from 'mongoose';
+import { validationResult } from 'express-validator';
 import { ApiResponse } from '../types/common';
+
+// Express-validator middleware
+export const validateRequest = (req: Request, res: Response, next: NextFunction): void => {
+  const errors = validationResult(req);
+  
+  if (!errors.isEmpty()) {
+    const response: ApiResponse = {
+      success: false,
+      message: 'Validation failed',
+      error: errors.array().map(err => err.msg).join(', '),
+    };
+    res.status(400).json(response);
+    return;
+  }
+  
+  next();
+};
 
 // Validate MongoDB ObjectId
 export const validateObjectId = (req: Request, res: Response, next: NextFunction): void => {
-  const { id, tournamentId, playerId } = req.params;
+  const { id, tournamentId, playerId, matchId } = req.params;
   
   const idsToValidate = [
     { name: 'id', value: id },
     { name: 'tournamentId', value: tournamentId },
     { name: 'playerId', value: playerId },
+    { name: 'matchId', value: matchId },
   ].filter(item => item.value);
 
   for (const { name, value } of idsToValidate) {
-    if (value && !Types.ObjectId.isValid(value)) {
+    if (value && value !== 'undefined' && !Types.ObjectId.isValid(value)) {
       const response: ApiResponse = {
         success: false,
         error: `Invalid ${name} format`,
       };
       res.status(400).json(response);
       return;
+    }
+    
+    // Check for the specific case of 'undefined' string
+    if (value === 'undefined') {
+      const response: ApiResponse = {
+        success: false,
+        error: `${name} is required`,
+      };
+      res.status(400).json(response);
+      return;  
     }
   }
 
@@ -150,10 +179,12 @@ export const validatePagination = (req: Request, res: Response, next: NextFuncti
 
   if (limit) {
     const limitNum = Number(limit);
-    if (isNaN(limitNum) || limitNum < 1 || limitNum > 100) {
+    // Allow higher limits for admin requests (up to 1000), regular requests limited to 100
+    const maxLimit = req.path.includes('/admin/') || req.headers.authorization ? 1000 : 100;
+    if (isNaN(limitNum) || limitNum < 1 || limitNum > maxLimit) {
       const response: ApiResponse = {
         success: false,
-        error: 'Limit must be between 1 and 100',
+        error: `Limit must be between 1 and ${maxLimit}`,
       };
       res.status(400).json(response);
       return;

@@ -10,6 +10,7 @@ const helmet_1 = __importDefault(require("helmet"));
 const compression_1 = __importDefault(require("compression"));
 const express_rate_limit_1 = __importDefault(require("express-rate-limit"));
 const morgan_1 = __importDefault(require("morgan"));
+// Remove proxy import
 const dotenv_1 = require("dotenv");
 const database_1 = require("./config/database");
 const errorHandler_1 = require("./middleware/errorHandler");
@@ -22,12 +23,15 @@ const app = (0, express_1.default)();
 const PORT = process.env.PORT || 3000;
 // Security middleware
 app.use((0, helmet_1.default)());
-app.use((0, cors_1.default)());
+app.use((0, cors_1.default)({
+    origin: process.env.CORS_ORIGIN?.split(',') || ['http://localhost:8080'],
+    credentials: true,
+}));
 app.use((0, compression_1.default)());
-// Rate limiting
+// Rate limiting (more permissive for development)
 const limiter = (0, express_rate_limit_1.default)({
     windowMs: 15 * 60 * 1000, // 15 minutes
-    max: 100, // limit each IP to 100 requests per windowMs
+    max: 1000, // limit each IP to 1000 requests per windowMs
     message: 'Too many requests from this IP, please try again later.',
 });
 app.use('/api/', limiter);
@@ -39,8 +43,9 @@ app.use(express_1.default.urlencoded({ extended: true, limit: '10mb' }));
 // Global middleware
 app.use(validation_1.sanitizeInput);
 app.use(validation_1.validatePagination);
+// Remove proxy - frontend talks directly to services
 // Health check endpoint
-app.get('/health', (_req, res) => {
+app.get('/api/health', (_req, res) => {
     res.status(200).json({ status: 'OK', timestamp: new Date().toISOString() });
 });
 // API routes

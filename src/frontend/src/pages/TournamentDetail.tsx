@@ -1,13 +1,18 @@
 import React, { useState, useCallback, useEffect } from 'react';
 import { useParams, Link, useLocation } from 'react-router-dom';
 import { useApi } from '../hooks/useApi';
+import { useAuth } from '../contexts/AuthContext';
+import { usePermissions } from '../hooks/usePermissions';
 import apiClient from '../services/api';
 import Card from '../components/ui/Card';
 import LoadingSpinner from '../components/ui/LoadingSpinner';
+import { getTournamentStatus, getStatusDisplayInfo } from '../utils/tournamentStatus';
 
 const TournamentDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const location = useLocation();
+  const { isAdmin } = useAuth();
+  const { canViewAdmin } = usePermissions();
   const [activeTab, setActiveTab] = useState<'overview' | 'results' | 'bracket'>('overview');
 
   // Set initial tab based on URL
@@ -106,6 +111,8 @@ const TournamentDetail: React.FC = () => {
   }
 
   const tournamentData = tournament as any;
+  const actualStatus = getTournamentStatus(tournamentData.date);
+  const statusInfo = getStatusDisplayInfo(actualStatus);
 
   return (
     <div className="space-y-6">
@@ -124,15 +131,37 @@ const TournamentDetail: React.FC = () => {
                 {getFormatDisplayName(tournamentData.format)}
               </span>
               <span>•</span>
+              <span className={`px-2 py-1 text-xs font-medium rounded-full ${statusInfo.color}`}>
+                {statusInfo.label}
+              </span>
+              <span>•</span>
               <span>{tournamentData.location}</span>
               <span>•</span>
               <span>{formatDate(tournamentData.date)}</span>
             </div>
           </div>
         </div>
-        <Link to="/tournaments" className="btn btn-outline ml-4">
-          Back to Tournaments
-        </Link>
+        <div className="flex items-center space-x-3">
+          {canViewAdmin && (
+            <div className="flex items-center space-x-2">
+              <Link 
+                to="/admin" 
+                className="text-sm text-blue-600 hover:text-blue-800 px-3 py-1 border border-blue-200 rounded-md hover:bg-blue-50"
+              >
+                Admin Dashboard
+              </Link>
+              <Link 
+                to="/admin/users" 
+                className="text-sm text-gray-600 hover:text-gray-800 px-3 py-1 border border-gray-200 rounded-md hover:bg-gray-50"
+              >
+                Manage Users
+              </Link>
+            </div>
+          )}
+          <Link to="/tournaments" className="btn btn-outline">
+            Back to Tournaments
+          </Link>
+        </div>
       </div>
 
       {/* Tabs */}

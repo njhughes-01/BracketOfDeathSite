@@ -46,12 +46,10 @@ export const commonFields = {
   createdAt: {
     type: Date,
     default: Date.now,
-    index: true,
   },
   updatedAt: {
     type: Date,
     default: Date.now,
-    index: true,
   },
 };
 

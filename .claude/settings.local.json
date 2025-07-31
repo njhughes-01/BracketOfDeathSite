@@ -17,7 +17,22 @@
       "Bash(docker compose:*)",
       "Bash(curl:*)",
       "Bash(find:*)",
-      "Bash(grep:*)"
+      "Bash(grep:*)",
+      "WebFetch(domain:docs.anthropic.com)",
+      "Bash(chmod:*)",
+      "Bash(docker-compose:*)",
+      "Bash(docker exec:*)",
+      "Bash(docker run:*)",
+      "Bash(--network bob-network )",
+      "Bash(-p 5173:5173 )",
+      "Bash(--env-file .env )",
+      "Bash(bracketofdeathsite-frontend:latest)",
+      "Bash(docker stop:*)",
+      "Bash(docker rm:*)",
+      "Bash(docker volume:*)",
+      "Bash(docker restart:*)",
+      "Bash(npm run typecheck:*)",
+      "Bash(npx tsc:*)"
     ],
     "deny": []
   }

@@ -7,7 +7,7 @@ set -e
 
 # Configuration
 BACKUP_DIR="./backups/$(date +%Y-%m-%d_%H-%M-%S)"
-CONTAINER_NAME="bod-mongodb"
+CONTAINER_NAME="mongodb"
 DB_NAME="bracket_of_death"
 DB_USER="bodadmin"
 DB_PASS="bodpassword123"

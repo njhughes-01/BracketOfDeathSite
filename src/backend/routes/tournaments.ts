@@ -1,13 +1,13 @@
 import { Router } from 'express';
 import { tournamentController } from '../controllers/TournamentController';
 import { requireAuth } from '../middleware/auth';
-import { validateObjectId } from '../middleware/validation';
+import { validateObjectId, validatePagination } from '../middleware/validation';
 
 const router = Router();
 
 // Public routes (read-only)
-router.get('/', tournamentController.getAll);
-router.get('/search', tournamentController.search);
+router.get('/', validatePagination, tournamentController.getAll);
+router.get('/search', validatePagination, tournamentController.search);
 router.get('/stats', tournamentController.getStats);
 router.get('/upcoming', tournamentController.getUpcoming);
 router.get('/recent', tournamentController.getRecent);

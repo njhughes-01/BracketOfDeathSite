@@ -2,9 +2,13 @@ import { Request, Response, NextFunction } from 'express';
 import { Model, Document } from 'mongoose';
 export interface RequestWithAuth extends Request {
     user?: {
+        id: string;
         email: string;
-        googleId: string;
+        username: string;
+        name: string;
         isAuthorized: boolean;
+        isAdmin: boolean;
+        roles: string[];
     };
 }
 export declare class BaseController<T extends Document> {

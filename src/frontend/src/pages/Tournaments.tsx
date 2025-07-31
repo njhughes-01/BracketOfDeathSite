@@ -4,6 +4,7 @@ import { useApi } from '../hooks/useApi';
 import apiClient from '../services/api';
 import Card from '../components/ui/Card';
 import LoadingSpinner from '../components/ui/LoadingSpinner';
+import { getTournamentStatus, getStatusDisplayInfo } from '../utils/tournamentStatus';
 
 const Tournaments: React.FC = () => {
   const [page, setPage] = useState(1);
@@ -238,54 +239,60 @@ const Tournaments: React.FC = () => {
           </div>
         ) : (tournaments && 'data' in tournaments && Array.isArray(tournaments.data) && tournaments.data.length > 0) ? (
           <div className="grid grid-cols-1 gap-6">
-            {tournaments.data.map((tournament: any) => (
-              <div key={tournament.id || tournament._id} className="group">
-                <Card variant="hover" padding="lg">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center space-x-6">
-                      <div className="w-20 h-20 bg-gradient-to-br from-blue-500 to-purple-600 rounded-xl flex items-center justify-center shadow-lg">
-                        <span className="text-white font-bold text-xl">
-                          #{tournament.bodNumber}
-                        </span>
-                      </div>
-                      <div className="flex-1">
-                        <div className="flex items-center space-x-3 mb-2">
-                          <h3 className="text-xl font-semibold text-gray-900 group-hover:text-blue-600 transition-colors duration-200">
-                            {tournament.format} Tournament
-                          </h3>
-                          <span className={`badge ${
-                            tournament.format.includes('Men') ? 'badge-primary' : 
-                            tournament.format.includes('Women') ? 'bg-pink-100 text-pink-800' : 
-                            'badge-success'
-                          }`}>
-                            {tournament.format}
+            {tournaments.data.map((tournament: any) => {
+              const actualStatus = getTournamentStatus(tournament.date);
+              const statusInfo = getStatusDisplayInfo(actualStatus);
+              
+              return (
+                <div key={tournament.id || tournament._id} className="group">
+                  <Card variant="hover" padding="lg">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center space-x-6">
+                        <div className="w-20 h-20 bg-gradient-to-br from-blue-500 to-purple-600 rounded-xl flex items-center justify-center shadow-lg">
+                          <span className="text-white font-bold text-xl">
+                            #{tournament.bodNumber}
                           </span>
                         </div>
-                        <div className="space-y-1">
-                          <p className="text-gray-700 font-medium">
-                            📍 {tournament.location}
-                          </p>
-                          <p className="text-gray-600">
-                            📅 {formatDate(tournament.date)}
-                          </p>
-                          {tournament.notes && (
-                            <p className="text-sm text-gray-500">
-                              📝 {tournament.notes}
+                        <div className="flex-1">
+                          <div className="flex items-center space-x-3 mb-2">
+                            <h3 className="text-xl font-semibold text-gray-900 group-hover:text-blue-600 transition-colors duration-200">
+                              {tournament.format} Tournament
+                            </h3>
+                            <span className={`badge ${
+                              tournament.format.includes('Men') ? 'badge-primary' : 
+                              tournament.format.includes('Women') ? 'bg-pink-100 text-pink-800' : 
+                              'badge-success'
+                            }`}>
+                              {tournament.format}
+                            </span>
+                          </div>
+                          <div className="space-y-1">
+                            <p className="text-gray-700 font-medium">
+                              📍 {tournament.location}
                             </p>
-                          )}
+                            <p className="text-gray-600">
+                              📅 {formatDate(tournament.date)}
+                            </p>
+                            {tournament.notes && (
+                              <p className="text-sm text-gray-500">
+                                📝 {tournament.notes}
+                              </p>
+                            )}
+                          </div>
                         </div>
                       </div>
-                    </div>
-                    
-                    <div className="flex items-center space-x-4">
-                      <div className="text-right">
-                        <div className="flex items-center space-x-2 mb-2">
-                          <span className="badge badge-success">Completed</span>
+                      
+                      <div className="flex items-center space-x-4">
+                        <div className="text-right">
+                          <div className="flex items-center space-x-2 mb-2">
+                            <span className={`px-2 py-1 text-xs font-medium rounded-full ${statusInfo.color}`}>
+                              {statusInfo.label}
+                            </span>
+                          </div>
+                          <p className="text-sm text-gray-600">
+                            BOD #{tournament.bodNumber}
+                          </p>
                         </div>
-                        <p className="text-sm text-gray-600">
-                          BOD #{tournament.bodNumber}
-                        </p>
-                      </div>
                       
                       <div className="flex flex-col space-y-2">
                         <Link
@@ -300,12 +307,13 @@ const Tournaments: React.FC = () => {
                         >
                           View Bracket
                         </Link>
+                        </div>
                       </div>
                     </div>
-                  </div>
-                </Card>
-              </div>
-            ))}
+                  </Card>
+                </div>
+              );
+            })}
           </div>
         ) : (
           <div className="text-center py-12">

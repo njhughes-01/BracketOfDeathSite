@@ -1,7 +1,23 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.sanitizeInput = exports.validatePagination = exports.validateRange = exports.validateDate = exports.validateEmail = exports.validateRequired = exports.validateObjectId = void 0;
+exports.sanitizeInput = exports.validatePagination = exports.validateRange = exports.validateDate = exports.validateEmail = exports.validateRequired = exports.validateObjectId = exports.validateRequest = void 0;
 const mongoose_1 = require("mongoose");
+const express_validator_1 = require("express-validator");
+// Express-validator middleware
+const validateRequest = (req, res, next) => {
+    const errors = (0, express_validator_1.validationResult)(req);
+    if (!errors.isEmpty()) {
+        const response = {
+            success: false,
+            message: 'Validation failed',
+            error: errors.array().map(err => err.msg).join(', '),
+        };
+        res.status(400).json(response);
+        return;
+    }
+    next();
+};
+exports.validateRequest = validateRequest;
 // Validate MongoDB ObjectId
 const validateObjectId = (req, res, next) => {
     const { id, tournamentId, playerId } = req.params;

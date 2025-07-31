@@ -16,7 +16,7 @@ class PlayerController extends base_1.BaseController {
             filter.name = new RegExp(filterParams.name, 'i');
         }
         // Numeric range filters
-        const numericFields = ['bodsPlayed', 'bestResult', 'avgFinish', 'winningPercentage', 'totalChampionships'];
+        const numericFields = ['bodsPlayed', 'bestResult', 'avgFinish', 'winningPercentage', 'totalChampionships', 'gamesPlayed', 'gamesWon'];
         numericFields.forEach(field => {
             const value = filterParams[field];
             const minValue = filterParams[`${field}_min`];
@@ -34,6 +34,17 @@ class PlayerController extends base_1.BaseController {
                 }
             }
         });
+        // Division filtering
+        if (filterParams.division) {
+            filter.division = new RegExp(filterParams.division, 'i');
+        }
+        // City/State filtering
+        if (filterParams.city) {
+            filter.city = new RegExp(filterParams.city, 'i');
+        }
+        if (filterParams.state) {
+            filter.state = new RegExp(filterParams.state, 'i');
+        }
         return filter;
     }
     // Override buildSearchFilter for player-specific search

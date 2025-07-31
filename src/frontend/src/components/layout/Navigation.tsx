@@ -1,13 +1,28 @@
 import React from 'react';
 import { NavLink } from 'react-router-dom';
+import { useAuth } from '../../contexts/AuthContext';
+import { usePermissions } from '../../hooks/usePermissions';
 
 const Navigation: React.FC = () => {
+  const { isAdmin } = useAuth();
+  const { canViewAdmin, canManageUsers } = usePermissions();
+  
   const navItems = [
     { path: '/', label: 'Home', icon: '🏠' },
     { path: '/players', label: 'Players', icon: '👥' },
     { path: '/tournaments', label: 'Tournaments', icon: '🏆' },
     { path: '/results', label: 'Results', icon: '📊' },
   ];
+
+  // Add admin link for admin users
+  if (canViewAdmin) {
+    navItems.push({ path: '/admin', label: 'Admin', icon: '⚙️' });
+  }
+
+  // Add user management for users with permissions
+  if (canManageUsers) {
+    navItems.push({ path: '/admin/users', label: 'User Management', icon: '👤' });
+  }
 
   return (
     <nav className="bg-white border-b border-gray-200">

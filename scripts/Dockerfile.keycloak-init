@@ -1,0 +1,11 @@
+FROM curlimages/curl:8.4.0
+
+USER root
+
+# Install jq for JSON processing
+RUN apk add --no-cache jq
+
+# Switch back to curl user
+USER curl_user
+
+WORKDIR /scripts

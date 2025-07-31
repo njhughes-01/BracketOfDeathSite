@@ -236,7 +236,6 @@ const tournamentResultSchema = new Schema<ITournamentResult>(
       type: Schema.Types.ObjectId,
       ref: 'Tournament',
       required: [true, ErrorMessages.REQUIRED],
-      index: true,
     },
     players: [{
       type: Schema.Types.ObjectId,
