@@ -7,6 +7,8 @@ import apiClient from '../services/api';
 import Card from '../components/ui/Card';
 import LoadingSpinner from '../components/ui/LoadingSpinner';
 import { getTournamentStatus, getStatusDisplayInfo } from '../utils/tournamentStatus';
+import { EditableText, EditableNumber, EditableSelect, EditableDate, EditableCard } from '../components/admin';
+import type { Tournament, TournamentUpdate } from '../types/api';
 
 const TournamentDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -14,6 +16,27 @@ const TournamentDetail: React.FC = () => {
   const { isAdmin } = useAuth();
   const { canViewAdmin } = usePermissions();
   const [activeTab, setActiveTab] = useState<'overview' | 'results' | 'bracket'>('overview');
+  const [tournamentData, setTournamentData] = useState<Tournament | null>(null);
+
+  // Tournament format options matching backend schema
+  const formatOptions = [
+    { value: 'M', label: "Men's (Legacy)" },
+    { value: 'W', label: "Women's (Legacy)" },
+    { value: 'Mixed', label: "Mixed (Legacy)" },
+    { value: "Men's Singles", label: "Men's Singles" },
+    { value: "Men's Doubles", label: "Men's Doubles" },
+    { value: "Women's Doubles", label: "Women's Doubles" },
+    { value: "Mixed Doubles", label: "Mixed Doubles" }
+  ];
+
+  // Tournament status options matching backend schema
+  const statusOptions = [
+    { value: 'scheduled', label: 'Scheduled' },
+    { value: 'open', label: 'Open for Registration' },
+    { value: 'active', label: 'In Progress' },
+    { value: 'completed', label: 'Completed' },
+    { value: 'cancelled', label: 'Cancelled' }
+  ];
 
   // Set initial tab based on URL
   useEffect(() => {
@@ -29,10 +52,17 @@ const TournamentDetail: React.FC = () => {
     [id]
   );
 
-  const { data: tournament, loading: tournamentLoading, error: tournamentError } = useApi(
+  const { data: tournament, loading: tournamentLoading, error: tournamentError, execute: refetchTournament } = useApi(
     getTournament,
     { immediate: true }
   );
+
+  // Update local state when tournament data changes
+  useEffect(() => {
+    if (tournament && 'data' in tournament) {
+      setTournamentData(tournament.data as Tournament);
+    }
+  }, [tournament]);
 
   const getResults = useCallback(
     () => apiClient.getResultsByTournament(id!),
@@ -43,6 +73,46 @@ const TournamentDetail: React.FC = () => {
     getResults,
     { immediate: true }
   );
+
+  // Function to update tournament field
+  const updateTournamentField = async <K extends keyof TournamentUpdate>(
+    field: K,
+    value: TournamentUpdate[K]
+  ): Promise<void> => {
+    if (!tournamentData || !id) return;
+
+    try {
+      const updateData: TournamentUpdate = { [field]: value } as TournamentUpdate;
+      const response = await apiClient.updateTournament(id, updateData);
+      
+      if (response.success && response.data) {
+        setTournamentData(response.data);
+        // Optionally refetch to ensure consistency
+        // await refetchTournament();
+      }
+    } catch (error) {
+      console.error(`Failed to update ${String(field)}:`, error);
+      throw error;
+    }
+  };
+
+  // Function to update tournament result field
+  const updateTournamentResultField = async (
+    resultId: string,
+    field: string,
+    value: any
+  ): Promise<void> => {
+    try {
+      const updateData = { [field]: value };
+      await apiClient.updateTournamentResult(resultId, updateData);
+      
+      // Refetch results to get updated data with recalculated values
+      await getResults();
+    } catch (error) {
+      console.error(`Failed to update result ${field}:`, error);
+      throw error;
+    }
+  };
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('en-US', {
@@ -95,7 +165,7 @@ const TournamentDetail: React.FC = () => {
     );
   }
 
-  if (!tournament) {
+  if (!tournamentData) {
     return (
       <div className="text-center py-12">
         <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
@@ -110,7 +180,6 @@ const TournamentDetail: React.FC = () => {
     );
   }
 
-  const tournamentData = tournament as any;
   const actualStatus = getTournamentStatus(tournamentData.date);
   const statusInfo = getStatusDisplayInfo(actualStatus);
 
@@ -241,32 +310,151 @@ const TournamentDetail: React.FC = () => {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             {/* Tournament Info */}
             <div className="md:col-span-2">
-              <Card>
-                <h3 className="text-lg font-semibold text-gray-900 mb-4">Tournament Information</h3>
-                {tournamentData.notes && (
-                  <div className="mb-4">
-                    <p className="text-sm font-semibold text-gray-700">Notes</p>
-                    <p className="text-gray-600">{tournamentData.notes}</p>
+              <EditableCard title="Tournament Information">
+                <div className="space-y-4">
+                  {/* Basic Tournament Fields */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="text-sm font-semibold text-gray-700 block mb-1">Date</label>
+                      <EditableDate
+                        value={tournamentData.date}
+                        onSave={(value) => updateTournamentField('date', value)}
+                        required
+                        displayClassName="text-gray-900"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-sm font-semibold text-gray-700 block mb-1">BOD Number</label>
+                      <EditableNumber
+                        value={tournamentData.bodNumber}
+                        onSave={(value) => updateTournamentField('bodNumber', value)}
+                        required
+                        min={1}
+                        integer
+                        displayClassName="text-gray-900"
+                      />
+                    </div>
                   </div>
-                )}
-                <div className="mb-4">
-                  <p className="text-sm font-semibold text-gray-700">Advancement Criteria</p>
-                  <p className="text-gray-600">{tournamentData.advancementCriteria}</p>
-                </div>
 
-                {tournamentData.photoAlbums && (
-                  <div className="mt-6">
-                    <a
-                      href={tournamentData.photoAlbums}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="btn btn-primary w-full md:w-auto"
-                    >
-                      View Photo Album
-                    </a>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="text-sm font-semibold text-gray-700 block mb-1">Format</label>
+                      <EditableSelect
+                        value={tournamentData.format}
+                        options={formatOptions}
+                        onSave={(value) => updateTournamentField('format', value as Tournament['format'])}
+                        required
+                        displayClassName="text-gray-900"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-sm font-semibold text-gray-700 block mb-1">Status</label>
+                      <EditableSelect
+                        value={tournamentData.status}
+                        options={statusOptions}
+                        onSave={(value) => updateTournamentField('status', value as Tournament['status'])}
+                        required
+                        displayClassName="text-gray-900"
+                      />
+                    </div>
                   </div>
-                )}
-              </Card>
+
+                  <div>
+                    <label className="text-sm font-semibold text-gray-700 block mb-1">Location</label>
+                    <EditableText
+                      value={tournamentData.location}
+                      onSave={(value) => updateTournamentField('location', value)}
+                      required
+                      displayClassName="text-gray-900"
+                      validator={(value) => {
+                        if (value.length < 2) return 'Location must be at least 2 characters';
+                        if (value.length > 100) return 'Location must be less than 100 characters';
+                        return null;
+                      }}
+                    />
+                  </div>
+
+                  <div>
+                    <label className="text-sm font-semibold text-gray-700 block mb-1">Max Players</label>
+                    <EditableNumber
+                      value={tournamentData.maxPlayers}
+                      onSave={(value) => updateTournamentField('maxPlayers', value)}
+                      min={2}
+                      max={64}
+                      integer
+                      displayClassName="text-gray-900"
+                      placeholder="Not set"
+                      validator={(value) => {
+                        // Must be a power of 2 for bracket tournaments
+                        if (value && !Number.isInteger(Math.log2(value))) {
+                          return 'Maximum players must be a power of 2 (2, 4, 8, 16, 32, 64)';
+                        }
+                        return null;
+                      }}
+                    />
+                  </div>
+
+                  <div>
+                    <label className="text-sm font-semibold text-gray-700 block mb-1">Advancement Criteria</label>
+                    <EditableText
+                      value={tournamentData.advancementCriteria}
+                      onSave={(value) => updateTournamentField('advancementCriteria', value)}
+                      required
+                      multiline
+                      displayClassName="text-gray-900"
+                      validator={(value) => {
+                        if (value.length < 5) return 'Advancement criteria must be at least 5 characters';
+                        if (value.length > 500) return 'Advancement criteria must be less than 500 characters';
+                        return null;
+                      }}
+                    />
+                  </div>
+
+                  <div>
+                    <label className="text-sm font-semibold text-gray-700 block mb-1">Notes</label>
+                    <EditableText
+                      value={tournamentData.notes || ''}
+                      onSave={(value) => updateTournamentField('notes', value || undefined)}
+                      multiline
+                      displayClassName="text-gray-900"
+                      placeholder="No notes"
+                      validator={(value) => {
+                        if (value && value.length > 1000) return 'Notes must be less than 1000 characters';
+                        return null;
+                      }}
+                    />
+                  </div>
+
+                  <div>
+                    <label className="text-sm font-semibold text-gray-700 block mb-1">Photo Albums URL</label>
+                    <EditableText
+                      value={tournamentData.photoAlbums || ''}
+                      onSave={(value) => updateTournamentField('photoAlbums', value || undefined)}
+                      displayClassName="text-gray-900"
+                      placeholder="No photo album"
+                      validator={(value) => {
+                        if (value) {
+                          const urlRegex = /^(https?:\/\/)?([\da-z\.-]+)\.([a-z\.]{2,6})([\/\w \.-]*)*\/?$/;
+                          if (!urlRegex.test(value)) {
+                            return 'Please enter a valid URL';
+                          }
+                        }
+                        return null;
+                      }}
+                    />
+                    {tournamentData.photoAlbums && (
+                      <a
+                        href={tournamentData.photoAlbums}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="btn btn-primary btn-sm mt-2"
+                      >
+                        View Photo Album
+                      </a>
+                    )}
+                  </div>
+                </div>
+              </EditableCard>
             </div>
             {/* Quick Stats */}
             <div className="space-y-4">
@@ -358,7 +546,16 @@ const TournamentDetail: React.FC = () => {
                       <tr key={result.id} className="hover:bg-gray-50">
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div className="flex items-center">
-                            <span className="font-medium text-gray-900">#{result.totalStats?.bodFinish || 'N/A'}</span>
+                            <span className="font-medium text-gray-900">#</span>
+                            <EditableNumber
+                              value={result.totalStats?.bodFinish}
+                              onSave={(value) => updateTournamentResultField(result.id, 'totalStats.bodFinish', value)}
+                              min={1}
+                              integer
+                              placeholder="N/A"
+                              className="ml-1"
+                              displayClassName="font-medium text-gray-900"
+                            />
                             {result.totalStats?.bodFinish === 1 && <span className="ml-2">🏆</span>}
                             {result.totalStats?.bodFinish === 2 && <span className="ml-2">🥈</span>}
                             {result.totalStats?.bodFinish === 3 && <span className="ml-2">🥉</span>}
@@ -378,28 +575,76 @@ const TournamentDetail: React.FC = () => {
                           </div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
-                          <span className="px-2 py-1 text-xs font-medium bg-blue-100 text-blue-800 rounded-full">
-                            {result.division || 'N/A'}
-                          </span>
+                          <EditableText
+                            value={result.division || ''}
+                            onSave={(value) => updateTournamentResultField(result.id, 'division', value || undefined)}
+                            placeholder="N/A"
+                            displayClassName="px-2 py-1 text-xs font-medium bg-blue-100 text-blue-800 rounded-full"
+                            validator={(value) => {
+                              if (value && value.length > 10) return 'Division must be 10 characters or less';
+                              return null;
+                            }}
+                          />
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                          #{result.seed || 'N/A'}
+                          <span>#</span>
+                          <EditableNumber
+                            value={result.seed}
+                            onSave={(value) => updateTournamentResultField(result.id, 'seed', value)}
+                            min={1}
+                            integer
+                            placeholder="N/A"
+                            className="ml-1"
+                            displayClassName="text-gray-900"
+                          />
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                          <div className="flex flex-col">
-                            <span className="font-medium">
-                              {result.roundRobinScores?.rrWon || 0}-{result.roundRobinScores?.rrLost || 0}
-                            </span>
+                          <div className="flex flex-col space-y-1">
+                            <div className="flex items-center space-x-1">
+                              <EditableNumber
+                                value={result.roundRobinScores?.rrWon}
+                                onSave={(value) => updateTournamentResultField(result.id, 'roundRobinScores.rrWon', value)}
+                                min={0}
+                                integer
+                                placeholder="0"
+                                displayClassName="font-medium"
+                              />
+                              <span>-</span>
+                              <EditableNumber
+                                value={result.roundRobinScores?.rrLost}
+                                onSave={(value) => updateTournamentResultField(result.id, 'roundRobinScores.rrLost', value)}
+                                min={0}
+                                integer
+                                placeholder="0"
+                                displayClassName="font-medium"
+                              />
+                            </div>
                             <span className="text-xs text-gray-500">
                               ({((result.roundRobinScores?.rrWinPercentage || 0) * 100).toFixed(1)}%)
                             </span>
                           </div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                          <div className="flex flex-col">
-                            <span className="font-medium">
-                              {result.bracketScores?.bracketWon || 0}-{result.bracketScores?.bracketLost || 0}
-                            </span>
+                          <div className="flex flex-col space-y-1">
+                            <div className="flex items-center space-x-1">
+                              <EditableNumber
+                                value={result.bracketScores?.bracketWon}
+                                onSave={(value) => updateTournamentResultField(result.id, 'bracketScores.bracketWon', value)}
+                                min={0}
+                                integer
+                                placeholder="0"
+                                displayClassName="font-medium"
+                              />
+                              <span>-</span>
+                              <EditableNumber
+                                value={result.bracketScores?.bracketLost}
+                                onSave={(value) => updateTournamentResultField(result.id, 'bracketScores.bracketLost', value)}
+                                min={0}
+                                integer
+                                placeholder="0"
+                                displayClassName="font-medium"
+                              />
+                            </div>
                             <span className="text-xs text-gray-500">
                               ({result.bracketScores?.bracketPlayed || 0} games)
                             </span>
@@ -494,36 +739,100 @@ const TournamentDetail: React.FC = () => {
                             </td>
                             <td className="px-4 py-2 whitespace-nowrap text-sm">
                               {(result.bracketScores?.r16Won || 0) > 0 || (result.bracketScores?.r16Lost || 0) > 0 ? (
-                                <span className={result.bracketScores.r16Won > result.bracketScores.r16Lost ? 'text-green-600 font-medium' : 'text-red-600'}>
-                                  {result.bracketScores.r16Won}-{result.bracketScores.r16Lost}
-                                </span>
+                                <div className="flex items-center space-x-1">
+                                  <EditableNumber
+                                    value={result.bracketScores?.r16Won}
+                                    onSave={(value) => updateTournamentResultField(result.id, 'bracketScores.r16Won', value)}
+                                    min={0}
+                                    integer
+                                    placeholder="0"
+                                    displayClassName={result.bracketScores.r16Won > result.bracketScores.r16Lost ? 'text-green-600 font-medium' : 'text-red-600'}
+                                  />
+                                  <span>-</span>
+                                  <EditableNumber
+                                    value={result.bracketScores?.r16Lost}
+                                    onSave={(value) => updateTournamentResultField(result.id, 'bracketScores.r16Lost', value)}
+                                    min={0}
+                                    integer
+                                    placeholder="0"
+                                    displayClassName={result.bracketScores.r16Won > result.bracketScores.r16Lost ? 'text-green-600 font-medium' : 'text-red-600'}
+                                  />
+                                </div>
                               ) : (
                                 <span className="text-gray-400">-</span>
                               )}
                             </td>
                             <td className="px-4 py-2 whitespace-nowrap text-sm">
                               {(result.bracketScores?.qfWon || 0) > 0 || (result.bracketScores?.qfLost || 0) > 0 ? (
-                                <span className={result.bracketScores.qfWon > result.bracketScores.qfLost ? 'text-green-600 font-medium' : 'text-red-600'}>
-                                  {result.bracketScores.qfWon}-{result.bracketScores.qfLost}
-                                </span>
+                                <div className="flex items-center space-x-1">
+                                  <EditableNumber
+                                    value={result.bracketScores?.qfWon}
+                                    onSave={(value) => updateTournamentResultField(result.id, 'bracketScores.qfWon', value)}
+                                    min={0}
+                                    integer
+                                    placeholder="0"
+                                    displayClassName={result.bracketScores.qfWon > result.bracketScores.qfLost ? 'text-green-600 font-medium' : 'text-red-600'}
+                                  />
+                                  <span>-</span>
+                                  <EditableNumber
+                                    value={result.bracketScores?.qfLost}
+                                    onSave={(value) => updateTournamentResultField(result.id, 'bracketScores.qfLost', value)}
+                                    min={0}
+                                    integer
+                                    placeholder="0"
+                                    displayClassName={result.bracketScores.qfWon > result.bracketScores.qfLost ? 'text-green-600 font-medium' : 'text-red-600'}
+                                  />
+                                </div>
                               ) : (
                                 <span className="text-gray-400">-</span>
                               )}
                             </td>
                             <td className="px-4 py-2 whitespace-nowrap text-sm">
                               {(result.bracketScores?.sfWon || 0) > 0 || (result.bracketScores?.sfLost || 0) > 0 ? (
-                                <span className={result.bracketScores.sfWon > result.bracketScores.sfLost ? 'text-green-600 font-medium' : 'text-red-600'}>
-                                  {result.bracketScores.sfWon}-{result.bracketScores.sfLost}
-                                </span>
+                                <div className="flex items-center space-x-1">
+                                  <EditableNumber
+                                    value={result.bracketScores?.sfWon}
+                                    onSave={(value) => updateTournamentResultField(result.id, 'bracketScores.sfWon', value)}
+                                    min={0}
+                                    integer
+                                    placeholder="0"
+                                    displayClassName={result.bracketScores.sfWon > result.bracketScores.sfLost ? 'text-green-600 font-medium' : 'text-red-600'}
+                                  />
+                                  <span>-</span>
+                                  <EditableNumber
+                                    value={result.bracketScores?.sfLost}
+                                    onSave={(value) => updateTournamentResultField(result.id, 'bracketScores.sfLost', value)}
+                                    min={0}
+                                    integer
+                                    placeholder="0"
+                                    displayClassName={result.bracketScores.sfWon > result.bracketScores.sfLost ? 'text-green-600 font-medium' : 'text-red-600'}
+                                  />
+                                </div>
                               ) : (
                                 <span className="text-gray-400">-</span>
                               )}
                             </td>
                             <td className="px-4 py-2 whitespace-nowrap text-sm">
                               {(result.bracketScores?.finalsWon || 0) > 0 || (result.bracketScores?.finalsLost || 0) > 0 ? (
-                                <span className={result.bracketScores.finalsWon > result.bracketScores.finalsLost ? 'text-green-600 font-medium' : 'text-red-600'}>
-                                  {result.bracketScores.finalsWon}-{result.bracketScores.finalsLost}
-                                </span>
+                                <div className="flex items-center space-x-1">
+                                  <EditableNumber
+                                    value={result.bracketScores?.finalsWon}
+                                    onSave={(value) => updateTournamentResultField(result.id, 'bracketScores.finalsWon', value)}
+                                    min={0}
+                                    integer
+                                    placeholder="0"
+                                    displayClassName={result.bracketScores.finalsWon > result.bracketScores.finalsLost ? 'text-green-600 font-medium' : 'text-red-600'}
+                                  />
+                                  <span>-</span>
+                                  <EditableNumber
+                                    value={result.bracketScores?.finalsLost}
+                                    onSave={(value) => updateTournamentResultField(result.id, 'bracketScores.finalsLost', value)}
+                                    min={0}
+                                    integer
+                                    placeholder="0"
+                                    displayClassName={result.bracketScores.finalsWon > result.bracketScores.finalsLost ? 'text-green-600 font-medium' : 'text-red-600'}
+                                  />
+                                </div>
                               ) : (
                                 <span className="text-gray-400">-</span>
                               )}

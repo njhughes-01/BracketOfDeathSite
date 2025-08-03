@@ -50,14 +50,13 @@ export interface PlayerInput {
   pairing?: string;
 }
 
-// Tournament types
+// Tournament types - matching backend schema exactly
 export interface Tournament {
   _id: string;
   id: string;
-  name: string;
   date: string;
   bodNumber: number;
-  format: string;
+  format: 'M' | 'W' | 'Mixed' | "Men's Singles" | "Men's Doubles" | "Women's Doubles" | "Mixed Doubles";
   location: string;
   advancementCriteria: string;
   notes?: string;
@@ -71,21 +70,40 @@ export interface Tournament {
     playerName: string;
     tournamentResult?: string;
   };
+  // Virtuals from backend
+  formattedDate?: string;
+  year?: number;
+  month?: number;
+  season?: string;
+  isFull?: boolean;
+  canStart?: boolean;
   createdAt: string;
   updatedAt: string;
 }
 
 export interface TournamentInput {
-  date: string;
+  date: string | Date;
   bodNumber: number;
-  format: string;
+  format: 'M' | 'W' | 'Mixed' | "Men's Singles" | "Men's Doubles" | "Women's Doubles" | "Mixed Doubles";
   location: string;
   advancementCriteria: string;
   notes?: string;
   photoAlbums?: string;
+  status?: 'scheduled' | 'open' | 'active' | 'completed' | 'cancelled';
+  maxPlayers?: number;
 }
 
-// Tournament Result types
+export interface TournamentUpdate extends Partial<TournamentInput> {
+  _id?: never;
+  players?: string[];
+  champion?: {
+    playerId: string;
+    playerName: string;
+    tournamentResult?: string;
+  };
+}
+
+// Tournament Result types - matching backend schema exactly
 export interface RoundRobinScores {
   round1?: number;
   round2?: number;
@@ -122,14 +140,18 @@ export interface TotalStats {
 }
 
 export interface TournamentResult {
+  _id: string;
   id: string;
-  tournamentId: Tournament;
-  players: Player[];
+  tournamentId: Tournament | string;
+  players: Player[] | string[];
   division?: string;
   seed?: number;
   roundRobinScores?: RoundRobinScores;
   bracketScores?: BracketScores;
   totalStats: TotalStats;
+  // Virtuals from backend
+  teamName?: string;
+  performanceGrade?: 'A' | 'B' | 'C' | 'D' | 'F';
   createdAt: string;
   updatedAt: string;
 }
@@ -142,6 +164,11 @@ export interface TournamentResultInput {
   roundRobinScores?: RoundRobinScores;
   bracketScores?: BracketScores;
   totalStats: TotalStats;
+}
+
+export interface TournamentResultUpdate extends Partial<TournamentResultInput> {
+  _id?: never;
+  tournamentId?: never; // Prevent tournament ID updates
 }
 
 // Filter types

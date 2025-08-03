@@ -1,13 +1,18 @@
 import React, { useState, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { useApi } from '../hooks/useApi';
+import { useAuth } from '../contexts/AuthContext';
 import apiClient from '../services/api';
 import Card from '../components/ui/Card';
 import LoadingSpinner from '../components/ui/LoadingSpinner';
 import { getTournamentStatus, getStatusDisplayInfo } from '../utils/tournamentStatus';
+import { EditableText, EditableNumber, EditableSelect, EditableDate } from '../components/admin';
+import type { Tournament, TournamentUpdate } from '../types/api';
 
 const Tournaments: React.FC = () => {
+  const { isAdmin } = useAuth();
   const [page, setPage] = useState(1);
+  const [tournaments, setTournaments] = useState<Tournament[]>([]);
   const [filters, setFilters] = useState({
     format: '',
     location: '',
@@ -16,6 +21,26 @@ const Tournaments: React.FC = () => {
     bodNumber_max: undefined as number | undefined,
     sort: '-date',
   });
+
+  // Tournament format options matching backend schema
+  const formatOptions = [
+    { value: 'M', label: "Men's (Legacy)" },
+    { value: 'W', label: "Women's (Legacy)" },
+    { value: 'Mixed', label: "Mixed (Legacy)" },
+    { value: "Men's Singles", label: "Men's Singles" },
+    { value: "Men's Doubles", label: "Men's Doubles" },
+    { value: "Women's Doubles", label: "Women's Doubles" },
+    { value: "Mixed Doubles", label: "Mixed Doubles" }
+  ];
+
+  // Tournament status options matching backend schema
+  const statusOptions = [
+    { value: 'scheduled', label: 'Scheduled' },
+    { value: 'open', label: 'Open for Registration' },
+    { value: 'active', label: 'In Progress' },
+    { value: 'completed', label: 'Completed' },
+    { value: 'cancelled', label: 'Cancelled' }
+  ];
 
   const getTournaments = useCallback(
     () => apiClient.getTournaments({ 
@@ -26,13 +51,42 @@ const Tournaments: React.FC = () => {
     [page, filters]
   );
 
-  const { data: tournaments, loading, error, execute } = useApi(
+  const { data: tournamentsData, loading, error, execute } = useApi(
     getTournaments,
     { 
       immediate: true,
       dependencies: [page, filters]
     }
   );
+
+  // Update local state when tournament data changes
+  React.useEffect(() => {
+    if (tournamentsData && 'data' in tournamentsData && Array.isArray(tournamentsData.data)) {
+      setTournaments(tournamentsData.data);
+    }
+  }, [tournamentsData]);
+
+  // Function to update tournament field
+  const updateTournamentField = async (
+    tournamentId: string,
+    field: keyof TournamentUpdate,
+    value: any
+  ): Promise<void> => {
+    try {
+      const updateData: TournamentUpdate = { [field]: value } as TournamentUpdate;
+      const response = await apiClient.updateTournament(tournamentId, updateData);
+      
+      if (response.success && response.data) {
+        // Update local state
+        setTournaments(prev => prev.map(t => 
+          t._id === tournamentId || t.id === tournamentId ? response.data! : t
+        ));
+      }
+    } catch (error) {
+      console.error(`Failed to update tournament ${field}:`, error);
+      throw error;
+    }
+  };
 
   const handleFilterChange = (key: string, value: string) => {
     setFilters(prev => ({ 
@@ -182,12 +236,12 @@ const Tournaments: React.FC = () => {
       </Card>
 
       {/* Summary Stats */}
-      {tournaments && 'data' in tournaments && Array.isArray(tournaments.data) && tournaments.data.length > 0 && (
+      {tournaments.length > 0 && (
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           <Card padding="md">
             <div className="text-center">
               <div className="text-2xl font-bold text-blue-600">
-                {tournaments.data.filter((t: any) => t.format.includes('Men')).length}
+                {tournaments.filter((t: Tournament) => t.format.includes('Men')).length}
               </div>
               <div className="text-sm text-gray-600">Men's Tournaments</div>
             </div>
@@ -196,7 +250,7 @@ const Tournaments: React.FC = () => {
           <Card padding="md">
             <div className="text-center">
               <div className="text-2xl font-bold text-pink-600">
-                {tournaments.data.filter((t: any) => t.format.includes('Women')).length}
+                {tournaments.filter((t: Tournament) => t.format.includes('Women')).length}
               </div>
               <div className="text-sm text-gray-600">Women's Tournaments</div>
             </div>
@@ -205,7 +259,7 @@ const Tournaments: React.FC = () => {
           <Card padding="md">
             <div className="text-center">
               <div className="text-2xl font-bold text-green-600">
-                {tournaments.data.filter((t: any) => t.format.includes('Mixed')).length}
+                {tournaments.filter((t: Tournament) => t.format.includes('Mixed')).length}
               </div>
               <div className="text-sm text-gray-600">Mixed Tournaments</div>
             </div>
@@ -214,7 +268,7 @@ const Tournaments: React.FC = () => {
           <Card padding="md">
             <div className="text-center">
               <div className="text-2xl font-bold text-purple-600">
-                {[...new Set(tournaments.data.map((t: any) => new Date(t.date).getFullYear()))].length}
+                {[...new Set(tournaments.map((t: Tournament) => new Date(t.date).getFullYear()))].length}
               </div>
               <div className="text-sm text-gray-600">Years Active</div>
             </div>
@@ -237,9 +291,9 @@ const Tournaments: React.FC = () => {
             <p className="text-red-600 font-medium mb-2">Error loading tournaments</p>
             <p className="text-gray-500 text-sm">{error}</p>
           </div>
-        ) : (tournaments && 'data' in tournaments && Array.isArray(tournaments.data) && tournaments.data.length > 0) ? (
+        ) : tournaments.length > 0 ? (
           <div className="grid grid-cols-1 gap-6">
-            {tournaments.data.map((tournament: any) => {
+            {tournaments.map((tournament: Tournament) => {
               const actualStatus = getTournamentStatus(tournament.date);
               const statusInfo = getStatusDisplayInfo(actualStatus);
               
@@ -249,14 +303,26 @@ const Tournaments: React.FC = () => {
                     <div className="flex items-center justify-between">
                       <div className="flex items-center space-x-6">
                         <div className="w-20 h-20 bg-gradient-to-br from-blue-500 to-purple-600 rounded-xl flex items-center justify-center shadow-lg">
-                          <span className="text-white font-bold text-xl">
-                            #{tournament.bodNumber}
-                          </span>
+                          <span className="text-white font-bold text-xl">#</span>
+                          <EditableNumber
+                            value={tournament.bodNumber}
+                            onSave={(value) => updateTournamentField(tournament._id || tournament.id, 'bodNumber', value)}
+                            min={1}
+                            integer
+                            displayClassName="text-white font-bold text-xl"
+                            required
+                          />
                         </div>
                         <div className="flex-1">
                           <div className="flex items-center space-x-3 mb-2">
                             <h3 className="text-xl font-semibold text-gray-900 group-hover:text-blue-600 transition-colors duration-200">
-                              {tournament.format} Tournament
+                              <EditableSelect
+                                value={tournament.format}
+                                options={formatOptions}
+                                onSave={(value) => updateTournamentField(tournament._id || tournament.id, 'format', value as Tournament['format'])}
+                                required
+                                displayClassName="text-xl font-semibold text-gray-900 group-hover:text-blue-600 transition-colors duration-200"
+                              /> Tournament
                             </h3>
                             <span className={`badge ${
                               tournament.format.includes('Men') ? 'badge-primary' : 
@@ -268,14 +334,39 @@ const Tournaments: React.FC = () => {
                           </div>
                           <div className="space-y-1">
                             <p className="text-gray-700 font-medium">
-                              📍 {tournament.location}
+                              📍 <EditableText
+                                value={tournament.location}
+                                onSave={(value) => updateTournamentField(tournament._id || tournament.id, 'location', value)}
+                                required
+                                displayClassName="text-gray-700 font-medium"
+                                validator={(value) => {
+                                  if (value.length < 2) return 'Location must be at least 2 characters';
+                                  if (value.length > 100) return 'Location must be less than 100 characters';
+                                  return null;
+                                }}
+                              />
                             </p>
                             <p className="text-gray-600">
-                              📅 {formatDate(tournament.date)}
+                              📅 <EditableDate
+                                value={tournament.date}
+                                onSave={(value) => updateTournamentField(tournament._id || tournament.id, 'date', value)}
+                                required
+                                displayClassName="text-gray-600"
+                              />
                             </p>
-                            {tournament.notes && (
+                            {(tournament.notes || isAdmin) && (
                               <p className="text-sm text-gray-500">
-                                📝 {tournament.notes}
+                                📝 <EditableText
+                                  value={tournament.notes || ''}
+                                  onSave={(value) => updateTournamentField(tournament._id || tournament.id, 'notes', value || undefined)}
+                                  multiline
+                                  displayClassName="text-sm text-gray-500"
+                                  placeholder="No notes"
+                                  validator={(value) => {
+                                    if (value && value.length > 1000) return 'Notes must be less than 1000 characters';
+                                    return null;
+                                  }}
+                                />
                               </p>
                             )}
                           </div>
@@ -285,9 +376,13 @@ const Tournaments: React.FC = () => {
                       <div className="flex items-center space-x-4">
                         <div className="text-right">
                           <div className="flex items-center space-x-2 mb-2">
-                            <span className={`px-2 py-1 text-xs font-medium rounded-full ${statusInfo.color}`}>
-                              {statusInfo.label}
-                            </span>
+                            <EditableSelect
+                              value={tournament.status}
+                              options={statusOptions}
+                              onSave={(value) => updateTournamentField(tournament._id || tournament.id, 'status', value as Tournament['status'])}
+                              required
+                              displayClassName={`px-2 py-1 text-xs font-medium rounded-full ${statusInfo.color}`}
+                            />
                           </div>
                           <p className="text-sm text-gray-600">
                             BOD #{tournament.bodNumber}
@@ -330,7 +425,7 @@ const Tournaments: React.FC = () => {
       </Card>
 
       {/* Pagination */}
-      {tournaments && 'pagination' in tournaments && (tournaments as any).pagination && (tournaments as any).pagination.pages > 1 && (
+      {tournamentsData && 'pagination' in tournamentsData && (tournamentsData as any).pagination && (tournamentsData as any).pagination.pages > 1 && (
         <div className="flex items-center justify-center space-x-2">
           <button
             onClick={() => setPage(page - 1)}
@@ -341,12 +436,12 @@ const Tournaments: React.FC = () => {
           </button>
           
           <span className="text-sm text-gray-700">
-            Page {page} of {tournaments && 'pagination' in tournaments && (tournaments as any).pagination ? (tournaments as any).pagination.pages : 1}
+            Page {page} of {tournamentsData && 'pagination' in tournamentsData && (tournamentsData as any).pagination ? (tournamentsData as any).pagination.pages : 1}
           </span>
           
           <button
             onClick={() => setPage(page + 1)}
-            disabled={tournaments && 'pagination' in tournaments ? page === (tournaments as any).pagination.pages : true}
+            disabled={tournamentsData && 'pagination' in tournamentsData ? page === (tournamentsData as any).pagination.pages : true}
             className="btn btn-secondary disabled:opacity-50"
           >
             Next
