@@ -10,7 +10,9 @@ import PlayerCreate from './pages/PlayerCreate';
 import PlayerDetail from './pages/PlayerDetail';
 import Tournaments from './pages/Tournaments';
 import TournamentCreate from './pages/TournamentCreate';
+import TournamentSetup from './pages/TournamentSetup';
 import TournamentDetail from './pages/TournamentDetail';
+import TournamentManage from './pages/TournamentManage';
 import Results from './pages/Results';
 import Admin from './pages/Admin';
 import UserManagement from './pages/UserManagement';
@@ -46,6 +48,22 @@ function App() {
                 element={
                   <ProtectedRoute requirePermission={PERMISSIONS.TOURNAMENT_CREATE}>
                     <TournamentCreate />
+                  </ProtectedRoute>
+                } 
+              />
+              <Route 
+                path="/tournaments/setup" 
+                element={
+                  <ProtectedRoute requirePermission={PERMISSIONS.TOURNAMENT_CREATE}>
+                    <TournamentSetup />
+                  </ProtectedRoute>
+                } 
+              />
+              <Route 
+                path="/tournaments/:id/manage" 
+                element={
+                  <ProtectedRoute requirePermission={PERMISSIONS.TOURNAMENT_CREATE}>
+                    <TournamentManage />
                   </ProtectedRoute>
                 } 
               />

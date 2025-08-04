@@ -402,6 +402,14 @@ const Tournaments: React.FC = () => {
                         >
                           View Bracket
                         </Link>
+                        {isAdmin && (
+                          <Link
+                            to={`/tournaments/${tournament.id || tournament._id}/manage`}
+                            className="btn btn-secondary btn-sm"
+                          >
+                            Manage Live
+                          </Link>
+                        )}
                         </div>
                       </div>
                     </div>

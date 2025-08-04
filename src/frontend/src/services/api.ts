@@ -13,6 +13,11 @@ import type {
   TournamentResultInput,
   TournamentResultFilters,
   PaginationOptions,
+  SeedingConfig,
+  TeamFormationConfig,
+  TournamentSetup,
+  PlayerSeed,
+  TeamSeed,
 } from '../types/api';
 import type {
   User,
@@ -198,6 +203,53 @@ class ApiClient {
 
   async getRecentTournaments(limit = 10): Promise<ApiResponse<Tournament[]>> {
     return this.get<ApiResponse<Tournament[]>>(`/tournaments/recent?limit=${limit}`);
+  }
+
+  async getNextBodNumber(): Promise<ApiResponse<{ nextBodNumber: number }>> {
+    return this.get<ApiResponse<{ nextBodNumber: number }>>('/tournaments/next-bod-number');
+  }
+
+  // Tournament Management API methods
+  async generatePlayerSeeds(config: SeedingConfig): Promise<ApiResponse<PlayerSeed[]>> {
+    return this.post<ApiResponse<PlayerSeed[]>>('/tournaments/generate-seeds', config);
+  }
+
+  async generateTeams(playerIds: string[], config: TeamFormationConfig): Promise<ApiResponse<TeamSeed[]>> {
+    return this.post<ApiResponse<TeamSeed[]>>('/tournaments/generate-teams', { playerIds, config });
+  }
+
+  async setupTournament(setup: TournamentSetup): Promise<ApiResponse<Tournament>> {
+    return this.post<ApiResponse<Tournament>>('/tournaments/setup', setup);
+  }
+
+  // Live Tournament Management API methods
+  async getLiveTournament(tournamentId: string): Promise<ApiResponse<LiveTournament>> {
+    return this.get<ApiResponse<LiveTournament>>(`/tournaments/${tournamentId}/live`);
+  }
+
+  async executeTournamentAction(tournamentId: string, action: TournamentAction): Promise<ApiResponse<LiveTournament>> {
+    return this.post<ApiResponse<LiveTournament>>(`/tournaments/${tournamentId}/action`, action);
+  }
+
+  async updateMatch(matchUpdate: MatchUpdate): Promise<ApiResponse<Match>> {
+    return this.put<ApiResponse<Match>>(`/matches/${matchUpdate.matchId}`, matchUpdate);
+  }
+
+  async getTournamentMatches(tournamentId: string, round?: string): Promise<ApiResponse<Match[]>> {
+    const params = round ? `?round=${round}` : '';
+    return this.get<ApiResponse<Match[]>>(`/tournaments/${tournamentId}/matches${params}`);
+  }
+
+  async checkInTeam(tournamentId: string, teamId: string, present: boolean = true): Promise<ApiResponse<LiveTournament>> {
+    return this.post<ApiResponse<LiveTournament>>(`/tournaments/${tournamentId}/checkin`, { teamId, present });
+  }
+
+  async generateMatches(tournamentId: string, round: string): Promise<ApiResponse<Match[]>> {
+    return this.post<ApiResponse<Match[]>>(`/tournaments/${tournamentId}/generate-matches`, { round });
+  }
+
+  async calculateStandings(tournamentId: string): Promise<ApiResponse<TournamentResult[]>> {
+    return this.get<ApiResponse<TournamentResult[]>>(`/tournaments/${tournamentId}/standings`);
   }
 
   // Tournament Result API methods

@@ -171,6 +171,138 @@ export interface TournamentResultUpdate extends Partial<TournamentResultInput> {
   tournamentId?: never; // Prevent tournament ID updates
 }
 
+// Tournament Management Types
+export interface SeedingConfig {
+  method: 'historical' | 'recent_form' | 'elo' | 'manual';
+  parameters?: {
+    recentTournamentCount?: number;
+    championshipWeight?: number;
+    winPercentageWeight?: number;
+    avgFinishWeight?: number;
+  };
+}
+
+export interface TeamFormationConfig {
+  method: 'preformed' | 'draft' | 'statistical_pairing' | 'random' | 'manual';
+  parameters?: {
+    skillBalancing?: boolean;
+    avoidRecentPartners?: boolean;
+    maxTimesPartnered?: number;
+  };
+}
+
+export interface TournamentSetup {
+  basicInfo: TournamentInput;
+  seedingConfig: SeedingConfig;
+  teamFormationConfig: TeamFormationConfig;
+  bracketType: 'single_elimination' | 'double_elimination' | 'round_robin_playoff';
+  registrationDeadline?: string;
+  maxPlayers: number;
+}
+
+export interface PlayerSeed {
+  playerId: string;
+  playerName: string;
+  seed: number;
+  statistics: {
+    avgFinish: number;
+    winningPercentage: number;
+    totalChampionships: number;
+    bodsPlayed: number;
+    recentForm?: number;
+  };
+}
+
+export interface TeamSeed {
+  teamId: string;
+  players: PlayerSeed[];
+  combinedSeed: number;
+  teamName: string;
+  combinedStatistics: {
+    avgFinish: number;
+    combinedWinPercentage: number;
+    totalChampionships: number;
+    combinedBodsPlayed: number;
+  };
+}
+
+// Live Tournament Management Types
+export interface Match {
+  _id: string;
+  id: string;
+  tournamentId: string;
+  round: 'RR_R1' | 'RR_R2' | 'RR_R3' | 'QF' | 'SF' | 'Finals';
+  matchNumber: number;
+  team1: {
+    teamId: string;
+    teamName: string;
+    players: Player[];
+    score?: number;
+  };
+  team2: {
+    teamId: string;
+    teamName: string;
+    players: Player[];
+    score?: number;
+  };
+  status: 'scheduled' | 'in_progress' | 'completed' | 'confirmed';
+  startTime?: string;
+  endTime?: string;
+  court?: string;
+  notes?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface TournamentPhase {
+  phase: 'setup' | 'registration' | 'check_in' | 'round_robin' | 'bracket' | 'completed';
+  currentRound?: 'RR_R1' | 'RR_R2' | 'RR_R3' | 'QF' | 'SF' | 'Finals';
+  roundStatus: 'not_started' | 'in_progress' | 'completed';
+  totalMatches: number;
+  completedMatches: number;
+  canAdvance: boolean;
+}
+
+export interface LiveTournament extends Tournament {
+  phase: TournamentPhase;
+  teams: TeamSeed[];
+  matches: Match[];
+  currentStandings: TournamentResult[];
+  bracketProgression: {
+    quarterFinalists: string[];
+    semiFinalists: string[];
+    finalists: string[];
+    champion?: string;
+  };
+  checkInStatus: {
+    [teamId: string]: {
+      checkedIn: boolean;
+      checkInTime?: string;
+      present: boolean;
+    };
+  };
+}
+
+export interface MatchUpdate {
+  matchId: string;
+  team1Score?: number;
+  team2Score?: number;
+  status?: Match['status'];
+  court?: string;
+  notes?: string;
+  startTime?: string;
+  endTime?: string;
+}
+
+export interface TournamentAction {
+  action: 'start_registration' | 'close_registration' | 'start_checkin' | 'start_round_robin' | 
+          'advance_round' | 'start_bracket' | 'complete_tournament' | 'reset_tournament';
+  parameters?: {
+    targetRound?: string;
+    resetToPhase?: string;
+  };
+}
+
 // Filter types
 export interface PlayerFilters {
   name?: string;

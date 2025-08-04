@@ -59,8 +59,20 @@ const TournamentDetail: React.FC = () => {
 
   // Update local state when tournament data changes
   useEffect(() => {
-    if (tournament && 'data' in tournament) {
-      setTournamentData(tournament.data as Tournament);
+    console.log('Tournament data received:', tournament);
+    if (tournament) {
+      if ('data' in tournament && tournament.data) {
+        console.log('Setting tournament data from tournament.data:', tournament.data);
+        setTournamentData(tournament.data as Tournament);
+      } else if (tournament.success === false) {
+        console.log('Tournament API returned success=false');
+        setTournamentData(null);
+      } else {
+        console.log('Using tournament directly as data:', tournament);
+        setTournamentData(tournament as any);
+      }
+    } else {
+      console.log('No tournament data received');
     }
   }, [tournament]);
 
@@ -107,7 +119,8 @@ const TournamentDetail: React.FC = () => {
       await apiClient.updateTournamentResult(resultId, updateData);
       
       // Refetch results to get updated data with recalculated values
-      await getResults();
+      const resultsResponse = await getResults();
+      console.log('Results updated:', resultsResponse);
     } catch (error) {
       console.error(`Failed to update result ${field}:`, error);
       throw error;
@@ -141,14 +154,14 @@ const TournamentDetail: React.FC = () => {
     }
   };
 
-  if (tournamentLoading) {
-    return (
-      <div className="flex items-center justify-center min-h-96">
-        <LoadingSpinner size="lg" />
-        <span className="ml-3 text-gray-500">Loading tournament...</span>
-      </div>
-    );
-  }
+  // Debug logging to help diagnose the issue
+  console.log('TournamentDetail Debug:', {
+    id,
+    tournamentLoading,
+    tournamentError,
+    tournament,
+    tournamentData
+  });
 
   if (tournamentError) {
     return (
@@ -165,6 +178,17 @@ const TournamentDetail: React.FC = () => {
     );
   }
 
+  // Show loading state while tournament is being fetched
+  if (tournamentLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-96">
+        <LoadingSpinner size="lg" />
+        <span className="ml-3 text-gray-500">Loading tournament...</span>
+      </div>
+    );
+  }
+
+  // Show not found if loading is complete but no data exists
   if (!tournamentData) {
     return (
       <div className="text-center py-12">
@@ -173,6 +197,7 @@ const TournamentDetail: React.FC = () => {
         </div>
         <h2 className="text-lg font-semibold text-gray-900 mb-2">Tournament not found</h2>
         <p className="text-gray-600 mb-4">The requested tournament could not be found.</p>
+        <p className="text-xs text-gray-400 mb-4">Debug: Loading={String(tournamentLoading)}, Error={tournamentError || 'none'}, ID={id}</p>
         <Link to="/tournaments" className="btn btn-primary">
           Back to Tournaments
         </Link>
@@ -213,6 +238,12 @@ const TournamentDetail: React.FC = () => {
         <div className="flex items-center space-x-3">
           {canViewAdmin && (
             <div className="flex items-center space-x-2">
+              <Link 
+                to={`/tournaments/${id}/manage`}
+                className="btn btn-secondary btn-sm"
+              >
+                Manage Live Tournament
+              </Link>
               <Link 
                 to="/admin" 
                 className="text-sm text-blue-600 hover:text-blue-800 px-3 py-1 border border-blue-200 rounded-md hover:bg-blue-50"
