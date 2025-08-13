@@ -20,6 +20,12 @@ export interface IMatchTeam {
   playerNames: string[];
   score: number;
   seed?: number;
+  // Individual player scores for detailed tracking
+  playerScores?: Array<{
+    playerId: Types.ObjectId;
+    playerName: string;
+    score: number;
+  }>;
 }
 
 export interface IMatchInput {
@@ -38,6 +44,12 @@ export interface IMatchTeamInput {
   playerNames: string[];
   score?: number;
   seed?: number;
+  // Individual player scores for detailed tracking
+  playerScores?: Array<{
+    playerId: Types.ObjectId | string;
+    playerName: string;
+    score: number;
+  }>;
 }
 
 export interface IMatchUpdate extends Partial<IMatchInput> {
@@ -59,7 +71,9 @@ export interface IMatchFilter {
 }
 
 export const MatchRounds = [
-  'round-robin',
+  'RR_R1',
+  'RR_R2', 
+  'RR_R3',
   'round-of-64',
   'round-of-32',
   'round-of-16',
@@ -67,6 +81,12 @@ export const MatchRounds = [
   'semifinal',
   'final',
   'third-place',
+] as const;
+
+// Backward compatibility - deprecated
+export const LegacyMatchRounds = [
+  'round-robin',
+  ...MatchRounds
 ] as const;
 
 export type MatchRound = typeof MatchRounds[number];
@@ -81,10 +101,37 @@ export const MatchStatuses = [
 
 export type MatchStatus = typeof MatchStatuses[number];
 
+// Round Robin helper functions
+export const RoundRobinRounds = ['RR_R1', 'RR_R2', 'RR_R3'] as const;
+export type RoundRobinRound = typeof RoundRobinRounds[number];
+
+export const isRoundRobinRound = (round: string): round is RoundRobinRound => {
+  return RoundRobinRounds.includes(round as RoundRobinRound);
+};
+
+export const getNextRoundRobinRound = (currentRound: RoundRobinRound): RoundRobinRound | 'bracket' => {
+  const currentIndex = RoundRobinRounds.indexOf(currentRound);
+  if (currentIndex === -1) return 'RR_R1';
+  if (currentIndex >= RoundRobinRounds.length - 1) return 'bracket';
+  return RoundRobinRounds[currentIndex + 1];
+};
+
+export const getRoundNumber = (round: MatchRound): number => {
+  if (round === 'RR_R1') return 1;
+  if (round === 'RR_R2') return 2;
+  if (round === 'RR_R3') return 3;
+  if (round === 'quarterfinal') return 4;
+  if (round === 'semifinal') return 5;
+  if (round === 'final') return 6;
+  return 1; // default
+};
+
 // Helper function to determine the next round
 export const getNextRound = (currentRound: MatchRound): MatchRound | null => {
   const roundOrder = [
-    'round-robin',
+    'RR_R1',
+    'RR_R2',
+    'RR_R3',
     'round-of-64',
     'round-of-32', 
     'round-of-16',

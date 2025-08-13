@@ -8,6 +8,7 @@ import Card from '../components/ui/Card';
 import LoadingSpinner from '../components/ui/LoadingSpinner';
 import { getTournamentStatus, getStatusDisplayInfo } from '../utils/tournamentStatus';
 import { EditableText, EditableNumber, EditableSelect, EditableDate, EditableCard } from '../components/admin';
+import LiveStats from '../components/tournament/LiveStats';
 import type { Tournament, TournamentUpdate } from '../types/api';
 
 const TournamentDetail: React.FC = () => {
@@ -290,6 +291,14 @@ const TournamentDetail: React.FC = () => {
       {/* Tab Content */}
       {activeTab === 'overview' && (
         <div className="space-y-6">
+          {/* Live Tournament Statistics - show for active tournaments */}
+          {(actualStatus === 'in-progress' || tournamentData.status === 'in_progress') && (
+            <LiveStats 
+              tournamentId={id!}
+              refreshInterval={20000}
+              compact={false}
+            />
+          )}
           {/* Final Standings */}
           <Card>
             <h3 className="text-lg font-semibold text-gray-900 mb-4">Final Standings</h3>
@@ -494,12 +503,22 @@ const TournamentDetail: React.FC = () => {
                 <div className="space-y-3">
                   <div className="flex justify-between">
                     <span className="text-gray-600">Status</span>
-                    <span className="font-medium text-green-600">Completed</span>
+                    <span className="font-medium text-green-600">
+                      {actualStatus === 'completed' ? 'Completed' : 
+                       actualStatus === 'active' ? 'In Progress' :
+                       actualStatus === 'upcoming' ? 'Upcoming' : 'Scheduled'}
+                    </span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-gray-600">Teams</span>
                     <span className="font-medium">
-                      {(results as any)?.results?.length || 0}
+                      {(results as any)?.results?.length || tournamentData?.generatedTeams?.length || 0}
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Players</span>
+                    <span className="font-medium">
+                      {tournamentData?.players?.length || 0}
                     </span>
                   </div>
                   <div className="flex justify-between">
@@ -510,6 +529,24 @@ const TournamentDetail: React.FC = () => {
                   </div>
                 </div>
               </Card>
+
+              {/* Selected Players */}
+              {tournamentData?.players && tournamentData.players.length > 0 && (
+                <Card>
+                  <h3 className="text-lg font-semibold text-gray-900 mb-4">Selected Players</h3>
+                  <div className="text-sm text-gray-600 mb-3">
+                    {tournamentData.players.length} players selected for this tournament
+                  </div>
+                  <div className="max-h-32 overflow-y-auto">
+                    <div className="text-sm text-gray-700 space-y-1">
+                      {/* Note: Player names would be populated from the API when players are populated */}
+                      <div className="text-xs text-gray-500">
+                        Player details will be shown when the tournament loads with populated player data
+                      </div>
+                    </div>
+                  </div>
+                </Card>
+              )}
             </div>
           </div>
         </div>
@@ -726,12 +763,107 @@ const TournamentDetail: React.FC = () => {
 
       {activeTab === 'bracket' && (
         <div className="space-y-6">
+          {/* Tournament Setup Information */}
+          {tournamentData?.generatedTeams && tournamentData.generatedTeams.length > 0 && (
+            <Card>
+              <h3 className="text-lg font-semibold text-gray-900 mb-4">Tournament Setup</h3>
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                {/* Tournament Configuration */}
+                <div>
+                  <h4 className="text-md font-semibold text-gray-900 mb-3">Configuration</h4>
+                  <div className="space-y-2 text-sm">
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">Max Players:</span>
+                      <span className="font-medium">{tournamentData.maxPlayers}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">Selected Players:</span>
+                      <span className="font-medium">{tournamentData.players?.length || 0}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">Generated Teams:</span>
+                      <span className="font-medium">{tournamentData.generatedTeams?.length || 0}</span>
+                    </div>
+                    {tournamentData.bracketType && (
+                      <div className="flex justify-between">
+                        <span className="text-gray-600">Bracket Type:</span>
+                        <span className="font-medium capitalize">{tournamentData.bracketType.replace('_', ' ')}</span>
+                      </div>
+                    )}
+                    {tournamentData.seedingConfig && (
+                      <div className="flex justify-between">
+                        <span className="text-gray-600">Seeding Method:</span>
+                        <span className="font-medium capitalize">{tournamentData.seedingConfig.method.replace('_', ' ')}</span>
+                      </div>
+                    )}
+                    {tournamentData.teamFormationConfig && (
+                      <div className="flex justify-between">
+                        <span className="text-gray-600">Team Formation:</span>
+                        <span className="font-medium capitalize">{tournamentData.teamFormationConfig.method.replace('_', ' ')}</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Generated Teams */}
+                <div>
+                  <h4 className="text-md font-semibold text-gray-900 mb-3">Generated Teams</h4>
+                  <div className="space-y-2 max-h-48 overflow-y-auto">
+                    {tournamentData.generatedTeams.map((team: any, index: number) => (
+                      <div key={team.teamId} className="p-3 bg-gray-50 rounded-lg">
+                        <div className="flex items-center justify-between mb-1">
+                          <span className="font-medium text-sm">Team #{index + 1}</span>
+                          <span className="text-xs text-gray-500">Seed #{team.combinedSeed}</span>
+                        </div>
+                        <div className="text-sm text-gray-700 mb-1">{team.teamName}</div>
+                        <div className="text-xs text-gray-600">
+                          Win%: {(team.combinedStatistics.combinedWinPercentage * 100).toFixed(1)}% | 
+                          Avg Finish: {team.combinedStatistics.avgFinish.toFixed(1)} | 
+                          BODs: {team.combinedStatistics.combinedBodsPlayed}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </Card>
+          )}
+
+          {/* Player Seeds */}
+          {tournamentData?.generatedSeeds && tournamentData.generatedSeeds.length > 0 && (
+            <Card>
+              <h3 className="text-lg font-semibold text-gray-900 mb-4">Player Seeds</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 max-h-64 overflow-y-auto">
+                {tournamentData.generatedSeeds.map((seed: any) => (
+                  <div key={seed.playerId} className="p-3 bg-gray-50 rounded-lg">
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="font-medium text-sm">#{seed.seed}</span>
+                      <span className="text-xs text-gray-500">
+                        {(seed.statistics.winningPercentage * 100).toFixed(1)}%
+                      </span>
+                    </div>
+                    <div className="text-sm font-medium text-gray-900">{seed.playerName}</div>
+                    <div className="text-xs text-gray-600">
+                      Avg: {seed.statistics.avgFinish.toFixed(1)} | 
+                      BODs: {seed.statistics.bodsPlayed} |
+                      Champ: {seed.statistics.totalChampionships}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </Card>
+          )}
+
           {/* Bracket Header */}
           <Card>
             <h3 className="text-lg font-semibold text-gray-900 mb-4">Tournament Bracket</h3>
             {results && (results as any).results ? (
               <div className="text-sm text-gray-600 mb-4">
                 Showing bracket progression for {(results as any).results.length} teams
+              </div>
+            ) : tournamentData?.generatedTeams && tournamentData.generatedTeams.length > 0 ? (
+              <div className="text-sm text-gray-600 mb-4">
+                Tournament ready with {tournamentData.generatedTeams.length} teams. Start tournament to see live bracket progression.
               </div>
             ) : null}
           </Card>

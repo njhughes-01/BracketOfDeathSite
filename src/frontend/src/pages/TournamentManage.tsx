@@ -7,6 +7,8 @@ import Card from '../components/ui/Card';
 import LoadingSpinner from '../components/ui/LoadingSpinner';
 import { EditableCard, EditableNumber } from '../components/admin';
 import BracketView from '../components/tournament/BracketView';
+import LiveStats from '../components/tournament/LiveStats';
+import MatchScoring from '../components/tournament/MatchScoring';
 import type { 
   LiveTournament, 
   Match, 
@@ -414,40 +416,12 @@ const TournamentManage: React.FC = () => {
                         </span>
                       </div>
 
-                      {/* Team 1 vs Team 2 */}
-                      <div className="space-y-2">
-                        <div className="flex items-center justify-between">
-                          <span className="text-sm font-medium">{match.team1.teamName}</span>
-                          <EditableNumber
-                            value={match.team1.score}
-                            onSave={(score) => updateMatchScore({
-                              matchId: match._id,
-                              team1Score: score,
-                              status: score !== undefined ? 'completed' : 'scheduled'
-                            })}
-                            min={0}
-                            integer
-                            placeholder="0"
-                            displayClassName="text-lg font-bold text-blue-600 min-w-[2rem] text-center"
-                          />
-                        </div>
-                        <div className="text-center text-gray-400 text-sm">vs</div>
-                        <div className="flex items-center justify-between">
-                          <span className="text-sm font-medium">{match.team2.teamName}</span>
-                          <EditableNumber
-                            value={match.team2.score}
-                            onSave={(score) => updateMatchScore({
-                              matchId: match._id,
-                              team2Score: score,
-                              status: score !== undefined ? 'completed' : 'scheduled'
-                            })}
-                            min={0}
-                            integer
-                            placeholder="0"
-                            displayClassName="text-lg font-bold text-blue-600 min-w-[2rem] text-center"
-                          />
-                        </div>
-                      </div>
+                      {/* Match Scoring with Individual Player Scores */}
+                      <MatchScoring
+                        match={match}
+                        onUpdateMatch={updateMatchScore}
+                        compact={true}
+                      />
 
                       {/* Match Details */}
                       {(match.court || match.startTime || match.notes) && (
@@ -530,8 +504,14 @@ const TournamentManage: React.FC = () => {
           )}
         </div>
 
-        {/* Sidebar - Teams & Standings */}
+        {/* Sidebar - Live Stats & Teams */}
         <div className="space-y-6">
+          {/* Live Tournament Statistics */}
+          <LiveStats 
+            tournamentId={id!} 
+            refreshInterval={15000} 
+            compact={true}
+          />
           {/* Check-In Status */}
           {liveTournament.phase.phase === 'check_in' && (
             <EditableCard title="Team Check-In">

@@ -13,7 +13,7 @@ class PlayerController extends base_1.BaseController {
         if (filterParams.name) {
             filter.name = new RegExp(filterParams.name, 'i');
         }
-        const numericFields = ['bodsPlayed', 'bestResult', 'avgFinish', 'winningPercentage', 'totalChampionships'];
+        const numericFields = ['bodsPlayed', 'bestResult', 'avgFinish', 'winningPercentage', 'totalChampionships', 'gamesPlayed', 'gamesWon'];
         numericFields.forEach(field => {
             const value = filterParams[field];
             const minValue = filterParams[`${field}_min`];
@@ -31,6 +31,15 @@ class PlayerController extends base_1.BaseController {
                 }
             }
         });
+        if (filterParams.division) {
+            filter.division = new RegExp(filterParams.division, 'i');
+        }
+        if (filterParams.city) {
+            filter.city = new RegExp(filterParams.city, 'i');
+        }
+        if (filterParams.state) {
+            filter.state = new RegExp(filterParams.state, 'i');
+        }
         return filter;
     }
     buildSearchFilter(searchTerm) {
@@ -202,32 +211,32 @@ class PlayerController extends base_1.BaseController {
         }
         return errors;
     }
-    create = async (req, res, next) => {
+    async create(req, res, next) {
         try {
             const validationErrors = this.validatePlayerData(req.body);
             if (validationErrors.length > 0) {
                 this.sendError(res, 400, validationErrors.join(', '));
                 return;
             }
-            return super.create(req, res, next);
+            await super.create(req, res, next);
         }
         catch (error) {
             next(error);
         }
-    };
-    update = async (req, res, next) => {
+    }
+    async update(req, res, next) {
         try {
             const validationErrors = this.validatePlayerData(req.body);
             if (validationErrors.length > 0) {
                 this.sendError(res, 400, validationErrors.join(', '));
                 return;
             }
-            return super.update(req, res, next);
+            await super.update(req, res, next);
         }
         catch (error) {
             next(error);
         }
-    };
+    }
 }
 exports.PlayerController = PlayerController;
 exports.playerController = new PlayerController();

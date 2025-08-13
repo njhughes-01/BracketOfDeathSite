@@ -5,6 +5,7 @@ import { useAuth } from '../contexts/AuthContext';
 import apiClient from '../services/api';
 import Card from '../components/ui/Card';
 import LoadingSpinner from '../components/ui/LoadingSpinner';
+import ConfirmationModal from '../components/ui/ConfirmationModal';
 import { getTournamentStatus, getStatusDisplayInfo } from '../utils/tournamentStatus';
 import { EditableText, EditableNumber, EditableSelect, EditableDate } from '../components/admin';
 import type { Tournament, TournamentUpdate } from '../types/api';
@@ -21,6 +22,20 @@ const Tournaments: React.FC = () => {
     bodNumber_max: undefined as number | undefined,
     sort: '-date',
   });
+  
+  // Delete modal state
+  const [deleteModal, setDeleteModal] = useState<{
+    isOpen: boolean;
+    tournament: Tournament | null;
+    isLoading: boolean;
+  }>({
+    isOpen: false,
+    tournament: null,
+    isLoading: false,
+  });
+  
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   // Tournament format options matching backend schema
   const formatOptions = [
@@ -88,6 +103,58 @@ const Tournaments: React.FC = () => {
     }
   };
 
+  // Delete tournament functions
+  const openDeleteModal = (tournament: Tournament) => {
+    setDeleteModal({
+      isOpen: true,
+      tournament,
+      isLoading: false,
+    });
+  };
+
+  const closeDeleteModal = () => {
+    setDeleteModal({
+      isOpen: false,
+      tournament: null,
+      isLoading: false,
+    });
+  };
+
+  const handleDeleteTournament = async () => {
+    if (!deleteModal.tournament) return;
+
+    setDeleteModal(prev => ({ ...prev, isLoading: true }));
+
+    try {
+      const response = await apiClient.deleteTournamentAdmin(deleteModal.tournament._id || deleteModal.tournament.id);
+      
+      if (response.success) {
+        // Remove tournament from local state
+        setTournaments(prev => prev.filter(t => 
+          (t._id || t.id) !== (deleteModal.tournament!._id || deleteModal.tournament!.id)
+        ));
+        
+        // Show success message
+        setSuccessMessage(response.message || 'Tournament deleted successfully');
+        
+        // Auto-hide success message after 5 seconds
+        setTimeout(() => setSuccessMessage(null), 5000);
+      }
+    } catch (error: any) {
+      console.error('Error deleting tournament:', error);
+      setErrorMessage(
+        error.response?.data?.message || 
+        error.message || 
+        'Failed to delete tournament'
+      );
+      
+      // Auto-hide error message after 10 seconds
+      setTimeout(() => setErrorMessage(null), 10000);
+    } finally {
+      closeDeleteModal();
+    }
+  };
+
   const handleFilterChange = (key: string, value: string) => {
     setFilters(prev => ({ 
       ...prev, 
@@ -133,6 +200,43 @@ const Tournaments: React.FC = () => {
           Create Tournament
         </Link>
       </div>
+
+      {/* Success/Error Messages */}
+      {successMessage && (
+        <div className="bg-green-50 border border-green-200 rounded-md p-4">
+          <div className="flex items-center">
+            <span className="text-green-500 text-xl mr-2">✅</span>
+            <div>
+              <h3 className="text-sm font-medium text-green-800">Success</h3>
+              <p className="text-sm text-green-700">{successMessage}</p>
+            </div>
+            <button
+              onClick={() => setSuccessMessage(null)}
+              className="ml-auto text-green-500 hover:text-green-700"
+            >
+              ✕
+            </button>
+          </div>
+        </div>
+      )}
+
+      {errorMessage && (
+        <div className="bg-red-50 border border-red-200 rounded-md p-4">
+          <div className="flex items-center">
+            <span className="text-red-500 text-xl mr-2">⚠️</span>
+            <div>
+              <h3 className="text-sm font-medium text-red-800">Error</h3>
+              <p className="text-sm text-red-700">{errorMessage}</p>
+            </div>
+            <button
+              onClick={() => setErrorMessage(null)}
+              className="ml-auto text-red-500 hover:text-red-700"
+            >
+              ✕
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Filters */}
       <Card>
@@ -304,25 +408,33 @@ const Tournaments: React.FC = () => {
                       <div className="flex items-center space-x-6">
                         <div className="w-20 h-20 bg-gradient-to-br from-blue-500 to-purple-600 rounded-xl flex items-center justify-center shadow-lg">
                           <span className="text-white font-bold text-xl">#</span>
-                          <EditableNumber
-                            value={tournament.bodNumber}
-                            onSave={(value) => updateTournamentField(tournament._id || tournament.id, 'bodNumber', value)}
-                            min={1}
-                            integer
-                            displayClassName="text-white font-bold text-xl"
-                            required
-                          />
+                          {isAdmin ? (
+                            <EditableNumber
+                              value={tournament.bodNumber}
+                              onSave={(value) => updateTournamentField(tournament._id || tournament.id, 'bodNumber', value)}
+                              min={1}
+                              integer
+                              displayClassName="text-white font-bold text-xl"
+                              required
+                            />
+                          ) : (
+                            <span className="text-white font-bold text-xl">{tournament.bodNumber}</span>
+                          )}
                         </div>
                         <div className="flex-1">
                           <div className="flex items-center space-x-3 mb-2">
                             <h3 className="text-xl font-semibold text-gray-900 group-hover:text-blue-600 transition-colors duration-200">
-                              <EditableSelect
-                                value={tournament.format}
-                                options={formatOptions}
-                                onSave={(value) => updateTournamentField(tournament._id || tournament.id, 'format', value as Tournament['format'])}
-                                required
-                                displayClassName="text-xl font-semibold text-gray-900 group-hover:text-blue-600 transition-colors duration-200"
-                              /> Tournament
+                              {isAdmin ? (
+                                <EditableSelect
+                                  value={tournament.format}
+                                  options={formatOptions}
+                                  onSave={(value) => updateTournamentField(tournament._id || tournament.id, 'format', value as Tournament['format'])}
+                                  required
+                                  displayClassName="text-xl font-semibold text-gray-900 group-hover:text-blue-600 transition-colors duration-200"
+                                />
+                              ) : (
+                                tournament.format
+                              )} Tournament
                             </h3>
                             <span className={`badge ${
                               tournament.format.includes('Men') ? 'badge-primary' : 
@@ -334,39 +446,51 @@ const Tournaments: React.FC = () => {
                           </div>
                           <div className="space-y-1">
                             <p className="text-gray-700 font-medium">
-                              📍 <EditableText
-                                value={tournament.location}
-                                onSave={(value) => updateTournamentField(tournament._id || tournament.id, 'location', value)}
-                                required
-                                displayClassName="text-gray-700 font-medium"
-                                validator={(value) => {
-                                  if (value.length < 2) return 'Location must be at least 2 characters';
-                                  if (value.length > 100) return 'Location must be less than 100 characters';
-                                  return null;
-                                }}
-                              />
-                            </p>
-                            <p className="text-gray-600">
-                              📅 <EditableDate
-                                value={tournament.date}
-                                onSave={(value) => updateTournamentField(tournament._id || tournament.id, 'date', value)}
-                                required
-                                displayClassName="text-gray-600"
-                              />
-                            </p>
-                            {(tournament.notes || isAdmin) && (
-                              <p className="text-sm text-gray-500">
-                                📝 <EditableText
-                                  value={tournament.notes || ''}
-                                  onSave={(value) => updateTournamentField(tournament._id || tournament.id, 'notes', value || undefined)}
-                                  multiline
-                                  displayClassName="text-sm text-gray-500"
-                                  placeholder="No notes"
+                              📍 {isAdmin ? (
+                                <EditableText
+                                  value={tournament.location}
+                                  onSave={(value) => updateTournamentField(tournament._id || tournament.id, 'location', value)}
+                                  required
+                                  displayClassName="text-gray-700 font-medium"
                                   validator={(value) => {
-                                    if (value && value.length > 1000) return 'Notes must be less than 1000 characters';
+                                    if (value.length < 2) return 'Location must be at least 2 characters';
+                                    if (value.length > 100) return 'Location must be less than 100 characters';
                                     return null;
                                   }}
                                 />
+                              ) : (
+                                tournament.location
+                              )}
+                            </p>
+                            <p className="text-gray-600">
+                              📅 {isAdmin ? (
+                                <EditableDate
+                                  value={tournament.date}
+                                  onSave={(value) => updateTournamentField(tournament._id || tournament.id, 'date', value)}
+                                  required
+                                  displayClassName="text-gray-600"
+                                />
+                              ) : (
+                                formatDate(tournament.date)
+                              )}
+                            </p>
+                            {(tournament.notes || isAdmin) && (
+                              <p className="text-sm text-gray-500">
+                                📝 {isAdmin ? (
+                                  <EditableText
+                                    value={tournament.notes || ''}
+                                    onSave={(value) => updateTournamentField(tournament._id || tournament.id, 'notes', value || undefined)}
+                                    multiline
+                                    displayClassName="text-sm text-gray-500"
+                                    placeholder="No notes"
+                                    validator={(value) => {
+                                      if (value && value.length > 1000) return 'Notes must be less than 1000 characters';
+                                      return null;
+                                    }}
+                                  />
+                                ) : (
+                                  tournament.notes || 'No notes'
+                                )}
                               </p>
                             )}
                           </div>
@@ -376,13 +500,19 @@ const Tournaments: React.FC = () => {
                       <div className="flex items-center space-x-4">
                         <div className="text-right">
                           <div className="flex items-center space-x-2 mb-2">
-                            <EditableSelect
-                              value={tournament.status}
-                              options={statusOptions}
-                              onSave={(value) => updateTournamentField(tournament._id || tournament.id, 'status', value as Tournament['status'])}
-                              required
-                              displayClassName={`px-2 py-1 text-xs font-medium rounded-full ${statusInfo.color}`}
-                            />
+                            {isAdmin ? (
+                              <EditableSelect
+                                value={tournament.status}
+                                options={statusOptions}
+                                onSave={(value) => updateTournamentField(tournament._id || tournament.id, 'status', value as Tournament['status'])}
+                                required
+                                displayClassName={`px-2 py-1 text-xs font-medium rounded-full ${statusInfo.color}`}
+                              />
+                            ) : (
+                              <span className={`px-2 py-1 text-xs font-medium rounded-full ${statusInfo.color}`}>
+                                {tournament.status}
+                              </span>
+                            )}
                           </div>
                           <p className="text-sm text-gray-600">
                             BOD #{tournament.bodNumber}
@@ -409,6 +539,15 @@ const Tournaments: React.FC = () => {
                           >
                             Manage Live
                           </Link>
+                        )}
+                        {isAdmin && (actualStatus === 'scheduled' || actualStatus === 'completed') && (
+                          <button
+                            onClick={() => openDeleteModal(tournament)}
+                            className="btn btn-danger btn-sm"
+                            title={actualStatus === 'scheduled' ? 'Delete scheduled tournament' : 'Delete completed tournament'}
+                          >
+                            Delete
+                          </button>
                         )}
                         </div>
                       </div>
@@ -456,6 +595,23 @@ const Tournaments: React.FC = () => {
           </button>
         </div>
       )}
+
+      {/* Delete Confirmation Modal */}
+      <ConfirmationModal
+        isOpen={deleteModal.isOpen}
+        onClose={closeDeleteModal}
+        onConfirm={handleDeleteTournament}
+        title="Delete Tournament"
+        message={
+          deleteModal.tournament
+            ? `Are you sure you want to permanently delete the "${deleteModal.tournament.format}" tournament (BOD #${deleteModal.tournament.bodNumber}) scheduled for ${formatDate(deleteModal.tournament.date)}? This action cannot be undone and will remove all associated data.`
+            : ''
+        }
+        confirmText="Delete Tournament"
+        cancelText="Cancel"
+        isDangerous={true}
+        isLoading={deleteModal.isLoading}
+      />
     </div>
   );
 };

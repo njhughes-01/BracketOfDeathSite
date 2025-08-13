@@ -1,11 +1,20 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.TournamentFormats = void 0;
+exports.TournamentStatuses = exports.TournamentFormats = void 0;
 exports.TournamentFormats = [
-    'Men\'s',
-    'Women\'s',
-    'Mixed',
     'M',
     'W',
+    'Mixed',
+    'Men\'s Singles',
+    'Men\'s Doubles',
+    'Women\'s Doubles',
+    'Mixed Doubles',
+];
+exports.TournamentStatuses = [
+    'scheduled',
+    'open',
+    'active',
+    'completed',
+    'cancelled',
 ];
 //# sourceMappingURL=tournament.js.map

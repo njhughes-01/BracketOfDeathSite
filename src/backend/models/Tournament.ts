@@ -78,19 +78,26 @@ const tournamentSchema = new Schema<ITournament>(
     notes: {
       type: String,
       trim: true,
-      validate: createStringValidator(1, 1000),
+      validate: {
+        validator: function(value: string) {
+          // Allow empty strings or null/undefined, but validate length if provided
+          if (!value || value.trim() === '') return true;
+          return value.length >= 1 && value.length <= 1000;
+        },
+        message: 'Notes must be between 1 and 1000 characters when provided'
+      },
     },
     photoAlbums: {
       type: String,
       trim: true,
       validate: {
         validator: (value: string) => {
-          if (!value) return true;
+          if (!value || value.trim() === '') return true;
           // Basic URL validation
           const urlRegex = /^(https?:\/\/)?([\da-z\.-]+)\.([a-z\.]{2,6})([\/\w \.-]*)*\/?$/;
           return urlRegex.test(value);
         },
-        message: 'Photo albums must be a valid URL',
+        message: 'Photo albums must be a valid URL when provided',
       },
     },
     status: {
@@ -129,6 +136,79 @@ const tournamentSchema = new Schema<ITournament>(
         ref: 'TournamentResult',
       },
     },
+    // Tournament setup configuration
+    seedingConfig: {
+      method: {
+        type: String,
+        enum: ['historical', 'recent_form', 'elo', 'manual'],
+      },
+      parameters: {
+        recentTournamentCount: Number,
+        championshipWeight: Number,
+        winPercentageWeight: Number,
+        avgFinishWeight: Number,
+      },
+    },
+    teamFormationConfig: {
+      method: {
+        type: String,
+        enum: ['preformed', 'draft', 'statistical_pairing', 'random', 'manual'],
+      },
+      parameters: {
+        skillBalancing: Boolean,
+        avoidRecentPartners: Boolean,
+        maxTimesPartnered: Number,
+      },
+    },
+    bracketType: {
+      type: String,
+      enum: ['single_elimination', 'double_elimination', 'round_robin_playoff'],
+    },
+    registrationDeadline: {
+      type: Date,
+    },
+    // Generated tournament data
+    generatedSeeds: [{
+      playerId: {
+        type: Schema.Types.ObjectId,
+        ref: 'Player',
+      },
+      playerName: String,
+      seed: Number,
+      statistics: {
+        avgFinish: Number,
+        winningPercentage: Number,
+        totalChampionships: Number,
+        bodsPlayed: Number,
+        recentForm: Number,
+      },
+    }],
+    generatedTeams: [{
+      teamId: String,
+      players: [{
+        playerId: {
+          type: Schema.Types.ObjectId,
+          ref: 'Player',
+        },
+        playerName: String,
+        seed: Number,
+        statistics: {
+          avgFinish: Number,
+          winningPercentage: Number,
+          totalChampionships: Number,
+          bodsPlayed: Number,
+          recentForm: Number,
+        },
+      }],
+      combinedSeed: Number,
+      teamName: String,
+      combinedStatistics: {
+        avgFinish: Number,
+        combinedWinPercentage: Number,
+        totalChampionships: Number,
+        combinedBodsPlayed: Number,
+      },
+    }],
   },
   baseSchemaOptions
 );

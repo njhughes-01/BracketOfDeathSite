@@ -20,8 +20,6 @@ const playerSchema = new mongoose_1.Schema({
         type: String,
         required: [true, common_1.ErrorMessages.REQUIRED],
         trim: true,
-        unique: true,
-        index: true,
         validate: (0, base_1.createStringValidator)(2, 100),
     },
     bodsPlayed: {

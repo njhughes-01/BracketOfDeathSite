@@ -104,4 +104,14 @@ router.get(
   tournamentAdminController.getTournamentWithMatches
 );
 
+// Tournament deletion
+router.delete(
+  '/tournaments/:id',
+  [
+    param('id').isMongoId().withMessage('Invalid tournament ID'),
+  ],
+  validateRequest,
+  tournamentAdminController.deleteTournament
+);
+
 export default router;

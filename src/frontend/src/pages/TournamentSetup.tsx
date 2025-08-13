@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useApi } from '../hooks/useApi';
 import apiClient from '../services/api';
@@ -168,26 +168,60 @@ const TournamentSetup: React.FC = () => {
     }
   };
 
-  const handlePlayerSelection = (playerId: string, selected: boolean) => {
+  const handlePlayerSelection = useCallback((playerId: string, selected: boolean) => {
+    // Clear any existing error
+    setError(null);
+    
     setSelectedPlayers(prev => {
       if (selected) {
+        // Check if player is already selected
+        if (prev.includes(playerId)) {
+          return prev;
+        }
+        
+        // Check if we're at the max players limit
+        if (prev.length >= setupData.maxPlayers) {
+          setError(`Cannot select more than ${setupData.maxPlayers} players`);
+          return prev;
+        }
+        
         return [...prev, playerId];
       } else {
         return prev.filter(id => id !== playerId);
       }
     });
-  };
+  }, [setupData.maxPlayers]);
 
   const createTournament = async () => {
     try {
       setLoading(true);
-      const response = await apiClient.setupTournament(setupData);
+      
+      // Clean up the basic info to remove empty optional fields
+      const cleanBasicInfo = { ...setupData.basicInfo };
+      if (!cleanBasicInfo.notes || cleanBasicInfo.notes.trim() === '') {
+        delete cleanBasicInfo.notes;
+      }
+      if (!cleanBasicInfo.photoAlbums || cleanBasicInfo.photoAlbums.trim() === '') {
+        delete cleanBasicInfo.photoAlbums;
+      }
+      
+      const cleanSetupData = {
+        ...setupData,
+        basicInfo: cleanBasicInfo,
+        selectedPlayers,
+        generatedSeeds,
+        generatedTeams
+      };
+      
+      console.log('Creating tournament with setup data:', cleanSetupData);
+      const response = await apiClient.setupTournament(cleanSetupData);
       if (response.success && response.data) {
         navigate(`/tournaments/${response.data._id || response.data.id}`);
       }
-    } catch (err) {
-      setError('Failed to create tournament');
-      console.error(err);
+    } catch (err: any) {
+      console.error('Tournament creation error:', err);
+      const errorMessage = err.response?.data?.message || err.response?.data?.error || err.message || 'Failed to create tournament';
+      setError(errorMessage);
     } finally {
       setLoading(false);
     }
@@ -309,14 +343,31 @@ const TournamentSetup: React.FC = () => {
                 </div>
                 <div className="flex space-x-2">
                   <button
-                    onClick={() => setSelectedPlayers(availablePlayers.slice(0, setupData.maxPlayers).map(p => p._id))}
+                    onClick={() => {
+                      setError(null);
+                      
+                      // Sort players by skill level (win percentage * championships + win percentage)
+                      const sortedPlayers = [...availablePlayers].sort((a, b) => {
+                        const aScore = (a.winningPercentage * 100) + (a.totalChampionships * 10);
+                        const bScore = (b.winningPercentage * 100) + (b.totalChampionships * 10);
+                        return bScore - aScore;
+                      });
+                      
+                      const topPlayers = sortedPlayers.slice(0, setupData.maxPlayers);
+                      setSelectedPlayers(topPlayers.map(p => p.id));
+                    }}
                     className="btn btn-outline btn-sm"
+                    type="button"
                   >
                     Select Top {setupData.maxPlayers}
                   </button>
                   <button
-                    onClick={() => setSelectedPlayers([])}
+                    onClick={() => {
+                      setError(null);
+                      setSelectedPlayers([]);
+                    }}
                     className="btn btn-outline btn-sm"
+                    type="button"
                   >
                     Clear All
                   </button>
@@ -324,36 +375,50 @@ const TournamentSetup: React.FC = () => {
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 max-h-96 overflow-y-auto">
-                {availablePlayers.map(player => (
-                  <div
-                    key={player._id}
-                    className={`p-3 border rounded-lg cursor-pointer transition-colors ${
-                      selectedPlayers.includes(player._id)
-                        ? 'border-blue-500 bg-blue-50'
-                        : 'border-gray-200 hover:border-gray-300'
-                    }`}
-                    onClick={() => handlePlayerSelection(player._id, !selectedPlayers.includes(player._id))}
-                  >
-                    <div className="flex items-center space-x-2">
-                      <input
-                        type="checkbox"
-                        checked={selectedPlayers.includes(player._id)}
-                        onChange={() => {}}
-                        className="rounded"
-                      />
-                      <div className="flex-1">
-                        <p className="font-medium text-sm">{player.name}</p>
-                        <div className="text-xs text-gray-500">
-                          <span>BODs: {player.bodsPlayed}</span>
-                          <span className="mx-2">•</span>
-                          <span>Win%: {(player.winningPercentage * 100).toFixed(1)}%</span>
-                          <span className="mx-2">•</span>
-                          <span>Champ: {player.totalChampionships}</span>
+                {availablePlayers.map(player => {
+                  const isSelected = selectedPlayers.includes(player.id);
+                  return (
+                    <div
+                      key={`player-${player.id}`}
+                      className={`p-3 border rounded-lg cursor-pointer transition-colors ${
+                        isSelected
+                          ? 'border-blue-500 bg-blue-50'
+                          : 'border-gray-200 hover:border-gray-300'
+                      }`}
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        const checkbox = e.currentTarget.querySelector('input[type="checkbox"]') as HTMLInputElement;
+                        if (checkbox) {
+                          const newChecked = !checkbox.checked;
+                          handlePlayerSelection(player.id, newChecked);
+                        }
+                      }}
+                    >
+                      <div className="flex items-center space-x-2">
+                        <input
+                          type="checkbox"
+                          checked={isSelected}
+                          onChange={(e) => {
+                            e.stopPropagation();
+                            handlePlayerSelection(player.id, e.target.checked);
+                          }}
+                          className="rounded"
+                        />
+                        <div className="flex-1">
+                          <p className="font-medium text-sm">{player.name}</p>
+                          <div className="text-xs text-gray-500">
+                            <span>BODs: {player.bodsPlayed}</span>
+                            <span className="mx-2">•</span>
+                            <span>Win%: {(player.winningPercentage * 100).toFixed(1)}%</span>
+                            <span className="mx-2">•</span>
+                            <span>Champ: {player.totalChampionships}</span>
+                          </div>
                         </div>
                       </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
           </EditableCard>
@@ -465,7 +530,7 @@ const TournamentSetup: React.FC = () => {
                     <h4 className="font-medium text-gray-900 mb-2">Generated Seeds</h4>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-2 max-h-40 overflow-y-auto">
                       {generatedSeeds.map(seed => (
-                        <div key={seed.playerId} className="flex items-center justify-between p-2 bg-gray-50 rounded">
+                        <div key={`seed-${seed.playerId}`} className="flex items-center justify-between p-2 bg-gray-50 rounded">
                           <span className="text-sm">#{seed.seed} {seed.playerName}</span>
                           <span className="text-xs text-gray-500">
                             {(seed.statistics.winningPercentage * 100).toFixed(1)}% / {seed.statistics.totalChampionships} champ
@@ -552,7 +617,7 @@ const TournamentSetup: React.FC = () => {
                     <h4 className="font-medium text-gray-900 mb-2">Generated Teams</h4>
                     <div className="space-y-2 max-h-40 overflow-y-auto">
                       {generatedTeams.map(team => (
-                        <div key={team.teamId} className="p-3 bg-gray-50 rounded-lg">
+                        <div key={`team-${team.teamId}`} className="p-3 bg-gray-50 rounded-lg">
                           <div className="flex items-center justify-between">
                             <span className="font-medium">#{team.combinedSeed} {team.teamName}</span>
                             <span className="text-xs text-gray-500">{team.combinedStatistics.combinedWinPercentage.toFixed(1)}%</span>

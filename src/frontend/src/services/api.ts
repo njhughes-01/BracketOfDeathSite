@@ -18,6 +18,11 @@ import type {
   TournamentSetup,
   PlayerSeed,
   TeamSeed,
+  LiveTournamentStats,
+  LiveTournament,
+  TournamentAction,
+  Match,
+  MatchUpdate,
 } from '../types/api';
 import type {
   User,
@@ -252,6 +257,10 @@ class ApiClient {
     return this.get<ApiResponse<TournamentResult[]>>(`/tournaments/${tournamentId}/standings`);
   }
 
+  async getLiveStats(tournamentId: string): Promise<ApiResponse<LiveTournamentStats>> {
+    return this.get<ApiResponse<LiveTournamentStats>>(`/tournaments/${tournamentId}/live-stats`);
+  }
+
   // Tournament Result API methods
   async getTournamentResults(filters?: TournamentResultFilters & PaginationOptions): Promise<PaginatedResponse<TournamentResult>> {
     const params = new URLSearchParams();
@@ -342,6 +351,10 @@ class ApiClient {
 
   async getTournamentWithMatches(id: string): Promise<ApiResponse<{ tournament: Tournament; matches: any[]; results: any[] }>> {
     return this.get<ApiResponse<{ tournament: Tournament; matches: any[]; results: any[] }>>(`/admin/tournaments/${id}/details`);
+  }
+
+  async deleteTournamentAdmin(id: string): Promise<ApiResponse<null>> {
+    return this.delete<ApiResponse<null>>(`/admin/tournaments/${id}`);
   }
 
   // User Management API methods

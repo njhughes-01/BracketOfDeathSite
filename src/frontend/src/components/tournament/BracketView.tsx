@@ -68,16 +68,23 @@ const BracketView: React.FC<BracketViewProps> = ({
             <span className="text-xs font-medium text-gray-600">
               Match {match.matchNumber}
             </span>
-            <span className={`
-              px-2 py-1 text-xs font-medium rounded-full
-              ${isCompleted ? 'bg-green-100 text-green-800' :
-                isInProgress ? 'bg-yellow-100 text-yellow-800' :
-                'bg-gray-100 text-gray-600'}
-            `}>
-              {match.status === 'confirmed' ? 'Final' : 
-               match.status === 'completed' ? 'Done' :
-               match.status === 'in_progress' ? 'Live' : 'Scheduled'}
-            </span>
+            <div className="flex items-center space-x-2">
+              {isInProgress && (
+                <span className="flex items-center">
+                  <span className="animate-pulse w-2 h-2 bg-yellow-500 rounded-full mr-1"></span>
+                </span>
+              )}
+              <span className={`
+                px-2 py-1 text-xs font-medium rounded-full
+                ${isCompleted ? 'bg-green-100 text-green-800' :
+                  isInProgress ? 'bg-yellow-100 text-yellow-800 animate-pulse' :
+                  'bg-gray-100 text-gray-600'}
+              `}>
+                {match.status === 'confirmed' ? 'Final' : 
+                 match.status === 'completed' ? 'Done' :
+                 match.status === 'in_progress' ? '🔴 Live' : 'Scheduled'}
+              </span>
+            </div>
           </div>
 
           {/* Team 1 */}
@@ -155,15 +162,53 @@ const BracketView: React.FC<BracketViewProps> = ({
     );
   };
 
+  // Get tournament progression stats
+  const getTournamentStats = () => {
+    const totalMatches = matches.length;
+    const completedMatches = matches.filter(m => m.status === 'completed' || m.status === 'confirmed').length;
+    const inProgressMatches = matches.filter(m => m.status === 'in_progress').length;
+    
+    return {
+      totalMatches,
+      completedMatches,
+      inProgressMatches,
+      progressPercentage: totalMatches > 0 ? Math.round((completedMatches / totalMatches) * 100) : 0
+    };
+  };
+
+  const stats = getTournamentStats();
+
   return (
     <div className="space-y-6">
-      {/* Bracket Header */}
+      {/* Bracket Header with Live Stats */}
       <div className="text-center">
         <h3 className="text-xl font-bold text-gray-900 mb-2">Tournament Bracket</h3>
         {currentRound && (
-          <p className="text-sm text-gray-600">
-            Current Round: <span className="font-semibold">{roundNames[currentRound as keyof typeof roundNames] || currentRound}</span>
-          </p>
+          <div className="space-y-2">
+            <p className="text-sm text-gray-600">
+              Current Round: <span className="font-semibold">{roundNames[currentRound as keyof typeof roundNames] || currentRound}</span>
+            </p>
+            
+            {/* Live Progress Bar */}
+            <div className="max-w-md mx-auto">
+              <div className="flex items-center justify-between text-xs text-gray-500 mb-1">
+                <span>{stats.completedMatches} completed</span>
+                <span>{stats.inProgressMatches > 0 && `${stats.inProgressMatches} live`}</span>
+                <span>{stats.totalMatches} total</span>
+              </div>
+              <div className="w-full bg-gray-200 rounded-full h-2">
+                <div 
+                  className={`h-2 rounded-full transition-all duration-500 ${
+                    stats.inProgressMatches > 0 ? 'bg-yellow-500' : 'bg-green-500'
+                  }`}
+                  style={{ width: `${stats.progressPercentage}%` }}
+                />
+              </div>
+              <div className="text-xs text-gray-500 mt-1 text-center">
+                {stats.progressPercentage}% Complete
+              </div>
+            </div>
+          </div>
         )}
       </div>
 

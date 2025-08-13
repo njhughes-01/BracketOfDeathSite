@@ -238,12 +238,24 @@ export interface Match {
     teamName: string;
     players: Player[];
     score?: number;
+    // Individual player scores for detailed tracking
+    playerScores?: Array<{
+      playerId: string;
+      playerName: string;
+      score: number;
+    }>;
   };
   team2: {
     teamId: string;
     teamName: string;
     players: Player[];
     score?: number;
+    // Individual player scores for detailed tracking
+    playerScores?: Array<{
+      playerId: string;
+      playerName: string;
+      score: number;
+    }>;
   };
   status: 'scheduled' | 'in_progress' | 'completed' | 'confirmed';
   startTime?: string;
@@ -287,6 +299,17 @@ export interface MatchUpdate {
   matchId: string;
   team1Score?: number;
   team2Score?: number;
+  // Individual player scores for detailed tracking
+  team1PlayerScores?: Array<{
+    playerId: string;
+    playerName: string;
+    score: number;
+  }>;
+  team2PlayerScores?: Array<{
+    playerId: string;
+    playerName: string;
+    score: number;
+  }>;
   status?: Match['status'];
   court?: string;
   notes?: string;
@@ -338,4 +361,60 @@ export interface PaginationOptions {
   limit?: number;
   sort?: string;
   select?: string;
+}
+
+// Live Tournament Statistics types
+export interface LiveTeamStats {
+  teamId: string;
+  teamName: string;
+  players: Array<{
+    playerId: string;
+    playerName: string;
+  }>;
+  matchesPlayed: number;
+  matchesWon: number;
+  matchesLost: number;
+  winPercentage: number;
+  pointsScored: number;
+  pointsAllowed: number;
+  pointDifferential: number;
+  currentRank: number;
+  roundRobinRecord: {
+    played: number;
+    won: number;
+    lost: number;
+    winPercentage: number;
+  };
+  bracketRecord: {
+    played: number;
+    won: number;
+    lost: number;
+    eliminated: boolean;
+    advancedTo?: string;
+  };
+  performanceGrade: string;
+}
+
+export interface LiveTournamentStats {
+  tournamentId: string;
+  totalTeams: number;
+  totalMatches: number;
+  completedMatches: number;
+  inProgressMatches: number;
+  currentPhase: string;
+  currentRound?: string;
+  teamStandings: LiveTeamStats[];
+  matchSummary: {
+    roundRobin: {
+      total: number;
+      completed: number;
+      inProgress: number;
+    };
+    bracket: {
+      total: number;
+      completed: number;
+      inProgress: number;
+    };
+  };
+  lastUpdated: string;
 }

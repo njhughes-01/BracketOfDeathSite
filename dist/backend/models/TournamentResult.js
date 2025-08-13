@@ -216,7 +216,6 @@ const tournamentResultSchema = new mongoose_1.Schema({
         type: mongoose_1.Schema.Types.ObjectId,
         ref: 'Tournament',
         required: [true, common_1.ErrorMessages.REQUIRED],
-        index: true,
     },
     players: [{
             type: mongoose_1.Schema.Types.ObjectId,

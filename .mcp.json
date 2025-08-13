@@ -1,0 +1,52 @@
+{
+    "mcpServers": {
+      "browsermcp": {
+        "command": "cmd",
+        "args": ["/c", "npx", "-y", "@browsermcp/mcp@latest"]
+      },
+      "memory": {
+        "command": "cmd",
+        "args": [
+          "/c",
+          "npx",
+          "-y",
+          "@modelcontextprotocol/server-memory"
+        ]
+      },
+      "sequential-thinking": {
+        "command": "cmd",
+        "args": [
+          "/c",
+          "npx",
+          "-y",
+          "@modelcontextprotocol/server-sequential-thinking"
+        ]
+      },
+      "filesystem": {
+        "command": "cmd",
+        "args": [
+          "/c",
+          "npx",
+          "-y",
+          "@modelcontextprotocol/server-filesystem",
+          "/mnt/c/Github/foraLeaderboard"
+        ]
+      },
+      "quillopy": {
+        "command": "cmd",
+        "args": ["/c", "npx", "-y", "@quillopy/mcp"],
+        "env": {
+            "QUILLOPY_API_KEY": "sk_M0KLWazZWRWa_OghJpJBI8c9kZRJbiQcjN_kkC5rrvnXG8UnMmQ79DxEXOKc1zFiY5qcYccBnPwDT486b6HMyQ"
+            }
+        },
+        "desktop-commander": {
+            "command": "cmd",
+            "args": [
+              "/c",
+              "npx",
+              "-y",
+              "@wonderwhy-er/desktop-commander"
+            ]
+          }
+    }
+  }

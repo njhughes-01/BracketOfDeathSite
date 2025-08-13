@@ -4,7 +4,7 @@ import { BaseController, RequestWithAuth } from './base';
 export declare class TournamentResultController extends BaseController<ITournamentResult> {
     constructor();
     protected buildFilter(query: any): ITournamentResultFilter;
-    getAll: (req: Request | RequestWithAuth, res: Response, next: NextFunction) => void;
+    getAll: (req: Request, res: Response, next: NextFunction) => Promise<void>;
     getByTournament: (req: Request | RequestWithAuth, res: Response, next: NextFunction) => void;
     getByPlayer: (req: Request | RequestWithAuth, res: Response, next: NextFunction) => void;
     getLeaderboard: (req: Request | RequestWithAuth, res: Response, next: NextFunction) => void;
@@ -13,8 +13,8 @@ export declare class TournamentResultController extends BaseController<ITourname
     private parseSortString;
     private calculatePlayerStats;
     private validateTournamentResultData;
-    create: (req: Request | RequestWithAuth, res: Response, next: NextFunction) => void;
-    update: (req: Request | RequestWithAuth, res: Response, next: NextFunction) => void;
+    create(req: RequestWithAuth, res: Response, next: NextFunction): Promise<void>;
+    update(req: RequestWithAuth, res: Response, next: NextFunction): Promise<void>;
 }
 export declare const tournamentResultController: TournamentResultController;
 //# sourceMappingURL=TournamentResultController.d.ts.map

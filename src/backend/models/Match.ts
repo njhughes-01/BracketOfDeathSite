@@ -61,6 +61,25 @@ const matchTeamSchema = new Schema({
     min: [1, 'Seed must be positive'],
     max: [64, 'Seed cannot exceed 64'],
   },
+  // Individual player scores for detailed tracking
+  playerScores: [{
+    playerId: {
+      type: Schema.Types.ObjectId,
+      ref: 'Player',
+      required: true,
+    },
+    playerName: {
+      type: String,
+      required: true,
+      trim: true,
+    },
+    score: {
+      type: Number,
+      min: [0, 'Individual score cannot be negative'],
+      max: [99, 'Individual score cannot exceed 99'],
+      default: 0,
+    },
+  }],
 }, { _id: false });
 
 const matchSchema = new Schema<IMatch>(

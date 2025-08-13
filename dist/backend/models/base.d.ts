@@ -24,12 +24,10 @@ export declare const commonFields: {
     createdAt: {
         type: DateConstructor;
         default: () => number;
-        index: boolean;
     };
     updatedAt: {
         type: DateConstructor;
         default: () => number;
-        index: boolean;
     };
 };
 export declare const baseMethods: {
