@@ -115,10 +115,11 @@ playerSchema.path('gamesWon').validate(function (gamesWon: number) {
 }, 'Games won cannot exceed games played');
 
 // Custom validation for best result vs average finish
+// Note: In tournament scoring, lower numbers are better (1st place is better than 2nd place)
 playerSchema.path('bestResult').validate(function (bestResult: number) {
   if (!this.avgFinish || this.avgFinish === 0) return true;
-  return bestResult <= this.avgFinish;
-}, 'Best result cannot be worse than average finish');
+  return bestResult >= this.avgFinish;
+}, 'Best result cannot be better than average finish');
 
 // Virtual for games lost
 playerSchema.virtual('gamesLost').get(function (this: IPlayer) {

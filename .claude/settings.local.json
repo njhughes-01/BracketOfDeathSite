@@ -32,7 +32,17 @@
       "Bash(docker volume:*)",
       "Bash(docker restart:*)",
       "Bash(npm run typecheck:*)",
-      "Bash(npx tsc:*)"
+      "Bash(npx tsc:*)",
+      "mcp__archon__health_check",
+      "mcp__archon__manage_project",
+      "mcp__archon__manage_task",
+      "mcp__archon__perform_rag_query",
+      "mcp__archon__search_code_examples",
+      "Bash(pip install:*)",
+      "Bash(python:*)",
+      "Bash(cp:*)",
+      "Bash(powershell:*)",
+      "Bash(git add:*)"
     ],
     "deny": []
   }
