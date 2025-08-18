@@ -28,11 +28,36 @@ export declare class TournamentAdminController extends BaseController<ITournamen
      */
     finalizeTournament: (req: RequestWithAuth, res: Response, next: NextFunction) => Promise<void>;
     /**
+     * Register a player for a tournament
+     */
+    registerPlayer: (req: RequestWithAuth, res: Response, next: NextFunction) => Promise<void>;
+    /**
+     * Unregister a player from a tournament
+     */
+    unregisterPlayer: (req: RequestWithAuth, res: Response, next: NextFunction) => Promise<void>;
+    /**
+     * Get tournament registration information
+     */
+    getRegistrationInfo: (req: Request, res: Response, next: NextFunction) => Promise<void>;
+    /**
+     * Finalize tournament registration and move to player selection
+     */
+    finalizeRegistration: (req: RequestWithAuth, res: Response, next: NextFunction) => Promise<void>;
+    /**
+     * Get seeding preview for tournament
+     */
+    getSeedingPreview: (req: Request, res: Response, next: NextFunction) => Promise<void>;
+    /**
      * Get tournament with matches and results
      */
     getTournamentWithMatches: (req: Request, res: Response, next: NextFunction) => Promise<void>;
-    private createBracketMatches;
-    private generateBracketForTeams;
+    private createSeededBracketMatches;
+    private generateSeededBracketForTeams;
+    /**
+     * Arrange teams for proper tournament bracket seeding
+     * Ensures that top seeds don't meet until later rounds
+     */
+    private arrangeTeamsForBracket;
     private getRoundName;
     private updateTournamentResults;
     private updateTeamResult;

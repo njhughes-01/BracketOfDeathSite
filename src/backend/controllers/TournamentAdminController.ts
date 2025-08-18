@@ -8,6 +8,8 @@ import { IMatch, MatchRound, calculateBracketMatches } from '../types/match';
 import { BaseController, RequestWithAuth } from './base';
 import { ApiResponse, ErrorMessages } from '../types/common';
 import { Types } from 'mongoose';
+import { TournamentRegistrationService } from '../services/TournamentRegistrationService';
+import { TournamentSeedingService } from '../services/TournamentSeedingService';
 
 export class TournamentAdminController extends BaseController<ITournament> {
   constructor() {
@@ -278,8 +280,8 @@ export class TournamentAdminController extends BaseController<ITournament> {
         return;
       }
 
-      // Generate bracket matches
-      const matches = await this.createBracketMatches(tournament, isDoubles);
+      // Generate seeded bracket matches
+      const matches = await this.createSeededBracketMatches(tournament, isDoubles);
 
       // Update tournament status to active
       tournament.status = 'active';
@@ -428,6 +430,190 @@ export class TournamentAdminController extends BaseController<ITournament> {
   };
 
   /**
+   * Register a player for a tournament
+   */
+  public registerPlayer = async (req: RequestWithAuth, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const { id } = req.params; // tournament ID
+      const { playerId } = req.body;
+
+      if (!playerId) {
+        res.status(400).json({
+          success: false,
+          message: 'Player ID is required',
+          data: null,
+        });
+        return;
+      }
+
+      const result = await TournamentRegistrationService.registerPlayer(id, playerId);
+
+      if (!result.success) {
+        res.status(400).json({
+          success: false,
+          message: result.message,
+          data: null,
+        });
+        return;
+      }
+
+      const response: ApiResponse<any> = {
+        success: true,
+        message: result.message,
+        data: {
+          tournament: result.tournament,
+          position: result.position,
+        },
+      };
+
+      res.status(200).json(response);
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  /**
+   * Unregister a player from a tournament
+   */
+  public unregisterPlayer = async (req: RequestWithAuth, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const { id, playerId } = req.params;
+
+      const result = await TournamentRegistrationService.unregisterPlayer(id, playerId);
+
+      if (!result.success) {
+        res.status(400).json({
+          success: false,
+          message: result.message,
+          data: null,
+        });
+        return;
+      }
+
+      const response: ApiResponse<ITournament> = {
+        success: true,
+        message: result.message,
+        data: result.tournament!,
+      };
+
+      res.status(200).json(response);
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  /**
+   * Get tournament registration information
+   */
+  public getRegistrationInfo = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const { id } = req.params;
+
+      const result = await TournamentRegistrationService.getRegistrationInfo(id);
+
+      if (!result.success) {
+        res.status(404).json({
+          success: false,
+          message: result.message,
+          data: null,
+        });
+        return;
+      }
+
+      const response: ApiResponse<any> = {
+        success: true,
+        message: 'Registration info retrieved',
+        data: result.data,
+      };
+
+      res.status(200).json(response);
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  /**
+   * Finalize tournament registration and move to player selection
+   */
+  public finalizeRegistration = async (req: RequestWithAuth, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const { id } = req.params;
+
+      const result = await TournamentRegistrationService.finalizeRegistration(id);
+
+      if (!result.success) {
+        res.status(400).json({
+          success: false,
+          message: result.message,
+          data: null,
+        });
+        return;
+      }
+
+      const response: ApiResponse<ITournament> = {
+        success: true,
+        message: result.message,
+        data: result.tournament!,
+      };
+
+      res.status(200).json(response);
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  /**
+   * Get seeding preview for tournament
+   */
+  public getSeedingPreview = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const { id } = req.params;
+
+      const tournament = await Tournament.findById(id);
+      if (!tournament) {
+        res.status(404).json({
+          success: false,
+          message: 'Tournament not found',
+          data: null,
+        });
+        return;
+      }
+
+      const playerIds = (tournament.players || tournament.registeredPlayers || []).map(p => p.toString());
+      
+      if (playerIds.length === 0) {
+        res.status(400).json({
+          success: false,
+          message: 'No players found for seeding',
+          data: null,
+        });
+        return;
+      }
+
+      const result = await TournamentSeedingService.getSeedingPreview(playerIds, tournament.format);
+
+      if (!result.success) {
+        res.status(400).json({
+          success: false,
+          message: result.message,
+          data: null,
+        });
+        return;
+      }
+
+      const response: ApiResponse<any> = {
+        success: true,
+        message: result.message,
+        data: result.preview,
+      };
+
+      res.status(200).json(response);
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  /**
    * Get tournament with matches and results
    */
   public getTournamentWithMatches = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
@@ -469,34 +655,55 @@ export class TournamentAdminController extends BaseController<ITournament> {
 
   // Private helper methods
 
-  private async createBracketMatches(tournament: ITournament, isDoubles: boolean): Promise<IMatch[]> {
+  private async createSeededBracketMatches(tournament: ITournament, isDoubles: boolean): Promise<IMatch[]> {
     const players = tournament.players || [];
     const matches: IMatch[] = [];
 
+    // Get seeded rankings
+    const playerIds = players.map(p => p.toString());
+    const seedingResult = await TournamentSeedingService.calculateSeeding(playerIds, tournament.format);
+    
+    if (!seedingResult.success || !seedingResult.seeds) {
+      throw new Error('Failed to calculate seeding for tournament');
+    }
+
+    const seeds = seedingResult.seeds;
+
     if (isDoubles) {
-      // Create teams from pairs of players
+      // Create teams from pairs of seeded players
       const teams = [];
-      for (let i = 0; i < players.length; i += 2) {
-        const player1 = players[i] as any;
-        const player2 = players[i + 1] as any;
-        teams.push({
-          players: [player1._id, player2._id],
-          playerNames: [player1.name, player2.name],
-          seed: Math.floor(i / 2) + 1,
-        });
+      for (let i = 0; i < seeds.length; i += 2) {
+        const player1 = seeds[i];
+        const player2 = seeds[i + 1];
+        
+        if (player1 && player2) {
+          teams.push({
+            players: [player1.playerId, player2.playerId],
+            playerNames: [player1.player.name, player2.player.name],
+            seed: Math.floor(i / 2) + 1,
+            combinedScore: player1.score + player2.score,
+          });
+        }
       }
 
+      // Sort teams by combined score for proper seeding
+      teams.sort((a, b) => b.combinedScore - a.combinedScore);
+      teams.forEach((team, index) => {
+        team.seed = index + 1;
+      });
+
       // Generate bracket matches for teams
-      await this.generateBracketForTeams(tournament._id, teams, matches);
+      await this.generateSeededBracketForTeams(tournament._id, teams, matches);
     } else {
-      // Singles tournament - each player is a "team"
-      const teams = players.map((player: any, index: number) => ({
-        players: [player._id],
-        playerNames: [player.name],
-        seed: index + 1,
+      // Singles tournament - use individual seeds
+      const seededTeams = seeds.map(seed => ({
+        players: [seed.playerId],
+        playerNames: [seed.player.name],
+        seed: seed.seed,
+        score: seed.score,
       }));
 
-      await this.generateBracketForTeams(tournament._id, teams, matches);
+      await this.generateSeededBracketForTeams(tournament._id, seededTeams, matches);
     }
 
     // Save all matches
@@ -504,7 +711,7 @@ export class TournamentAdminController extends BaseController<ITournament> {
     return savedMatches;
   }
 
-  private async generateBracketForTeams(
+  private async generateSeededBracketForTeams(
     tournamentId: Types.ObjectId,
     teams: any[],
     matches: any[]
@@ -512,15 +719,23 @@ export class TournamentAdminController extends BaseController<ITournament> {
     const teamCount = teams.length;
     const bracketSize = Math.pow(2, Math.ceil(Math.log2(teamCount)));
     
-    // Shuffle teams for random bracket seeding
-    const shuffledTeams = [...teams].sort(() => Math.random() - 0.5);
+    // Sort teams by seed (1, 2, 3, etc.)
+    const seededTeams = [...teams].sort((a, b) => a.seed - b.seed);
     
-    // Pad with byes if needed
-    while (shuffledTeams.length < bracketSize) {
-      shuffledTeams.push(null); // bye
+    // Create bracket with traditional seeding (1 vs lowest, 2 vs 2nd lowest, etc.)
+    const bracketTeams = [];
+    for (let i = 0; i < bracketSize; i++) {
+      if (i < seededTeams.length) {
+        bracketTeams.push(seededTeams[i]);
+      } else {
+        bracketTeams.push(null); // bye
+      }
     }
 
-    let currentRound = shuffledTeams;
+    // Rearrange for proper tournament bracket seeding
+    const arrangedTeams = this.arrangeTeamsForBracket(bracketTeams);
+    
+    let currentRound = arrangedTeams;
     let roundNumber = 1;
     let matchNumber = 1;
 
@@ -557,6 +772,42 @@ export class TournamentAdminController extends BaseController<ITournament> {
       currentRound = nextRound;
       roundNumber++;
     }
+  }
+
+  /**
+   * Arrange teams for proper tournament bracket seeding
+   * Ensures that top seeds don't meet until later rounds
+   */
+  private arrangeTeamsForBracket(teams: any[]): any[] {
+    const arrangedTeams = [...teams];
+    const teamCount = teams.filter(t => t !== null).length;
+    
+    if (teamCount <= 2) {
+      return arrangedTeams;
+    }
+
+    // For proper seeding: seed 1 should play lowest seed in first potential meeting
+    // This is a simplified arrangement - could be enhanced for more complex seeding
+    const nonNullTeams = teams.filter(t => t !== null);
+    const sortedByGoodSeed = [...nonNullTeams].sort((a, b) => a.seed - b.seed);
+    
+    const result = [];
+    const mid = Math.floor(sortedByGoodSeed.length / 2);
+    
+    // Place top half and bottom half in alternating positions
+    for (let i = 0; i < mid; i++) {
+      result.push(sortedByGoodSeed[i]);
+      if (sortedByGoodSeed[sortedByGoodSeed.length - 1 - i]) {
+        result.push(sortedByGoodSeed[sortedByGoodSeed.length - 1 - i]);
+      }
+    }
+    
+    // Fill with nulls to match bracket size
+    while (result.length < teams.length) {
+      result.push(null);
+    }
+    
+    return result;
   }
 
   private getRoundName(teamsRemaining: number): MatchRound {

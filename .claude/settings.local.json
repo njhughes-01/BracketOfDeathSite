@@ -45,5 +45,13 @@
       "Bash(git add:*)"
     ],
     "deny": []
-  }
+  },
+  "enabledMcpjsonServers": [
+    "browsermcp",
+    "memory",
+    "sequential-thinking",
+    "filesystem",
+    "quillopy",
+    "desktop-commander"
+  ]
 }

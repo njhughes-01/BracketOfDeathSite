@@ -6,8 +6,8 @@ const auth_1 = require("../middleware/auth");
 const validation_1 = require("../middleware/validation");
 const router = (0, express_1.Router)();
 // Public routes (read-only)
-router.get('/', PlayerController_1.playerController.getAll);
-router.get('/search', PlayerController_1.playerController.search);
+router.get('/', validation_1.validatePagination, PlayerController_1.playerController.getAll);
+router.get('/search', validation_1.validatePagination, PlayerController_1.playerController.search);
 router.get('/stats', PlayerController_1.playerController.getStats);
 router.get('/champions', PlayerController_1.playerController.getChampions);
 router.get('/:id', validation_1.validateObjectId, PlayerController_1.playerController.getById);

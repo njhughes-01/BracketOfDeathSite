@@ -230,7 +230,7 @@ class UserController {
     async resetPassword(req, res) {
         try {
             const { id } = req.params;
-            const { newPassword, temporary = true } = req.body;
+            const { newPassword, temporary = false } = req.body;
             if (!id) {
                 const response = {
                     success: false,
@@ -248,6 +248,15 @@ class UserController {
                 return;
             }
             await keycloakAdminService_1.default.resetUserPassword(id, newPassword, temporary);
+            // Clear required actions to ensure user can login immediately
+            if (!temporary) {
+                try {
+                    await keycloakAdminService_1.default.clearUserRequiredActions(id);
+                }
+                catch (error) {
+                    console.warn('Could not clear required actions after password reset:', error);
+                }
+            }
             const response = {
                 success: true,
                 message: `Password ${temporary ? 'reset' : 'updated'} successfully`,

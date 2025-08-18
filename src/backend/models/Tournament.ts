@@ -1,6 +1,6 @@
 import { Schema, model } from 'mongoose';
 import { ITournament } from '../types/tournament';
-import { TournamentFormats, TournamentStatuses } from '../types/tournament';
+import { TournamentFormats, TournamentStatuses, RegistrationTypes } from '../types/tournament';
 import { ErrorMessages } from '../types/common';
 import {
   BaseModelStatics,
@@ -20,8 +20,15 @@ const calculateTournamentStats = (tournament: ITournament): void => {
     tournament.date = new Date(tournament.date);
   }
 
-  // BOD number should be provided and sequential (1, 2, 3, etc.)
-  // No auto-generation needed
+  // Format registration dates
+  if (tournament.registrationOpensAt && typeof tournament.registrationOpensAt === 'string') {
+    tournament.registrationOpensAt = new Date(tournament.registrationOpensAt);
+  }
+  if (tournament.registrationDeadline && typeof tournament.registrationDeadline === 'string') {
+    tournament.registrationDeadline = new Date(tournament.registrationDeadline);
+  }
+
+  // BOD number will be auto-generated in pre-save hook if not provided
 
   // Normalize format
   if (tournament.format) {
@@ -31,6 +38,11 @@ const calculateTournamentStats = (tournament: ITournament): void => {
   // Normalize location
   if (tournament.location) {
     tournament.location = tournament.location.trim();
+  }
+
+  // Set default registration behavior
+  if (tournament.allowSelfRegistration === undefined) {
+    tournament.allowSelfRegistration = tournament.registrationType === 'open';
   }
 };
 
@@ -118,6 +130,51 @@ const tournamentSchema = new Schema<ITournament>(
         message: 'Maximum players must be a power of 2 (2, 4, 8, 16, 32, 64)',
       },
     },
+    registrationType: {
+      type: String,
+      required: [true, ErrorMessages.REQUIRED],
+      enum: {
+        values: RegistrationTypes,
+        message: `Registration type must be one of: ${RegistrationTypes.join(', ')}`,
+      },
+      default: 'open',
+    },
+    registrationOpensAt: {
+      type: Date,
+      validate: {
+        validator: function(this: ITournament, date: Date) {
+          if (!date) return true;
+          return date <= this.date;
+        },
+        message: 'Registration must open before tournament date',
+      },
+    },
+    registrationDeadline: {
+      type: Date,
+      validate: {
+        validator: function(this: ITournament, date: Date) {
+          if (!date) return true;
+          const now = new Date();
+          const tournamentDate = this.date;
+          return date >= now && date <= tournamentDate;
+        },
+        message: 'Registration deadline must be between now and tournament date',
+      },
+    },
+    allowSelfRegistration: {
+      type: Boolean,
+      default: function(this: ITournament) {
+        return this.registrationType === 'open';
+      },
+    },
+    registeredPlayers: [{
+      type: Schema.Types.ObjectId,
+      ref: 'Player',
+    }],
+    waitlistPlayers: [{
+      type: Schema.Types.ObjectId,
+      ref: 'Player',
+    }],
     champion: {
       playerId: {
         type: Schema.Types.ObjectId,
@@ -232,9 +289,48 @@ tournamentSchema.virtual('canStart').get(function (this: ITournament) {
   return this.status === 'open' && playerCount >= 2 && playerCount <= (this.maxPlayers || 64);
 });
 
+// Virtual for registration status
+tournamentSchema.virtual('registrationStatus').get(function (this: ITournament) {
+  const now = new Date();
+  const registrationOpen = this.registrationOpensAt || new Date(0);
+  const registrationDeadline = this.registrationDeadline || this.date;
+  
+  if (now < registrationOpen) return 'pending';
+  if (now > registrationDeadline) return 'closed';
+  if (this.isFull) return 'full';
+  return 'open';
+});
+
+// Virtual for registered player count
+tournamentSchema.virtual('registeredPlayerCount').get(function (this: ITournament) {
+  return this.registeredPlayers?.length || 0;
+});
+
+// Virtual for waitlist count
+tournamentSchema.virtual('waitlistCount').get(function (this: ITournament) {
+  return this.waitlistPlayers?.length || 0;
+});
+
+// Virtual for checking if registration is open
+tournamentSchema.virtual('isRegistrationOpen').get(function (this: ITournament) {
+  return this.registrationStatus === 'open';
+});
+
 // Add methods and statics
 tournamentSchema.methods = { ...baseMethods };
 tournamentSchema.statics = { ...baseStatics };
+
+// Auto-generate BOD number if not provided
+tournamentSchema.pre('save', async function(this: ITournament) {
+  if (this.isNew && !this.bodNumber) {
+    try {
+      const lastTournament = await Tournament.findOne().sort({ bodNumber: -1 }).exec();
+      this.bodNumber = lastTournament ? lastTournament.bodNumber + 1 : 1;
+    } catch (error) {
+      throw new Error('Failed to generate BOD number');
+    }
+  }
+});
 
 // Pre-save middleware
 tournamentSchema.pre('save', createPreSaveMiddleware(calculateTournamentStats));
@@ -258,8 +354,13 @@ createIndexes(tournamentSchema, [
   { fields: { format: 1 } },
   { fields: { location: 1 } },
   { fields: { status: 1 } },
+  { fields: { registrationType: 1 } },
+  { fields: { registrationDeadline: -1 } },
+  { fields: { allowSelfRegistration: 1 } },
   { fields: { date: -1, format: 1 } },
   { fields: { status: 1, date: -1 } },
+  { fields: { registrationType: 1, status: 1 } },
+  { fields: { registrationDeadline: 1, status: 1 } },
   { fields: { createdAt: -1 } },
   { fields: { 'champion.playerId': 1 } },
 ]);

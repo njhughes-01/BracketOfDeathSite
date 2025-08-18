@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.TournamentStatuses = exports.TournamentFormats = void 0;
+exports.RegistrationTypes = exports.TournamentStatuses = exports.TournamentFormats = void 0;
 exports.TournamentFormats = [
     'M',
     'W',
@@ -16,5 +16,9 @@ exports.TournamentStatuses = [
     'active',
     'completed',
     'cancelled',
+];
+exports.RegistrationTypes = [
+    'open',
+    'preselected',
 ];
 //# sourceMappingURL=tournament.js.map

@@ -11,15 +11,32 @@ export interface ITournament extends BaseDocument {
     status: TournamentStatus;
     players?: Types.ObjectId[];
     maxPlayers?: number;
+    registrationType: RegistrationType;
+    registrationOpensAt?: Date;
+    registrationDeadline?: Date;
+    allowSelfRegistration: boolean;
+    registeredPlayers?: Types.ObjectId[];
+    waitlistPlayers?: Types.ObjectId[];
     champion?: {
         playerId: Types.ObjectId;
         playerName: string;
         tournamentResult?: Types.ObjectId;
     };
+    formattedDate?: string;
+    year?: number;
+    month?: number;
+    season?: string;
+    currentPlayerCount?: number;
+    isFull?: boolean;
+    canStart?: boolean;
+    registrationStatus?: 'pending' | 'open' | 'closed' | 'full';
+    registeredPlayerCount?: number;
+    waitlistCount?: number;
+    isRegistrationOpen?: boolean;
 }
 export interface ITournamentInput {
     date: Date | string;
-    bodNumber: number;
+    bodNumber?: number;
     format: string;
     location: string;
     advancementCriteria: string;
@@ -27,10 +44,16 @@ export interface ITournamentInput {
     photoAlbums?: string;
     status?: TournamentStatus;
     maxPlayers?: number;
+    registrationType: RegistrationType;
+    registrationOpensAt?: Date | string;
+    registrationDeadline?: Date | string;
+    allowSelfRegistration?: boolean;
 }
 export interface ITournamentUpdate extends Partial<ITournamentInput> {
     _id?: never;
     players?: Types.ObjectId[];
+    registeredPlayers?: Types.ObjectId[];
+    waitlistPlayers?: Types.ObjectId[];
     champion?: {
         playerId: Types.ObjectId;
         playerName: string;
@@ -56,10 +79,18 @@ export interface ITournamentFilter {
         $in?: Types.ObjectId[];
         $size?: number;
     };
+    registrationType?: RegistrationType;
+    registrationDeadline?: {
+        $gte?: Date;
+        $lte?: Date;
+    };
+    allowSelfRegistration?: boolean;
     'champion.playerId'?: Types.ObjectId;
 }
 export declare const TournamentFormats: readonly ["M", "W", "Mixed", "Men's Singles", "Men's Doubles", "Women's Doubles", "Mixed Doubles"];
 export type TournamentFormat = typeof TournamentFormats[number];
 export declare const TournamentStatuses: readonly ["scheduled", "open", "active", "completed", "cancelled"];
 export type TournamentStatus = typeof TournamentStatuses[number];
+export declare const RegistrationTypes: readonly ["open", "preselected"];
+export type RegistrationType = typeof RegistrationTypes[number];
 //# sourceMappingURL=tournament.d.ts.map

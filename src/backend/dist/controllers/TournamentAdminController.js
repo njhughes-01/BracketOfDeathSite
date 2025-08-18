@@ -7,6 +7,8 @@ const Match_1 = require("../models/Match");
 const TournamentResult_1 = require("../models/TournamentResult");
 const base_1 = require("./base");
 const mongoose_1 = require("mongoose");
+const TournamentRegistrationService_1 = require("../services/TournamentRegistrationService");
+const TournamentSeedingService_1 = require("../services/TournamentSeedingService");
 class TournamentAdminController extends base_1.BaseController {
     constructor() {
         super(Tournament_1.Tournament, 'Tournament');
@@ -243,8 +245,8 @@ class TournamentAdminController extends base_1.BaseController {
                 });
                 return;
             }
-            // Generate bracket matches
-            const matches = await this.createBracketMatches(tournament, isDoubles);
+            // Generate seeded bracket matches
+            const matches = await this.createSeededBracketMatches(tournament, isDoubles);
             // Update tournament status to active
             tournament.status = 'active';
             await tournament.save();
@@ -375,6 +377,166 @@ class TournamentAdminController extends base_1.BaseController {
         }
     };
     /**
+     * Register a player for a tournament
+     */
+    registerPlayer = async (req, res, next) => {
+        try {
+            const { id } = req.params; // tournament ID
+            const { playerId } = req.body;
+            if (!playerId) {
+                res.status(400).json({
+                    success: false,
+                    message: 'Player ID is required',
+                    data: null,
+                });
+                return;
+            }
+            const result = await TournamentRegistrationService_1.TournamentRegistrationService.registerPlayer(id, playerId);
+            if (!result.success) {
+                res.status(400).json({
+                    success: false,
+                    message: result.message,
+                    data: null,
+                });
+                return;
+            }
+            const response = {
+                success: true,
+                message: result.message,
+                data: {
+                    tournament: result.tournament,
+                    position: result.position,
+                },
+            };
+            res.status(200).json(response);
+        }
+        catch (error) {
+            next(error);
+        }
+    };
+    /**
+     * Unregister a player from a tournament
+     */
+    unregisterPlayer = async (req, res, next) => {
+        try {
+            const { id, playerId } = req.params;
+            const result = await TournamentRegistrationService_1.TournamentRegistrationService.unregisterPlayer(id, playerId);
+            if (!result.success) {
+                res.status(400).json({
+                    success: false,
+                    message: result.message,
+                    data: null,
+                });
+                return;
+            }
+            const response = {
+                success: true,
+                message: result.message,
+                data: result.tournament,
+            };
+            res.status(200).json(response);
+        }
+        catch (error) {
+            next(error);
+        }
+    };
+    /**
+     * Get tournament registration information
+     */
+    getRegistrationInfo = async (req, res, next) => {
+        try {
+            const { id } = req.params;
+            const result = await TournamentRegistrationService_1.TournamentRegistrationService.getRegistrationInfo(id);
+            if (!result.success) {
+                res.status(404).json({
+                    success: false,
+                    message: result.message,
+                    data: null,
+                });
+                return;
+            }
+            const response = {
+                success: true,
+                message: 'Registration info retrieved',
+                data: result.data,
+            };
+            res.status(200).json(response);
+        }
+        catch (error) {
+            next(error);
+        }
+    };
+    /**
+     * Finalize tournament registration and move to player selection
+     */
+    finalizeRegistration = async (req, res, next) => {
+        try {
+            const { id } = req.params;
+            const result = await TournamentRegistrationService_1.TournamentRegistrationService.finalizeRegistration(id);
+            if (!result.success) {
+                res.status(400).json({
+                    success: false,
+                    message: result.message,
+                    data: null,
+                });
+                return;
+            }
+            const response = {
+                success: true,
+                message: result.message,
+                data: result.tournament,
+            };
+            res.status(200).json(response);
+        }
+        catch (error) {
+            next(error);
+        }
+    };
+    /**
+     * Get seeding preview for tournament
+     */
+    getSeedingPreview = async (req, res, next) => {
+        try {
+            const { id } = req.params;
+            const tournament = await Tournament_1.Tournament.findById(id);
+            if (!tournament) {
+                res.status(404).json({
+                    success: false,
+                    message: 'Tournament not found',
+                    data: null,
+                });
+                return;
+            }
+            const playerIds = (tournament.players || tournament.registeredPlayers || []).map(p => p.toString());
+            if (playerIds.length === 0) {
+                res.status(400).json({
+                    success: false,
+                    message: 'No players found for seeding',
+                    data: null,
+                });
+                return;
+            }
+            const result = await TournamentSeedingService_1.TournamentSeedingService.getSeedingPreview(playerIds, tournament.format);
+            if (!result.success) {
+                res.status(400).json({
+                    success: false,
+                    message: result.message,
+                    data: null,
+                });
+                return;
+            }
+            const response = {
+                success: true,
+                message: result.message,
+                data: result.preview,
+            };
+            res.status(200).json(response);
+        }
+        catch (error) {
+            next(error);
+        }
+    };
+    /**
      * Get tournament with matches and results
      */
     getTournamentWithMatches = async (req, res, next) => {
@@ -407,47 +569,71 @@ class TournamentAdminController extends base_1.BaseController {
         }
     };
     // Private helper methods
-    async createBracketMatches(tournament, isDoubles) {
+    async createSeededBracketMatches(tournament, isDoubles) {
         const players = tournament.players || [];
         const matches = [];
+        // Get seeded rankings
+        const playerIds = players.map(p => p.toString());
+        const seedingResult = await TournamentSeedingService_1.TournamentSeedingService.calculateSeeding(playerIds, tournament.format);
+        if (!seedingResult.success || !seedingResult.seeds) {
+            throw new Error('Failed to calculate seeding for tournament');
+        }
+        const seeds = seedingResult.seeds;
         if (isDoubles) {
-            // Create teams from pairs of players
+            // Create teams from pairs of seeded players
             const teams = [];
-            for (let i = 0; i < players.length; i += 2) {
-                const player1 = players[i];
-                const player2 = players[i + 1];
-                teams.push({
-                    players: [player1._id, player2._id],
-                    playerNames: [player1.name, player2.name],
-                    seed: Math.floor(i / 2) + 1,
-                });
+            for (let i = 0; i < seeds.length; i += 2) {
+                const player1 = seeds[i];
+                const player2 = seeds[i + 1];
+                if (player1 && player2) {
+                    teams.push({
+                        players: [player1.playerId, player2.playerId],
+                        playerNames: [player1.player.name, player2.player.name],
+                        seed: Math.floor(i / 2) + 1,
+                        combinedScore: player1.score + player2.score,
+                    });
+                }
             }
+            // Sort teams by combined score for proper seeding
+            teams.sort((a, b) => b.combinedScore - a.combinedScore);
+            teams.forEach((team, index) => {
+                team.seed = index + 1;
+            });
             // Generate bracket matches for teams
-            await this.generateBracketForTeams(tournament._id, teams, matches);
+            await this.generateSeededBracketForTeams(tournament._id, teams, matches);
         }
         else {
-            // Singles tournament - each player is a "team"
-            const teams = players.map((player, index) => ({
-                players: [player._id],
-                playerNames: [player.name],
-                seed: index + 1,
+            // Singles tournament - use individual seeds
+            const seededTeams = seeds.map(seed => ({
+                players: [seed.playerId],
+                playerNames: [seed.player.name],
+                seed: seed.seed,
+                score: seed.score,
             }));
-            await this.generateBracketForTeams(tournament._id, teams, matches);
+            await this.generateSeededBracketForTeams(tournament._id, seededTeams, matches);
         }
         // Save all matches
         const savedMatches = await Match_1.Match.insertMany(matches);
         return savedMatches;
     }
-    async generateBracketForTeams(tournamentId, teams, matches) {
+    async generateSeededBracketForTeams(tournamentId, teams, matches) {
         const teamCount = teams.length;
         const bracketSize = Math.pow(2, Math.ceil(Math.log2(teamCount)));
-        // Shuffle teams for random bracket seeding
-        const shuffledTeams = [...teams].sort(() => Math.random() - 0.5);
-        // Pad with byes if needed
-        while (shuffledTeams.length < bracketSize) {
-            shuffledTeams.push(null); // bye
+        // Sort teams by seed (1, 2, 3, etc.)
+        const seededTeams = [...teams].sort((a, b) => a.seed - b.seed);
+        // Create bracket with traditional seeding (1 vs lowest, 2 vs 2nd lowest, etc.)
+        const bracketTeams = [];
+        for (let i = 0; i < bracketSize; i++) {
+            if (i < seededTeams.length) {
+                bracketTeams.push(seededTeams[i]);
+            }
+            else {
+                bracketTeams.push(null); // bye
+            }
         }
-        let currentRound = shuffledTeams;
+        // Rearrange for proper tournament bracket seeding
+        const arrangedTeams = this.arrangeTeamsForBracket(bracketTeams);
+        let currentRound = arrangedTeams;
         let roundNumber = 1;
         let matchNumber = 1;
         // Generate rounds until we have a winner
@@ -482,6 +668,35 @@ class TournamentAdminController extends base_1.BaseController {
             currentRound = nextRound;
             roundNumber++;
         }
+    }
+    /**
+     * Arrange teams for proper tournament bracket seeding
+     * Ensures that top seeds don't meet until later rounds
+     */
+    arrangeTeamsForBracket(teams) {
+        const arrangedTeams = [...teams];
+        const teamCount = teams.filter(t => t !== null).length;
+        if (teamCount <= 2) {
+            return arrangedTeams;
+        }
+        // For proper seeding: seed 1 should play lowest seed in first potential meeting
+        // This is a simplified arrangement - could be enhanced for more complex seeding
+        const nonNullTeams = teams.filter(t => t !== null);
+        const sortedByGoodSeed = [...nonNullTeams].sort((a, b) => a.seed - b.seed);
+        const result = [];
+        const mid = Math.floor(sortedByGoodSeed.length / 2);
+        // Place top half and bottom half in alternating positions
+        for (let i = 0; i < mid; i++) {
+            result.push(sortedByGoodSeed[i]);
+            if (sortedByGoodSeed[sortedByGoodSeed.length - 1 - i]) {
+                result.push(sortedByGoodSeed[sortedByGoodSeed.length - 1 - i]);
+            }
+        }
+        // Fill with nulls to match bracket size
+        while (result.length < teams.length) {
+            result.push(null);
+        }
+        return result;
     }
     getRoundName(teamsRemaining) {
         switch (teamsRemaining) {

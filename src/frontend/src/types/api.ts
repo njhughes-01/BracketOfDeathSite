@@ -64,6 +64,12 @@ export interface Tournament {
   status: 'scheduled' | 'open' | 'active' | 'completed' | 'cancelled';
   players?: Array<{ _id: string; name: string; }>;
   maxPlayers?: number;
+  registrationType: 'open' | 'preselected';
+  registrationOpensAt?: string;
+  registrationDeadline?: string;
+  allowSelfRegistration: boolean;
+  registeredPlayers?: Array<{ _id: string; name: string; }>;
+  waitlistPlayers?: Array<{ _id: string; name: string; }>;
   currentPlayerCount?: number;
   champion?: {
     playerId: string;
@@ -77,13 +83,17 @@ export interface Tournament {
   season?: string;
   isFull?: boolean;
   canStart?: boolean;
+  registrationStatus?: 'pending' | 'open' | 'closed' | 'full';
+  registeredPlayerCount?: number;
+  waitlistCount?: number;
+  isRegistrationOpen?: boolean;
   createdAt: string;
   updatedAt: string;
 }
 
 export interface TournamentInput {
   date: string | Date;
-  bodNumber: number;
+  bodNumber?: number; // Now optional, will auto-generate
   format: 'M' | 'W' | 'Mixed' | "Men's Singles" | "Men's Doubles" | "Women's Doubles" | "Mixed Doubles";
   location: string;
   advancementCriteria: string;
@@ -91,16 +101,49 @@ export interface TournamentInput {
   photoAlbums?: string;
   status?: 'scheduled' | 'open' | 'active' | 'completed' | 'cancelled';
   maxPlayers?: number;
+  registrationType: 'open' | 'preselected';
+  registrationOpensAt?: string | Date;
+  registrationDeadline?: string | Date;
+  allowSelfRegistration?: boolean;
 }
 
 export interface TournamentUpdate extends Partial<TournamentInput> {
   _id?: never;
   players?: string[];
+  registeredPlayers?: string[];
+  waitlistPlayers?: string[];
   champion?: {
     playerId: string;
     playerName: string;
     tournamentResult?: string;
   };
+}
+
+// Registration types
+export interface RegistrationInfo {
+  tournament: Tournament;
+  registrationStatus: 'pending' | 'open' | 'closed' | 'full';
+  registeredCount: number;
+  waitlistCount: number;
+  maxPlayers?: number;
+  isRegistrationOpen: boolean;
+  canRegister: boolean;
+}
+
+export interface PlayerSeed {
+  playerId: string;
+  player: Player;
+  seed: number;
+  score: number;
+  reasoning: string;
+}
+
+export interface SeedingPreview {
+  totalPlayers: number;
+  bracketSize: number;
+  seeds: PlayerSeed[];
+  needsByes: boolean;
+  byeCount: number;
 }
 
 // Tournament Result types - matching backend schema exactly

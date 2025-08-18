@@ -57,6 +57,22 @@ router.put('/tournaments/matches/:matchId', [
 router.put('/tournaments/:id/finalize', [
     (0, express_validator_1.param)('id').isMongoId().withMessage('Invalid tournament ID'),
 ], validation_1.validateRequest, tournamentAdminController.finalizeTournament);
+// Tournament registration management
+router.post('/tournaments/:id/register', [
+    (0, express_validator_1.param)('id').isMongoId().withMessage('Invalid tournament ID'),
+    (0, express_validator_1.body)('playerId').isMongoId().withMessage('Invalid player ID'),
+], validation_1.validateRequest, tournamentAdminController.registerPlayer);
+router.delete('/tournaments/:id/register/:playerId', [
+    (0, express_validator_1.param)('id').isMongoId().withMessage('Invalid tournament ID'),
+    (0, express_validator_1.param)('playerId').isMongoId().withMessage('Invalid player ID'),
+], validation_1.validateRequest, tournamentAdminController.unregisterPlayer);
+router.post('/tournaments/:id/finalize-registration', [
+    (0, express_validator_1.param)('id').isMongoId().withMessage('Invalid tournament ID'),
+], validation_1.validateRequest, tournamentAdminController.finalizeRegistration);
+// Tournament seeding
+router.get('/tournaments/:id/seeding-preview', [
+    (0, express_validator_1.param)('id').isMongoId().withMessage('Invalid tournament ID'),
+], validation_1.validateRequest, tournamentAdminController.getSeedingPreview);
 // Tournament details with matches
 router.get('/tournaments/:id/details', [
     (0, express_validator_1.param)('id').isMongoId().withMessage('Invalid tournament ID'),

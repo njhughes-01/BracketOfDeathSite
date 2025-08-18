@@ -10,12 +10,13 @@ const TournamentCreate: React.FC = () => {
   const navigate = useNavigate();
   const [formData, setFormData] = useState<TournamentInput>({
     date: '',
-    bodNumber: 0,
     format: 'Mixed',
     location: '',
     advancementCriteria: '',
     notes: '',
     photoAlbums: '',
+    registrationType: 'open',
+    allowSelfRegistration: true,
   });
 
   const { mutate: createTournament, loading, error } = useMutation(
@@ -32,9 +33,19 @@ const TournamentCreate: React.FC = () => {
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value, type } = e.target;
+    let processedValue: any = value;
+    
+    if (type === 'number') {
+      processedValue = value === '' ? undefined : parseInt(value);
+    } else if (type === 'checkbox') {
+      processedValue = (e.target as HTMLInputElement).checked;
+    } else if (type === 'datetime-local') {
+      processedValue = value ? new Date(value).toISOString() : '';
+    }
+    
     setFormData(prev => ({
       ...prev,
-      [name]: type === 'number' ? (value === '' ? 0 : parseInt(value)) : value
+      [name]: processedValue
     }));
   };
 
@@ -80,20 +91,83 @@ const TournamentCreate: React.FC = () => {
               
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  BOD Number *
+                  Registration Type *
                 </label>
-                <input
-                  type="number"
-                  name="bodNumber"
-                  value={formData.bodNumber}
+                <select
+                  name="registrationType"
+                  value={formData.registrationType}
                   onChange={handleChange}
                   required
-                  min="1"
-                  className="input"
-                  placeholder="Enter BOD number"
-                />
+                  className="select"
+                >
+                  <option value="open">Open Registration</option>
+                  <option value="preselected">Admin Selected</option>
+                </select>
+                <p className="text-xs text-gray-500 mt-1">
+                  Open: Players can register themselves. Admin Selected: Admin chooses players.
+                </p>
               </div>
             </div>
+          </div>
+
+          {/* Registration Settings */}
+          <div>
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">Registration Settings</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Max Players
+                </label>
+                <select
+                  name="maxPlayers"
+                  value={formData.maxPlayers || ''}
+                  onChange={handleChange}
+                  className="select"
+                >
+                  <option value="">No limit</option>
+                  <option value="4">4 players</option>
+                  <option value="8">8 players</option>
+                  <option value="16">16 players</option>
+                  <option value="32">32 players</option>
+                  <option value="64">64 players</option>
+                </select>
+              </div>
+
+              {formData.registrationType === 'open' && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Registration Deadline
+                  </label>
+                  <input
+                    type="datetime-local"
+                    name="registrationDeadline"
+                    value={formData.registrationDeadline ? new Date(formData.registrationDeadline).toISOString().slice(0, 16) : ''}
+                    onChange={handleChange}
+                    className="input"
+                  />
+                  <p className="text-xs text-gray-500 mt-1">
+                    When registration closes (defaults to tournament start time)
+                  </p>
+                </div>
+              )}
+            </div>
+
+            {formData.registrationType === 'open' && (
+              <div className="mt-4">
+                <label className="flex items-center space-x-2">
+                  <input
+                    type="checkbox"
+                    name="allowSelfRegistration"
+                    checked={formData.allowSelfRegistration || false}
+                    onChange={handleChange}
+                    className="rounded border-gray-300"
+                  />
+                  <span className="text-sm text-gray-700">
+                    Allow players to register themselves online
+                  </span>
+                </label>
+              </div>
+            )}
           </div>
 
           {/* Format and Location */}
@@ -208,7 +282,7 @@ const TournamentCreate: React.FC = () => {
             </button>
             <button
               type="submit"
-              disabled={loading || !formData.date || !formData.bodNumber || !formData.location || !formData.advancementCriteria}
+              disabled={loading || !formData.date || !formData.location || !formData.advancementCriteria}
               className="btn btn-primary disabled:opacity-50"
             >
               {loading ? (
@@ -231,7 +305,7 @@ const TournamentCreate: React.FC = () => {
           <div className="flex items-center space-x-4 mb-3">
             <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg flex items-center justify-center">
               <span className="text-white font-bold">
-                #{formData.bodNumber || '?'}
+                #Auto
               </span>
             </div>
             <div>
@@ -242,6 +316,9 @@ const TournamentCreate: React.FC = () => {
               </h4>
               <p className="text-sm text-gray-600">
                 {formData.location || 'Location not specified'}
+              </p>
+              <p className="text-xs text-blue-600">
+                {formData.registrationType === 'open' ? 'Open Registration' : 'Admin Selected'}
               </p>
             </div>
           </div>
@@ -258,8 +335,28 @@ const TournamentCreate: React.FC = () => {
             </div>
             <div className="flex items-center space-x-2">
               <span className="text-gray-600">BOD Number:</span>
-              <span className="font-medium">{formData.bodNumber || 'Not specified'}</span>
+              <span className="font-medium text-blue-600">Auto-generated</span>
             </div>
+            {formData.maxPlayers && (
+              <div className="flex items-center space-x-2">
+                <span className="text-gray-600">Max Players:</span>
+                <span className="font-medium">{formData.maxPlayers}</span>
+              </div>
+            )}
+            {formData.registrationDeadline && (
+              <div className="flex items-center space-x-2">
+                <span className="text-gray-600">Registration Deadline:</span>
+                <span className="font-medium">
+                  {new Date(formData.registrationDeadline).toLocaleDateString('en-US', {
+                    year: 'numeric',
+                    month: 'short',
+                    day: 'numeric',
+                    hour: '2-digit',
+                    minute: '2-digit'
+                  })}
+                </span>
+              </div>
+            )}
             {formData.notes && (
               <div className="flex items-start space-x-2">
                 <span className="text-gray-600">Notes:</span>
