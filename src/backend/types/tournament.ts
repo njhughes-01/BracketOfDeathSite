@@ -73,6 +73,10 @@ export interface ITournament extends BaseDocument {
       combinedBodsPlayed: number;
     };
   }>;
+  // Live management state (persist admin-selected UI context)
+  managementState?: {
+    currentRound?: string;
+  };
 }
 
 export interface ITournamentInput {

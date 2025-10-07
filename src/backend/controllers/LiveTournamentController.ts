@@ -49,11 +49,15 @@ interface LiveTournament {
       present: boolean;
     };
   };
+  managementState?: {
+    currentRound?: string;
+  };
 }
 
 interface TournamentAction {
   action: 'start_registration' | 'close_registration' | 'start_checkin' | 'start_round_robin' | 
-          'advance_round' | 'start_bracket' | 'complete_tournament' | 'reset_tournament';
+          'advance_round' | 'start_bracket' | 'complete_tournament' | 'reset_tournament' | 'set_round';
+  parameters?: { targetRound?: string };
 }
 
 export class LiveTournamentController extends BaseController<ITournament> {
@@ -102,7 +106,8 @@ export class LiveTournamentController extends BaseController<ITournament> {
         matches,
         currentStandings: standings,
         bracketProgression: this.calculateBracketProgression(matches),
-        checkInStatus: await this.getCheckInStatus(tournament)
+        checkInStatus: await this.getCheckInStatus(tournament),
+        managementState: (tournamentObj as any).managementState || {}
       };
 
       const response: ApiResponse = {
@@ -146,6 +151,19 @@ export class LiveTournamentController extends BaseController<ITournament> {
         case 'advance_round':
           updatedTournament = await this.advanceRound(tournament);
           break;
+        case 'set_round': {
+          const target = (req.body?.parameters?.targetRound || '').toString();
+          // Basic validation: allow known rounds from match types
+          const allowed = ['RR_R1','RR_R2','RR_R3','round-of-64','round-of-32','round-of-16','quarterfinal','semifinal','final','third-place','lbr-round-1','lbr-round-2','lbr-quarterfinal','lbr-semifinal','lbr-final','grand-final'];
+          if (!target || !allowed.includes(target)) {
+            this.sendError(res, 400, `Invalid round: ${target}`);
+            return;
+          }
+          (tournament as any).managementState = (tournament as any).managementState || {};
+          (tournament as any).managementState.currentRound = target;
+          updatedTournament = await tournament.save();
+          break;
+        }
         case 'start_bracket':
           updatedTournament = await this.startBracket(tournament);
           break;
@@ -188,7 +206,8 @@ export class LiveTournamentController extends BaseController<ITournament> {
         matches,
         currentStandings: standings,
         bracketProgression: this.calculateBracketProgression(matches),
-        checkInStatus: await this.getCheckInStatus(updatedTournament)
+        checkInStatus: await this.getCheckInStatus(updatedTournament),
+        managementState: (updatedTournamentObj as any).managementState || {}
       };
 
       const response: ApiResponse = {
@@ -1785,9 +1804,24 @@ export class LiveTournamentController extends BaseController<ITournament> {
           },
           totalStats: {
             totalWon: 0, totalLost: 0, totalPlayed: 0,
-            winPercentage: 0, bodFinish: 0
+            winPercentage: 0
           }
         });
+      }
+
+      // Initialize missing subdocuments for legacy records
+      if (!result.roundRobinScores) {
+        (result as any).roundRobinScores = { round1: 0, round2: 0, round3: 0, rrWon: 0, rrLost: 0, rrPlayed: 0, rrWinPercentage: 0 };
+      }
+      if (!result.bracketScores) {
+        (result as any).bracketScores = { r16Won: 0, r16Lost: 0, qfWon: 0, qfLost: 0, sfWon: 0, sfLost: 0, finalsWon: 0, finalsLost: 0, bracketWon: 0, bracketLost: 0, bracketPlayed: 0 };
+      }
+      if (!result.totalStats) {
+        (result as any).totalStats = { totalWon: 0, totalLost: 0, totalPlayed: 0, winPercentage: 0 };
+      }
+      // Clean up invalid legacy values
+      if ((result as any).totalStats && (result as any).totalStats.bodFinish === 0) {
+        delete (result as any).totalStats.bodFinish;
       }
 
       // Update scores based on match round

@@ -209,6 +209,14 @@ const tournamentSchema = new Schema<ITournament>(
         combinedBodsPlayed: Number,
       },
     }],
+    // Live management state (admin-selected)
+    managementState: {
+      currentRound: {
+        type: String,
+        required: false,
+        trim: true,
+      }
+    }
   },
   baseSchemaOptions
 );
@@ -313,8 +321,8 @@ tournamentSchema.virtual('canStart').get(function (this: ITournament) {
 });
 
 // Add methods and statics
-tournamentSchema.methods = { ...baseMethods };
-tournamentSchema.statics = { ...baseStatics };
+tournamentSchema.methods = { ...baseMethods } as any;
+(tournamentSchema.statics as any) = { ...baseStatics };
 
 // Pre-save middleware
 tournamentSchema.pre('save', createPreSaveMiddleware(calculateTournamentStats));
