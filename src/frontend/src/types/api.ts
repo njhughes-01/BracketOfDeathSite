@@ -57,6 +57,8 @@ export interface Tournament {
   date: string;
   bodNumber: number;
   format: 'M' | 'W' | 'Mixed' | "Men's Singles" | "Men's Doubles" | "Women's Doubles" | "Mixed Doubles";
+  // Bracket/play structure selected during setup. Optional for legacy data.
+  bracketType?: 'single_elimination' | 'double_elimination' | 'round_robin_playoff';
   location: string;
   advancementCriteria: string;
   notes?: string;
@@ -231,7 +233,7 @@ export interface Match {
   _id: string;
   id: string;
   tournamentId: string;
-  round: 'RR_R1' | 'RR_R2' | 'RR_R3' | 'QF' | 'SF' | 'Finals';
+  round: 'RR_R1' | 'RR_R2' | 'RR_R3' | 'quarterfinal' | 'semifinal' | 'final';
   matchNumber: number;
   team1: {
     teamId: string;
@@ -257,7 +259,7 @@ export interface Match {
       score: number;
     }>;
   };
-  status: 'scheduled' | 'in_progress' | 'completed' | 'confirmed';
+  status: 'scheduled' | 'in-progress' | 'in_progress' | 'completed' | 'confirmed';
   startTime?: string;
   endTime?: string;
   court?: string;
@@ -268,8 +270,8 @@ export interface Match {
 
 export interface TournamentPhase {
   phase: 'setup' | 'registration' | 'check_in' | 'round_robin' | 'bracket' | 'completed';
-  currentRound?: 'RR_R1' | 'RR_R2' | 'RR_R3' | 'QF' | 'SF' | 'Finals';
-  roundStatus: 'not_started' | 'in_progress' | 'completed';
+  currentRound?: 'RR_R1' | 'RR_R2' | 'RR_R3' | 'quarterfinal' | 'semifinal' | 'final';
+  roundStatus: 'not_started' | 'in_progress' | 'in-progress' | 'completed';
   totalMatches: number;
   completedMatches: number;
   canAdvance: boolean;

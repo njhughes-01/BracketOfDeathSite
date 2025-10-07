@@ -26,24 +26,38 @@ const BracketView: React.FC<BracketViewProps> = ({
     return acc;
   }, {} as Record<string, Match[]>);
 
-  // Define round order and display names
-  const roundOrder = ['QF', 'SF', 'Finals'];
-  const roundNames = {
-    'QF': 'Quarter Finals',
-    'SF': 'Semi Finals', 
-    'Finals': 'Championship'
+  // Define round orders and display names (backend-compatible keys)
+  const winnersOrder = ['quarterfinal', 'semifinal', 'final', 'grand-final'];
+  const losersOrder = ['lbr-round-1', 'lbr-semifinal', 'lbr-final'];
+  const roundNames: Record<string, string> = {
+    'quarterfinal': 'Quarterfinals',
+    'semifinal': 'Semifinals',
+    'final': 'Final',
+    'grand-final': 'Grand Final',
+    'lbr-round-1': 'Losers R1',
+    'lbr-round-2': 'Losers R2',
+    'lbr-quarterfinal': 'Losers Quarterfinal',
+    'lbr-semifinal': 'Losers Semifinal',
+    'lbr-final': 'Losers Final',
   };
 
-  // Get team name by ID
-  const getTeamName = (teamId: string) => {
+  // Get team name from seed list or match fields
+  const getTeamName = (teamId: string, fallback?: { playerNames?: string[]; players?: any[] }) => {
     const team = teams.find(t => t.teamId === teamId);
-    return team?.teamName || 'Unknown Team';
+    if (team?.teamName) return team.teamName;
+    if (fallback?.playerNames && fallback.playerNames.length > 0) return fallback.playerNames.join(' & ');
+    if (fallback?.players && Array.isArray(fallback.players)) {
+      const names = (fallback.players as any[]).map((p: any) => p?.name || p?.playerName).filter(Boolean);
+      if (names.length > 0) return names.join(' & ');
+    }
+    return 'Unknown Team';
   };
 
   // Render a single match
   const renderMatch = (match: Match, isActive: boolean = false) => {
-    const isCompleted = match.status === 'completed' || match.status === 'confirmed';
-    const isInProgress = match.status === 'in_progress';
+    const status = (match.status as any);
+    const isCompleted = status === 'completed' || status === 'confirmed';
+    const isInProgress = status === 'in_progress' || status === 'in-progress';
     const team1Score = match.team1.score;
     const team2Score = match.team2.score;
     const team1Won = isCompleted && team1Score !== undefined && team2Score !== undefined && team1Score > team2Score;
@@ -93,7 +107,7 @@ const BracketView: React.FC<BracketViewProps> = ({
             ${team1Won ? 'bg-green-100 border border-green-200' : 'bg-gray-50'}
           `}>
             <span className={`text-sm font-medium ${team1Won ? 'text-green-800' : 'text-gray-800'}`}>
-              {match.team1.teamName}
+              {getTeamName(match.team1.teamId, match.team1 as any)}
             </span>
             {showScores && (
               <span className={`
@@ -116,7 +130,7 @@ const BracketView: React.FC<BracketViewProps> = ({
             ${team2Won ? 'bg-green-100 border border-green-200' : 'bg-gray-50'}
           `}>
             <span className={`text-sm font-medium ${team2Won ? 'text-green-800' : 'text-gray-800'}`}>
-              {match.team2.teamName}
+              {getTeamName(match.team2.teamId, match.team2 as any)}
             </span>
             {showScores && (
               <span className={`
@@ -148,8 +162,8 @@ const BracketView: React.FC<BracketViewProps> = ({
   };
 
   // Render bracket connections (simplified lines)
-  const renderConnections = (roundIndex: number, matchCount: number) => {
-    if (roundIndex === roundOrder.length - 1) return null; // No connections after finals
+  const renderConnections = (roundIndex: number, matchCount: number, totalRounds: number) => {
+    if (roundIndex === totalRounds - 1) return null; // No connections after last round
 
     return (
       <div className="flex flex-col justify-center h-full px-4">
@@ -165,8 +179,8 @@ const BracketView: React.FC<BracketViewProps> = ({
   // Get tournament progression stats
   const getTournamentStats = () => {
     const totalMatches = matches.length;
-    const completedMatches = matches.filter(m => m.status === 'completed' || m.status === 'confirmed').length;
-    const inProgressMatches = matches.filter(m => m.status === 'in_progress').length;
+    const completedMatches = matches.filter(m => (m.status as any) === 'completed' || (m.status as any) === 'confirmed').length;
+    const inProgressMatches = matches.filter(m => (m.status as any) === 'in_progress' || (m.status as any) === 'in-progress').length;
     
     return {
       totalMatches,
@@ -214,8 +228,9 @@ const BracketView: React.FC<BracketViewProps> = ({
 
       {/* Bracket Grid */}
       <div className="overflow-x-auto">
+        {/* Winners Bracket */}
         <div className="flex items-start space-x-6 min-w-max p-4">
-          {roundOrder.map((round, roundIndex) => {
+          {winnersOrder.map((round, roundIndex) => {
             const roundMatches = matchesByRound[round] || [];
             const isCurrentRound = round === currentRound;
             
@@ -244,11 +259,46 @@ const BracketView: React.FC<BracketViewProps> = ({
                 </div>
 
                 {/* Connection Lines */}
-                {renderConnections(roundIndex, roundMatches.length)}
+                {renderConnections(roundIndex, roundMatches.length, winnersOrder.length)}
               </div>
             );
           })}
         </div>
+        {/* Losers Bracket */}
+        {losersOrder.some(r => (matchesByRound[r] || []).length > 0) && (
+          <>
+            <div className="px-4">
+              <h4 className="text-sm font-semibold text-gray-700">Losers Bracket</h4>
+            </div>
+            <div className="flex items-start space-x-6 min-w-max px-4 pb-4">
+              {losersOrder.map((round, roundIndex) => {
+                const roundMatches = matchesByRound[round] || [];
+                const isCurrentRound = round === currentRound;
+                if (roundMatches.length === 0) return null;
+                return (
+                  <div key={round} className="flex items-center">
+                    <div className="space-y-4">
+                      <div className="text-center mb-4">
+                        <h4 className={`
+                          text-sm font-semibold px-3 py-1 rounded-full
+                          ${isCurrentRound ? 'bg-blue-100 text-blue-800' : 'bg-gray-100 text-gray-600'}
+                        `}>
+                          {roundNames[round] || round}
+                        </h4>
+                      </div>
+                      <div className="space-y-8">
+                        {roundMatches
+                          .sort((a, b) => a.matchNumber - b.matchNumber)
+                          .map(match => renderMatch(match, isCurrentRound))}
+                      </div>
+                    </div>
+                    {renderConnections(roundIndex, roundMatches.length, losersOrder.length)}
+                  </div>
+                );
+              })}
+            </div>
+          </>
+        )}
       </div>
 
       {/* Bracket Legend */}

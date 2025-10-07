@@ -8,10 +8,11 @@ import { IMatch, isRoundRobinRound, getNextRoundRobinRound, getRoundNumber } fro
 import { BaseController, RequestWithAuth } from './base';
 import { ApiResponse } from '../types/common';
 import { LiveStatsService } from '../services/LiveStatsService';
+import { eventBus } from '../services/EventBus';
 
 interface TournamentPhase {
   phase: 'setup' | 'registration' | 'check_in' | 'round_robin' | 'bracket' | 'completed';
-  currentRound?: 'RR_R1' | 'RR_R2' | 'RR_R3' | 'QF' | 'SF' | 'Finals';
+  currentRound?: 'RR_R1' | 'RR_R2' | 'RR_R3' | 'quarterfinal' | 'semifinal' | 'final' | 'lbr-round-1' | 'lbr-round-2' | 'lbr-quarterfinal' | 'lbr-semifinal' | 'lbr-final' | 'grand-final';
   roundStatus: 'not_started' | 'in_progress' | 'completed';
   totalMatches: number;
   completedMatches: number;
@@ -195,7 +196,9 @@ export class LiveTournamentController extends BaseController<ITournament> {
         data: liveTournament,
         message: `Tournament action '${action}' completed successfully`,
       };
-
+      // Notify subscribers with latest snapshot
+      eventBus.emitTournament(id, 'action', { action, live: liveTournament });
+      
       res.status(200).json(response);
     } catch (error) {
       next(error);
@@ -234,23 +237,60 @@ export class LiveTournamentController extends BaseController<ITournament> {
       const { matchId } = req.params;
       const updateData = req.body;
 
-      // Process individual player scores and calculate team scores
+      // Process individual player scores and calculate derived team scores
       const processedUpdateData = this.processMatchUpdate(updateData);
 
-      const match = await Match.findByIdAndUpdate(matchId, processedUpdateData, { 
-        new: true, 
-        runValidators: true 
-      }).populate('team1.players team2.players', 'name');
-
-      if (!match) {
+      // Load the match doc to leverage full document validation and pre-save logic
+      const matchDoc = await Match.findById(matchId).populate('team1.players team2.players', 'name');
+      if (!matchDoc) {
         this.sendError(res, 404, 'Match not found');
         return;
       }
 
+      // Apply fields safely to the document
+      if (processedUpdateData['team1.playerScores'] !== undefined) {
+        (matchDoc as any).team1.playerScores = processedUpdateData['team1.playerScores'];
+        matchDoc.markModified('team1.playerScores');
+      }
+      if (processedUpdateData['team2.playerScores'] !== undefined) {
+        (matchDoc as any).team2.playerScores = processedUpdateData['team2.playerScores'];
+        matchDoc.markModified('team2.playerScores');
+      }
+      if (processedUpdateData['team1.score'] !== undefined) {
+        (matchDoc as any).team1.score = processedUpdateData['team1.score'];
+      }
+      if (processedUpdateData['team2.score'] !== undefined) {
+        (matchDoc as any).team2.score = processedUpdateData['team2.score'];
+      }
+      if (processedUpdateData.court !== undefined) {
+        (matchDoc as any).court = processedUpdateData.court;
+      }
+      if (processedUpdateData.notes !== undefined) {
+        (matchDoc as any).notes = processedUpdateData.notes;
+      }
+      // Map client times to model fields
+      if ((processedUpdateData as any).startTime) {
+        (matchDoc as any).scheduledDate = new Date((processedUpdateData as any).startTime);
+      }
+      if ((processedUpdateData as any).endTime) {
+        (matchDoc as any).completedDate = new Date((processedUpdateData as any).endTime);
+      }
+      // Determine winner/status before validation to satisfy validators
+      const t1Score = (matchDoc as any).team1?.score;
+      const t2Score = (matchDoc as any).team2?.score;
+      const bothScored = typeof t1Score === 'number' && typeof t2Score === 'number';
+      if (bothScored && t1Score !== t2Score) {
+        (matchDoc as any).winner = t1Score > t2Score ? 'team1' : 'team2';
+        (matchDoc as any).status = 'completed';
+      } else if (processedUpdateData.status) {
+        (matchDoc as any).status = processedUpdateData.status;
+      }
+
+      const match = await matchDoc.save();
+
       // If match is completed, update tournament statistics
       if (match.status === 'completed') {
-        await this.updateTournamentStatistics(match);
-        
+        await this.updateTournamentStatistics(match as any);
         // Trigger live stats update for real-time updates
         await LiveStatsService.updateLiveStats(matchId);
       }
@@ -260,7 +300,13 @@ export class LiveTournamentController extends BaseController<ITournament> {
         data: match,
         message: 'Match updated successfully',
       };
-
+      // Emit match update and full live snapshot for clients
+      eventBus.emitTournament(match.tournamentId.toString(), 'match:update', { matchId, update: processedUpdateData });
+      try {
+        const live = await this.buildLiveTournament(match.tournamentId.toString());
+        if (live) eventBus.emitTournament(match.tournamentId.toString(), 'snapshot', { live });
+      } catch {}
+      
       res.status(200).json(response);
     } catch (error) {
       next(error);
@@ -281,7 +327,12 @@ export class LiveTournamentController extends BaseController<ITournament> {
         data: { teamId, present, checkInTime: new Date().toISOString() },
         message: `Team ${present ? 'checked in' : 'marked absent'} successfully`,
       };
-
+      eventBus.emitTournament(id, 'team:checkin', { teamId, present });
+      try {
+        const live = await this.buildLiveTournament(id);
+        if (live) eventBus.emitTournament(id, 'snapshot', { live });
+      } catch {}
+      
       res.status(200).json(response);
     } catch (error) {
       next(error);
@@ -300,14 +351,44 @@ export class LiveTournamentController extends BaseController<ITournament> {
         return;
       }
 
-      const matches = await this.createMatchesForRound(tournament, round);
+      let matches: IMatch[] = [] as any;
+
+      // Handle losers and grand-final rounds explicitly for double elimination
+      const isLosers = typeof round === 'string' && round.startsWith('lbr-');
+      const isGrandFinal = round === 'grand-final';
+      if ((tournament as any).bracketType === 'double_elimination' && (isLosers || isGrandFinal)) {
+        if (round === 'lbr-round-1') {
+          const qfLosers = await this.getBracketLosingTeams(tournament, 'quarterfinal');
+          matches = await this.generateLosersMatchesForRound(tournament, qfLosers, 'lbr-round-1');
+        } else if (round === 'lbr-semifinal') {
+          const sfLosers = await this.getBracketLosingTeams(tournament, 'semifinal');
+          const l1Winners = await this.getBracketAdvancingTeams(tournament as any, 'lbr-round-1' as any);
+          const lsfTeams = [...sfLosers, ...l1Winners];
+          matches = await this.generateLosersMatchesForRound(tournament, lsfTeams, 'lbr-semifinal');
+        } else if (round === 'lbr-final') {
+          const lsfWinners = await this.getBracketAdvancingTeams(tournament as any, 'lbr-semifinal' as any);
+          matches = await this.generateLosersMatchesForRound(tournament, lsfWinners, 'lbr-final');
+        } else if (isGrandFinal) {
+          const wfWinner = await this.getBracketAdvancingTeams(tournament, 'final');
+          const lfWinner = await this.getBracketAdvancingTeams(tournament as any, 'lbr-final' as any);
+          const gfTeams = [...wfWinner, ...lfWinner];
+          matches = await this.generateLosersMatchesForRound(tournament, gfTeams, 'grand-final');
+        }
+      } else {
+        matches = await this.createMatchesForRound(tournament, round);
+      }
 
       const response: ApiResponse = {
         success: true,
         data: matches,
         message: `Matches generated for ${round}`,
       };
-
+      eventBus.emitTournament(id, 'matches:generated', { round, count: matches.length });
+      try {
+        const live = await this.buildLiveTournament(id);
+        if (live) eventBus.emitTournament(id, 'snapshot', { live });
+      } catch {}
+      
       res.status(200).json(response);
     } catch (error) {
       next(error);
@@ -338,6 +419,137 @@ export class LiveTournamentController extends BaseController<ITournament> {
       next(error);
     }
   });
+
+  // Confirm all completed matches in a tournament (optionally by round)
+  confirmCompletedMatches = this.asyncHandler(async (req: RequestWithAuth, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const { id } = req.params;
+      const { round } = req.query as { round?: string };
+
+      const filter: any = { tournamentId: id, status: 'completed' };
+      if (round) filter.round = round;
+
+      const matches = await Match.find(filter);
+      if (matches.length === 0) {
+        const response: ApiResponse = { success: true, data: { updated: 0 }, message: 'No completed matches to confirm' };
+        res.status(200).json(response);
+        return;
+      }
+
+      const ids = matches.map(m => m._id);
+      await Match.updateMany({ _id: { $in: ids } }, { $set: { status: 'confirmed' } });
+
+      // Emit per-match updates and a snapshot
+      for (const m of matches) {
+        eventBus.emitTournament(m.tournamentId.toString(), 'match:confirmed', { matchId: m._id.toString() });
+      }
+      const live = await this.buildLiveTournament(id);
+      if (live) eventBus.emitTournament(id, 'snapshot', { live });
+
+      const response: ApiResponse = { success: true, data: { updated: matches.length }, message: 'Completed matches confirmed' };
+      res.status(200).json(response);
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  // Per-player stats for a tournament (points, wins/losses based on playerScores)
+  getTournamentPlayerStats = this.asyncHandler(async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const { id } = req.params;
+      const playerStats = await LiveStatsService.calculatePlayerStatsForTournament(id);
+      const response: ApiResponse<typeof playerStats> = {
+        success: true,
+        data: playerStats,
+        message: 'Tournament player stats retrieved successfully'
+      };
+      res.status(200).json(response);
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  // Server-Sent Events: stream live tournament updates
+  streamTournamentEvents = this.asyncHandler(async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const { id } = req.params;
+
+      res.status(200);
+      res.setHeader('Content-Type', 'text/event-stream');
+      res.setHeader('Cache-Control', 'no-cache');
+      res.setHeader('Connection', 'keep-alive');
+      res.setHeader('X-Accel-Buffering', 'no');
+
+      const send = (event: string, data: unknown) => {
+        res.write(`event: ${event}\n`);
+        res.write(`data: ${JSON.stringify(data)}\n\n`);
+      };
+
+      // Initial snapshot
+      try {
+        const live = await this.buildLiveTournament(id);
+        if (live) {
+          send('snapshot', { success: true, data: live });
+        } else {
+          send('error', { success: false, error: 'Tournament not found' });
+        }
+      } catch (e) {
+        send('error', { success: false, error: 'Failed to build snapshot' });
+      }
+
+      const unsubscribe = eventBus.onTournament(id, (evt) => {
+        send('update', evt);
+      });
+
+      const heartbeat = setInterval(() => {
+        res.write(': ping\n\n');
+      }, 25000);
+
+      req.on('close', () => {
+        clearInterval(heartbeat);
+        unsubscribe();
+      });
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  // Build a full live snapshot of the tournament
+  private async buildLiveTournament(id: string): Promise<LiveTournament | null> {
+    const tournament = await Tournament.findById(id).populate('players', 'name');
+    if (!tournament) return null;
+
+    const matches = await Match.find({ tournamentId: id })
+      .populate('team1.players team2.players', 'name')
+      .sort({ roundNumber: 1, matchNumber: 1 });
+
+    const standings = await TournamentResult.find({ tournamentId: id })
+      .populate('players', 'name')
+      .sort({ 'totalStats.finalRank': 1 });
+
+    const t = tournament.toObject();
+    const liveTournament: LiveTournament = {
+      _id: t._id.toString(),
+      date: t.date,
+      bodNumber: t.bodNumber,
+      format: t.format,
+      location: t.location,
+      advancementCriteria: t.advancementCriteria,
+      notes: t.notes,
+      photoAlbums: t.photoAlbums,
+      status: t.status,
+      players: t.players?.map((p: any) => p.toString()),
+      maxPlayers: t.maxPlayers,
+      champion: t.champion,
+      phase: this.calculateTournamentPhase(tournament as any, matches),
+      teams: await this.generateTeamData(tournament as any),
+      matches,
+      currentStandings: standings,
+      bracketProgression: this.calculateBracketProgression(matches),
+      checkInStatus: await this.getCheckInStatus(tournament as any),
+    };
+    return liveTournament;
+  }
 
   // Helper methods
   private calculateTournamentPhase(tournament: ITournament, matches: IMatch[]): TournamentPhase {
@@ -374,7 +586,7 @@ export class LiveTournamentController extends BaseController<ITournament> {
         } else {
           // Determine if we're in round robin or bracket phase
           const hasRoundRobinMatches = matches.some(m => isRoundRobinRound(m.round));
-          const hasBracketMatches = matches.some(m => ['quarterfinal', 'semifinal', 'final'].includes(m.round));
+          const hasBracketMatches = matches.some(m => ['quarterfinal', 'semifinal', 'final', 'lbr-round-1', 'lbr-round-2', 'lbr-quarterfinal', 'lbr-semifinal', 'lbr-final', 'grand-final'].includes(m.round));
           
           if (hasRoundRobinMatches && !hasBracketMatches) {
             phase = 'round_robin';
@@ -405,13 +617,31 @@ export class LiveTournamentController extends BaseController<ITournament> {
   }
 
   private getCurrentRoundRobinRound(matches: IMatch[]): 'RR_R1' | 'RR_R2' | 'RR_R3' {
-    // Logic to determine current round robin round
-    return 'RR_R1'; // Placeholder
+    // Determine the latest RR round with uncompleted matches; otherwise the last completed
+    const rrOrder: Array<'RR_R1'|'RR_R2'|'RR_R3'> = ['RR_R1','RR_R2','RR_R3'];
+    for (const r of rrOrder) {
+      const inRound = matches.filter(m => m.round === r);
+      if (inRound.length > 0 && inRound.some(m => m.status !== 'completed')) return r;
+    }
+    // If all completed or none found, pick the last one present or default RR_R1
+    for (let i = rrOrder.length - 1; i >= 0; i--) {
+      if (matches.some(m => m.round === rrOrder[i])) return rrOrder[i];
+    }
+    return 'RR_R1';
   }
 
-  private getCurrentBracketRound(matches: IMatch[]): 'QF' | 'SF' | 'Finals' {
-    // Logic to determine current bracket round
-    return 'QF'; // Placeholder
+  private getCurrentBracketRound(matches: IMatch[]): 'quarterfinal' | 'semifinal' | 'final' | 'lbr-round-1' | 'lbr-round-2' | 'lbr-quarterfinal' | 'lbr-semifinal' | 'lbr-final' | 'grand-final' {
+    const order: Array<any> = ['quarterfinal','semifinal','final','lbr-round-1','lbr-round-2','lbr-quarterfinal','lbr-semifinal','lbr-final','grand-final'];
+    // Return the first round in order that has any uncompleted matches
+    for (const r of order) {
+      const inRound = matches.filter(m => m.round === r);
+      if (inRound.length > 0 && inRound.some(m => m.status !== 'completed')) return r;
+    }
+    // Otherwise, return the deepest round present
+    for (let i = order.length - 1; i >= 0; i--) {
+      if (matches.some(m => m.round === order[i])) return order[i];
+    }
+    return 'quarterfinal';
   }
 
   private canAdvanceRound(matches: IMatch[], roundStatus: string): boolean {
@@ -564,20 +794,22 @@ export class LiveTournamentController extends BaseController<ITournament> {
 
   // Tournament action handlers
   private async startRegistration(tournament: ITournament): Promise<ITournament> {
-    // Check if players are already preselected from tournament setup
-    const hasPreselectedPlayers = tournament.players && tournament.players.length > 0;
-    const hasGeneratedTeams = tournament.generatedTeams && tournament.generatedTeams.length > 0;
-    
-    if (hasPreselectedPlayers || hasGeneratedTeams) {
-      // Skip registration and go directly to check-in/round-robin
-      console.log('Players already preselected, skipping registration phase');
+    // Only skip registration if ALL players are preselected (tournament is full)
+    const maxPlayers = tournament.maxPlayers || 0;
+    const preselectedCount = (tournament.players?.length || 0) +
+      ((tournament as any).generatedTeams?.reduce((sum: number, team: any) => sum + (team.players?.length || 0), 0) || 0);
+    const isFullyPreselected = maxPlayers > 0 && preselectedCount >= maxPlayers;
+
+    if (isFullyPreselected) {
+      // Full roster preselected — proceed without registration
+      console.log('Full roster preselected, skipping registration phase');
       tournament.status = 'active';
       return await tournament.save();
-    } else {
-      // Normal registration flow
-      tournament.status = 'open';
-      return await tournament.save();
     }
+
+    // Normal registration flow (not all players preselected)
+    tournament.status = 'open';
+    return await tournament.save();
   }
 
   private async closeRegistration(tournament: ITournament): Promise<ITournament> {
@@ -591,9 +823,10 @@ export class LiveTournamentController extends BaseController<ITournament> {
   }
 
   private async startRoundRobin(tournament: ITournament): Promise<ITournament> {
-    // Generate round robin matches for first round
+    // Generate round robin matches for first round and activate tournament
     await this.createMatchesForRound(tournament, 'RR_R1');
-    return tournament;
+    tournament.status = 'active';
+    return await (tournament as any).save();
   }
 
   private async advanceRound(tournament: ITournament): Promise<ITournament> {
@@ -655,32 +888,24 @@ export class LiveTournamentController extends BaseController<ITournament> {
   // Advance bracket rounds (QF -> SF -> Finals -> Complete)
   private async advanceBracketRound(tournament: ITournament, currentRound?: string): Promise<ITournament> {
     try {
+      // Double elimination flow
+      if ((tournament as any).bracketType === 'double_elimination') {
+        return await this.advanceDoubleElimination(tournament);
+      }
+
       const nextRound = this.getNextBracketRound(currentRound);
-      
       if (!nextRound) {
-        // Tournament complete
         console.log('Tournament complete!');
         tournament.status = 'completed';
-        
-        // Set tournament champion
         await this.setTournamentChampion(tournament);
-        
-        // Update player career statistics
         await this.updatePlayerCareerStats(tournament);
-        
         return await tournament.save();
-      } else {
-        // Generate next bracket round matches
-        console.log(`Advancing to bracket ${nextRound}`);
-        
-        // Get winners from current round
-        const advancingTeams = await this.getBracketAdvancingTeams(tournament, currentRound);
-        
-        // Generate matches for next round
-        await this.generateBracketMatchesForRound(tournament, advancingTeams, nextRound);
-        
-        return tournament;
       }
+
+      console.log(`Advancing to bracket ${nextRound}`);
+      const advancingTeams = await this.getBracketAdvancingTeams(tournament, currentRound);
+      await this.generateBracketMatchesForRound(tournament, advancingTeams, nextRound);
+      return tournament;
     } catch (error) {
       console.error('Error advancing bracket round:', error);
       return tournament;
@@ -1133,8 +1358,128 @@ export class LiveTournamentController extends BaseController<ITournament> {
   }
 
   private async completeTournament(tournament: ITournament): Promise<ITournament> {
-    tournament.status = 'completed';
+    // When completing outside of bracket advancement, ensure champion and player stats set
+    try {
+      tournament.status = 'completed';
+      await this.setTournamentChampion(tournament);
+      await this.updatePlayerCareerStats(tournament);
+    } catch (err) {
+      console.error('Error finalizing tournament stats on completion:', err);
+    }
     return await tournament.save();
+  }
+
+  // Double-elimination helpers
+  private async getBracketLosingTeams(tournament: ITournament, round: string): Promise<any[]> {
+    const matches = await Match.find({ tournamentId: tournament._id, round, status: 'completed' });
+    const losers: any[] = [];
+    matches.forEach(match => {
+      if (!match.winner) return;
+      const losingTeam = match.winner === 'team1' ? match.team2 : match.team1;
+      losers.push({
+        teamId: `${losingTeam.playerNames.join('_')}`,
+        teamName: losingTeam.playerNames.join(' & '),
+        players: losingTeam.players.map((playerId, index) => ({
+          playerId,
+          playerName: losingTeam.playerNames[index] || 'Unknown',
+          seed: losingTeam.seed
+        })),
+        combinedSeed: losingTeam.seed || 0
+      });
+    });
+    return losers;
+  }
+
+  private async generateLosersMatchesForRound(tournament: ITournament, teams: any[], round: string): Promise<IMatch[]> {
+    if (!teams || teams.length < 2) return [] as any;
+    // Pair sequentially: [0,1],[2,3],...
+    const matches: any[] = [];
+    let matchNumber = 1;
+    for (let i = 0; i < teams.length; i += 2) {
+      if (!teams[i + 1]) break;
+      matches.push({
+        tournamentId: tournament._id,
+        matchNumber: matchNumber++,
+        round,
+        roundNumber: getRoundNumber(round as any),
+        team1: {
+          players: teams[i].players.map((p: any) => p.playerId),
+          playerNames: teams[i].players.map((p: any) => p.playerName),
+          score: 0,
+          seed: teams[i].combinedSeed
+        },
+        team2: {
+          players: teams[i + 1].players.map((p: any) => p.playerId),
+          playerNames: teams[i + 1].players.map((p: any) => p.playerName),
+          score: 0,
+          seed: teams[i + 1].combinedSeed
+        },
+        status: 'scheduled',
+        scheduledDate: new Date()
+      });
+    }
+    if (matches.length === 0) return [] as any;
+    const created = await Match.insertMany(matches);
+    console.log(`Generated ${created.length} matches for ${round}`);
+    return created as any;
+  }
+
+  private async advanceDoubleElimination(tournament: ITournament): Promise<ITournament> {
+    // Inspect existing matches to determine what to generate next
+    const allMatches = await Match.find({ tournamentId: tournament._id });
+    const hasQF = allMatches.some(m => m.round === 'quarterfinal');
+    const qfCompleted = hasQF && allMatches.filter(m => m.round === 'quarterfinal').every(m => m.status === 'completed');
+    const hasSF = allMatches.some(m => m.round === 'semifinal');
+    const sfCompleted = hasSF && allMatches.filter(m => m.round === 'semifinal').every(m => m.status === 'completed');
+    const hasWF = allMatches.some(m => m.round === 'final');
+    const wfCompleted = hasWF && allMatches.filter(m => m.round === 'final').every(m => m.status === 'completed');
+
+    const hasL1 = allMatches.some(m => m.round === 'lbr-round-1');
+    const l1Completed = hasL1 && allMatches.filter(m => m.round === 'lbr-round-1').every(m => m.status === 'completed');
+    const hasLSF = allMatches.some(m => m.round === 'lbr-semifinal');
+    const lsfCompleted = hasLSF && allMatches.filter(m => m.round === 'lbr-semifinal').every(m => m.status === 'completed');
+    const hasLF = allMatches.some(m => m.round === 'lbr-final');
+    const lfCompleted = hasLF && allMatches.filter(m => m.round === 'lbr-final').every(m => m.status === 'completed');
+    const hasGF = allMatches.some(m => m.round === 'grand-final');
+
+    // After QF complete, generate SF and LBR round 1 (from QF losers)
+    if (qfCompleted && !hasSF) {
+      const sfTeams = await this.getBracketAdvancingTeams(tournament, 'quarterfinal');
+      await this.generateBracketMatchesForRound(tournament, sfTeams, 'semifinal');
+    }
+    if (qfCompleted && !hasL1) {
+      const qfLosers = await this.getBracketLosingTeams(tournament, 'quarterfinal');
+      await this.generateLosersMatchesForRound(tournament, qfLosers, 'lbr-round-1');
+    }
+
+    // After SF complete, generate winners Final and LBR semifinal (losers of SF vs winners of LBR round 1)
+    if (sfCompleted && !hasWF) {
+      const wfTeams = await this.getBracketAdvancingTeams(tournament, 'semifinal');
+      await this.generateBracketMatchesForRound(tournament, wfTeams, 'final');
+    }
+    if (sfCompleted && hasL1 && l1Completed && !hasLSF) {
+      const sfLosers = await this.getBracketLosingTeams(tournament, 'semifinal');
+      // Winners from LBR round 1
+      const l1Winners = await this.getBracketAdvancingTeams(tournament as any, 'lbr-round-1' as any);
+      const lsfTeams = [...sfLosers, ...l1Winners];
+      await this.generateLosersMatchesForRound(tournament, lsfTeams, 'lbr-semifinal');
+    }
+
+    // After LBR semifinal complete, generate LBR final
+    if (hasLSF && lsfCompleted && !hasLF) {
+      const lsfWinners = await this.getBracketAdvancingTeams(tournament as any, 'lbr-semifinal' as any);
+      await this.generateLosersMatchesForRound(tournament, lsfWinners, 'lbr-final');
+    }
+
+    // If winners Final and LBR final complete, generate grand final
+    if (wfCompleted && hasLF && lfCompleted && !hasGF) {
+      const wfWinner = await this.getBracketAdvancingTeams(tournament, 'final');
+      const lfWinner = await this.getBracketAdvancingTeams(tournament as any, 'lbr-final' as any);
+      const gfTeams = [...wfWinner, ...lfWinner];
+      await this.generateLosersMatchesForRound(tournament, gfTeams, 'grand-final');
+    }
+
+    return tournament;
   }
 
   private async resetTournament(tournament: ITournament): Promise<ITournament> {
@@ -1152,10 +1497,74 @@ export class LiveTournamentController extends BaseController<ITournament> {
         round: round as any 
       });
 
-      // Get teams from tournament setup data
-      const teams = tournament.generatedTeams || [];
-      if (teams.length === 0) {
-        throw new Error('No teams found in tournament setup data');
+      // Get teams from tournament setup data, or synthesize from selected players if missing
+      let teams = tournament.generatedTeams || [];
+      if (!teams || teams.length === 0) {
+        // Build lightweight teams from selected players + generatedSeeds metadata
+        const seedMap: Record<string, { playerId: any; playerName: string; seed?: number }> = {};
+        const seeds = (tournament as any).generatedSeeds || [];
+        for (const s of seeds) {
+          const pid = (s.playerId || s._id || s.id || '').toString();
+          if (pid) seedMap[pid] = {
+            playerId: s.playerId || s._id || s.id,
+            playerName: s.playerName || s.name || `Player ${pid}`,
+            seed: s.seed,
+          };
+        }
+
+        // Normalize and dedupe player IDs while preserving order
+        const raw = Array.isArray((tournament as any).players) ? (tournament as any).players : [];
+        const uniqueIds: string[] = [];
+        const seen = new Set<string>();
+        for (const pid of raw) {
+          const key = (pid || '').toString();
+          if (!key) continue;
+          if (seen.has(key)) continue;
+          seen.add(key);
+          uniqueIds.push(key);
+        }
+
+        // Derive display meta
+        const playersMeta = uniqueIds.map((id, idx) => ({
+          playerId: id,
+          playerName: seedMap[id]?.playerName || `Player ${idx + 1}`,
+          seed: seedMap[id]?.seed || idx + 1,
+        }));
+
+        // Determine team size: 1 for singles formats, else 2
+        const fmt = ((tournament as any).format || '').toString().toLowerCase();
+        const isSingles = fmt.includes('singles');
+        const teamSize = isSingles ? 1 : 2;
+
+        if (playersMeta.length < teamSize) {
+          throw new Error('Not enough unique players to form teams');
+        }
+
+        // Group into teams and dedupe by composition
+        const synthesizedTeams: any[] = [];
+        const teamSeen = new Set<string>();
+        for (let i = 0; i < playersMeta.length; i += teamSize) {
+          const group = playersMeta.slice(i, i + teamSize);
+          if (group.length === 0) continue;
+          const sig = group.map(g => g.playerId.toString()).sort().join('|');
+          if (teamSeen.has(sig)) continue;
+          teamSeen.add(sig);
+
+          const teamName = group.map(g => g.playerName).join(' & ');
+          const combinedSeed = Math.ceil(group.reduce((sum, g) => sum + (g.seed || i + 1), 0) / group.length);
+          synthesizedTeams.push({
+            teamId: `${(tournament as any)._id || 'tourn'}-T${synthesizedTeams.length + 1}`,
+            teamName,
+            players: group,
+            combinedSeed,
+            combinedStatistics: {},
+          });
+        }
+
+        teams = synthesizedTeams;
+        if (teams.length === 0) {
+          throw new Error('No teams found in tournament setup data');
+        }
       }
 
       let matches: any[] = [];

@@ -81,6 +81,14 @@ export const MatchRounds = [
   'semifinal',
   'final',
   'third-place',
+  // Losers bracket rounds (double elimination)
+  'lbr-round-1',
+  'lbr-round-2',
+  'lbr-quarterfinal',
+  'lbr-semifinal',
+  'lbr-final',
+  // Grand final between WB winner and LBR winner
+  'grand-final',
 ] as const;
 
 // Backward compatibility - deprecated
@@ -123,6 +131,13 @@ export const getRoundNumber = (round: MatchRound): number => {
   if (round === 'quarterfinal') return 4;
   if (round === 'semifinal') return 5;
   if (round === 'final') return 6;
+  if (round === 'grand-final') return 7;
+  // Losers bracket ordering (after winners rounds for sorting)
+  if (round === 'lbr-round-1') return 41;
+  if (round === 'lbr-round-2') return 42;
+  if (round === 'lbr-quarterfinal') return 43;
+  if (round === 'lbr-semifinal') return 44;
+  if (round === 'lbr-final') return 45;
   return 1; // default
 };
 

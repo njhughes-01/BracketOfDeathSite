@@ -35,9 +35,14 @@ import type {
 
 // Global token getter function - will be set by AuthContext
 let getKeycloakToken: (() => string | undefined) | null = null;
+let refreshKeycloakToken: (() => Promise<boolean>) | null = null;
 
 export const setTokenGetter = (getter: () => string | undefined) => {
   getKeycloakToken = getter;
+};
+
+export const setTokenRefresher = (refresher: () => Promise<boolean>) => {
+  refreshKeycloakToken = refresher;
 };
 
 class ApiClient {
@@ -74,18 +79,34 @@ class ApiClient {
     this.client.interceptors.response.use(
       (response) => response,
       async (error) => {
-        if (error.response?.status === 401) {
-          // Token expired or invalid - Keycloak will handle this
+        const original = error.config || {};
+
+        // Attempt one silent refresh on 401 then retry once
+        if (error.response?.status === 401 && !original.__isRetryRequest && refreshKeycloakToken) {
+          try {
+            const refreshed = await refreshKeycloakToken();
+            if (refreshed) {
+              original.__isRetryRequest = true;
+              const token = getKeycloakToken?.();
+              if (token) {
+                original.headers = original.headers || {};
+                original.headers['Authorization'] = `Bearer ${token}`;
+              }
+              return this.client.request(original);
+            }
+          } catch (e) {
+            console.warn('Token refresh failed on 401');
+          }
           console.warn('Authentication failed - redirecting to login');
         }
-        
+
         // Handle rate limiting (429 errors)
         if (error.response?.status === 429) {
           const retryAfter = error.response.headers['retry-after'] || 1;
           await new Promise(resolve => setTimeout(resolve, retryAfter * 1000));
           return this.client.request(error.config);
         }
-        
+
         return Promise.reject(error);
       }
     );
@@ -127,6 +148,10 @@ class ApiClient {
 
   async getPlayer(id: string): Promise<ApiResponse<Player>> {
     return this.get<ApiResponse<Player>>(`/players/${id}`);
+  }
+
+  async getPlayerScoring(id: string): Promise<ApiResponse<{ matchesWithPoints: number; totalPoints: number }>> {
+    return this.get<ApiResponse<{ matchesWithPoints: number; totalPoints: number }>>(`/players/${id}/scoring`);
   }
 
   async createPlayer(data: PlayerInput): Promise<ApiResponse<Player>> {
@@ -237,7 +262,8 @@ class ApiClient {
   }
 
   async updateMatch(matchUpdate: MatchUpdate): Promise<ApiResponse<Match>> {
-    return this.put<ApiResponse<Match>>(`/matches/${matchUpdate.matchId}`, matchUpdate);
+    // Backend route is mounted under /tournaments
+    return this.put<ApiResponse<Match>>(`/tournaments/matches/${matchUpdate.matchId}`, matchUpdate);
   }
 
   async getTournamentMatches(tournamentId: string, round?: string): Promise<ApiResponse<Match[]>> {
@@ -259,6 +285,10 @@ class ApiClient {
 
   async getLiveStats(tournamentId: string): Promise<ApiResponse<LiveTournamentStats>> {
     return this.get<ApiResponse<LiveTournamentStats>>(`/tournaments/${tournamentId}/live-stats`);
+  }
+  
+  async getTournamentPlayerStats(tournamentId: string): Promise<ApiResponse<any>> {
+    return this.get<ApiResponse<any>>(`/tournaments/${tournamentId}/player-stats`);
   }
 
   // Tournament Result API methods

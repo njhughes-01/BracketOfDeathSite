@@ -11,6 +11,7 @@ router.get('/stats', PlayerController_1.playerController.getStats);
 router.get('/champions', PlayerController_1.playerController.getChampions);
 router.get('/:id', validation_1.validateObjectId, PlayerController_1.playerController.getById);
 router.get('/:id/performance', validation_1.validateObjectId, PlayerController_1.playerController.getPerformanceTrends);
+router.get('/:id/scoring', validation_1.validateObjectId, PlayerController_1.playerController.getScoringSummary);
 router.post('/', auth_1.requireAuth, PlayerController_1.playerController.create);
 router.put('/:id', auth_1.requireAuth, validation_1.validateObjectId, PlayerController_1.playerController.update);
 router.patch('/:id/stats', auth_1.requireAuth, validation_1.validateObjectId, PlayerController_1.playerController.updateStats);

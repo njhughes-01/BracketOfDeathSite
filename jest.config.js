@@ -21,7 +21,7 @@ module.exports = {
     'lcov',
     'html'
   ],
-  moduleNameMapping: {
+  moduleNameMapper: {
     '^@/(.*)$': '<rootDir>/src/$1',
     '^@/models/(.*)$': '<rootDir>/src/models/$1',
     '^@/routes/(.*)$': '<rootDir>/src/routes/$1',

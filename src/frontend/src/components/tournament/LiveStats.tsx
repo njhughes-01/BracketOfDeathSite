@@ -1,26 +1,30 @@
-import React, { useState, useEffect } from 'react';
-import type { LiveTournamentStats, LiveTeamStats } from '../../types/api';
+import React, { useState, useEffect, useCallback } from 'react';
+import type { LiveTournamentStats } from '../../types/api';
 import apiClient from '../../services/api';
 import LoadingSpinner from '../ui/LoadingSpinner';
 import Card from '../ui/Card';
+
+import type { BracketType } from '../../utils/bracket';
 
 interface LiveStatsProps {
   tournamentId: string;
   refreshInterval?: number; // in milliseconds
   compact?: boolean;
+  bracketType?: BracketType; // Prefer bracket-type based UI over counts when provided
 }
 
 const LiveStats: React.FC<LiveStatsProps> = ({ 
   tournamentId, 
   refreshInterval = 30000, // 30 seconds default
-  compact = false 
+  compact = false,
+  bracketType,
 }) => {
   const [stats, setStats] = useState<LiveTournamentStats | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
 
-  const fetchStats = async () => {
+  const fetchStats = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
@@ -38,7 +42,7 @@ const LiveStats: React.FC<LiveStatsProps> = ({
     } finally {
       setLoading(false);
     }
-  };
+  }, [tournamentId]);
 
   useEffect(() => {
     fetchStats();
@@ -46,7 +50,7 @@ const LiveStats: React.FC<LiveStatsProps> = ({
     // Set up automatic refresh
     const interval = setInterval(fetchStats, refreshInterval);
     return () => clearInterval(interval);
-  }, [tournamentId, refreshInterval]);
+  }, [fetchStats, refreshInterval]);
 
   const getPhaseDisplayInfo = (phase: string) => {
     const phaseMap: Record<string, { label: string; color: string; icon: string }> = {
@@ -195,15 +199,20 @@ const LiveStats: React.FC<LiveStatsProps> = ({
 
           {/* Match Summary */}
           <div className="grid grid-cols-2 gap-4">
-            <div className="bg-blue-50 p-3 rounded-lg">
-              <h4 className="font-medium text-blue-900 mb-2">Round Robin</h4>
-              <div className="text-sm text-blue-700 space-y-1">
-                <div>Completed: {stats.matchSummary.roundRobin.completed}</div>
-                <div>In Progress: {stats.matchSummary.roundRobin.inProgress}</div>
-                <div>Total: {stats.matchSummary.roundRobin.total}</div>
+            {(
+              // Prefer explicit bracketType when provided; otherwise fallback to counts
+              (bracketType ? bracketType === 'round_robin_playoff' : stats.matchSummary.roundRobin.total > 0)
+            ) && (
+              <div className="bg-blue-50 p-3 rounded-lg">
+                <h4 className="font-medium text-blue-900 mb-2">Round Robin</h4>
+                <div className="text-sm text-blue-700 space-y-1">
+                  <div>Completed: {stats.matchSummary.roundRobin.completed}</div>
+                  <div>In Progress: {stats.matchSummary.roundRobin.inProgress}</div>
+                  <div>Total: {stats.matchSummary.roundRobin.total}</div>
+                </div>
               </div>
-            </div>
-            
+            )}
+
             <div className="bg-red-50 p-3 rounded-lg">
               <h4 className="font-medium text-red-900 mb-2">Bracket</h4>
               <div className="text-sm text-red-700 space-y-1">

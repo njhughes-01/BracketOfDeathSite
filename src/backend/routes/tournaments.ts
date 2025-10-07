@@ -31,10 +31,13 @@ router.post('/setup', requireAuth, tournamentController.setupTournament);
 // Live tournament management routes
 router.get('/:id/live', validateObjectId, liveTournamentController.getLiveTournament);
 router.get('/:id/live-stats', validateObjectId, liveTournamentController.getLiveStats);
+router.get('/:id/player-stats', validateObjectId, liveTournamentController.getTournamentPlayerStats);
+router.get('/:id/stream', validateObjectId, liveTournamentController.streamTournamentEvents);
 router.post('/:id/action', requireAuth, validateObjectId, liveTournamentController.executeTournamentAction);
 router.get('/:id/matches', validateObjectId, liveTournamentController.getTournamentMatches);
 router.post('/:id/checkin', requireAuth, validateObjectId, liveTournamentController.checkInTeam);
 router.post('/:id/generate-matches', requireAuth, validateObjectId, liveTournamentController.generateMatches);
+router.post('/:id/matches/confirm-completed', requireAuth, validateObjectId, liveTournamentController.confirmCompletedMatches);
 
 // Match management routes (create separate route file later if needed)
 router.put('/matches/:matchId', requireAuth, liveTournamentController.updateMatch);

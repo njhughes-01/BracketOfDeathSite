@@ -24,10 +24,13 @@ router.post('/generate-teams', auth_1.requireAuth, TournamentController_1.tourna
 router.post('/setup', auth_1.requireAuth, TournamentController_1.tournamentController.setupTournament);
 router.get('/:id/live', validation_1.validateObjectId, LiveTournamentController_1.liveTournamentController.getLiveTournament);
 router.get('/:id/live-stats', validation_1.validateObjectId, LiveTournamentController_1.liveTournamentController.getLiveStats);
+router.get('/:id/player-stats', validation_1.validateObjectId, LiveTournamentController_1.liveTournamentController.getTournamentPlayerStats);
+router.get('/:id/stream', validation_1.validateObjectId, LiveTournamentController_1.liveTournamentController.streamTournamentEvents);
 router.post('/:id/action', auth_1.requireAuth, validation_1.validateObjectId, LiveTournamentController_1.liveTournamentController.executeTournamentAction);
 router.get('/:id/matches', validation_1.validateObjectId, LiveTournamentController_1.liveTournamentController.getTournamentMatches);
 router.post('/:id/checkin', auth_1.requireAuth, validation_1.validateObjectId, LiveTournamentController_1.liveTournamentController.checkInTeam);
 router.post('/:id/generate-matches', auth_1.requireAuth, validation_1.validateObjectId, LiveTournamentController_1.liveTournamentController.generateMatches);
+router.post('/:id/matches/confirm-completed', auth_1.requireAuth, validation_1.validateObjectId, LiveTournamentController_1.liveTournamentController.confirmCompletedMatches);
 router.put('/matches/:matchId', auth_1.requireAuth, LiveTournamentController_1.liveTournamentController.updateMatch);
 router.post('/bulk-import', auth_1.requireAuth, TournamentController_1.tournamentController.bulkImport);
 exports.default = router;

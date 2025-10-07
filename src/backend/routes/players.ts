@@ -12,6 +12,7 @@ router.get('/stats', playerController.getStats);
 router.get('/champions', playerController.getChampions);
 router.get('/:id', validateObjectId, playerController.getById);
 router.get('/:id/performance', validateObjectId, playerController.getPerformanceTrends);
+router.get('/:id/scoring', validateObjectId, playerController.getScoringSummary);
 
 // Protected routes (require authentication)
 router.post('/', requireAuth, playerController.create);

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useApi } from '../hooks/useApi';
 import { useAuth } from '../contexts/AuthContext';
@@ -9,6 +9,9 @@ import { EditableCard, EditableNumber } from '../components/admin';
 import BracketView from '../components/tournament/BracketView';
 import LiveStats from '../components/tournament/LiveStats';
 import MatchScoring from '../components/tournament/MatchScoring';
+import PlayerLeaderboard from '../components/tournament/PlayerLeaderboard';
+import MatchesToolbar from '../components/tournament/MatchesToolbar';
+import { getDefaultRoundFor, getRoundOptions, isRoundRobin } from '../utils/bracket';
 import type { 
   LiveTournament, 
   Match, 
@@ -26,6 +29,24 @@ const TournamentManage: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [selectedRound, setSelectedRound] = useState<string>('');
+  const [compactListView, setCompactListView] = useState<boolean>(true);
+  const [strictTotals, setStrictTotals] = useState<boolean>(true);
+  const [requirePerPlayerScores, setRequirePerPlayerScores] = useState<boolean>(false);
+  const eventSourceRef = useRef<EventSource | null>(null);
+  const streamConnectedRef = useRef(false);
+
+  // Deduplicate matches by stable key to avoid duplicates in UI
+  const uniqueMatches = React.useMemo(() => {
+    const seen = new Set<string>();
+    const result: Match[] = [] as any;
+    for (const m of currentMatches) {
+      const key = (m as any)._id || (m as any).id || `${(m as any).tournamentId}-${(m as any).round}-${(m as any).matchNumber}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      result.push(m);
+    }
+    return result;
+  }, [currentMatches]);
 
   // Load live tournament data
   const loadTournamentData = useCallback(async () => {
@@ -36,7 +57,8 @@ const TournamentManage: React.FC = () => {
       const response = await apiClient.getLiveTournament(id);
       if (response.success && response.data) {
         setLiveTournament(response.data);
-        setSelectedRound(response.data.phase.currentRound || 'RR_R1');
+        const bt = (response.data as LiveTournament).bracketType;
+        setSelectedRound(response.data.phase.currentRound || getDefaultRoundFor(bt));
         
         // Load matches for current round
         if (response.data.phase.currentRound) {
@@ -55,12 +77,72 @@ const TournamentManage: React.FC = () => {
   }, [id]);
 
   useEffect(() => {
+    let pollInterval: any;
     loadTournamentData();
-    
-    // Set up polling for real-time updates
-    const interval = setInterval(loadTournamentData, 30000); // Poll every 30 seconds
-    return () => clearInterval(interval);
-  }, [loadTournamentData]);
+
+    // Establish SSE stream for realtime updates
+    if (id && typeof window !== 'undefined') {
+      const es = new EventSource(`/api/tournaments/${id}/stream`);
+      eventSourceRef.current = es;
+
+      const handleSnapshot = (event: MessageEvent) => {
+        try {
+          const payload = JSON.parse(event.data);
+          const live = (payload?.data as any) ?? (payload?.live as any) ?? null;
+          if (live) {
+            const liveData = live as LiveTournament;
+            setLiveTournament(liveData);
+            const bt = liveData.bracketType;
+            const round = liveData.phase.currentRound || getDefaultRoundFor(bt);
+            setSelectedRound(round);
+            const matches = (liveData.matches || []).filter((m: any) => m.round === round);
+            setCurrentMatches(matches);
+          }
+        } catch (e) {
+          // ignore parse errors
+        }
+      };
+
+      const handleUpdate = (event: MessageEvent) => {
+        try {
+          const payload = JSON.parse(event.data);
+          const live = payload?.payload?.live ?? payload?.live ?? null;
+          if (live) {
+            const liveData = live as LiveTournament;
+            setLiveTournament(liveData);
+            const bt = liveData.bracketType;
+            const round = liveData.phase.currentRound || getDefaultRoundFor(bt);
+            const matches = (liveData.matches || []).filter((m: any) => m.round === round);
+            setCurrentMatches(matches);
+          } else {
+            // Fallback: refresh minimal data
+            loadTournamentData();
+          }
+        } catch {
+          loadTournamentData();
+        }
+      };
+
+      es.addEventListener('open', () => { streamConnectedRef.current = true; });
+      es.addEventListener('error', () => { streamConnectedRef.current = false; });
+      es.addEventListener('snapshot', handleSnapshot as any);
+      es.addEventListener('update', handleUpdate as any);
+
+      // Poll as a safety net if stream drops
+      pollInterval = setInterval(() => {
+        if (!streamConnectedRef.current) loadTournamentData();
+      }, 30000);
+
+      return () => {
+        clearInterval(pollInterval);
+        streamConnectedRef.current = false;
+        try { es.close(); } catch {}
+        eventSourceRef.current = null;
+      };
+    }
+
+    return () => { if (pollInterval) clearInterval(pollInterval); };
+  }, [id, loadTournamentData]);
 
   // Execute tournament action
   const executeTournamentAction = async (action: TournamentAction) => {
@@ -105,6 +187,46 @@ const TournamentManage: React.FC = () => {
     }
   };
 
+  // Generate matches for selected round (helper for empty rounds)
+  const generateMatchesForSelectedRound = async () => {
+    if (!id || !selectedRound) return;
+    try {
+      setLoading(true);
+      const res = await apiClient.generateMatches(id, selectedRound);
+      if (res.success) {
+        await loadTournamentData();
+      }
+    } catch (err) {
+      setError('Failed to generate matches for this round');
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Removed explicit starting; completing a match via scores is the primary action.
+
+  // Batch: confirm all completed (not yet confirmed)
+  const confirmAllCompletedInRound = async () => {
+    if (!currentMatches || currentMatches.length === 0) return;
+    try {
+      setLoading(true);
+      const completed = currentMatches.filter(m => (m.status as any) === 'completed');
+      for (const m of completed) {
+        await apiClient.updateMatch({
+          matchId: (m._id || (m as any).id) as string,
+          status: 'confirmed',
+        });
+      }
+      await loadTournamentData();
+    } catch (err) {
+      setError('Failed to confirm all completed matches');
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   // Check in team
   const checkInTeam = async (teamId: string, present: boolean) => {
     if (!id) return;
@@ -135,15 +257,21 @@ const TournamentManage: React.FC = () => {
 
   // Get round display info
   const getRoundDisplayInfo = (round: string) => {
-    const roundMap = {
+    const roundMap: Record<string, string> = {
       'RR_R1': 'Round Robin - Round 1',
       'RR_R2': 'Round Robin - Round 2', 
       'RR_R3': 'Round Robin - Round 3',
-      'QF': 'Quarter Finals',
-      'SF': 'Semi Finals',
-      'Finals': 'Championship'
+      'quarterfinal': 'Quarterfinals',
+      'semifinal': 'Semifinals',
+      'final': 'Final',
+      'lbr-round-1': 'Losers R1',
+      'lbr-round-2': 'Losers R2',
+      'lbr-quarterfinal': 'Losers Quarterfinal',
+      'lbr-semifinal': 'Losers Semifinal',
+      'lbr-final': 'Losers Final',
+      'grand-final': 'Grand Final'
     };
-    return roundMap[round as keyof typeof roundMap] || round;
+    return roundMap[round] || round;
   };
 
   if (!isAdmin) {
@@ -242,15 +370,48 @@ const TournamentManage: React.FC = () => {
             <div className="space-y-4">
               {/* Phase Actions */}
               <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                {liveTournament.phase.phase === 'setup' && (
-                  <button
-                    onClick={() => executeTournamentAction({ action: 'start_registration' })}
-                    className="btn btn-primary btn-sm"
-                    disabled={loading}
-                  >
-                    Open Registration
-                  </button>
-                )}
+                {liveTournament.phase.phase === 'setup' && (() => {
+                  const preselectedPlayerCount = (liveTournament.players?.length ?? 0) +
+                    (liveTournament.teams?.reduce((sum, team) => sum + (team.players?.length || 0), 0) ?? 0);
+                  const maxPlayers = liveTournament.maxPlayers ?? 0;
+                  const isFullyPreselected = maxPlayers > 0 && preselectedPlayerCount >= maxPlayers;
+                  const bt = liveTournament.bracketType;
+
+                  return (
+                    <>
+                      {isFullyPreselected ? (
+                        isRoundRobin(bt) ? (
+                          <button
+                            onClick={() => executeTournamentAction({ action: 'start_round_robin' })}
+                            className="btn btn-primary btn-sm"
+                            disabled={loading}
+                            title="Start immediately with preselected players/teams"
+                          >
+                            Start Round Robin
+                          </button>
+                        ) : (
+                          <button
+                            onClick={() => executeTournamentAction({ action: 'start_bracket' })}
+                            className="btn btn-primary btn-sm"
+                            disabled={loading}
+                            title="Start bracket play with current teams"
+                          >
+                            Start Bracket
+                          </button>
+                        )
+                      ) : (
+                        <button
+                          onClick={() => executeTournamentAction({ action: 'start_registration' })}
+                          className="btn btn-outline btn-sm"
+                          disabled={loading}
+                          title="Open tournament for first-come, first-served registration"
+                        >
+                          Open Registration
+                        </button>
+                      )}
+                    </>
+                  );
+                })()}
                 
                 {liveTournament.phase.phase === 'registration' && (
                   <>
@@ -271,15 +432,20 @@ const TournamentManage: React.FC = () => {
                   </>
                 )}
 
-                {liveTournament.phase.phase === 'check_in' && (
-                  <button
-                    onClick={() => executeTournamentAction({ action: 'start_round_robin' })}
-                    className="btn btn-primary btn-sm"
-                    disabled={loading}
-                  >
-                    Start Round Robin
-                  </button>
-                )}
+                {liveTournament.phase.phase === 'check_in' && (() => {
+                  const bt = liveTournament.bracketType;
+                  const action = isRoundRobin(bt) ? 'start_round_robin' : 'start_bracket';
+                  const label = isRoundRobin(bt) ? 'Start Round Robin' : 'Start Bracket';
+                  return (
+                    <button
+                      onClick={() => executeTournamentAction({ action: action as any })}
+                      className="btn btn-primary btn-sm"
+                      disabled={loading}
+                    >
+                      {label}
+                    </button>
+                  );
+                })()}
 
                 {liveTournament.phase.phase === 'round_robin' && (
                   <>
@@ -315,7 +481,7 @@ const TournamentManage: React.FC = () => {
                         Next Round
                       </button>
                     )}
-                    {liveTournament.phase.currentRound === 'Finals' && liveTournament.phase.canAdvance && (
+                    {liveTournament.phase.currentRound === 'final' && liveTournament.phase.canAdvance && (
                       <button
                         onClick={() => executeTournamentAction({ action: 'complete_tournament' })}
                         className="btn btn-success btn-sm"
@@ -363,8 +529,7 @@ const TournamentManage: React.FC = () => {
           </EditableCard>
 
           {/* Match Management */}
-          {currentMatches.length > 0 && (
-            <EditableCard title={`${getRoundDisplayInfo(selectedRound)} Matches`}>
+          <EditableCard title={`${getRoundDisplayInfo(selectedRound)} Matches`}>
               <div className="space-y-4">
                 {/* Round Selector */}
                 <div className="flex items-center space-x-4">
@@ -380,23 +545,49 @@ const TournamentManage: React.FC = () => {
                     }}
                     className="select select-sm"
                   >
-                    <option value="RR_R1">Round Robin - Round 1</option>
-                    <option value="RR_R2">Round Robin - Round 2</option>
-                    <option value="RR_R3">Round Robin - Round 3</option>
-                    <option value="QF">Quarter Finals</option>
-                    <option value="SF">Semi Finals</option>
-                    <option value="Finals">Championship</option>
+                    {getRoundOptions(((liveTournament as any).bracketType as any)).map(opt => (
+                      <option key={opt.value} value={opt.value}>{opt.label}</option>
+                    ))}
                   </select>
                 </div>
 
                 {/* Matches Grid */}
+                {/* Grid Toolbar */}
+                <MatchesToolbar
+                  matchCount={currentMatches.length}
+                  compactListView={compactListView}
+                  onToggleCompact={(v) => setCompactListView(v)}
+                  requirePerPlayerScores={requirePerPlayerScores}
+                  onToggleRequirePerPlayer={(v) => setRequirePerPlayerScores(v)}
+                  strictTotals={strictTotals}
+                  onToggleStrictTotals={(v) => setStrictTotals(v)}
+                  canConfirmAll={isAdmin && currentMatches.some(m => (m.status as any) === "completed")}
+                  onConfirmAll={confirmAllCompletedInRound}
+                  loading={loading}
+                />
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {currentMatches.map((match) => (
+                {currentMatches.length === 0 && (
+                  <div className="col-span-full flex items-center justify-between p-3 bg-yellow-50 border border-yellow-200 rounded">
+                    <span className="text-sm text-yellow-800">No matches found for this round.</span>
+                    {isAdmin && (
+                      <button
+                        onClick={generateMatchesForSelectedRound}
+                        className="btn btn-sm btn-primary"
+                        disabled={loading}
+                      >
+                        Generate Matches
+                      </button>
+                    )}
+                  </div>
+                )}
+                {uniqueMatches.map((match, idx) => (
                     <div
-                      key={match._id}
+                      key={`${
+                        (match as any)._id || (match as any).id || `${(match as any).tournamentId}-${(match as any).round}-${(match as any).matchNumber}`
+                      }-${idx}`}
                       className={`p-4 border rounded-lg ${
                         match.status === 'completed' ? 'bg-green-50 border-green-200' :
-                        match.status === 'in_progress' ? 'bg-yellow-50 border-yellow-200' : 
+                        (match.status as any) === 'in-progress' ? 'bg-yellow-50 border-yellow-200' : 
                         'bg-white border-gray-200'
                       }`}
                     >
@@ -407,7 +598,7 @@ const TournamentManage: React.FC = () => {
                         <span
                           className={`px-2 py-1 text-xs font-medium rounded-full ${
                             match.status === 'completed' ? 'bg-green-100 text-green-800' :
-                            match.status === 'in_progress' ? 'bg-yellow-100 text-yellow-800' :
+                            (match.status as any) === 'in-progress' ? 'bg-yellow-100 text-yellow-800' :
                             match.status === 'confirmed' ? 'bg-blue-100 text-blue-800' :
                             'bg-gray-100 text-gray-800'
                           }`}
@@ -420,7 +611,9 @@ const TournamentManage: React.FC = () => {
                       <MatchScoring
                         match={match}
                         onUpdateMatch={updateMatchScore}
-                        compact={true}
+                        compact={compactListView}
+                        requirePerPlayerScores={requirePerPlayerScores}
+                        strictTotals={strictTotals}
                       />
 
                       {/* Match Details */}
@@ -436,22 +629,11 @@ const TournamentManage: React.FC = () => {
 
                       {/* Quick Actions */}
                       <div className="mt-3 flex space-x-2">
-                        {match.status === 'scheduled' && (
+                        {/* Removed per-match Start; enter scores below to complete */}
+                        {((match.status as any) === 'completed') && (
                           <button
                             onClick={() => updateMatchScore({
-                              matchId: match._id,
-                              status: 'in_progress',
-                              startTime: new Date().toISOString()
-                            })}
-                            className="btn btn-outline btn-xs"
-                          >
-                            Start Match
-                          </button>
-                        )}
-                        {match.status === 'completed' && (
-                          <button
-                            onClick={() => updateMatchScore({
-                              matchId: match._id,
+                              matchId: (match._id || (match as any).id) as string,
                               status: 'confirmed'
                             })}
                             className="btn btn-primary btn-xs"
@@ -484,13 +666,12 @@ const TournamentManage: React.FC = () => {
                 )}
               </div>
             </EditableCard>
-          )}
 
           {/* Bracket Visualization */}
           {liveTournament.phase.phase === 'bracket' && liveTournament.matches.length > 0 && (
             <EditableCard title="Tournament Bracket">
               <BracketView
-                matches={liveTournament.matches.filter(m => ['QF', 'SF', 'Finals'].includes(m.round))}
+                matches={liveTournament.matches.filter(m => ['quarterfinal', 'semifinal', 'final'].includes(m.round))}
                 teams={liveTournament.teams}
                 currentRound={liveTournament.phase.currentRound}
                 onMatchClick={(match) => {
@@ -511,7 +692,9 @@ const TournamentManage: React.FC = () => {
             tournamentId={id!} 
             refreshInterval={15000} 
             compact={true}
+            bracketType={liveTournament.bracketType}
           />
+          <PlayerLeaderboard tournamentId={id!} />
           {/* Check-In Status */}
           {liveTournament.phase.phase === 'check_in' && (
             <EditableCard title="Team Check-In">
@@ -609,3 +792,6 @@ const TournamentManage: React.FC = () => {
 };
 
 export default TournamentManage;
+
+
+

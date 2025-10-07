@@ -10,6 +10,10 @@ export declare class LiveTournamentController extends BaseController<ITournament
     checkInTeam: (req: Request | RequestWithAuth, res: Response, next: NextFunction) => void;
     generateMatches: (req: Request | RequestWithAuth, res: Response, next: NextFunction) => void;
     getLiveStats: (req: Request | RequestWithAuth, res: Response, next: NextFunction) => void;
+    confirmCompletedMatches: (req: Request | RequestWithAuth, res: Response, next: NextFunction) => void;
+    getTournamentPlayerStats: (req: Request | RequestWithAuth, res: Response, next: NextFunction) => void;
+    streamTournamentEvents: (req: Request | RequestWithAuth, res: Response, next: NextFunction) => void;
+    private buildLiveTournament;
     private calculateTournamentPhase;
     private getCurrentRoundRobinRound;
     private getCurrentBracketRound;

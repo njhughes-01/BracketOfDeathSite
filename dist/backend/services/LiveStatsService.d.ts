@@ -63,5 +63,13 @@ export declare class LiveStatsService {
     private static calculateMatchSummary;
     private static determineCurrentPhase;
     static updateLiveStats(matchId: string): Promise<void>;
+    static calculatePlayerStatsForTournament(tournamentId: string): Promise<Array<{
+        playerId: string;
+        playerName?: string;
+        totalPoints: number;
+        matchesWithPoints: number;
+        wins: number;
+        losses: number;
+    }>>;
 }
 //# sourceMappingURL=LiveStatsService.d.ts.map

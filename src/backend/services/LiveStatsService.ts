@@ -3,6 +3,7 @@ import { Match } from '../models/Match';
 import { TournamentResult } from '../models/TournamentResult';
 import { Player } from '../models/Player';
 import { Types } from 'mongoose';
+import { isRoundRobinRound } from '../types/match';
 
 export interface LiveTeamStats {
   teamId: string;
@@ -121,7 +122,7 @@ export class LiveStatsService {
       const wonMatches = completedMatches.filter(m => this.isTeamWinner(team, m));
 
       // Separate round-robin and bracket matches
-      const rrMatches = completedMatches.filter(m => m.round === 'round-robin');
+      const rrMatches = completedMatches.filter(m => isRoundRobinRound(m.round));
       const bracketMatches = completedMatches.filter(m => 
         ['quarterfinal', 'semifinal', 'final'].includes(m.round)
       );
@@ -303,11 +304,73 @@ export class LiveStatsService {
 
       console.log(`Updating live stats for tournament ${match.tournamentId}`);
       
-      // Trigger any real-time updates (websockets, etc.)
-      // This would broadcast updated statistics to connected clients
+      // Broadcast an event so SSE/WebSocket subscribers can refresh
+      try {
+        const { eventBus } = await import('./EventBus');
+        eventBus.emitTournament(match.tournamentId.toString(), 'stats:update', { matchId });
+      } catch {}
       
     } catch (error) {
       console.error('Error updating live stats:', error);
     }
+  }
+
+  // Aggregate per-player points and win/loss within a tournament from playerScores
+  static async calculatePlayerStatsForTournament(tournamentId: string): Promise<Array<{
+    playerId: string;
+    playerName?: string;
+    totalPoints: number;
+    matchesWithPoints: number;
+    wins: number;
+    losses: number;
+  }>> {
+    const mongoose = await import('mongoose');
+    const tid = new mongoose.Types.ObjectId(tournamentId);
+    const matches = await Match.aggregate([
+      { $match: { tournamentId: tid } },
+      {
+        $project: {
+          winner: 1,
+          team1: 1,
+          team2: 1,
+          playerScoresCombined: { $concatArrays: [
+            { $ifNull: ['$team1.playerScores', []] },
+            { $ifNull: ['$team2.playerScores', []] }
+          ] }
+        }
+      },
+      { $unwind: '$playerScoresCombined' },
+      {
+        $addFields: {
+          scoredOnTeam: {
+            $cond: [
+              { $in: ['$playerScoresCombined.playerId', { $ifNull: ['$team1.playerScores.playerId', []] }] },
+              'team1',
+              'team2'
+            ]
+          }
+        }
+      },
+      {
+        $group: {
+          _id: '$playerScoresCombined.playerId',
+          playerName: { $last: '$playerScoresCombined.playerName' },
+          totalPoints: { $sum: { $ifNull: ['$playerScoresCombined.score', 0] } },
+          matchesWithPoints: { $sum: 1 },
+          wins: { $sum: { $cond: [{ $eq: ['$winner', '$scoredOnTeam'] }, 1, 0] } },
+          losses: { $sum: { $cond: [{ $and: [ { $ne: ['$winner', null] }, { $ne: ['$winner', '$scoredOnTeam'] } ] }, 1, 0] } }
+        }
+      },
+      { $sort: { totalPoints: -1, wins: -1 } }
+    ]);
+
+    return matches.map((m: any) => ({
+      playerId: m._id.toString(),
+      playerName: m.playerName,
+      totalPoints: m.totalPoints || 0,
+      matchesWithPoints: m.matchesWithPoints || 0,
+      wins: m.wins || 0,
+      losses: m.losses || 0,
+    }));
   }
 }

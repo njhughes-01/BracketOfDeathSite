@@ -102,6 +102,58 @@ export class PlayerController extends BaseController<IPlayer> {
     }
   });
 
+  // Aggregate per-player scoring from matches
+  getScoringSummary = this.asyncHandler(async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const { id } = req.params;
+
+      // Aggregate from Match collection team1.playerScores / team2.playerScores
+      const summary = await (this.model as any).db.model('Match').aggregate([
+        {
+          $match: {
+            $or: [
+              { 'team1.playerScores.playerId': new (require('mongoose').Types.ObjectId)(id) },
+              { 'team2.playerScores.playerId': new (require('mongoose').Types.ObjectId)(id) }
+            ]
+          }
+        },
+        { $project: {
+            _id: 1,
+            tournamentId: 1,
+            round: 1,
+            status: 1,
+            team1: 1,
+            team2: 1,
+            scores: {
+              $concatArrays: [
+                { $ifNull: ['$team1.playerScores', []] },
+                { $ifNull: ['$team2.playerScores', []] }
+              ]
+            }
+        }},
+        { $unwind: '$scores' },
+        { $match: { 'scores.playerId': new (require('mongoose').Types.ObjectId)(id) } },
+        { $group: {
+            _id: '$scores.playerId',
+            matchesWithPoints: { $sum: 1 },
+            totalPoints: { $sum: { $ifNull: ['$scores.score', 0] } },
+          }
+        }
+      ]);
+
+      const data = summary[0] || { matchesWithPoints: 0, totalPoints: 0 };
+
+      const response: ApiResponse = {
+        success: true,
+        data,
+      };
+
+      res.status(200).json(response);
+    } catch (error) {
+      next(error);
+    }
+  });
+
   // Get players by championship count
   getChampions = this.asyncHandler(async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {

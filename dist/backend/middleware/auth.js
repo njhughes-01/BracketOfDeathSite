@@ -24,7 +24,9 @@ const getKey = (header, callback) => {
 const verifyKeycloakToken = async (token) => {
     return new Promise((resolve, reject) => {
         const decoded = jsonwebtoken_1.default.decode(token, { complete: true });
-        console.log('Token decoded:', JSON.stringify(decoded?.payload, null, 2));
+        if (process.env.NODE_ENV !== 'production') {
+            console.log('Token decoded:', JSON.stringify(decoded?.payload, null, 2));
+        }
         jsonwebtoken_1.default.verify(token, getKey, {
             issuer: `${process.env.KEYCLOAK_URL}/realms/${process.env.KEYCLOAK_REALM}`,
             algorithms: ['RS256'],
@@ -82,8 +84,10 @@ const requireAuth = async (req, res, next) => {
             res.status(401).json(response);
             return;
         }
-        console.log('Attempting to verify token:', token.substring(0, 20) + '...');
-        console.log('JWKS URI:', `${process.env.KEYCLOAK_URL}/realms/${process.env.KEYCLOAK_REALM}/protocol/openid-connect/certs`);
+        if (process.env.NODE_ENV !== 'production') {
+            console.log('Attempting to verify token:', token.substring(0, 20) + '...');
+            console.log('JWKS URI:', `${process.env.KEYCLOAK_URL}/realms/${process.env.KEYCLOAK_REALM}/protocol/openid-connect/certs`);
+        }
         const tokenData = await (0, exports.verifyKeycloakToken)(token);
         const authorized = (0, exports.isAuthorizedUser)(tokenData);
         if (!authorized) {

@@ -60,6 +60,14 @@ const PlayerDetail: React.FC = () => {
   const results = resultsData?.results || [];
   const playerStats = resultsData?.stats;
 
+  const getPlayerScoring = useCallback(
+    () => apiClient.getPlayerScoring(id!),
+    [id]
+  );
+  const { data: scoringResponse } = useApi(getPlayerScoring, { immediate: true });
+  const scoring = scoringResponse as any;
+
+
   if (!player) {
     return (
       <div className="text-center py-12">
@@ -124,6 +132,20 @@ const PlayerDetail: React.FC = () => {
           iconColor="bg-yellow-100 text-yellow-600"
         />
         
+        
+        <StatCard
+          title="Total Points (Live)"
+          value={(scoring as any)?.data?.totalPoints || 0}
+          icon="??"
+          iconColor="bg-green-100 text-green-600"
+        />
+        
+        <StatCard
+          title="Matches With Points"
+          value={(scoring as any)?.data?.matchesWithPoints || 0}
+          icon="??"
+          iconColor="bg-purple-100 text-purple-600"
+        />
         <StatCard
           title="Win Rate"
           value={`${((player.winningPercentage || 0) * 100).toFixed(1)}%`}
@@ -420,3 +442,4 @@ const PlayerDetail: React.FC = () => {
 };
 
 export default PlayerDetail;
+

@@ -46,7 +46,9 @@ export const verifyKeycloakToken = async (token: string): Promise<KeycloakToken>
   return new Promise((resolve, reject) => {
     // First, let's decode the token to see what audience it has
     const decoded = jwt.decode(token, { complete: true });
-    console.log('Token decoded:', JSON.stringify(decoded?.payload, null, 2));
+    if (process.env.NODE_ENV !== 'production') {
+      console.log('Token decoded:', JSON.stringify((decoded as any)?.payload, null, 2));
+    }
     
     jwt.verify(
       token,
@@ -130,9 +132,11 @@ export const requireAuth = async (
       return;
     }
 
-    // Verify the Keycloak token
-    console.log('Attempting to verify token:', token.substring(0, 20) + '...');
-    console.log('JWKS URI:', `${process.env.KEYCLOAK_URL}/realms/${process.env.KEYCLOAK_REALM}/protocol/openid-connect/certs`);
+    // Verify the Keycloak token (quiet in production)
+    if (process.env.NODE_ENV !== 'production') {
+      console.log('Attempting to verify token:', token.substring(0, 20) + '...');
+      console.log('JWKS URI:', `${process.env.KEYCLOAK_URL}/realms/${process.env.KEYCLOAK_REALM}/protocol/openid-connect/certs`);
+    }
     const tokenData = await verifyKeycloakToken(token);
     
     // Check if user is authorized

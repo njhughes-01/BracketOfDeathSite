@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useEffect, useState, useCallback, useRef } from 'react';
 import type { ReactNode } from 'react';
 import Keycloak from 'keycloak-js';
-import { setTokenGetter } from '../services/api';
+import { setTokenGetter, setTokenRefresher } from '../services/api';
 
 interface KeycloakTokenParsed {
   sub: string;
@@ -108,6 +108,18 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       console.log('User authenticated successfully:', userData);
 
       // Set up token refresh
+      setTokenRefresher(async () => {
+        try {
+          const refreshed = await kc.updateToken(30);
+          if (refreshed) {
+            // ensure API picks up the latest token
+            setTokenGetter(() => kc.token);
+          }
+          return refreshed as boolean;
+        } catch (e) {
+          return false;
+        }
+      });
       kc.onTokenExpired = () => {
         kc.updateToken(30)
           .then((refreshed) => {
@@ -193,6 +205,15 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
       // Set up token getter for API client
       setTokenGetter(() => kc.token);
+      setTokenRefresher(async () => {
+        try {
+          const refreshed = await kc.updateToken(30);
+          if (refreshed) setTokenGetter(() => kc.token);
+          return refreshed as boolean;
+        } catch {
+          return false;
+        }
+      });
 
       if (authenticated && kc.tokenParsed) {
         await setupUserFromToken(kc);

@@ -297,6 +297,7 @@ const TournamentDetail: React.FC = () => {
               tournamentId={id!}
               refreshInterval={20000}
               compact={false}
+              bracketType={tournamentData.bracketType as any}
             />
           )}
           {/* Final Standings */}

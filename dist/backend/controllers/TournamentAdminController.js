@@ -649,38 +649,44 @@ class TournamentAdminController extends base_1.BaseController {
     }
     async updatePlayerStatistics(tournament) {
         try {
-            const results = await TournamentResult_1.TournamentResult.find({ tournamentId: tournament._id }).populate('players');
-            const playerStats = new Map();
+            const results = await TournamentResult_1.TournamentResult.find({ tournamentId: tournament._id });
             for (const result of results) {
-                for (const player of result.players) {
-                    const playerId = player._id.toString();
-                    if (!playerStats.has(playerId)) {
-                        playerStats.set(playerId, {
-                            player,
-                            tournaments: 0,
-                            wins: 0,
-                            championships: 0,
-                            totalPoints: 0,
-                        });
+                const players = result.players;
+                const totalPlayed = result.totalStats?.totalPlayed || 0;
+                const totalWon = result.totalStats?.totalWon || 0;
+                const bodFinish = result.totalStats?.bodFinish || result.totalStats?.finalRank || 0;
+                const isChampion = bodFinish === 1;
+                for (const playerId of players) {
+                    const existingPlayer = await Player_1.Player.findById(playerId);
+                    if (!existingPlayer)
+                        continue;
+                    const newBods = (existingPlayer.bodsPlayed || 0) + 1;
+                    const newGamesPlayed = (existingPlayer.gamesPlayed || 0) + totalPlayed;
+                    const newGamesWon = (existingPlayer.gamesWon || 0) + totalWon;
+                    const newWinningPct = newGamesPlayed > 0 ? newGamesWon / newGamesPlayed : 0;
+                    const prevFinishTotal = (existingPlayer.avgFinish || 0) * (existingPlayer.bodsPlayed || 0);
+                    const newAvgFinish = newBods > 0 ? (prevFinishTotal + (bodFinish || 0)) / newBods : existingPlayer.avgFinish || 0;
+                    let divisionChamps = existingPlayer.divisionChampionships || 0;
+                    let individualChamps = existingPlayer.individualChampionships || 0;
+                    if (isChampion) {
+                        if (tournament.format === 'M' || tournament.format === 'W')
+                            divisionChamps += 1;
+                        else
+                            individualChamps += 1;
                     }
-                    const stats = playerStats.get(playerId);
-                    stats.tournaments += 1;
-                    stats.wins += result.totalStats?.totalWon || 0;
-                    stats.totalPoints += this.calculatePlayerPoints(result);
-                    if (result.totalStats?.bodFinish === 1) {
-                        stats.championships += 1;
-                    }
+                    const update = {
+                        bodsPlayed: newBods,
+                        gamesPlayed: newGamesPlayed,
+                        gamesWon: newGamesWon,
+                        winningPercentage: newWinningPct,
+                        avgFinish: newAvgFinish,
+                        totalChampionships: (existingPlayer.totalChampionships || 0) + (isChampion ? 1 : 0),
+                        bestResult: existingPlayer.bestResult ? Math.min(existingPlayer.bestResult, bodFinish || existingPlayer.bestResult) : (bodFinish || 0),
+                        divisionChampionships: divisionChamps,
+                        individualChampionships: individualChamps,
+                    };
+                    await Player_1.Player.findByIdAndUpdate(playerId, update);
                 }
-            }
-            for (const [playerId, stats] of playerStats) {
-                await Player_1.Player.findByIdAndUpdate(playerId, {
-                    $inc: {
-                        'statistics.tournamentsPlayed': stats.tournaments,
-                        'statistics.totalWins': stats.wins,
-                        'statistics.championships': stats.championships,
-                        'statistics.totalPoints': stats.totalPoints,
-                    }
-                });
             }
         }
         catch (error) {

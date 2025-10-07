@@ -192,6 +192,8 @@ matchSchema.pre('findOneAndUpdate', function () {
     { fields: { 'team1.players': 1 } },
     { fields: { 'team2.players': 1 } },
     { fields: { completedDate: -1 } },
+    { fields: { 'team1.playerScores.playerId': 1 } },
+    { fields: { 'team2.playerScores.playerId': 1 } },
 ]);
 exports.Match = (0, mongoose_1.model)('Match', matchSchema);
 exports.default = exports.Match;

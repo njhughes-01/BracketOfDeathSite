@@ -8,6 +8,7 @@ const Player_1 = require("../models/Player");
 const match_1 = require("../types/match");
 const base_1 = require("./base");
 const LiveStatsService_1 = require("../services/LiveStatsService");
+const EventBus_1 = require("../services/EventBus");
 class LiveTournamentController extends base_1.BaseController {
     constructor() {
         super(Tournament_1.Tournament, 'LiveTournament');
@@ -128,6 +129,7 @@ class LiveTournamentController extends base_1.BaseController {
                 data: liveTournament,
                 message: `Tournament action '${action}' completed successfully`,
             };
+            EventBus_1.eventBus.emitTournament(id, 'action', { action, live: liveTournament });
             res.status(200).json(response);
         }
         catch (error) {
@@ -160,14 +162,48 @@ class LiveTournamentController extends base_1.BaseController {
             const { matchId } = req.params;
             const updateData = req.body;
             const processedUpdateData = this.processMatchUpdate(updateData);
-            const match = await Match_1.Match.findByIdAndUpdate(matchId, processedUpdateData, {
-                new: true,
-                runValidators: true
-            }).populate('team1.players team2.players', 'name');
-            if (!match) {
+            const matchDoc = await Match_1.Match.findById(matchId).populate('team1.players team2.players', 'name');
+            if (!matchDoc) {
                 this.sendError(res, 404, 'Match not found');
                 return;
             }
+            if (processedUpdateData['team1.playerScores'] !== undefined) {
+                matchDoc.team1.playerScores = processedUpdateData['team1.playerScores'];
+                matchDoc.markModified('team1.playerScores');
+            }
+            if (processedUpdateData['team2.playerScores'] !== undefined) {
+                matchDoc.team2.playerScores = processedUpdateData['team2.playerScores'];
+                matchDoc.markModified('team2.playerScores');
+            }
+            if (processedUpdateData['team1.score'] !== undefined) {
+                matchDoc.team1.score = processedUpdateData['team1.score'];
+            }
+            if (processedUpdateData['team2.score'] !== undefined) {
+                matchDoc.team2.score = processedUpdateData['team2.score'];
+            }
+            if (processedUpdateData.court !== undefined) {
+                matchDoc.court = processedUpdateData.court;
+            }
+            if (processedUpdateData.notes !== undefined) {
+                matchDoc.notes = processedUpdateData.notes;
+            }
+            if (processedUpdateData.startTime) {
+                matchDoc.scheduledDate = new Date(processedUpdateData.startTime);
+            }
+            if (processedUpdateData.endTime) {
+                matchDoc.completedDate = new Date(processedUpdateData.endTime);
+            }
+            const t1Score = matchDoc.team1?.score;
+            const t2Score = matchDoc.team2?.score;
+            const bothScored = typeof t1Score === 'number' && typeof t2Score === 'number';
+            if (bothScored && t1Score !== t2Score) {
+                matchDoc.winner = t1Score > t2Score ? 'team1' : 'team2';
+                matchDoc.status = 'completed';
+            }
+            else if (processedUpdateData.status) {
+                matchDoc.status = processedUpdateData.status;
+            }
+            const match = await matchDoc.save();
             if (match.status === 'completed') {
                 await this.updateTournamentStatistics(match);
                 await LiveStatsService_1.LiveStatsService.updateLiveStats(matchId);
@@ -177,6 +213,13 @@ class LiveTournamentController extends base_1.BaseController {
                 data: match,
                 message: 'Match updated successfully',
             };
+            EventBus_1.eventBus.emitTournament(match.tournamentId.toString(), 'match:update', { matchId, update: processedUpdateData });
+            try {
+                const live = await this.buildLiveTournament(match.tournamentId.toString());
+                if (live)
+                    EventBus_1.eventBus.emitTournament(match.tournamentId.toString(), 'snapshot', { live });
+            }
+            catch { }
             res.status(200).json(response);
         }
         catch (error) {
@@ -192,6 +235,13 @@ class LiveTournamentController extends base_1.BaseController {
                 data: { teamId, present, checkInTime: new Date().toISOString() },
                 message: `Team ${present ? 'checked in' : 'marked absent'} successfully`,
             };
+            EventBus_1.eventBus.emitTournament(id, 'team:checkin', { teamId, present });
+            try {
+                const live = await this.buildLiveTournament(id);
+                if (live)
+                    EventBus_1.eventBus.emitTournament(id, 'snapshot', { live });
+            }
+            catch { }
             res.status(200).json(response);
         }
         catch (error) {
@@ -213,6 +263,13 @@ class LiveTournamentController extends base_1.BaseController {
                 data: matches,
                 message: `Matches generated for ${round}`,
             };
+            EventBus_1.eventBus.emitTournament(id, 'matches:generated', { round, count: matches.length });
+            try {
+                const live = await this.buildLiveTournament(id);
+                if (live)
+                    EventBus_1.eventBus.emitTournament(id, 'snapshot', { live });
+            }
+            catch { }
             res.status(200).json(response);
         }
         catch (error) {
@@ -238,6 +295,121 @@ class LiveTournamentController extends base_1.BaseController {
             next(error);
         }
     });
+    confirmCompletedMatches = this.asyncHandler(async (req, res, next) => {
+        try {
+            const { id } = req.params;
+            const { round } = req.query;
+            const filter = { tournamentId: id, status: 'completed' };
+            if (round)
+                filter.round = round;
+            const matches = await Match_1.Match.find(filter);
+            if (matches.length === 0) {
+                const response = { success: true, data: { updated: 0 }, message: 'No completed matches to confirm' };
+                res.status(200).json(response);
+                return;
+            }
+            const ids = matches.map(m => m._id);
+            await Match_1.Match.updateMany({ _id: { $in: ids } }, { $set: { status: 'confirmed' } });
+            for (const m of matches) {
+                EventBus_1.eventBus.emitTournament(m.tournamentId.toString(), 'match:confirmed', { matchId: m._id.toString() });
+            }
+            const live = await this.buildLiveTournament(id);
+            if (live)
+                EventBus_1.eventBus.emitTournament(id, 'snapshot', { live });
+            const response = { success: true, data: { updated: matches.length }, message: 'Completed matches confirmed' };
+            res.status(200).json(response);
+        }
+        catch (error) {
+            next(error);
+        }
+    });
+    getTournamentPlayerStats = this.asyncHandler(async (req, res, next) => {
+        try {
+            const { id } = req.params;
+            const playerStats = await LiveStatsService_1.LiveStatsService.calculatePlayerStatsForTournament(id);
+            const response = {
+                success: true,
+                data: playerStats,
+                message: 'Tournament player stats retrieved successfully'
+            };
+            res.status(200).json(response);
+        }
+        catch (error) {
+            next(error);
+        }
+    });
+    streamTournamentEvents = this.asyncHandler(async (req, res, next) => {
+        try {
+            const { id } = req.params;
+            res.status(200);
+            res.setHeader('Content-Type', 'text/event-stream');
+            res.setHeader('Cache-Control', 'no-cache');
+            res.setHeader('Connection', 'keep-alive');
+            res.setHeader('X-Accel-Buffering', 'no');
+            const send = (event, data) => {
+                res.write(`event: ${event}\n`);
+                res.write(`data: ${JSON.stringify(data)}\n\n`);
+            };
+            try {
+                const live = await this.buildLiveTournament(id);
+                if (live) {
+                    send('snapshot', { success: true, data: live });
+                }
+                else {
+                    send('error', { success: false, error: 'Tournament not found' });
+                }
+            }
+            catch (e) {
+                send('error', { success: false, error: 'Failed to build snapshot' });
+            }
+            const unsubscribe = EventBus_1.eventBus.onTournament(id, (evt) => {
+                send('update', evt);
+            });
+            const heartbeat = setInterval(() => {
+                res.write(': ping\n\n');
+            }, 25000);
+            req.on('close', () => {
+                clearInterval(heartbeat);
+                unsubscribe();
+            });
+        }
+        catch (error) {
+            next(error);
+        }
+    });
+    async buildLiveTournament(id) {
+        const tournament = await Tournament_1.Tournament.findById(id).populate('players', 'name');
+        if (!tournament)
+            return null;
+        const matches = await Match_1.Match.find({ tournamentId: id })
+            .populate('team1.players team2.players', 'name')
+            .sort({ roundNumber: 1, matchNumber: 1 });
+        const standings = await TournamentResult_1.TournamentResult.find({ tournamentId: id })
+            .populate('players', 'name')
+            .sort({ 'totalStats.finalRank': 1 });
+        const t = tournament.toObject();
+        const liveTournament = {
+            _id: t._id.toString(),
+            date: t.date,
+            bodNumber: t.bodNumber,
+            format: t.format,
+            location: t.location,
+            advancementCriteria: t.advancementCriteria,
+            notes: t.notes,
+            photoAlbums: t.photoAlbums,
+            status: t.status,
+            players: t.players?.map((p) => p.toString()),
+            maxPlayers: t.maxPlayers,
+            champion: t.champion,
+            phase: this.calculateTournamentPhase(tournament, matches),
+            teams: await this.generateTeamData(tournament),
+            matches,
+            currentStandings: standings,
+            bracketProgression: this.calculateBracketProgression(matches),
+            checkInStatus: await this.getCheckInStatus(tournament),
+        };
+        return liveTournament;
+    }
     calculateTournamentPhase(tournament, matches) {
         const completedMatches = matches.filter(m => m.status === 'completed').length;
         const totalMatches = matches.length;
@@ -424,7 +596,8 @@ class LiveTournamentController extends base_1.BaseController {
     }
     async startRoundRobin(tournament) {
         await this.createMatchesForRound(tournament, 'RR_R1');
-        return tournament;
+        tournament.status = 'active';
+        return await tournament.save();
     }
     async advanceRound(tournament) {
         try {
@@ -835,7 +1008,14 @@ class LiveTournamentController extends base_1.BaseController {
         return tournament;
     }
     async completeTournament(tournament) {
-        tournament.status = 'completed';
+        try {
+            tournament.status = 'completed';
+            await this.setTournamentChampion(tournament);
+            await this.updatePlayerCareerStats(tournament);
+        }
+        catch (err) {
+            console.error('Error finalizing tournament stats on completion:', err);
+        }
         return await tournament.save();
     }
     async resetTournament(tournament) {
