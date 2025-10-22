@@ -45,6 +45,45 @@ export const setTokenRefresher = (refresher: () => Promise<boolean>) => {
   refreshKeycloakToken = refresher;
 };
 
+// Helper: ensure token is fresh before protected calls
+// Increased leeway to 90 seconds to account for network latency and processing time
+const tokenExpiringSoon = (token?: string, leewayMs = 90000): boolean => {
+  if (!token) return true;
+  try {
+    const body = JSON.parse(atob(token.split('.')[1]));
+    const expMs = (body?.exp || 0) * 1000;
+    const willExpire = Date.now() + leewayMs >= expMs;
+    if (willExpire) {
+      console.log('Token expiring soon, will attempt refresh');
+    }
+    return willExpire;
+  } catch {
+    return true;
+  }
+};
+
+const ensureFreshToken = async (): Promise<void> => {
+  const token = getKeycloakToken?.();
+  if (!tokenExpiringSoon(token)) {
+    console.log('Token still valid, no refresh needed');
+    return;
+  }
+  if (refreshKeycloakToken) {
+    try {
+      console.log('Proactively refreshing token before API call...');
+      const refreshed = await refreshKeycloakToken();
+      if (refreshed) {
+        console.log('Token proactively refreshed successfully');
+      } else {
+        console.warn('Token refresh returned false, proceeding with current token');
+      }
+    } catch (e) {
+      console.warn('Proactive token refresh failed, letting interceptor handle it:', e);
+      // Let interceptor handle 401s if refresh fails
+    }
+  }
+};
+
 class ApiClient {
   private client: AxiosInstance;
 
@@ -258,6 +297,7 @@ class ApiClient {
   }
 
   async executeTournamentAction(tournamentId: string, action: TournamentAction): Promise<ApiResponse<LiveTournament>> {
+    await ensureFreshToken();
     return this.post<ApiResponse<LiveTournament>>(`/tournaments/${tournamentId}/action`, action);
   }
 
@@ -276,6 +316,7 @@ class ApiClient {
   }
 
   async generateMatches(tournamentId: string, round: string): Promise<ApiResponse<Match[]>> {
+    await ensureFreshToken();
     return this.post<ApiResponse<Match[]>>(`/tournaments/${tournamentId}/generate-matches`, { round });
   }
 

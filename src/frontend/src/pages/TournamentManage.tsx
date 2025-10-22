@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { useApi } from '../hooks/useApi';
 import { useAuth } from '../contexts/AuthContext';
 import apiClient from '../services/api';
@@ -23,17 +23,27 @@ import type {
 const TournamentManage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const location = useLocation();
   const { isAdmin } = useAuth();
+
+  // Helpers for persistence (declare before useState)
+  function storageKey(suffix: string) { return `tm:${id}:${suffix}`; }
+  function persistSelectedRound(round: string) { try { localStorage.setItem(storageKey('selectedRound'), round); } catch {} }
+  function readPersistedRound(): string | null { try { return localStorage.getItem(storageKey('selectedRound')); } catch { return null; } }
+  function persistToggle(key: string, val: boolean) { try { localStorage.setItem(storageKey(key), String(val)); } catch {} }
+  function readToggle(key: string, fallback: boolean): boolean { try { const v = localStorage.getItem(storageKey(key)); return v === null ? fallback : v === 'true'; } catch { return fallback; } }
+
   const [liveTournament, setLiveTournament] = useState<LiveTournament | null>(null);
   const [currentMatches, setCurrentMatches] = useState<Match[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [selectedRound, setSelectedRound] = useState<string>('');
-  const [compactListView, setCompactListView] = useState<boolean>(true);
-  const [strictTotals, setStrictTotals] = useState<boolean>(true);
-  const [requirePerPlayerScores, setRequirePerPlayerScores] = useState<boolean>(false);
+  const [compactListView, setCompactListView] = useState<boolean>(readToggle('compact', true));
+  const [strictTotals, setStrictTotals] = useState<boolean>(readToggle('strictTotals', true));
+  const [requirePerPlayerScores, setRequirePerPlayerScores] = useState<boolean>(readToggle('requirePerPlayerScores', false));
   const eventSourceRef = useRef<EventSource | null>(null);
   const streamConnectedRef = useRef(false);
+  const initializedRoundRef = useRef(false);
 
   // Deduplicate matches by stable key to avoid duplicates in UI
   const uniqueMatches = React.useMemo(() => {
@@ -58,11 +68,23 @@ const TournamentManage: React.FC = () => {
       if (response.success && response.data) {
         setLiveTournament(response.data);
         const bt = (response.data as LiveTournament).bracketType;
-        setSelectedRound(response.data.phase.currentRound || getDefaultRoundFor(bt));
+        // Determine selected round priority:
+        // URL param > server managementState > persisted > phase.currentRound > default
+        const params = new URLSearchParams(location.search);
+        const urlRound = params.get('round') || '';
+        const options = getRoundOptions(bt).map(o => o.value);
+        let nextRound = response.data.phase.currentRound || getDefaultRoundFor(bt);
+        const serverRound = (response.data as any).managementState?.currentRound as string | undefined;
+        if (serverRound && options.includes(serverRound)) nextRound = serverRound;
+        if (urlRound && options.includes(urlRound)) nextRound = urlRound;
+        const persisted = readPersistedRound();
+        if (!urlRound && persisted && options.includes(persisted)) nextRound = persisted;
+        setSelectedRound(nextRound);
+        initializedRoundRef.current = true;
         
         // Load matches for current round
-        if (response.data.phase.currentRound) {
-          const matchesResponse = await apiClient.getTournamentMatches(id, response.data.phase.currentRound);
+        if (nextRound) {
+          const matchesResponse = await apiClient.getTournamentMatches(id, nextRound);
           if (matchesResponse.success && matchesResponse.data) {
             setCurrentMatches(matchesResponse.data);
           }
@@ -93,8 +115,16 @@ const TournamentManage: React.FC = () => {
             const liveData = live as LiveTournament;
             setLiveTournament(liveData);
             const bt = liveData.bracketType;
-            const round = liveData.phase.currentRound || getDefaultRoundFor(bt);
-            setSelectedRound(round);
+            const options = getRoundOptions(bt).map(o => o.value);
+            let round = selectedRound;
+            if (!initializedRoundRef.current) {
+              round = liveData.phase.currentRound || getDefaultRoundFor(bt);
+              initializedRoundRef.current = true;
+              setSelectedRound(round);
+            } else if (!options.includes(round)) {
+              round = getDefaultRoundFor(bt);
+              setSelectedRound(round);
+            }
             const matches = (liveData.matches || []).filter((m: any) => m.round === round);
             setCurrentMatches(matches);
           }
@@ -111,7 +141,16 @@ const TournamentManage: React.FC = () => {
             const liveData = live as LiveTournament;
             setLiveTournament(liveData);
             const bt = liveData.bracketType;
-            const round = liveData.phase.currentRound || getDefaultRoundFor(bt);
+            const options = getRoundOptions(bt).map(o => o.value);
+            let round = selectedRound;
+            if (!initializedRoundRef.current) {
+              round = liveData.phase.currentRound || getDefaultRoundFor(bt);
+              initializedRoundRef.current = true;
+              setSelectedRound(round);
+            } else if (!options.includes(round)) {
+              round = getDefaultRoundFor(bt);
+              setSelectedRound(round);
+            }
             const matches = (liveData.matches || []).filter((m: any) => m.round === round);
             setCurrentMatches(matches);
           } else {
@@ -179,9 +218,11 @@ const TournamentManage: React.FC = () => {
         // Refresh tournament data for standings update
         await loadTournamentData();
       }
-    } catch (err) {
-      setError('Failed to update match score');
-      console.error(err);
+    } catch (err: any) {
+      // Surface backend validation errors to the user
+      const backendMsg = err?.response?.data?.error || err?.response?.data?.message || err?.message;
+      setError(backendMsg ? `Failed to update match: ${backendMsg}` : 'Failed to update match score');
+      console.error('Update match error:', err?.response?.data || err);
     } finally {
       setLoading(false);
     }
@@ -196,9 +237,10 @@ const TournamentManage: React.FC = () => {
       if (res.success) {
         await loadTournamentData();
       }
-    } catch (err) {
-      setError('Failed to generate matches for this round');
-      console.error(err);
+    } catch (err: any) {
+      const backendMsg = err?.response?.data?.error || err?.response?.data?.message || err?.message;
+      setError(backendMsg ? `Failed to generate matches: ${backendMsg}` : 'Failed to generate matches for this round');
+      console.error('Generate matches error:', err?.response?.data || err);
     } finally {
       setLoading(false);
     }
@@ -538,6 +580,16 @@ const TournamentManage: React.FC = () => {
                     value={selectedRound}
                     onChange={async (e) => {
                       setSelectedRound(e.target.value);
+                      persistSelectedRound(e.target.value);
+                      const params = new URLSearchParams(location.search);
+                      params.set('round', e.target.value);
+                      navigate({ search: params.toString() }, { replace: true });
+                      // Persist globally on the server
+                      try {
+                        await apiClient.executeTournamentAction(id!, { action: 'set_round', parameters: { targetRound: e.target.value } });
+                      } catch (err) {
+                        console.warn('Failed to persist selected round to server', err);
+                      }
                       const matchesResponse = await apiClient.getTournamentMatches(id!, e.target.value);
                       if (matchesResponse.success && matchesResponse.data) {
                         setCurrentMatches(matchesResponse.data);
@@ -556,11 +608,11 @@ const TournamentManage: React.FC = () => {
                 <MatchesToolbar
                   matchCount={currentMatches.length}
                   compactListView={compactListView}
-                  onToggleCompact={(v) => setCompactListView(v)}
+                  onToggleCompact={(v) => { setCompactListView(v); persistToggle('compact', v); }}
                   requirePerPlayerScores={requirePerPlayerScores}
-                  onToggleRequirePerPlayer={(v) => setRequirePerPlayerScores(v)}
+                  onToggleRequirePerPlayer={(v) => { setRequirePerPlayerScores(v); persistToggle('requirePerPlayerScores', v); }}
                   strictTotals={strictTotals}
-                  onToggleStrictTotals={(v) => setStrictTotals(v)}
+                  onToggleStrictTotals={(v) => { setStrictTotals(v); persistToggle('strictTotals', v); }}
                   canConfirmAll={isAdmin && currentMatches.some(m => (m.status as any) === "completed")}
                   onConfirmAll={confirmAllCompletedInRound}
                   loading={loading}

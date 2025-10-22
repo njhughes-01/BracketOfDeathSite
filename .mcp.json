@@ -1,9 +1,9 @@
 {
     "mcpServers": {
-      "browsermcp": {
-        "command": "cmd",
-        "args": ["/c", "npx", "-y", "@browsermcp/mcp@latest"]
-      },
+    "browsermcp": {
+      "command": "npx",
+      "args": ["@browsermcp/mcp@latest"]
+    },
       "memory": {
         "command": "cmd",
         "args": [
@@ -38,15 +38,6 @@
         "env": {
             "QUILLOPY_API_KEY": "sk_M0KLWazZWRWa_OghJpJBI8c9kZRJbiQcjN_kkC5rrvnXG8UnMmQ79DxEXOKc1zFiY5qcYccBnPwDT486b6HMyQ"
             }
-        },
-        "desktop-commander": {
-            "command": "cmd",
-            "args": [
-              "/c",
-              "npx",
-              "-y",
-              "@wonderwhy-er/desktop-commander"
-            ]
-          }
+        }
     }
   }

@@ -1411,9 +1411,16 @@ export class LiveTournamentController extends BaseController<ITournament> {
 
   private async generateLosersMatchesForRound(tournament: ITournament, teams: any[], round: string): Promise<IMatch[]> {
     if (!teams || teams.length < 2) return [] as any;
+
+    // Get the highest existing matchNumber for this tournament to avoid conflicts
+    const highestMatch = await Match.findOne({ tournamentId: tournament._id })
+      .sort({ matchNumber: -1 })
+      .select('matchNumber')
+      .lean();
+    let matchNumber = highestMatch ? highestMatch.matchNumber + 1 : 1;
+
     // Pair sequentially: [0,1],[2,3],...
     const matches: any[] = [];
-    let matchNumber = 1;
     for (let i = 0; i < teams.length; i += 2) {
       if (!teams[i + 1]) break;
       matches.push({
@@ -1511,10 +1518,17 @@ export class LiveTournamentController extends BaseController<ITournament> {
   private async createMatchesForRound(tournament: ITournament, round: string): Promise<IMatch[]> {
     try {
       // Clear any existing matches for this round to avoid duplicates
-      await Match.deleteMany({ 
-        tournamentId: tournament._id, 
-        round: round as any 
+      await Match.deleteMany({
+        tournamentId: tournament._id,
+        round: round as any
       });
+
+      // Get the highest existing matchNumber for this tournament to avoid conflicts
+      const highestMatch = await Match.findOne({ tournamentId: tournament._id })
+        .sort({ matchNumber: -1 })
+        .select('matchNumber')
+        .lean();
+      const startingMatchNumber = highestMatch ? highestMatch.matchNumber + 1 : 1;
 
       // Get teams from tournament setup data, or synthesize from selected players if missing
       let teams = tournament.generatedTeams || [];
@@ -1587,14 +1601,14 @@ export class LiveTournamentController extends BaseController<ITournament> {
       }
 
       let matches: any[] = [];
-      let matchNumber = 1;
 
       // Determine round type and generate appropriate matches
+      // Use the starting match number calculated above to avoid conflicts
       if (isRoundRobinRound(round)) {
-        matches = await this.generateRoundRobinMatches(tournament, teams, round, matchNumber);
+        matches = await this.generateRoundRobinMatches(tournament, teams, round, startingMatchNumber);
       } else {
         // Bracket matches (quarterfinal, semifinal, final)
-        matches = await this.generateBracketMatches(tournament, teams, round, matchNumber);
+        matches = await this.generateBracketMatches(tournament, teams, round, startingMatchNumber);
       }
 
       // Create matches in database

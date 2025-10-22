@@ -41,7 +41,17 @@
       "mcp__desktop-commander__edit_block",
       "mcp__desktop-commander__search_files",
       "mcp__desktop-commander__list_directory",
-      "mcp__quillopy__quillopy_search"
+      "mcp__quillopy__quillopy_search",
+      "Bash(npx jest:*)",
+      "mcp__browsermcp__browser_get_console_logs",
+      "mcp__archon__find_projects",
+      "mcp__archon__find_tasks",
+      "mcp__archon__manage_task",
+      "mcp__browsermcp__browser_screenshot",
+      "Bash(for file in json/20*.json)",
+      "Bash(do echo \"=== $file ===\")",
+      "Bash(done)",
+      "Bash(python3:*)"
     ],
     "deny": []
   },
@@ -50,7 +60,6 @@
     "memory",
     "sequential-thinking",
     "filesystem",
-    "quillopy",
-    "desktop-commander"
+    "quillopy"
   ]
 }

@@ -13,6 +13,11 @@ export interface IMatch extends BaseDocument {
   scheduledDate?: Date;
   completedDate?: Date;
   notes?: string;
+  adminOverride?: {
+    reason: string;
+    authorizedBy: string;
+    timestamp: Date;
+  };
 }
 
 export interface IMatchTeam {
@@ -57,6 +62,11 @@ export interface IMatchUpdate extends Partial<IMatchInput> {
   winner?: 'team1' | 'team2';
   status?: MatchStatus;
   completedDate?: Date;
+  adminOverride?: {
+    reason: string;
+    authorizedBy: string;
+    timestamp?: Date;
+  };
 }
 
 export interface IMatchFilter {

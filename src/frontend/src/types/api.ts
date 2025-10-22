@@ -264,6 +264,11 @@ export interface Match {
   endTime?: string;
   court?: string;
   notes?: string;
+  adminOverride?: {
+    reason: string;
+    authorizedBy: string;
+    timestamp: string;
+  };
   createdAt: string;
   updatedAt: string;
 }
@@ -282,6 +287,9 @@ export interface LiveTournament extends Tournament {
   teams: TeamSeed[];
   matches: Match[];
   currentStandings: TournamentResult[];
+  managementState?: {
+    currentRound?: string;
+  };
   bracketProgression: {
     quarterFinalists: string[];
     semiFinalists: string[];
@@ -317,11 +325,15 @@ export interface MatchUpdate {
   notes?: string;
   startTime?: string;
   endTime?: string;
+  adminOverride?: {
+    reason: string;
+    authorizedBy: string;
+  };
 }
 
 export interface TournamentAction {
   action: 'start_registration' | 'close_registration' | 'start_checkin' | 'start_round_robin' | 
-          'advance_round' | 'start_bracket' | 'complete_tournament' | 'reset_tournament';
+          'advance_round' | 'start_bracket' | 'complete_tournament' | 'reset_tournament' | 'set_round';
   parameters?: {
     targetRound?: string;
     resetToPhase?: string;
