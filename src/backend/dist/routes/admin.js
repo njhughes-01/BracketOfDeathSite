@@ -61,5 +61,9 @@ router.put('/tournaments/:id/finalize', [
 router.get('/tournaments/:id/details', [
     (0, express_validator_1.param)('id').isMongoId().withMessage('Invalid tournament ID'),
 ], validation_1.validateRequest, tournamentAdminController.getTournamentWithMatches);
+// Tournament deletion
+router.delete('/tournaments/:id', [
+    (0, express_validator_1.param)('id').isMongoId().withMessage('Invalid tournament ID'),
+], validation_1.validateRequest, tournamentAdminController.deleteTournament);
 exports.default = router;
 //# sourceMappingURL=admin.js.map

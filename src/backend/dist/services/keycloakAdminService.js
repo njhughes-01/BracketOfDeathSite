@@ -89,6 +89,7 @@ class KeycloakAdminService {
             lastName: userData.lastName,
             enabled: true,
             emailVerified: true,
+            requiredActions: [], // Ensure no required actions block login
         };
         // Add password if provided
         if (userData.password) {
@@ -154,13 +155,24 @@ class KeycloakAdminService {
     async deleteUser(userId) {
         await this.makeAuthenticatedRequest('DELETE', `/users/${userId}`);
     }
-    async resetUserPassword(userId, newPassword, temporary = true) {
+    async resetUserPassword(userId, newPassword, temporary = false) {
         const credentialData = {
             type: 'password',
             value: newPassword,
             temporary,
         };
         await this.makeAuthenticatedRequest('PUT', `/users/${userId}/reset-password`, credentialData);
+        // Clear any required actions that might prevent login
+        if (!temporary) {
+            try {
+                await this.makeAuthenticatedRequest('PUT', `/users/${userId}`, {
+                    requiredActions: []
+                });
+            }
+            catch (error) {
+                console.warn('Could not clear required actions for user:', error);
+            }
+        }
     }
     async assignRolesToUser(userId, roleNames) {
         // Get all realm roles
@@ -198,6 +210,11 @@ class KeycloakAdminService {
     }
     async getAvailableRoles() {
         return this.makeAuthenticatedRequest('GET', '/roles');
+    }
+    async clearUserRequiredActions(userId) {
+        await this.makeAuthenticatedRequest('PUT', `/users/${userId}`, {
+            requiredActions: []
+        });
     }
 }
 exports.keycloakAdminService = new KeycloakAdminService();

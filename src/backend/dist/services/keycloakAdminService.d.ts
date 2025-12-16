@@ -52,6 +52,7 @@ declare class KeycloakAdminService {
         name: string;
         description?: string;
     }>>;
+    clearUserRequiredActions(userId: string): Promise<void>;
 }
 export declare const keycloakAdminService: KeycloakAdminService;
 export default keycloakAdminService;

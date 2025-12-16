@@ -12,12 +12,22 @@ export interface IMatch extends BaseDocument {
     scheduledDate?: Date;
     completedDate?: Date;
     notes?: string;
+    adminOverride?: {
+        reason: string;
+        authorizedBy: string;
+        timestamp: Date;
+    };
 }
 export interface IMatchTeam {
     players: Types.ObjectId[];
     playerNames: string[];
     score: number;
     seed?: number;
+    playerScores?: Array<{
+        playerId: Types.ObjectId;
+        playerName: string;
+        score: number;
+    }>;
 }
 export interface IMatchInput {
     tournamentId: Types.ObjectId | string;
@@ -34,12 +44,22 @@ export interface IMatchTeamInput {
     playerNames: string[];
     score?: number;
     seed?: number;
+    playerScores?: Array<{
+        playerId: Types.ObjectId | string;
+        playerName: string;
+        score: number;
+    }>;
 }
 export interface IMatchUpdate extends Partial<IMatchInput> {
     _id?: never;
     winner?: 'team1' | 'team2';
     status?: MatchStatus;
     completedDate?: Date;
+    adminOverride?: {
+        reason: string;
+        authorizedBy: string;
+        timestamp?: Date;
+    };
 }
 export interface IMatchFilter {
     tournamentId?: Types.ObjectId;
@@ -65,10 +85,16 @@ export interface IMatchFilter {
         $lte?: Date;
     };
 }
-export declare const MatchRounds: readonly ["round-robin", "round-of-64", "round-of-32", "round-of-16", "quarterfinal", "semifinal", "final", "third-place"];
+export declare const MatchRounds: readonly ["RR_R1", "RR_R2", "RR_R3", "round-of-64", "round-of-32", "round-of-16", "quarterfinal", "semifinal", "final", "third-place", "lbr-round-1", "lbr-round-2", "lbr-quarterfinal", "lbr-semifinal", "lbr-final", "grand-final"];
+export declare const LegacyMatchRounds: readonly ["round-robin", "RR_R1", "RR_R2", "RR_R3", "round-of-64", "round-of-32", "round-of-16", "quarterfinal", "semifinal", "final", "third-place", "lbr-round-1", "lbr-round-2", "lbr-quarterfinal", "lbr-semifinal", "lbr-final", "grand-final"];
 export type MatchRound = typeof MatchRounds[number];
 export declare const MatchStatuses: readonly ["scheduled", "in-progress", "completed", "cancelled", "postponed"];
 export type MatchStatus = typeof MatchStatuses[number];
+export declare const RoundRobinRounds: readonly ["RR_R1", "RR_R2", "RR_R3"];
+export type RoundRobinRound = typeof RoundRobinRounds[number];
+export declare const isRoundRobinRound: (round: string) => round is RoundRobinRound;
+export declare const getNextRoundRobinRound: (currentRound: RoundRobinRound) => RoundRobinRound | "bracket";
+export declare const getRoundNumber: (round: MatchRound) => number;
 export declare const getNextRound: (currentRound: MatchRound) => MatchRound | null;
 export declare const calculateBracketMatches: (playerCount: number) => number;
 //# sourceMappingURL=match.d.ts.map

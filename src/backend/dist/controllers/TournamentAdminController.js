@@ -7,6 +7,7 @@ const Match_1 = require("../models/Match");
 const TournamentResult_1 = require("../models/TournamentResult");
 const base_1 = require("./base");
 const mongoose_1 = require("mongoose");
+const TournamentDeletionService_1 = require("../services/TournamentDeletionService");
 class TournamentAdminController extends base_1.BaseController {
     constructor() {
         super(Tournament_1.Tournament, 'Tournament');
@@ -406,6 +407,106 @@ class TournamentAdminController extends base_1.BaseController {
             next(error);
         }
     };
+    /**
+     * Delete a scheduled tournament with enterprise-grade cascade deletion
+     * Implements compensation patterns, audit trails, and robust error handling
+     */
+    deleteTournament = async (req, res, next) => {
+        const deletionService = new TournamentDeletionService_1.TournamentDeletionService();
+        const correlationId = req.headers['x-correlation-id'] || undefined;
+        try {
+            const { id } = req.params;
+            const adminUserId = req.user?.id;
+            if (!adminUserId) {
+                res.status(401).json({
+                    success: false,
+                    message: 'Authentication required',
+                    data: null,
+                });
+                return;
+            }
+            // Use the enhanced deletion service
+            const result = await deletionService.deleteTournament(id, adminUserId, correlationId);
+            const response = {
+                success: true,
+                message: `Tournament "${result.tournamentInfo?.format} - ${result.tournamentInfo?.date}" has been permanently deleted`,
+                data: {
+                    tournamentId: id,
+                    operation: {
+                        correlationId: result.operation.correlationId,
+                        steps: result.operation.steps.map(step => ({
+                            name: step.name,
+                            status: step.status,
+                            expectedCount: step.expectedCount,
+                            actualCount: step.actualCount,
+                        })),
+                        duration: result.operation.endTime
+                            ? result.operation.endTime.getTime() - result.operation.startTime.getTime()
+                            : 0,
+                    },
+                    tournamentInfo: result.tournamentInfo,
+                },
+            };
+            res.status(200).json(response);
+        }
+        catch (error) {
+            // Handle different types of errors appropriately
+            if (error instanceof TournamentDeletionService_1.TournamentDeletionError) {
+                const deletionError = error;
+                // Map deletion error codes to HTTP status codes
+                let statusCode = 500;
+                switch (deletionError.code) {
+                    case 'INVALID_ID':
+                        statusCode = 400;
+                        break;
+                    case 'NOT_FOUND':
+                    case 'TOURNAMENT_NOT_FOUND_FOR_DELETION':
+                        statusCode = 404;
+                        break;
+                    case 'INVALID_STATUS':
+                        statusCode = 409;
+                        break;
+                    case 'MATCHES_DELETION_FAILED':
+                    case 'RESULTS_DELETION_FAILED':
+                    case 'TOURNAMENT_DELETION_FAILED':
+                        statusCode = 500;
+                        break;
+                }
+                // Add retry information for retryable errors
+                const responseHeaders = {};
+                if (deletionService.isRetryable(deletionError)) {
+                    responseHeaders['Retry-After'] = '60'; // Suggest retry after 60 seconds
+                    responseHeaders['X-Retryable'] = 'true';
+                }
+                Object.entries(responseHeaders).forEach(([key, value]) => {
+                    res.setHeader(key, String(value));
+                });
+                res.status(statusCode).json({
+                    success: false,
+                    message: deletionError.message,
+                    data: {
+                        code: deletionError.code,
+                        retryable: deletionError.retryable,
+                        operation: deletionError.operation ? deletionService.getOperationSummary(deletionError.operation) : null,
+                    },
+                });
+                return;
+            }
+            // Log unexpected errors
+            console.error('Unexpected error in tournament deletion:', {
+                tournamentId: req.params.id,
+                adminUserId: req.user?.id,
+                correlationId,
+                error: error instanceof Error ? {
+                    name: error.name,
+                    message: error.message,
+                    stack: error.stack,
+                } : error,
+            });
+            // Let Express error handler deal with unexpected errors
+            next(error);
+        }
+    };
     // Private helper methods
     async createBracketMatches(tournament, isDoubles) {
         const players = tournament.players || [];
@@ -624,40 +725,45 @@ class TournamentAdminController extends base_1.BaseController {
     async updatePlayerStatistics(tournament) {
         try {
             // Get all tournament results for this tournament
-            const results = await TournamentResult_1.TournamentResult.find({ tournamentId: tournament._id }).populate('players');
-            // Group results by player
-            const playerStats = new Map();
+            const results = await TournamentResult_1.TournamentResult.find({ tournamentId: tournament._id });
+            // For each result, update each player's career stats
             for (const result of results) {
-                for (const player of result.players) {
-                    const playerId = player._id.toString();
-                    if (!playerStats.has(playerId)) {
-                        playerStats.set(playerId, {
-                            player,
-                            tournaments: 0,
-                            wins: 0,
-                            championships: 0,
-                            totalPoints: 0,
-                        });
+                const players = result.players;
+                const totalPlayed = result.totalStats?.totalPlayed || 0;
+                const totalWon = result.totalStats?.totalWon || 0;
+                const bodFinish = result.totalStats?.bodFinish || result.totalStats?.finalRank || 0;
+                const isChampion = bodFinish === 1;
+                for (const playerId of players) {
+                    const existingPlayer = await Player_1.Player.findById(playerId);
+                    if (!existingPlayer)
+                        continue;
+                    const newBods = (existingPlayer.bodsPlayed || 0) + 1;
+                    const newGamesPlayed = (existingPlayer.gamesPlayed || 0) + totalPlayed;
+                    const newGamesWon = (existingPlayer.gamesWon || 0) + totalWon;
+                    const newWinningPct = newGamesPlayed > 0 ? newGamesWon / newGamesPlayed : 0;
+                    const prevFinishTotal = (existingPlayer.avgFinish || 0) * (existingPlayer.bodsPlayed || 0);
+                    const newAvgFinish = newBods > 0 ? (prevFinishTotal + (bodFinish || 0)) / newBods : existingPlayer.avgFinish || 0;
+                    let divisionChamps = existingPlayer.divisionChampionships || 0;
+                    let individualChamps = existingPlayer.individualChampionships || 0;
+                    if (isChampion) {
+                        if (tournament.format === 'M' || tournament.format === 'W')
+                            divisionChamps += 1;
+                        else
+                            individualChamps += 1;
                     }
-                    const stats = playerStats.get(playerId);
-                    stats.tournaments += 1;
-                    stats.wins += result.totalStats?.totalWon || 0;
-                    stats.totalPoints += this.calculatePlayerPoints(result);
-                    if (result.totalStats?.bodFinish === 1) {
-                        stats.championships += 1;
-                    }
+                    const update = {
+                        bodsPlayed: newBods,
+                        gamesPlayed: newGamesPlayed,
+                        gamesWon: newGamesWon,
+                        winningPercentage: newWinningPct,
+                        avgFinish: newAvgFinish,
+                        totalChampionships: (existingPlayer.totalChampionships || 0) + (isChampion ? 1 : 0),
+                        bestResult: existingPlayer.bestResult ? Math.min(existingPlayer.bestResult, bodFinish || existingPlayer.bestResult) : (bodFinish || 0),
+                        divisionChampionships: divisionChamps,
+                        individualChampionships: individualChamps,
+                    };
+                    await Player_1.Player.findByIdAndUpdate(playerId, update);
                 }
-            }
-            // Update each player's lifetime statistics
-            for (const [playerId, stats] of playerStats) {
-                await Player_1.Player.findByIdAndUpdate(playerId, {
-                    $inc: {
-                        'statistics.tournamentsPlayed': stats.tournaments,
-                        'statistics.totalWins': stats.wins,
-                        'statistics.championships': stats.championships,
-                        'statistics.totalPoints': stats.totalPoints,
-                    }
-                });
             }
         }
         catch (error) {

@@ -16,6 +16,63 @@ export interface ITournament extends BaseDocument {
         playerName: string;
         tournamentResult?: Types.ObjectId;
     };
+    seedingConfig?: {
+        method: 'historical' | 'recent_form' | 'elo' | 'manual';
+        parameters?: {
+            recentTournamentCount?: number;
+            championshipWeight?: number;
+            winPercentageWeight?: number;
+            avgFinishWeight?: number;
+        };
+    };
+    teamFormationConfig?: {
+        method: 'preformed' | 'draft' | 'statistical_pairing' | 'random' | 'manual';
+        parameters?: {
+            skillBalancing?: boolean;
+            avoidRecentPartners?: boolean;
+            maxTimesPartnered?: number;
+        };
+    };
+    bracketType?: 'single_elimination' | 'double_elimination' | 'round_robin_playoff';
+    registrationDeadline?: Date;
+    generatedSeeds?: Array<{
+        playerId: Types.ObjectId;
+        playerName: string;
+        seed: number;
+        statistics: {
+            avgFinish: number;
+            winningPercentage: number;
+            totalChampionships: number;
+            bodsPlayed: number;
+            recentForm?: number;
+        };
+    }>;
+    generatedTeams?: Array<{
+        teamId: string;
+        players: Array<{
+            playerId: Types.ObjectId;
+            playerName: string;
+            seed: number;
+            statistics: {
+                avgFinish: number;
+                winningPercentage: number;
+                totalChampionships: number;
+                bodsPlayed: number;
+                recentForm?: number;
+            };
+        }>;
+        combinedSeed: number;
+        teamName: string;
+        combinedStatistics: {
+            avgFinish: number;
+            combinedWinPercentage: number;
+            totalChampionships: number;
+            combinedBodsPlayed: number;
+        };
+    }>;
+    managementState?: {
+        currentRound?: string;
+    };
 }
 export interface ITournamentInput {
     date: Date | string;

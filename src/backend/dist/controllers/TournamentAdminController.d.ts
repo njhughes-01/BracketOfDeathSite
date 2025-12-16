@@ -31,6 +31,11 @@ export declare class TournamentAdminController extends BaseController<ITournamen
      * Get tournament with matches and results
      */
     getTournamentWithMatches: (req: Request, res: Response, next: NextFunction) => Promise<void>;
+    /**
+     * Delete a scheduled tournament with enterprise-grade cascade deletion
+     * Implements compensation patterns, audit trails, and robust error handling
+     */
+    deleteTournament: (req: RequestWithAuth, res: Response, next: NextFunction) => Promise<void>;
     private createBracketMatches;
     private generateBracketForTeams;
     private getRoundName;
