@@ -32,6 +32,11 @@ const calculateTournamentStats = (tournament: ITournament): void => {
   if (tournament.location) {
     tournament.location = tournament.location.trim();
   }
+
+  // Ensure bracketType has a default if not provided (fixes legacy/custom format issues)
+  if (!tournament.bracketType) {
+    tournament.bracketType = 'round_robin_playoff';
+  }
 };
 
 const tournamentSchema = new Schema<ITournament>(
@@ -79,7 +84,7 @@ const tournamentSchema = new Schema<ITournament>(
       type: String,
       trim: true,
       validate: {
-        validator: function(value: string) {
+        validator: function (value: string) {
           // Allow empty strings or null/undefined, but validate length if provided
           if (!value || value.trim() === '') return true;
           return value.length >= 1 && value.length <= 1000;
@@ -117,7 +122,7 @@ const tournamentSchema = new Schema<ITournament>(
       min: [2, 'Tournament must allow at least 2 players'],
       max: [64, 'Tournament cannot exceed 64 players'],
       validate: {
-        validator: function(value: number) {
+        validator: function (value: number) {
           if (!value) return true;
           // Must be a power of 2 for bracket tournaments
           return Number.isInteger(Math.log2(value));
@@ -227,7 +232,7 @@ tournamentSchema.path('bodNumber').validate(function (bodNumber: number) {
   if (bodNumber >= 1 && bodNumber <= 999999) {
     return Number.isInteger(bodNumber);
   }
-  
+
   // Legacy YYYYMM format validation (for backwards compatibility)
   const bodStr = bodNumber.toString();
   if (bodStr.length === 6) {
@@ -235,23 +240,23 @@ tournamentSchema.path('bodNumber').validate(function (bodNumber: number) {
     const month = parseInt(bodStr.substring(4, 6));
     return year >= 2009 && month >= 1 && month <= 12;
   }
-  
+
   return false;
 }, 'BOD number must be a positive integer or legacy YYYYMM format');
 
 // Validation for players array
-tournamentSchema.path('players').validate(function(this: any, players: any[]) {
+tournamentSchema.path('players').validate(function (this: any, players: any[]) {
   if (!players || !this.maxPlayers) return true;
   return players.length <= this.maxPlayers;
 }, 'Tournament exceeds maximum player limit');
 
 // Validation for status transitions
-tournamentSchema.path('status').validate(function(this: any, newStatus: string) {
+tournamentSchema.path('status').validate(function (this: any, newStatus: string) {
   if (this.isNew) return true; // Allow any status for new tournaments
-  
+
   const currentStatus = (this as any)._original?.status;
   if (!currentStatus) return true;
-  
+
   // Define valid status transitions
   const validTransitions: Record<string, string[]> = {
     'scheduled': ['open', 'cancelled'],
@@ -260,7 +265,7 @@ tournamentSchema.path('status').validate(function(this: any, newStatus: string) 
     'completed': [], // Completed tournaments cannot change status
     'cancelled': ['scheduled', 'open'], // Can be rescheduled
   };
-  
+
   return validTransitions[currentStatus]?.includes(newStatus) ?? false;
 }, 'Invalid status transition');
 
@@ -328,7 +333,7 @@ tournamentSchema.methods = { ...baseMethods } as any;
 tournamentSchema.pre('save', createPreSaveMiddleware(calculateTournamentStats));
 
 // Middleware to track original status for validation
-tournamentSchema.pre('save', function(this: any) {
+tournamentSchema.pre('save', function (this: any) {
   if (!this.isNew && this.isModified('status')) {
     (this as any)._original = (this as any)._original || {};
     (this as any)._original.status = this.get('status', null, { getters: false });
@@ -353,13 +358,13 @@ createIndexes(tournamentSchema, [
 ]);
 
 // Text index for search
-tournamentSchema.index({ 
-  location: 'text', 
-  notes: 'text', 
-  advancementCriteria: 'text' 
+tournamentSchema.index({
+  location: 'text',
+  notes: 'text',
+  advancementCriteria: 'text'
 });
 
-export interface ITournamentModel extends BaseModelStatics<ITournament> {}
+export interface ITournamentModel extends BaseModelStatics<ITournament> { }
 
 export const Tournament = model<ITournament, ITournamentModel>('Tournament', tournamentSchema);
 export default Tournament;

@@ -97,7 +97,7 @@ const TournamentDetail: React.FC = () => {
     try {
       const updateData: TournamentUpdate = { [field]: value } as TournamentUpdate;
       const response = await apiClient.updateTournament(id, updateData);
-      
+
       if (response.success && response.data) {
         setTournamentData(response.data);
         // Optionally refetch to ensure consistency
@@ -118,7 +118,7 @@ const TournamentDetail: React.FC = () => {
     try {
       const updateData = { [field]: value };
       await apiClient.updateTournamentResult(resultId, updateData);
-      
+
       // Refetch results to get updated data with recalculated values
       const resultsResponse = await getResults();
       console.log('Results updated:', resultsResponse);
@@ -239,20 +239,20 @@ const TournamentDetail: React.FC = () => {
         <div className="flex items-center space-x-3">
           {canViewAdmin && (
             <div className="flex items-center space-x-2">
-              <Link 
+              <Link
                 to={`/tournaments/${id}/manage`}
                 className="btn btn-secondary btn-sm"
               >
                 Manage Live Tournament
               </Link>
-              <Link 
-                to="/admin" 
+              <Link
+                to="/admin"
                 className="text-sm text-blue-600 hover:text-blue-800 px-3 py-1 border border-blue-200 rounded-md hover:bg-blue-50"
               >
                 Admin Dashboard
               </Link>
-              <Link 
-                to="/admin/users" 
+              <Link
+                to="/admin/users"
                 className="text-sm text-gray-600 hover:text-gray-800 px-3 py-1 border border-gray-200 rounded-md hover:bg-gray-50"
               >
                 Manage Users
@@ -276,11 +276,10 @@ const TournamentDetail: React.FC = () => {
             <button
               key={tab.key}
               onClick={() => setActiveTab(tab.key as any)}
-              className={`py-2 px-1 border-b-2 font-medium text-sm ${
-                activeTab === tab.key
+              className={`py-2 px-1 border-b-2 font-medium text-sm ${activeTab === tab.key
                   ? 'border-primary-500 text-primary-600'
                   : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-              }`}
+                }`}
             >
               {tab.label}
             </button>
@@ -293,7 +292,7 @@ const TournamentDetail: React.FC = () => {
         <div className="space-y-6">
           {/* Live Tournament Statistics - show for active tournaments */}
           {(actualStatus === 'in-progress' || tournamentData.status === 'in_progress') && (
-            <LiveStats 
+            <LiveStats
               tournamentId={id!}
               refreshInterval={20000}
               compact={false}
@@ -315,7 +314,7 @@ const TournamentDetail: React.FC = () => {
                     <div className="font-bold text-gray-800">{secondPlace.teamName}</div>
                     <div className="text-sm text-gray-600">2nd Place</div>
                   </div>
-                ) : <div className="w-24"/>;
+                ) : <div className="w-24" />;
               })()}
 
               {/* First Place */}
@@ -329,7 +328,7 @@ const TournamentDetail: React.FC = () => {
                     <div className="font-bold text-gray-800">{firstPlace.teamName}</div>
                     <div className="text-sm text-gray-600">Champion</div>
                   </div>
-                ) : <div className="w-28"/>;
+                ) : <div className="w-28" />;
               })()}
 
               {/* Third Place */}
@@ -343,15 +342,15 @@ const TournamentDetail: React.FC = () => {
                     <div className="font-bold text-gray-800">{thirdPlace.teamName}</div>
                     <div className="text-sm text-gray-600">3rd Place</div>
                   </div>
-                ) : <div className="w-24"/>;
+                ) : <div className="w-24" />;
               })()}
             </div>
           </Card>
-          
+
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             {/* Tournament Info */}
             <div className="md:col-span-2">
-              <EditableCard title="Tournament Information">
+              <EditableCard title="Tournament Information" showEditButton={false}>
                 <div className="space-y-4">
                   {/* Basic Tournament Fields */}
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -505,9 +504,9 @@ const TournamentDetail: React.FC = () => {
                   <div className="flex justify-between">
                     <span className="text-gray-600">Status</span>
                     <span className="font-medium text-green-600">
-                      {actualStatus === 'completed' ? 'Completed' : 
-                       actualStatus === 'active' ? 'In Progress' :
-                       actualStatus === 'upcoming' ? 'Upcoming' : 'Scheduled'}
+                      {actualStatus === 'completed' ? 'Completed' :
+                        actualStatus === 'active' ? 'In Progress' :
+                          actualStatus === 'upcoming' ? 'Upcoming' : 'Scheduled'}
                     </span>
                   </div>
                   <div className="flex justify-between">
@@ -731,20 +730,19 @@ const TournamentDetail: React.FC = () => {
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
                           <span className="font-medium text-gray-900">
-                            {result.totalStats?.totalPlayed > 0 ? 
-                              ((result.totalStats?.totalWon / result.totalStats?.totalPlayed) * 100).toFixed(1) + '%' : 
+                            {result.totalStats?.totalPlayed > 0 ?
+                              ((result.totalStats?.totalWon / result.totalStats?.totalPlayed) * 100).toFixed(1) + '%' :
                               '0%'
                             }
                           </span>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
-                          <span className={`px-2 py-1 text-xs font-medium rounded-full ${
-                            result.performanceGrade === 'A' ? 'bg-green-100 text-green-800' :
-                            result.performanceGrade === 'B' ? 'bg-blue-100 text-blue-800' :
-                            result.performanceGrade === 'C' ? 'bg-yellow-100 text-yellow-800' :
-                            result.performanceGrade === 'D' ? 'bg-orange-100 text-orange-800' :
-                            'bg-red-100 text-red-800'
-                          }`}>
+                          <span className={`px-2 py-1 text-xs font-medium rounded-full ${result.performanceGrade === 'A' ? 'bg-green-100 text-green-800' :
+                              result.performanceGrade === 'B' ? 'bg-blue-100 text-blue-800' :
+                                result.performanceGrade === 'C' ? 'bg-yellow-100 text-yellow-800' :
+                                  result.performanceGrade === 'D' ? 'bg-orange-100 text-orange-800' :
+                                    'bg-red-100 text-red-800'
+                            }`}>
                             {result.performanceGrade || 'N/A'}
                           </span>
                         </td>
@@ -818,8 +816,8 @@ const TournamentDetail: React.FC = () => {
                         </div>
                         <div className="text-sm text-gray-700 mb-1">{team.teamName}</div>
                         <div className="text-xs text-gray-600">
-                          Win%: {(team.combinedStatistics.combinedWinPercentage * 100).toFixed(1)}% | 
-                          Avg Finish: {team.combinedStatistics.avgFinish.toFixed(1)} | 
+                          Win%: {(team.combinedStatistics.combinedWinPercentage * 100).toFixed(1)}% |
+                          Avg Finish: {team.combinedStatistics.avgFinish.toFixed(1)} |
                           BODs: {team.combinedStatistics.combinedBodsPlayed}
                         </div>
                       </div>
@@ -845,7 +843,7 @@ const TournamentDetail: React.FC = () => {
                     </div>
                     <div className="text-sm font-medium text-gray-900">{seed.playerName}</div>
                     <div className="text-xs text-gray-600">
-                      Avg: {seed.statistics.avgFinish.toFixed(1)} | 
+                      Avg: {seed.statistics.avgFinish.toFixed(1)} |
                       BODs: {seed.statistics.bodsPlayed} |
                       Champ: {seed.statistics.totalChampionships}
                     </div>
@@ -1004,13 +1002,12 @@ const TournamentDetail: React.FC = () => {
                             <td className="px-4 py-2 whitespace-nowrap">
                               <div className="flex items-center">
                                 <span className="font-medium text-sm">#{result.totalStats?.bodFinish}</span>
-                                <span className={`ml-2 px-2 py-1 text-xs font-medium rounded-full ${
-                                  result.performanceGrade === 'A' ? 'bg-green-100 text-green-800' :
-                                  result.performanceGrade === 'B' ? 'bg-blue-100 text-blue-800' :
-                                  result.performanceGrade === 'C' ? 'bg-yellow-100 text-yellow-800' :
-                                  result.performanceGrade === 'D' ? 'bg-orange-100 text-orange-800' :
-                                  'bg-red-100 text-red-800'
-                                }`}>
+                                <span className={`ml-2 px-2 py-1 text-xs font-medium rounded-full ${result.performanceGrade === 'A' ? 'bg-green-100 text-green-800' :
+                                    result.performanceGrade === 'B' ? 'bg-blue-100 text-blue-800' :
+                                      result.performanceGrade === 'C' ? 'bg-yellow-100 text-yellow-800' :
+                                        result.performanceGrade === 'D' ? 'bg-orange-100 text-orange-800' :
+                                          'bg-red-100 text-red-800'
+                                  }`}>
                                   {result.performanceGrade || 'F'}
                                 </span>
                               </div>

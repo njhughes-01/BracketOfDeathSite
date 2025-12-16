@@ -12,12 +12,12 @@ import MatchScoring from '../components/tournament/MatchScoring';
 import PlayerLeaderboard from '../components/tournament/PlayerLeaderboard';
 import MatchesToolbar from '../components/tournament/MatchesToolbar';
 import { getDefaultRoundFor, getRoundOptions, isRoundRobin } from '../utils/bracket';
-import type { 
-  LiveTournament, 
-  Match, 
-  TournamentAction, 
+import type {
+  LiveTournament,
+  Match,
+  TournamentAction,
   MatchUpdate,
-  TournamentResult 
+  TournamentResult
 } from '../types/api';
 
 const TournamentManage: React.FC = () => {
@@ -28,9 +28,9 @@ const TournamentManage: React.FC = () => {
 
   // Helpers for persistence (declare before useState)
   function storageKey(suffix: string) { return `tm:${id}:${suffix}`; }
-  function persistSelectedRound(round: string) { try { localStorage.setItem(storageKey('selectedRound'), round); } catch {} }
+  function persistSelectedRound(round: string) { try { localStorage.setItem(storageKey('selectedRound'), round); } catch { } }
   function readPersistedRound(): string | null { try { return localStorage.getItem(storageKey('selectedRound')); } catch { return null; } }
-  function persistToggle(key: string, val: boolean) { try { localStorage.setItem(storageKey(key), String(val)); } catch {} }
+  function persistToggle(key: string, val: boolean) { try { localStorage.setItem(storageKey(key), String(val)); } catch { } }
   function readToggle(key: string, fallback: boolean): boolean { try { const v = localStorage.getItem(storageKey(key)); return v === null ? fallback : v === 'true'; } catch { return fallback; } }
 
   const [liveTournament, setLiveTournament] = useState<LiveTournament | null>(null);
@@ -40,7 +40,7 @@ const TournamentManage: React.FC = () => {
   const [selectedRound, setSelectedRound] = useState<string>('');
   const [compactListView, setCompactListView] = useState<boolean>(readToggle('compact', true));
   const [strictTotals, setStrictTotals] = useState<boolean>(readToggle('strictTotals', true));
-  const [requirePerPlayerScores, setRequirePerPlayerScores] = useState<boolean>(readToggle('requirePerPlayerScores', false));
+  const [requirePerPlayerScores, setRequirePerPlayerScores] = useState<boolean>(readToggle('requirePerPlayerScores', true));
   const eventSourceRef = useRef<EventSource | null>(null);
   const streamConnectedRef = useRef(false);
   const initializedRoundRef = useRef(false);
@@ -61,7 +61,7 @@ const TournamentManage: React.FC = () => {
   // Load live tournament data
   const loadTournamentData = useCallback(async () => {
     if (!id) return;
-    
+
     try {
       setLoading(true);
       const response = await apiClient.getLiveTournament(id);
@@ -81,7 +81,7 @@ const TournamentManage: React.FC = () => {
         if (!urlRound && persisted && options.includes(persisted)) nextRound = persisted;
         setSelectedRound(nextRound);
         initializedRoundRef.current = true;
-        
+
         // Load matches for current round
         if (nextRound) {
           const matchesResponse = await apiClient.getTournamentMatches(id, nextRound);
@@ -175,7 +175,7 @@ const TournamentManage: React.FC = () => {
       return () => {
         clearInterval(pollInterval);
         streamConnectedRef.current = false;
-        try { es.close(); } catch {}
+        try { es.close(); } catch { }
         eventSourceRef.current = null;
       };
     }
@@ -186,7 +186,7 @@ const TournamentManage: React.FC = () => {
   // Execute tournament action
   const executeTournamentAction = async (action: TournamentAction) => {
     if (!id) return;
-    
+
     try {
       setLoading(true);
       const response = await apiClient.executeTournamentAction(id, action);
@@ -194,9 +194,10 @@ const TournamentManage: React.FC = () => {
         setLiveTournament(response.data);
         await loadTournamentData(); // Refresh all data
       }
-    } catch (err) {
-      setError(`Failed to ${action.action.replace('_', ' ')}`);
-      console.error(err);
+    } catch (err: any) {
+      const backendMsg = err?.response?.data?.error || err?.response?.data?.message || err?.message;
+      setError(backendMsg ? `Failed to ${action.action.replace('_', ' ')}: ${backendMsg}` : `Failed to ${action.action.replace('_', ' ')}`);
+      console.error('Execute action error:', err?.response?.data || err);
     } finally {
       setLoading(false);
     }
@@ -272,7 +273,7 @@ const TournamentManage: React.FC = () => {
   // Check in team
   const checkInTeam = async (teamId: string, present: boolean) => {
     if (!id) return;
-    
+
     try {
       const response = await apiClient.checkInTeam(id, teamId, present);
       if (response.success && response.data) {
@@ -301,7 +302,7 @@ const TournamentManage: React.FC = () => {
   const getRoundDisplayInfo = (round: string) => {
     const roundMap: Record<string, string> = {
       'RR_R1': 'Round Robin - Round 1',
-      'RR_R2': 'Round Robin - Round 2', 
+      'RR_R2': 'Round Robin - Round 2',
       'RR_R3': 'Round Robin - Round 3',
       'quarterfinal': 'Quarterfinals',
       'semifinal': 'Semifinals',
@@ -364,7 +365,7 @@ const TournamentManage: React.FC = () => {
           </p>
           {liveTournament.phase.currentRound && (
             <p className="text-sm text-gray-500">
-              Current: {getRoundDisplayInfo(liveTournament.phase.currentRound)} 
+              Current: {getRoundDisplayInfo(liveTournament.phase.currentRound)}
               ({liveTournament.phase.completedMatches}/{liveTournament.phase.totalMatches} matches completed)
             </p>
           )}
@@ -408,7 +409,8 @@ const TournamentManage: React.FC = () => {
         {/* Main Control Panel */}
         <div className="lg:col-span-2 space-y-6">
           {/* Tournament Control Panel */}
-          <EditableCard title="Tournament Controls">
+          <div className="bg-red-100 p-2 mb-4 border border-red-400 text-red-700">DEBUG: bracketType="{liveTournament.bracketType}" (isRR: {String(isRoundRobin(liveTournament.bracketType))})</div>
+          <EditableCard title="Tournament Controls" showEditButton={false}>
             <div className="space-y-4">
               {/* Phase Actions */}
               <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
@@ -454,7 +456,7 @@ const TournamentManage: React.FC = () => {
                     </>
                   );
                 })()}
-                
+
                 {liveTournament.phase.phase === 'registration' && (
                   <>
                     <button
@@ -558,10 +560,10 @@ const TournamentManage: React.FC = () => {
                     </span>
                   </div>
                   <div className="w-full bg-gray-200 rounded-full h-2">
-                    <div 
+                    <div
                       className="bg-blue-600 h-2 rounded-full transition-all duration-300"
-                      style={{ 
-                        width: `${(liveTournament.phase.completedMatches / liveTournament.phase.totalMatches) * 100}%` 
+                      style={{
+                        width: `${(liveTournament.phase.completedMatches / liveTournament.phase.totalMatches) * 100}%`
                       }}
                     />
                   </div>
@@ -571,53 +573,53 @@ const TournamentManage: React.FC = () => {
           </EditableCard>
 
           {/* Match Management */}
-          <EditableCard title={`${getRoundDisplayInfo(selectedRound)} Matches`}>
-              <div className="space-y-4">
-                {/* Round Selector */}
-                <div className="flex items-center space-x-4">
-                  <label className="text-sm font-medium text-gray-700">Round:</label>
-                  <select
-                    value={selectedRound}
-                    onChange={async (e) => {
-                      setSelectedRound(e.target.value);
-                      persistSelectedRound(e.target.value);
-                      const params = new URLSearchParams(location.search);
-                      params.set('round', e.target.value);
-                      navigate({ search: params.toString() }, { replace: true });
-                      // Persist globally on the server
-                      try {
-                        await apiClient.executeTournamentAction(id!, { action: 'set_round', parameters: { targetRound: e.target.value } });
-                      } catch (err) {
-                        console.warn('Failed to persist selected round to server', err);
-                      }
-                      const matchesResponse = await apiClient.getTournamentMatches(id!, e.target.value);
-                      if (matchesResponse.success && matchesResponse.data) {
-                        setCurrentMatches(matchesResponse.data);
-                      }
-                    }}
-                    className="select select-sm"
-                  >
-                    {getRoundOptions(((liveTournament as any).bracketType as any)).map(opt => (
-                      <option key={opt.value} value={opt.value}>{opt.label}</option>
-                    ))}
-                  </select>
-                </div>
+          <EditableCard title={`${getRoundDisplayInfo(selectedRound)} Matches`} showEditButton={false}>
+            <div className="space-y-4">
+              {/* Round Selector */}
+              <div className="flex items-center space-x-4">
+                <label className="text-sm font-medium text-gray-700">Round:</label>
+                <select
+                  value={selectedRound}
+                  onChange={async (e) => {
+                    setSelectedRound(e.target.value);
+                    persistSelectedRound(e.target.value);
+                    const params = new URLSearchParams(location.search);
+                    params.set('round', e.target.value);
+                    navigate({ search: params.toString() }, { replace: true });
+                    // Persist globally on the server
+                    try {
+                      await apiClient.executeTournamentAction(id!, { action: 'set_round', parameters: { targetRound: e.target.value } });
+                    } catch (err) {
+                      console.warn('Failed to persist selected round to server', err);
+                    }
+                    const matchesResponse = await apiClient.getTournamentMatches(id!, e.target.value);
+                    if (matchesResponse.success && matchesResponse.data) {
+                      setCurrentMatches(matchesResponse.data);
+                    }
+                  }}
+                  className="select select-sm"
+                >
+                  {getRoundOptions(((liveTournament as any).bracketType as any)).map(opt => (
+                    <option key={opt.value} value={opt.value}>{opt.label}</option>
+                  ))}
+                </select>
+              </div>
 
-                {/* Matches Grid */}
-                {/* Grid Toolbar */}
-                <MatchesToolbar
-                  matchCount={currentMatches.length}
-                  compactListView={compactListView}
-                  onToggleCompact={(v) => { setCompactListView(v); persistToggle('compact', v); }}
-                  requirePerPlayerScores={requirePerPlayerScores}
-                  onToggleRequirePerPlayer={(v) => { setRequirePerPlayerScores(v); persistToggle('requirePerPlayerScores', v); }}
-                  strictTotals={strictTotals}
-                  onToggleStrictTotals={(v) => { setStrictTotals(v); persistToggle('strictTotals', v); }}
-                  canConfirmAll={isAdmin && currentMatches.some(m => (m.status as any) === "completed")}
-                  onConfirmAll={confirmAllCompletedInRound}
-                  loading={loading}
-                />
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {/* Matches Grid */}
+              {/* Grid Toolbar */}
+              <MatchesToolbar
+                matchCount={currentMatches.length}
+                compactListView={compactListView}
+                onToggleCompact={(v) => { setCompactListView(v); persistToggle('compact', v); }}
+                requirePerPlayerScores={requirePerPlayerScores}
+                onToggleRequirePerPlayer={(v) => { setRequirePerPlayerScores(v); persistToggle('requirePerPlayerScores', v); }}
+                strictTotals={strictTotals}
+                onToggleStrictTotals={(v) => { setStrictTotals(v); persistToggle('strictTotals', v); }}
+                canConfirmAll={isAdmin && currentMatches.some(m => (m.status as any) === "completed")}
+                onConfirmAll={confirmAllCompletedInRound}
+                loading={loading}
+              />
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {currentMatches.length === 0 && (
                   <div className="col-span-full flex items-center justify-between p-3 bg-yellow-50 border border-yellow-200 rounded">
                     <span className="text-sm text-yellow-800">No matches found for this round.</span>
@@ -633,95 +635,92 @@ const TournamentManage: React.FC = () => {
                   </div>
                 )}
                 {uniqueMatches.map((match, idx) => (
-                    <div
-                      key={`${
-                        (match as any)._id || (match as any).id || `${(match as any).tournamentId}-${(match as any).round}-${(match as any).matchNumber}`
+                  <div
+                    key={`${(match as any)._id || (match as any).id || `${(match as any).tournamentId}-${(match as any).round}-${(match as any).matchNumber}`
                       }-${idx}`}
-                      className={`p-4 border rounded-lg ${
-                        match.status === 'completed' ? 'bg-green-50 border-green-200' :
-                        (match.status as any) === 'in-progress' ? 'bg-yellow-50 border-yellow-200' : 
+                    className={`p-4 border rounded-lg ${match.status === 'completed' ? 'bg-green-50 border-green-200' :
+                      (match.status as any) === 'in-progress' ? 'bg-yellow-50 border-yellow-200' :
                         'bg-white border-gray-200'
                       }`}
-                    >
-                      <div className="flex items-center justify-between mb-3">
-                        <span className="text-sm font-medium text-gray-900">
-                          Match {match.matchNumber}
-                        </span>
-                        <span
-                          className={`px-2 py-1 text-xs font-medium rounded-full ${
-                            match.status === 'completed' ? 'bg-green-100 text-green-800' :
-                            (match.status as any) === 'in-progress' ? 'bg-yellow-100 text-yellow-800' :
+                  >
+                    <div className="flex items-center justify-between mb-3">
+                      <span className="text-sm font-medium text-gray-900">
+                        Match {match.matchNumber}
+                      </span>
+                      <span
+                        className={`px-2 py-1 text-xs font-medium rounded-full ${match.status === 'completed' ? 'bg-green-100 text-green-800' :
+                          (match.status as any) === 'in-progress' ? 'bg-yellow-100 text-yellow-800' :
                             match.status === 'confirmed' ? 'bg-blue-100 text-blue-800' :
-                            'bg-gray-100 text-gray-800'
+                              'bg-gray-100 text-gray-800'
                           }`}
-                        >
-                          {match.status.replace('_', ' ')}
-                        </span>
-                      </div>
-
-                      {/* Match Scoring with Individual Player Scores */}
-                      <MatchScoring
-                        match={match}
-                        onUpdateMatch={updateMatchScore}
-                        compact={compactListView}
-                        requirePerPlayerScores={requirePerPlayerScores}
-                        strictTotals={strictTotals}
-                      />
-
-                      {/* Match Details */}
-                      {(match.court || match.startTime || match.notes) && (
-                        <div className="mt-3 pt-3 border-t border-gray-200">
-                          <div className="space-y-1 text-xs text-gray-500">
-                            {match.court && <p>Court: {match.court}</p>}
-                            {match.startTime && <p>Started: {new Date(match.startTime).toLocaleTimeString()}</p>}
-                            {match.notes && <p>Notes: {match.notes}</p>}
-                          </div>
-                        </div>
-                      )}
-
-                      {/* Quick Actions */}
-                      <div className="mt-3 flex space-x-2">
-                        {/* Removed per-match Start; enter scores below to complete */}
-                        {((match.status as any) === 'completed') && (
-                          <button
-                            onClick={() => updateMatchScore({
-                              matchId: (match._id || (match as any).id) as string,
-                              status: 'confirmed'
-                            })}
-                            className="btn btn-primary btn-xs"
-                          >
-                            Confirm Result
-                          </button>
-                        )}
-                      </div>
+                      >
+                        {match.status.replace('_', ' ')}
+                      </span>
                     </div>
-                  ))}
-                </div>
 
-                {/* Generate Matches Button */}
-                {currentMatches.length === 0 && (
-                  <div className="text-center py-8">
-                    <p className="text-gray-500 mb-4">No matches generated for this round</p>
-                    <button
-                      onClick={async () => {
-                        const response = await apiClient.generateMatches(id!, selectedRound);
-                        if (response.success && response.data) {
-                          setCurrentMatches(response.data);
-                        }
-                      }}
-                      className="btn btn-primary"
-                      disabled={loading}
-                    >
-                      Generate Matches
-                    </button>
+                    {/* Match Scoring with Individual Player Scores */}
+                    <MatchScoring
+                      match={match}
+                      onUpdateMatch={updateMatchScore}
+                      compact={compactListView}
+                      requirePerPlayerScores={requirePerPlayerScores}
+                      strictTotals={strictTotals}
+                    />
+
+                    {/* Match Details */}
+                    {(match.court || match.startTime || match.notes) && (
+                      <div className="mt-3 pt-3 border-t border-gray-200">
+                        <div className="space-y-1 text-xs text-gray-500">
+                          {match.court && <p>Court: {match.court}</p>}
+                          {match.startTime && <p>Started: {new Date(match.startTime).toLocaleTimeString()}</p>}
+                          {match.notes && <p>Notes: {match.notes}</p>}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Quick Actions */}
+                    <div className="mt-3 flex space-x-2">
+                      {/* Removed per-match Start; enter scores below to complete */}
+                      {((match.status as any) === 'completed') && (
+                        <button
+                          onClick={() => updateMatchScore({
+                            matchId: (match._id || (match as any).id) as string,
+                            status: 'confirmed'
+                          })}
+                          className="btn btn-primary btn-xs"
+                        >
+                          Confirm Result
+                        </button>
+                      )}
+                    </div>
                   </div>
-                )}
+                ))}
               </div>
-            </EditableCard>
+
+              {/* Generate Matches Button */}
+              {currentMatches.length === 0 && (
+                <div className="text-center py-8">
+                  <p className="text-gray-500 mb-4">No matches generated for this round</p>
+                  <button
+                    onClick={async () => {
+                      const response = await apiClient.generateMatches(id!, selectedRound);
+                      if (response.success && response.data) {
+                        setCurrentMatches(response.data);
+                      }
+                    }}
+                    className="btn btn-primary"
+                    disabled={loading}
+                  >
+                    Generate Matches
+                  </button>
+                </div>
+              )}
+            </div>
+          </EditableCard>
 
           {/* Bracket Visualization */}
           {liveTournament.phase.phase === 'bracket' && liveTournament.matches.length > 0 && (
-            <EditableCard title="Tournament Bracket">
+            <EditableCard title="Tournament Bracket" showEditButton={false}>
               <BracketView
                 matches={liveTournament.matches.filter(m => ['quarterfinal', 'semifinal', 'final'].includes(m.round))}
                 teams={liveTournament.teams}
@@ -740,16 +739,16 @@ const TournamentManage: React.FC = () => {
         {/* Sidebar - Live Stats & Teams */}
         <div className="space-y-6">
           {/* Live Tournament Statistics */}
-          <LiveStats 
-            tournamentId={id!} 
-            refreshInterval={15000} 
+          <LiveStats
+            tournamentId={id!}
+            refreshInterval={15000}
             compact={true}
             bracketType={liveTournament.bracketType}
           />
           <PlayerLeaderboard tournamentId={id!} />
           {/* Check-In Status */}
           {liveTournament.phase.phase === 'check_in' && (
-            <EditableCard title="Team Check-In">
+            <EditableCard title="Team Check-In" showEditButton={false}>
               <div className="space-y-3">
                 {liveTournament.teams.map((team) => {
                   const checkInStatus = liveTournament.checkInStatus[team.teamId];
@@ -766,11 +765,10 @@ const TournamentManage: React.FC = () => {
                       </div>
                       <button
                         onClick={() => checkInTeam(team.teamId, !checkInStatus?.checkedIn)}
-                        className={`btn btn-xs ${
-                          checkInStatus?.checkedIn 
-                            ? 'btn-success' 
-                            : 'btn-outline'
-                        }`}
+                        className={`btn btn-xs ${checkInStatus?.checkedIn
+                          ? 'btn-success'
+                          : 'btn-outline'
+                          }`}
                       >
                         {checkInStatus?.checkedIn ? '✓ Checked In' : 'Check In'}
                       </button>
@@ -783,7 +781,7 @@ const TournamentManage: React.FC = () => {
 
           {/* Current Standings */}
           {liveTournament.currentStandings.length > 0 && (
-            <EditableCard title="Current Standings">
+            <EditableCard title="Current Standings" showEditButton={false}>
               <div className="space-y-2">
                 {liveTournament.currentStandings
                   .sort((a, b) => (a.totalStats.bodFinish || 999) - (b.totalStats.bodFinish || 999))
@@ -798,7 +796,7 @@ const TournamentManage: React.FC = () => {
                         <div>
                           <p className="text-sm font-medium">{(result as any).teamName}</p>
                           <p className="text-xs text-gray-500">
-                            {result.totalStats.totalWon}-{result.totalStats.totalLost} 
+                            {result.totalStats.totalWon}-{result.totalStats.totalLost}
                             ({((result.totalStats.winPercentage || 0) * 100).toFixed(0)}%)
                           </p>
                         </div>
@@ -815,7 +813,7 @@ const TournamentManage: React.FC = () => {
           )}
 
           {/* Tournament Info */}
-          <EditableCard title="Tournament Info">
+          <EditableCard title="Tournament Info" showEditButton={false}>
             <div className="space-y-3 text-sm">
               <div className="flex justify-between">
                 <span className="text-gray-600">Format:</span>

@@ -299,7 +299,7 @@ export class TournamentController extends BaseController<ITournament> {
 
       // Calculate seeds based on the selected method
       let playerSeeds: any[] = [];
-      
+
       switch (method) {
         case 'historical':
           playerSeeds = this.calculateHistoricalSeeds(players, parameters);
@@ -349,7 +349,7 @@ export class TournamentController extends BaseController<ITournament> {
 
       // Get player data for team formation
       const players = await this.getPlayersById(playerIds);
-      
+
       if (players.length !== playerIds.length) {
         this.sendError(res, 400, 'Some players not found');
         return;
@@ -373,8 +373,13 @@ export class TournamentController extends BaseController<ITournament> {
   setupTournament = this.asyncHandler(async (req: RequestWithAuth, res: Response, next: NextFunction): Promise<void> => {
     try {
       console.log('setupTournament called with body:', JSON.stringify(req.body, null, 2));
-      
-      const { basicInfo, seedingConfig, teamFormationConfig, bracketType, maxPlayers, selectedPlayers, generatedSeeds, generatedTeams } = req.body;
+
+      let { basicInfo, seedingConfig, teamFormationConfig, bracketType, maxPlayers, selectedPlayers, generatedSeeds, generatedTeams } = req.body;
+
+      // Ensure bracketType has a default if not provided
+      if (!bracketType) {
+        bracketType = 'round_robin_playoff'; // Default to standard format
+      }
 
       // Validate basicInfo exists and has required fields
       if (!basicInfo) {
@@ -384,7 +389,7 @@ export class TournamentController extends BaseController<ITournament> {
 
       const requiredFields = ['date', 'bodNumber', 'format', 'location', 'advancementCriteria'];
       const missingFields = requiredFields.filter(field => !basicInfo[field]);
-      
+
       if (missingFields.length > 0) {
         this.sendError(res, 400, `Missing required fields in basicInfo: ${missingFields.join(', ')}`);
         return;
@@ -451,10 +456,10 @@ export class TournamentController extends BaseController<ITournament> {
 
       for (const tournamentData of tournaments) {
         try {
-          const existingTournament = await Tournament.findOne({ 
-            bodNumber: tournamentData.bodNumber 
+          const existingTournament = await Tournament.findOne({
+            bodNumber: tournamentData.bodNumber
           });
-          
+
           if (existingTournament) {
             await Tournament.findByIdAndUpdateSafe(existingTournament._id.toString(), tournamentData);
             results.updated++;
@@ -506,7 +511,7 @@ export class TournamentController extends BaseController<ITournament> {
       } else {
         const year = parseInt(bodStr.substring(0, 4));
         const month = parseInt(bodStr.substring(4, 6));
-        
+
         if (year < 2009 || month < 1 || month > 12) {
           errors.push('BOD number must be valid (YYYYMM format)');
         }
@@ -524,7 +529,7 @@ export class TournamentController extends BaseController<ITournament> {
       const bodStr = data.bodNumber.toString();
       const bodYear = parseInt(bodStr.substring(0, 4));
       const bodMonth = parseInt(bodStr.substring(4, 6));
-      
+
       if (date.getFullYear() !== bodYear || (date.getMonth() + 1) !== bodMonth) {
         errors.push('Date must match BOD number year and month');
       }
@@ -565,17 +570,17 @@ export class TournamentController extends BaseController<ITournament> {
     // Calculate composite score for each player
     const playersWithScores = players.map(player => {
       const stats = this.getPlayerStatistics(player);
-      
+
       // Normalize championship count (higher = better)
       const champScore = stats.totalChampionships;
-      
+
       // Win percentage is already normalized (0-1)
       const winPctScore = stats.winningPercentage;
-      
+
       // Average finish (lower = better, so we invert it)
       const avgFinishScore = stats.bodsPlayed > 0 ? (1 / (stats.avgFinish || 1)) : 0;
-      
-      const compositeScore = 
+
+      const compositeScore =
         (champScore * championshipWeight) +
         (winPctScore * winPercentageWeight) +
         (avgFinishScore * avgFinishWeight);
@@ -589,7 +594,7 @@ export class TournamentController extends BaseController<ITournament> {
 
     // Sort by composite score (descending) and assign seeds
     playersWithScores.sort((a, b) => b.compositeScore - a.compositeScore);
-    
+
     return playersWithScores.map((player, index) => ({
       playerId: player._id,
       playerName: player.name,
@@ -645,7 +650,7 @@ export class TournamentController extends BaseController<ITournament> {
   // Handle statistical pairing for balanced teams
   private handleStatisticalPairing(players: any[], parameters: any) {
     const { skillBalancing = true } = parameters;
-    
+
     if (!skillBalancing) {
       return this.handleRandomPairing(players);
     }
@@ -665,7 +670,7 @@ export class TournamentController extends BaseController<ITournament> {
       const lowSkillPlayer = sortedPlayers[sortedPlayers.length - 1 - i];
 
       const combinedSeed = Math.ceil((i + 1 + (teamCount - i)) / 2);
-      
+
       teams.push({
         teamId: `team_${i + 1}`,
         players: [
@@ -700,12 +705,12 @@ export class TournamentController extends BaseController<ITournament> {
   private handleRandomPairing(players: any[]) {
     const shuffled = [...players].sort(() => Math.random() - 0.5);
     const teams = [];
-    
+
     for (let i = 0; i < shuffled.length; i += 2) {
       if (i + 1 < shuffled.length) {
         const player1 = shuffled[i];
         const player2 = shuffled[i + 1];
-        
+
         teams.push({
           teamId: `team_${Math.floor(i / 2) + 1}`,
           players: [
@@ -755,10 +760,10 @@ export class TournamentController extends BaseController<ITournament> {
   }
 
   // Override create method to add custom validation
-  override async create(req: RequestWithAuth, res: Response, next: NextFunction): Promise<void> {
+  override create = async (req: RequestWithAuth, res: Response, next: NextFunction): Promise<void> => {
     try {
       const validationErrors = this.validateTournamentData(req.body);
-      
+
       if (validationErrors.length > 0) {
         this.sendError(res, 400, validationErrors.join(', '));
         return;
@@ -772,10 +777,10 @@ export class TournamentController extends BaseController<ITournament> {
   }
 
   // Override update method to add custom validation
-  override async update(req: RequestWithAuth, res: Response, next: NextFunction): Promise<void> {
+  override update = async (req: RequestWithAuth, res: Response, next: NextFunction): Promise<void> => {
     try {
       const validationErrors = this.validateTournamentData(req.body);
-      
+
       if (validationErrors.length > 0) {
         this.sendError(res, 400, validationErrors.join(', '));
         return;
@@ -802,9 +807,9 @@ export class TournamentController extends BaseController<ITournament> {
 
       // Check if tournament has results
       const resultsCount = await TournamentResult.countDocuments({ tournamentId: id });
-      
+
       if (resultsCount > 0 && cascade !== 'true') {
-        this.sendError(res, 400, 
+        this.sendError(res, 400,
           `Tournament has ${resultsCount} results. Use ?cascade=true to delete tournament and all results.`);
         return;
       }
@@ -819,7 +824,7 @@ export class TournamentController extends BaseController<ITournament> {
 
       const response: ApiResponse = {
         success: true,
-        message: cascade === 'true' && resultsCount > 0 
+        message: cascade === 'true' && resultsCount > 0
           ? `Tournament and ${resultsCount} results deleted successfully`
           : 'Tournament deleted successfully',
       };

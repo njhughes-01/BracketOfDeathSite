@@ -39,7 +39,7 @@ const Home: React.FC = () => {
           linkText="View all players"
           loading={playersLoading}
         />
-        
+
         <StatCard
           title="Tournaments"
           value={(tournamentStats as any)?.overview?.totalTournaments || 0}
@@ -49,7 +49,7 @@ const Home: React.FC = () => {
           linkText="View tournaments"
           loading={tournamentsLoading}
         />
-        
+
         <StatCard
           title="Results"
           value={`${(playerStats as any)?.overview?.totalPlayers || 0} Teams`}
@@ -69,7 +69,7 @@ const Home: React.FC = () => {
             View All
           </Link>
         </div>
-        
+
         {recentLoading ? (
           <div className="flex items-center justify-center py-12">
             <LoadingSpinner size="lg" />
@@ -99,15 +99,14 @@ const Home: React.FC = () => {
                 </div>
                 <div className="text-right">
                   <div className="flex items-center space-x-2">
-                    <span className={`badge ${
-                      tournament.format === 'M' ? 'badge-primary' : 
-                      tournament.format === 'W' ? 'bg-pink-100 text-pink-800' : 
-                      'badge-success'
-                    }`}>
+                    <span className={`badge ${tournament.format === 'M' ? 'badge-primary' :
+                        tournament.format === 'W' ? 'bg-pink-100 text-pink-800' :
+                          'badge-success'
+                      }`}>
                       BOD #{tournament.bodNumber}
                     </span>
                   </div>
-                  <Link 
+                  <Link
                     to={`/tournaments/${tournament.id}`}
                     className="text-sm font-medium text-blue-600 hover:text-blue-700 transition-colors duration-200"
                   >
@@ -168,14 +167,14 @@ const Home: React.FC = () => {
           </Card>
         </Link>
 
-        <div className="cursor-pointer">
-          <Card variant="hover" padding="md">
+        <div>
+          <Card variant="default" padding="md">
             <div className="text-center">
               <div className="w-14 h-14 bg-gradient-to-br from-yellow-500 to-orange-500 rounded-xl flex items-center justify-center mx-auto mb-4 shadow-sm">
                 <span className="text-white text-2xl">📈</span>
               </div>
               <h3 className="font-semibold text-gray-900 mb-2">Analytics</h3>
-              <p className="text-sm text-gray-600">Player performance analysis</p>
+              <p className="text-sm text-gray-600">Player performance analysis (Coming Soon)</p>
             </div>
           </Card>
         </div>

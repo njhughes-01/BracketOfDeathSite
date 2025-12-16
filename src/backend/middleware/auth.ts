@@ -46,33 +46,38 @@ export const verifyKeycloakToken = async (token: string): Promise<KeycloakToken>
   return new Promise((resolve, reject) => {
     // First, let's decode the token to see what audience it has
     const decoded = jwt.decode(token, { complete: true });
-    if (process.env.NODE_ENV !== 'production') {
-      console.log('Token decoded:', JSON.stringify((decoded as any)?.payload, null, 2));
-    }
-    
+    // Force log for debugging
+    console.log('DEBUG: Token decoded:', JSON.stringify((decoded as any)?.payload, null, 2));
+
     jwt.verify(
       token,
       getKey,
       {
         // Don't validate audience since Keycloak uses 'azp' (authorized party) instead of 'aud'
-        issuer: `${process.env.KEYCLOAK_URL}/realms/${process.env.KEYCLOAK_REALM}`,
+        issuer: [
+          `${process.env.KEYCLOAK_URL}/realms/${process.env.KEYCLOAK_REALM}`,
+          `http://localhost:8080/realms/${process.env.KEYCLOAK_REALM}`,
+          `http://localhost:8080/auth/realms/${process.env.KEYCLOAK_REALM}`,
+        ],
         algorithms: ['RS256'],
+        clockTolerance: 120, // Tolerate 2 minutes of clock skew
       },
       (err, decoded) => {
         if (err) {
+          console.error('DEBUG: JWT Verify Error:', err);
           reject(err);
           return;
         }
-        
+
         // Manually validate the authorized party (azp) since Keycloak uses this instead of audience
         const decodedToken = decoded as KeycloakToken & { azp?: string };
         const expectedClient = process.env.KEYCLOAK_CLIENT_ID || 'bod-app';
-        
+
         if (decodedToken.azp && decodedToken.azp !== expectedClient) {
           reject(new Error(`Invalid client. Expected: ${expectedClient}, got: ${decodedToken.azp}`));
           return;
         }
-        
+
         resolve(decodedToken);
       }
     );
@@ -86,7 +91,7 @@ export const hasAdminRole = (token: KeycloakToken): boolean => {
   if (realmRoles.includes('admin')) {
     return true;
   }
-  
+
   // Check client roles
   const clientId = process.env.KEYCLOAK_CLIENT_ID || 'bod-app';
   const clientRoles = token.resource_access?.[clientId]?.roles || [];
@@ -98,7 +103,7 @@ export const isAuthorizedUser = (token: KeycloakToken): boolean => {
   const realmRoles = token.realm_access?.roles || [];
   const clientId = process.env.KEYCLOAK_CLIENT_ID || 'bod-app';
   const clientRoles = token.resource_access?.[clientId]?.roles || [];
-  
+
   const allRoles = [...realmRoles, ...clientRoles];
   return allRoles.includes('user') || allRoles.includes('admin');
 };
@@ -111,7 +116,7 @@ export const requireAuth = async (
 ): Promise<void> => {
   try {
     const authHeader = req.headers.authorization;
-    
+
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
       const response: ApiResponse = {
         success: false,
@@ -122,7 +127,7 @@ export const requireAuth = async (
     }
 
     const token = authHeader.substring(7); // Remove 'Bearer ' prefix
-    
+
     if (!token) {
       const response: ApiResponse = {
         success: false,
@@ -138,10 +143,10 @@ export const requireAuth = async (
       console.log('JWKS URI:', `${process.env.KEYCLOAK_URL}/realms/${process.env.KEYCLOAK_REALM}/protocol/openid-connect/certs`);
     }
     const tokenData = await verifyKeycloakToken(token);
-    
+
     // Check if user is authorized
     const authorized = isAuthorizedUser(tokenData);
-    
+
     if (!authorized) {
       const response: ApiResponse = {
         success: false,
@@ -168,6 +173,7 @@ export const requireAuth = async (
     next();
   } catch (error) {
     console.error('Auth middleware error:', error);
+    if ((error as any).message) console.error('Error message:', (error as any).message);
     const response: ApiResponse = {
       success: false,
       error: 'Invalid or expired token',
@@ -184,15 +190,15 @@ export const optionalAuth = async (
 ): Promise<void> => {
   try {
     const authHeader = req.headers.authorization;
-    
+
     if (authHeader && authHeader.startsWith('Bearer ')) {
       const token = authHeader.substring(7);
-      
+
       if (token) {
         try {
           const tokenData = await verifyKeycloakToken(token);
           const authorized = isAuthorizedUser(tokenData);
-          
+
           req.user = {
             id: tokenData.sub,
             email: tokenData.email,

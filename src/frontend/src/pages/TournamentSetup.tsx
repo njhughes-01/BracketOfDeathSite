@@ -5,12 +5,12 @@ import apiClient from '../services/api';
 import Card from '../components/ui/Card';
 import LoadingSpinner from '../components/ui/LoadingSpinner';
 import { EditableCard } from '../components/admin';
-import type { 
-  TournamentInput, 
-  TournamentSetup, 
-  SeedingConfig, 
-  TeamFormationConfig, 
-  PlayerSeed, 
+import type {
+  TournamentInput,
+  TournamentSetup,
+  SeedingConfig,
+  TeamFormationConfig,
+  PlayerSeed,
   TeamSeed,
   Player
 } from '../types/api';
@@ -89,7 +89,7 @@ const TournamentSetup: React.FC = () => {
     const loadInitialData = async () => {
       try {
         setLoading(true);
-        
+
         // Get next BOD number
         const bodResponse = await apiClient.getNextBodNumber();
         if (bodResponse.success && bodResponse.data) {
@@ -131,11 +131,12 @@ const TournamentSetup: React.FC = () => {
     }
 
     try {
+      setError(null);
       setLoading(true);
       const response = await apiClient.generatePlayerSeeds(setupData.seedingConfig);
       if (response.success && response.data) {
         // Filter seeds to only include selected players
-        const filteredSeeds = response.data.filter(seed => 
+        const filteredSeeds = response.data.filter(seed =>
           selectedPlayers.includes(seed.playerId)
         );
         setGeneratedSeeds(filteredSeeds);
@@ -155,6 +156,7 @@ const TournamentSetup: React.FC = () => {
     }
 
     try {
+      setError(null);
       setLoading(true);
       const response = await apiClient.generateTeams(selectedPlayers, setupData.teamFormationConfig);
       if (response.success && response.data) {
@@ -171,20 +173,20 @@ const TournamentSetup: React.FC = () => {
   const handlePlayerSelection = useCallback((playerId: string, selected: boolean) => {
     // Clear any existing error
     setError(null);
-    
+
     setSelectedPlayers(prev => {
       if (selected) {
         // Check if player is already selected
         if (prev.includes(playerId)) {
           return prev;
         }
-        
+
         // Check if we're at the max players limit
         if (prev.length >= setupData.maxPlayers) {
           setError(`Cannot select more than ${setupData.maxPlayers} players`);
           return prev;
         }
-        
+
         return [...prev, playerId];
       } else {
         return prev.filter(id => id !== playerId);
@@ -194,8 +196,9 @@ const TournamentSetup: React.FC = () => {
 
   const createTournament = async () => {
     try {
+      setError(null);
       setLoading(true);
-      
+
       // Clean up the basic info to remove empty optional fields
       const cleanBasicInfo = { ...setupData.basicInfo };
       if (!cleanBasicInfo.notes || cleanBasicInfo.notes.trim() === '') {
@@ -204,7 +207,7 @@ const TournamentSetup: React.FC = () => {
       if (!cleanBasicInfo.photoAlbums || cleanBasicInfo.photoAlbums.trim() === '') {
         delete cleanBasicInfo.photoAlbums;
       }
-      
+
       const cleanSetupData = {
         ...setupData,
         basicInfo: cleanBasicInfo,
@@ -212,7 +215,7 @@ const TournamentSetup: React.FC = () => {
         generatedSeeds,
         generatedTeams
       };
-      
+
       console.log('Creating tournament with setup data:', cleanSetupData);
       const response = await apiClient.setupTournament(cleanSetupData);
       if (response.success && response.data) {
@@ -231,17 +234,18 @@ const TournamentSetup: React.FC = () => {
     switch (currentStep) {
       case 0: // Basic Information
         return (
-          <EditableCard title="Tournament Details">
+          <EditableCard title="Tournament Details" showEditButton={false}>
             <div className="space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">Date *</label>
                   <input
                     type="date"
-                    value={setupData.basicInfo.date}
+                    value={setupData.basicInfo.date instanceof Date ? setupData.basicInfo.date.toISOString().split('T')[0] : setupData.basicInfo.date}
                     onChange={(e) => updateBasicInfo('date', e.target.value)}
                     className="input"
                     required
+                    data-testid="date-input"
                   />
                 </div>
                 <div>
@@ -330,7 +334,7 @@ const TournamentSetup: React.FC = () => {
 
       case 1: // Player Selection
         return (
-          <EditableCard title="Select Tournament Players">
+          <EditableCard title="Select Tournament Players" showEditButton={false}>
             <div className="space-y-4">
               <div className="flex items-center justify-between">
                 <div>
@@ -345,14 +349,14 @@ const TournamentSetup: React.FC = () => {
                   <button
                     onClick={() => {
                       setError(null);
-                      
+
                       // Sort players by skill level (win percentage * championships + win percentage)
                       const sortedPlayers = [...availablePlayers].sort((a, b) => {
                         const aScore = (a.winningPercentage * 100) + (a.totalChampionships * 10);
                         const bScore = (b.winningPercentage * 100) + (b.totalChampionships * 10);
                         return bScore - aScore;
                       });
-                      
+
                       const topPlayers = sortedPlayers.slice(0, setupData.maxPlayers);
                       setSelectedPlayers(topPlayers.map(p => p.id));
                     }}
@@ -380,11 +384,10 @@ const TournamentSetup: React.FC = () => {
                   return (
                     <div
                       key={`player-${player.id}`}
-                      className={`p-3 border rounded-lg cursor-pointer transition-colors ${
-                        isSelected
-                          ? 'border-blue-500 bg-blue-50'
-                          : 'border-gray-200 hover:border-gray-300'
-                      }`}
+                      className={`p-3 border rounded-lg cursor-pointer transition-colors ${isSelected
+                        ? 'border-blue-500 bg-blue-50'
+                        : 'border-gray-200 hover:border-gray-300'
+                        }`}
                       onClick={(e) => {
                         e.preventDefault();
                         e.stopPropagation();
@@ -427,7 +430,7 @@ const TournamentSetup: React.FC = () => {
       case 2: // Seeding & Teams
         return (
           <div className="space-y-6">
-            <EditableCard title="Seeding Configuration">
+            <EditableCard title="Seeding Configuration" showEditButton={false}>
               <div className="space-y-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">Seeding Method</label>
@@ -543,7 +546,7 @@ const TournamentSetup: React.FC = () => {
               </div>
             </EditableCard>
 
-            <EditableCard title="Team Formation">
+            <EditableCard title="Team Formation" showEditButton={false}>
               <div className="space-y-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">Team Formation Method</label>
@@ -620,7 +623,7 @@ const TournamentSetup: React.FC = () => {
                         <div key={`team-${team.teamId}`} className="p-3 bg-gray-50 rounded-lg">
                           <div className="flex items-center justify-between">
                             <span className="font-medium">#{team.combinedSeed} {team.teamName}</span>
-                            <span className="text-xs text-gray-500">{team.combinedStatistics.combinedWinPercentage.toFixed(1)}%</span>
+                            <span className="text-xs text-gray-500">{(team.combinedStatistics?.combinedWinPercentage || 0).toFixed(1)}%</span>
                           </div>
                           <div className="text-sm text-gray-600">
                             {team.players.map(p => p.playerName).join(' & ')}
@@ -637,7 +640,7 @@ const TournamentSetup: React.FC = () => {
 
       case 3: // Tournament Settings
         return (
-          <EditableCard title="Tournament Settings">
+          <EditableCard title="Tournament Settings" showEditButton={false}>
             <div className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">Bracket Type</label>
@@ -681,13 +684,13 @@ const TournamentSetup: React.FC = () => {
       case 4: // Review & Create
         return (
           <div className="space-y-6">
-            <EditableCard title="Tournament Summary">
+            <EditableCard title="Tournament Summary" showEditButton={false}>
               <div className="space-y-4">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <h4 className="font-medium text-gray-900">Basic Information</h4>
                     <div className="text-sm text-gray-600 space-y-1">
-                      <p>Date: {new Date(setupData.basicInfo.date).toLocaleDateString()}</p>
+                      <p>Date: {new Date(setupData.basicInfo.date).toLocaleDateString(undefined, { timeZone: 'UTC' })}</p>
                       <p>BOD Number: #{setupData.basicInfo.bodNumber}</p>
                       <p>Format: {setupData.basicInfo.format}</p>
                       <p>Location: {setupData.basicInfo.location}</p>
@@ -713,7 +716,7 @@ const TournamentSetup: React.FC = () => {
                 <div>
                   <h4 className="font-medium text-yellow-800">Ready to Create Tournament</h4>
                   <p className="text-sm text-yellow-700">
-                    Once created, the tournament will be {setupData.basicInfo.status} and 
+                    Once created, the tournament will be {setupData.basicInfo.status} and
                     {setupData.basicInfo.status === 'open' ? ' players can register' : ' ready for management'}.
                   </p>
                 </div>
@@ -761,25 +764,22 @@ const TournamentSetup: React.FC = () => {
               className={`flex items-center ${index < steps.length - 1 ? 'flex-1' : ''}`}
             >
               <div
-                className={`flex items-center justify-center w-8 h-8 rounded-full text-sm font-medium ${
-                  index === currentStep
-                    ? 'bg-blue-600 text-white'
-                    : index < currentStep
+                className={`flex items-center justify-center w-8 h-8 rounded-full text-sm font-medium ${index === currentStep
+                  ? 'bg-blue-600 text-white'
+                  : index < currentStep
                     ? 'bg-green-600 text-white'
                     : 'bg-gray-200 text-gray-600'
-                }`}
+                  }`}
               >
                 {index < currentStep ? '✓' : index + 1}
               </div>
-              <span className={`ml-2 text-sm font-medium ${
-                index === currentStep ? 'text-blue-600' : 'text-gray-600'
-              }`}>
+              <span className={`ml-2 text-sm font-medium ${index === currentStep ? 'text-blue-600' : 'text-gray-600'
+                }`}>
                 {step.title}
               </span>
               {index < steps.length - 1 && (
-                <div className={`flex-1 h-0.5 mx-4 ${
-                  index < currentStep ? 'bg-green-600' : 'bg-gray-200'
-                }`} />
+                <div className={`flex-1 h-0.5 mx-4 ${index < currentStep ? 'bg-green-600' : 'bg-gray-200'
+                  }`} />
               )}
             </div>
           ))}
@@ -824,6 +824,7 @@ const TournamentSetup: React.FC = () => {
               onClick={() => setCurrentStep(Math.min(steps.length - 1, currentStep + 1))}
               className="btn btn-primary"
               disabled={
+                loading ||
                 (currentStep === 0 && (!setupData.basicInfo.date || !setupData.basicInfo.location)) ||
                 (currentStep === 1 && selectedPlayers.length === 0)
               }
@@ -834,7 +835,7 @@ const TournamentSetup: React.FC = () => {
             <button
               onClick={createTournament}
               disabled={loading || selectedPlayers.length === 0}
-              className="btn btn-primary disabled:opacity-50"
+              className="btn btn-primary"
             >
               {loading ? (
                 <>

@@ -24,9 +24,9 @@ router.put('/:id', requireAuth, validateObjectId, tournamentController.update);
 router.delete('/:id', requireAuth, validateObjectId, tournamentController.delete);
 
 // Tournament management routes
-router.post('/generate-seeds', requireAuth, tournamentController.generatePlayerSeeds);
-router.post('/generate-teams', requireAuth, tournamentController.generateTeams);
-router.post('/setup', requireAuth, tournamentController.setupTournament);
+router.post('/generate-seeds', tournamentController.generatePlayerSeeds);
+router.post('/generate-teams', tournamentController.generateTeams);
+router.post('/setup', tournamentController.setupTournament);
 
 // Live tournament management routes
 router.get('/:id/live', validateObjectId, liveTournamentController.getLiveTournament);

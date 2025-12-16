@@ -280,14 +280,17 @@ class ApiClient {
 
   // Tournament Management API methods
   async generatePlayerSeeds(config: SeedingConfig): Promise<ApiResponse<PlayerSeed[]>> {
+    await ensureFreshToken();
     return this.post<ApiResponse<PlayerSeed[]>>('/tournaments/generate-seeds', config);
   }
 
   async generateTeams(playerIds: string[], config: TeamFormationConfig): Promise<ApiResponse<TeamSeed[]>> {
+    await ensureFreshToken();
     return this.post<ApiResponse<TeamSeed[]>>('/tournaments/generate-teams', { playerIds, config });
   }
 
   async setupTournament(setup: TournamentSetup): Promise<ApiResponse<Tournament>> {
+    await ensureFreshToken();
     return this.post<ApiResponse<Tournament>>('/tournaments/setup', setup);
   }
 
@@ -327,7 +330,7 @@ class ApiClient {
   async getLiveStats(tournamentId: string): Promise<ApiResponse<LiveTournamentStats>> {
     return this.get<ApiResponse<LiveTournamentStats>>(`/tournaments/${tournamentId}/live-stats`);
   }
-  
+
   async getTournamentPlayerStats(tournamentId: string): Promise<ApiResponse<any>> {
     return this.get<ApiResponse<any>>(`/tournaments/${tournamentId}/player-stats`);
   }

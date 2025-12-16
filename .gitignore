@@ -4,3 +4,11 @@ node_modules
 .env
 .env.local
 .env.*.local
+
+src/backend/dist/
+*.log
+*.txt
+newUI.md
+CON
+latest_tournament.json
+status.txt

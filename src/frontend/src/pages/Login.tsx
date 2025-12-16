@@ -25,7 +25,7 @@ const Login: React.FC = () => {
     if (hasLoggedInBefore) {
       setShowAdminInfo(false);
     }
-    
+
     // Initialize auth on component mount to prevent double login issues
     const initAuth = async () => {
       if (!initializationAttempted.current) {
@@ -39,7 +39,7 @@ const Login: React.FC = () => {
         }
       }
     };
-    
+
     initAuth();
   }, []); // Empty dependency array - only run once on mount
 
@@ -56,17 +56,17 @@ const Login: React.FC = () => {
     try {
       setIsLoggingIn(true);
       setLoginError('');
-      
+
       // Store the intended destination before login
       sessionStorage.setItem('redirectAfterLogin', from);
-      
+
       // Initialize Keycloak if not already done
       if (!authInitialized) {
         console.log('Initializing authentication...');
         await initializeAuth();
         setAuthInitialized(true);
       }
-      
+
       // Trigger Keycloak hosted login
       console.log('Triggering Keycloak login...');
       login();
@@ -81,7 +81,7 @@ const Login: React.FC = () => {
   const handleDirectLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     console.log('Form submitted with:', { email, password: password ? '[REDACTED]' : 'empty' });
-    
+
     if (!email || !password) {
       setLoginError('Please enter both email and password');
       return;
@@ -96,18 +96,18 @@ const Login: React.FC = () => {
     try {
       setIsLoggingIn(true);
       setLoginError('');
-      
+
       // Store the intended destination before login
       sessionStorage.setItem('redirectAfterLogin', from);
-      
+
       console.log('Attempting direct login with credentials...');
-      
+
       // Use Keycloak direct grant flow (Resource Owner Password Credentials)
       // The /auth proxy strips the /auth prefix, so we need the full path
       const tokenUrl = '/auth/realms/bracketofdeathsite/protocol/openid-connect/token';
-      
+
       console.log('Making fetch request to:', tokenUrl);
-      
+
       const response = await fetch(tokenUrl, {
         method: 'POST',
         headers: {
@@ -138,7 +138,7 @@ const Login: React.FC = () => {
 
       const responseText = await response.text();
       console.log('Response text:', responseText);
-      
+
       const tokenData = JSON.parse(responseText);
       console.log('Direct login successful, got tokens');
 
@@ -155,12 +155,12 @@ const Login: React.FC = () => {
         refresh_token: tokenData.refresh_token,
         id_token: tokenData.id_token
       });
-      
+
       console.log('Direct authentication complete, navigating...');
-      
+
       // Mark that user has logged in before
       localStorage.setItem('hasLoggedInBefore', 'true');
-      
+
       // Navigate to intended destination - will be handled by useEffect when isAuthenticated changes
     } catch (error: any) {
       console.error('Direct login failed:', error);
@@ -198,7 +198,7 @@ const Login: React.FC = () => {
             Access tournament management and admin features
           </p>
         </div>
-        
+
         <Card className="mt-8" padding="lg">
           <form onSubmit={handleDirectLogin} className="space-y-6">
             {loginError && (
@@ -280,7 +280,7 @@ const Login: React.FC = () => {
         <div className="text-center">
           <p className="text-sm text-gray-600">
             Need access?{' '}
-            <span className="font-medium text-blue-600">
+            <span className="text-gray-600">
               Contact your tournament administrator
             </span>
           </p>

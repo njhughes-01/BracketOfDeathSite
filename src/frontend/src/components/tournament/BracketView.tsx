@@ -29,6 +29,7 @@ const BracketView: React.FC<BracketViewProps> = ({
   // Define round orders and display names (backend-compatible keys)
   const winnersOrder = ['quarterfinal', 'semifinal', 'final', 'grand-final'];
   const losersOrder = ['lbr-round-1', 'lbr-semifinal', 'lbr-final'];
+  const roundOrder = [...winnersOrder, ...losersOrder];
   const roundNames: Record<string, string> = {
     'quarterfinal': 'Quarterfinals',
     'semifinal': 'Semifinals',
@@ -92,11 +93,11 @@ const BracketView: React.FC<BracketViewProps> = ({
                 px-2 py-1 text-xs font-medium rounded-full
                 ${isCompleted ? 'bg-green-100 text-green-800' :
                   isInProgress ? 'bg-yellow-100 text-yellow-800 animate-pulse' :
-                  'bg-gray-100 text-gray-600'}
+                    'bg-gray-100 text-gray-600'}
               `}>
-                {match.status === 'confirmed' ? 'Final' : 
-                 match.status === 'completed' ? 'Done' :
-                 match.status === 'in_progress' ? '🔴 Live' : 'Scheduled'}
+                {match.status === 'confirmed' ? 'Final' :
+                  match.status === 'completed' ? 'Done' :
+                    match.status === 'in_progress' ? '🔴 Live' : 'Scheduled'}
               </span>
             </div>
           </div>
@@ -181,7 +182,7 @@ const BracketView: React.FC<BracketViewProps> = ({
     const totalMatches = matches.length;
     const completedMatches = matches.filter(m => (m.status as any) === 'completed' || (m.status as any) === 'confirmed').length;
     const inProgressMatches = matches.filter(m => (m.status as any) === 'in_progress' || (m.status as any) === 'in-progress').length;
-    
+
     return {
       totalMatches,
       completedMatches,
@@ -202,7 +203,7 @@ const BracketView: React.FC<BracketViewProps> = ({
             <p className="text-sm text-gray-600">
               Current Round: <span className="font-semibold">{roundNames[currentRound as keyof typeof roundNames] || currentRound}</span>
             </p>
-            
+
             {/* Live Progress Bar */}
             <div className="max-w-md mx-auto">
               <div className="flex items-center justify-between text-xs text-gray-500 mb-1">
@@ -211,10 +212,9 @@ const BracketView: React.FC<BracketViewProps> = ({
                 <span>{stats.totalMatches} total</span>
               </div>
               <div className="w-full bg-gray-200 rounded-full h-2">
-                <div 
-                  className={`h-2 rounded-full transition-all duration-500 ${
-                    stats.inProgressMatches > 0 ? 'bg-yellow-500' : 'bg-green-500'
-                  }`}
+                <div
+                  className={`h-2 rounded-full transition-all duration-500 ${stats.inProgressMatches > 0 ? 'bg-yellow-500' : 'bg-green-500'
+                    }`}
                   style={{ width: `${stats.progressPercentage}%` }}
                 />
               </div>
@@ -233,7 +233,7 @@ const BracketView: React.FC<BracketViewProps> = ({
           {winnersOrder.map((round, roundIndex) => {
             const roundMatches = matchesByRound[round] || [];
             const isCurrentRound = round === currentRound;
-            
+
             if (roundMatches.length === 0) return null;
 
             return (

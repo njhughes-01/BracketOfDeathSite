@@ -67,11 +67,11 @@ const matchTeamSchema = new Schema({
     playerId: {
       type: Schema.Types.ObjectId,
       ref: 'Player',
-      required: true,
+      required: false,
     },
     playerName: {
       type: String,
-      required: true,
+      required: false,
       trim: true,
     },
     score: {
@@ -108,7 +108,7 @@ const matchSchema = new Schema<IMatch>(
       type: Number,
       required: [true, ErrorMessages.REQUIRED],
       min: [1, 'Round number must be positive'],
-      max: [10, 'Round number cannot exceed 10'],
+      max: [50, 'Round number cannot exceed 50'],
     },
     team1: {
       type: matchTeamSchema,
@@ -165,16 +165,16 @@ const matchSchema = new Schema<IMatch>(
 );
 
 // Validation for team player arrays
-matchSchema.path('team1.players').validate(function(players: any[]) {
+matchSchema.path('team1.players').validate(function (players: any[]) {
   return players && players.length >= 1 && players.length <= 2;
 }, 'Team must have 1 or 2 players');
 
-matchSchema.path('team2.players').validate(function(players: any[]) {
+matchSchema.path('team2.players').validate(function (players: any[]) {
   return players && players.length >= 1 && players.length <= 2;
 }, 'Team must have 1 or 2 players');
 
 // Validation for matching player array lengths
-matchSchema.pre('validate', function() {
+matchSchema.pre('validate', function () {
   if (this.team1.players.length !== this.team1.playerNames.length) {
     this.invalidate('team1.playerNames', 'Player names must match player count');
   }
@@ -187,7 +187,7 @@ matchSchema.pre('validate', function() {
 matchSchema.index({ tournamentId: 1, matchNumber: 1 }, { unique: true });
 
 // Validation for completed matches
-matchSchema.path('status').validate(function(status: string) {
+matchSchema.path('status').validate(function (status: string) {
   if (status === 'completed') {
     if (this.winner === undefined) {
       return false;
@@ -210,7 +210,7 @@ matchSchema.path('status').validate(function(status: string) {
 }, 'Completed matches must have a winner and valid tennis score');
 
 // Validation for winner selection
-matchSchema.path('winner').validate(function(winner: string) {
+matchSchema.path('winner').validate(function (winner: string) {
   if (!winner) return true;
 
   const team1Score = this.team1?.score || 0;
@@ -247,7 +247,7 @@ matchSchema.virtual('scoreDisplay').get(function (this: IMatch) {
 // Virtual for winning team names
 matchSchema.virtual('winnerNames').get(function (this: IMatch) {
   if (!this.winner) return null;
-  
+
   const winningTeam = this.winner === 'team1' ? this.team1 : this.team2;
   return winningTeam.playerNames.join(' & ');
 });
@@ -275,7 +275,7 @@ createIndexes(matchSchema, [
   { fields: { 'team2.playerScores.playerId': 1 } },
 ]);
 
-export interface IMatchModel extends BaseModelStatics<IMatch> {}
+export interface IMatchModel extends BaseModelStatics<IMatch> { }
 
 export const Match = model<IMatch, IMatchModel>('Match', matchSchema);
 export default Match;
