@@ -1,8 +1,8 @@
 /**
- * Double Elimination Tournament Lifecycle Verification
+ * Single Elimination Tournament Lifecycle Verification
  * 
- * Tests complete lifecycle: Create -> Winners Bracket -> Losers Bracket -> Grand Final
- * Run with: node scripts/verify_double_elimination.js <AUTH_TOKEN>
+ * Tests complete lifecycle: Create -> QF -> SF -> Final -> Complete
+ * Run with: node scripts/verify_single_elimination.js <AUTH_TOKEN>
  */
 
 const { MongoClient, ObjectId } = require('mongodb');
@@ -16,15 +16,15 @@ async function main() {
     TOKEN = process.argv[2];
     if (!TOKEN) {
         console.error('Please provide auth token as first argument');
-        console.log('Usage: node scripts/verify_double_elimination.js <AUTH_TOKEN>');
+        console.log('Usage: node scripts/verify_single_elimination.js <AUTH_TOKEN>');
         process.exit(1);
     }
 
     console.log('='.repeat(60));
-    console.log('DOUBLE ELIMINATION LIFECYCLE VERIFICATION');
+    console.log('SINGLE ELIMINATION LIFECYCLE VERIFICATION');
     console.log('='.repeat(60));
 
-    // 1. Get Players for Setup (need 8 for DE bracket - 4 teams of 2)
+    // 1. Get Players for Setup (need 8 for SE bracket)
     const client = new MongoClient(MONGODB_URI);
     await client.connect();
     const players = await client.db('bracket_of_death').collection('players').find().limit(8).toArray();
@@ -55,18 +55,18 @@ async function main() {
             date: new Date().toISOString(),
             bodNumber: Math.floor(100000 + Math.random() * 900000),
             format: 'Mixed',
-            location: 'Double Elim Test',
-            advancementCriteria: 'Double elimination - lose twice to be out',
+            location: 'Single Elim Test',
+            advancementCriteria: 'Single elimination bracket',
             status: 'scheduled'
         },
         maxPlayers: 8,
         selectedPlayers: playerIds,
         generatedTeams: generatedTeams,
-        bracketType: 'double_elimination'
+        bracketType: 'single_elimination'
     };
 
     // 3. Create Tournament
-    console.log('\n[1] Creating Double Elimination Tournament...');
+    console.log('\n[1] Creating Single Elimination Tournament...');
     const createdTournament = await createTournament(payload);
     if (!createdTournament) {
         console.error('FAILED: Tournament creation');
@@ -80,55 +80,33 @@ async function main() {
     await advanceTournamentAction(tId, 'start_registration');
     await advanceTournamentAction(tId, 'close_registration');
 
-    // 5. Winners Bracket - Quarterfinals
-    console.log('\n[3] Winners Bracket - Quarterfinals...');
+    // 5. Generate and Play Quarterfinals
+    console.log('\n[3] Playing Quarterfinals...');
     await generateMatchesForRound(tId, 'quarterfinal');
-    await playRoundMatches(tId, 'quarterfinal', 'winners');
+    await playRoundMatches(tId, 'quarterfinal');
 
-    // 6. Winners Bracket - Semifinals  
-    console.log('\n[4] Winners Bracket - Semifinals...');
+    // 6. Advance to Semifinals
+    console.log('\n[4] Advancing to Semifinals...');
     await advanceTournamentAction(tId, 'advance_round');
     await generateMatchesForRound(tId, 'semifinal');
-    await playRoundMatches(tId, 'semifinal', 'winners');
+    await playRoundMatches(tId, 'semifinal');
 
-    // 7. Losers Bracket - Round 1 (4 teams from WB QF losses)
-    console.log('\n[5] Losers Bracket - Round 1...');
-    await generateMatchesForRound(tId, 'lb_r1');
-    await playRoundMatches(tId, 'lb_r1', 'losers');
-
-    // 8. Losers Bracket - Round 2 (LB R1 winners + WB SF losers)
-    console.log('\n[6] Losers Bracket - Round 2...');
+    // 7. Advance to Finals
+    console.log('\n[5] Advancing to Finals...');
     await advanceTournamentAction(tId, 'advance_round');
-    await generateMatchesForRound(tId, 'lb_r2');
-    await playRoundMatches(tId, 'lb_r2', 'losers');
+    await generateMatchesForRound(tId, 'final');
+    await playRoundMatches(tId, 'final');
 
-    // 9. Winners Bracket Final
-    console.log('\n[7] Winners Bracket Final...');
-    await generateMatchesForRound(tId, 'wb_final');
-    await playRoundMatches(tId, 'wb_final', 'winners');
-
-    // 10. Losers Bracket Final
-    console.log('\n[8] Losers Bracket Final...');
-    await advanceTournamentAction(tId, 'advance_round');
-    await generateMatchesForRound(tId, 'lb_final');
-    await playRoundMatches(tId, 'lb_final', 'losers');
-
-    // 11. Grand Final
-    console.log('\n[9] Grand Final...');
-    await advanceTournamentAction(tId, 'advance_round');
-    await generateMatchesForRound(tId, 'grand_final');
-    await playRoundMatches(tId, 'grand_final', null);
-
-    // 12. Complete Tournament
-    console.log('\n[10] Completing Tournament...');
+    // 8. Complete Tournament
+    console.log('\n[6] Completing Tournament...');
     await advanceTournamentAction(tId, 'complete_tournament');
 
-    // 13. Verify Results
-    console.log('\n[11] Verifying Results...');
+    // 9. Verify Results
+    console.log('\n[7] Verifying Results...');
     await verifyTournamentCompletion(tId);
 
     console.log('\n' + '='.repeat(60));
-    console.log('DOUBLE ELIMINATION VERIFICATION: SUCCESS');
+    console.log('SINGLE ELIMINATION VERIFICATION: SUCCESS');
     console.log('='.repeat(60));
 }
 
@@ -174,24 +152,15 @@ async function generateMatchesForRound(id, round) {
         body: JSON.stringify({ round })
     });
     if (!res.ok) {
-        const text = await res.text();
-        // Some rounds may not need generation if auto-created
-        if (!text.includes('already exist')) {
-            console.error(`  ✗ Generate ${round} Failed:`, text);
-        }
+        console.error(`  ✗ Generate ${round} Failed:`, await res.text());
     } else {
         console.log(`  ✓ ${round} matches generated`);
     }
 }
 
-async function playRoundMatches(id, round, bracket) {
-    console.log(`  → Playing ${round} matches${bracket ? ` (${bracket})` : ''}...`);
-    let url = `${BASE_URL}/tournaments/${id}/matches?round=${round}`;
-    if (bracket) {
-        url += `&bracket=${bracket}`;
-    }
-
-    const res = await fetch(url, {
+async function playRoundMatches(id, round) {
+    console.log(`  → Playing ${round} matches...`);
+    const res = await fetch(`${BASE_URL}/tournaments/${id}/matches?round=${round}`, {
         headers: { 'Authorization': `Bearer ${TOKEN}` }
     });
     const json = await res.json();
@@ -206,7 +175,7 @@ async function playRoundMatches(id, round, bracket) {
             body: JSON.stringify({
                 status: 'completed',
                 team1Score: 11,
-                team2Score: Math.floor(Math.random() * 9),
+                team2Score: Math.floor(Math.random() * 9), // Random loss
                 winner: 'team1'
             })
         });
@@ -225,21 +194,11 @@ async function verifyTournamentCompletion(id) {
         const t = await client.db('bracket_of_death').collection('tournaments').findOne({ _id: new ObjectId(id) });
 
         console.log(`  Status: ${t.status}`);
-        console.log(`  Bracket Type: ${t.bracketType}`);
-
-        // Count matches by bracket
-        const matches = await client.db('bracket_of_death').collection('matches')
-            .find({ tournamentId: new ObjectId(id) }).toArray();
-
-        const winnersMatches = matches.filter(m => m.bracket === 'winners').length;
-        const losersMatches = matches.filter(m => m.bracket === 'losers').length;
-        const grandFinalMatches = matches.filter(m => m.round === 'grand_final').length;
-
-        console.log(`  Winners Bracket Matches: ${winnersMatches}`);
-        console.log(`  Losers Bracket Matches: ${losersMatches}`);
-        console.log(`  Grand Final Matches: ${grandFinalMatches}`);
 
         if (t.champion?.playerId) {
+            const p = await client.db('bracket_of_death').collection('players').findOne({
+                _id: new ObjectId(t.champion.playerId)
+            });
             console.log(`  Champion: ${t.champion.playerName}`);
             console.log(`  ✓ Tournament completed successfully`);
         } else {
