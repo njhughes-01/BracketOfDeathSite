@@ -166,8 +166,10 @@ async function playRoundMatches(id, round) {
 
     for (const m of matches) {
         // Complete
-        await fetch(`${BASE_URL}/matches/${m._id}`, {
-            method: 'PATCH',
+        const matchId = m._id || m.id;
+        console.log(`Updating match ${matchId}...`);
+        const updateRes = await fetch(`${BASE_URL}/tournaments/matches/${matchId}`, {
+            method: 'PUT',
             headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${TOKEN}` },
             body: JSON.stringify({
                 status: 'completed',
@@ -176,14 +178,14 @@ async function playRoundMatches(id, round) {
                 winner: 'team1'
             })
         });
-        // Confirm
-        await fetch(`${BASE_URL}/tournaments/${id}/matches/${m._id}/confirm`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${TOKEN}` },
-            body: JSON.stringify({})
-        });
+
+        if (!updateRes.ok) {
+            console.error(`Failed to update match ${matchId}:`, await updateRes.text());
+        }
+        // Confirm not needed as updateMatch handles completion logic
     }
 }
+
 
 async function checkMatchCount(id, round) {
     const client = new MongoClient(MONGODB_URI);

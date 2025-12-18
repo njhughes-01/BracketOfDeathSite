@@ -24,6 +24,8 @@ router.get('/:id/registration', validateObjectId, tournamentAdminController.getR
 
 // Protected routes (require authentication)
 router.post('/', requireAuth, tournamentController.create);
+// Match management routes (specific before generic :id)
+router.put('/matches/:matchId', requireAuth, liveTournamentController.updateMatch);
 router.put('/:id', requireAuth, validateObjectId, tournamentController.update);
 router.delete('/:id', requireAuth, validateObjectId, tournamentController.delete);
 
@@ -67,7 +69,7 @@ router.post('/:id/generate-matches', requireAuth, validateObjectId, liveTourname
 router.post('/:id/matches/confirm-completed', requireAuth, validateObjectId, liveTournamentController.confirmCompletedMatches);
 
 // Match management routes (create separate route file later if needed)
-router.put('/matches/:matchId', requireAuth, liveTournamentController.updateMatch);
+
 
 // Admin routes
 router.post('/bulk-import', requireAuth, tournamentController.bulkImport);

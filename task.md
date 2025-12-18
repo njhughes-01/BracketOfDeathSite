@@ -16,3 +16,10 @@
     - [x] Verify Frontend Build
     - [x] Verify Onboarding Tests
     - [x] Create Walkthrough
+
+# Full Lifecycle Verification
+- [x] Verify Full Lifecycle
+    - [x] Fix script execution (`getaddrinfo` error)
+    - [x] Fix authentication in script
+    - [x] Fix `completeTournament` logic (Route ordering bug)
+    - [x] Verify player stats update
