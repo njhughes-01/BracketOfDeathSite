@@ -1,13 +1,9 @@
-import React, { useState } from 'react';
+import React, { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useMutation } from '../hooks/useApi';
-import apiClient from '../services/api';
-import Card from '../components/ui/Card';
-import LoadingSpinner from '../components/ui/LoadingSpinner';
-import type { TournamentInput } from '../types/api';
 
 const TournamentCreate: React.FC = () => {
   const navigate = useNavigate();
+<<<<<<< HEAD
   const [formData, setFormData] = useState<TournamentInput>({
     date: '',
     format: 'Mixed',
@@ -18,19 +14,15 @@ const TournamentCreate: React.FC = () => {
     registrationType: 'open',
     allowSelfRegistration: true,
   });
+=======
+>>>>>>> new-ui
 
-  const { mutate: createTournament, loading, error } = useMutation(
-    (data: TournamentInput) => apiClient.createTournament(data),
-    {
-      onSuccess: (data) => {
-        navigate('/tournaments');
-      },
-      onError: (error) => {
-        console.error('Failed to create tournament:', error);
-      }
-    }
-  );
+  // Redirect to the new tournament setup wizard
+  useEffect(() => {
+    navigate('/tournaments/setup', { replace: true });
+  }, [navigate]);
 
+<<<<<<< HEAD
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value, type } = e.target;
     let processedValue: any = value;
@@ -368,6 +360,9 @@ const TournamentCreate: React.FC = () => {
       </Card>
     </div>
   );
+=======
+  return null;
+>>>>>>> new-ui
 };
 
 export default TournamentCreate;

@@ -13,7 +13,7 @@ class PlayerController extends base_1.BaseController {
         if (filterParams.name) {
             filter.name = new RegExp(filterParams.name, 'i');
         }
-        const numericFields = ['bodsPlayed', 'bestResult', 'avgFinish', 'winningPercentage', 'totalChampionships'];
+        const numericFields = ['bodsPlayed', 'bestResult', 'avgFinish', 'winningPercentage', 'totalChampionships', 'gamesPlayed', 'gamesWon'];
         numericFields.forEach(field => {
             const value = filterParams[field];
             const minValue = filterParams[`${field}_min`];
@@ -31,6 +31,15 @@ class PlayerController extends base_1.BaseController {
                 }
             }
         });
+        if (filterParams.division) {
+            filter.division = new RegExp(filterParams.division, 'i');
+        }
+        if (filterParams.city) {
+            filter.city = new RegExp(filterParams.city, 'i');
+        }
+        if (filterParams.state) {
+            filter.state = new RegExp(filterParams.state, 'i');
+        }
         return filter;
     }
     buildSearchFilter(searchTerm) {
@@ -66,6 +75,52 @@ class PlayerController extends base_1.BaseController {
                     overview: stats[0] || {},
                     topPlayers,
                 },
+            };
+            res.status(200).json(response);
+        }
+        catch (error) {
+            next(error);
+        }
+    });
+    getScoringSummary = this.asyncHandler(async (req, res, next) => {
+        try {
+            const { id } = req.params;
+            const summary = await this.model.db.model('Match').aggregate([
+                {
+                    $match: {
+                        $or: [
+                            { 'team1.playerScores.playerId': new (require('mongoose').Types.ObjectId)(id) },
+                            { 'team2.playerScores.playerId': new (require('mongoose').Types.ObjectId)(id) }
+                        ]
+                    }
+                },
+                { $project: {
+                        _id: 1,
+                        tournamentId: 1,
+                        round: 1,
+                        status: 1,
+                        team1: 1,
+                        team2: 1,
+                        scores: {
+                            $concatArrays: [
+                                { $ifNull: ['$team1.playerScores', []] },
+                                { $ifNull: ['$team2.playerScores', []] }
+                            ]
+                        }
+                    } },
+                { $unwind: '$scores' },
+                { $match: { 'scores.playerId': new (require('mongoose').Types.ObjectId)(id) } },
+                { $group: {
+                        _id: '$scores.playerId',
+                        matchesWithPoints: { $sum: 1 },
+                        totalPoints: { $sum: { $ifNull: ['$scores.score', 0] } },
+                    }
+                }
+            ]);
+            const data = summary[0] || { matchesWithPoints: 0, totalPoints: 0 };
+            const response = {
+                success: true,
+                data,
             };
             res.status(200).json(response);
         }
@@ -202,32 +257,32 @@ class PlayerController extends base_1.BaseController {
         }
         return errors;
     }
-    create = async (req, res, next) => {
+    async create(req, res, next) {
         try {
             const validationErrors = this.validatePlayerData(req.body);
             if (validationErrors.length > 0) {
                 this.sendError(res, 400, validationErrors.join(', '));
                 return;
             }
-            return super.create(req, res, next);
+            await super.create(req, res, next);
         }
         catch (error) {
             next(error);
         }
-    };
-    update = async (req, res, next) => {
+    }
+    async update(req, res, next) {
         try {
             const validationErrors = this.validatePlayerData(req.body);
             if (validationErrors.length > 0) {
                 this.sendError(res, 400, validationErrors.join(', '));
                 return;
             }
-            return super.update(req, res, next);
+            await super.update(req, res, next);
         }
         catch (error) {
             next(error);
         }
-    };
+    }
 }
 exports.PlayerController = PlayerController;
 exports.playerController = new PlayerController();

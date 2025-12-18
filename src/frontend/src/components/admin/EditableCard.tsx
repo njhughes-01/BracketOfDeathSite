@@ -9,7 +9,7 @@ interface EditableCardProps {
   onCancel?: () => void;
   className?: string;
   padding?: 'sm' | 'md' | 'lg';
-  variant?: 'default' | 'hover' | 'elevated';
+  variant?: 'default' | 'hover' | 'gradient' | 'compact';
   isEditing?: boolean;
   showEditButton?: boolean;
   disabled?: boolean;
@@ -34,7 +34,7 @@ const EditableCard: React.FC<EditableCardProps> = ({
 
   // Use external editing state if provided, otherwise use internal state
   const isEditing = externalIsEditing !== undefined ? externalIsEditing : internalIsEditing;
-  const setIsEditing = externalIsEditing !== undefined ? () => {} : setInternalIsEditing;
+  const setIsEditing = externalIsEditing !== undefined ? () => { } : setInternalIsEditing;
 
   const handleEdit = () => {
     if (!isAdmin || disabled) return;
@@ -70,7 +70,7 @@ const EditableCard: React.FC<EditableCardProps> = ({
   };
 
   return (
-    <Card 
+    <Card
       className={`relative ${className}`}
       padding={padding}
       variant={variant}
@@ -78,18 +78,17 @@ const EditableCard: React.FC<EditableCardProps> = ({
       {/* Header with title and controls */}
       <div className="flex items-center justify-between mb-4">
         <h3 className="text-lg font-semibold text-gray-900">{title}</h3>
-        
+
         {isAdmin && showEditButton && (
           <div className="flex items-center space-x-2">
             {!isEditing ? (
               <button
                 onClick={handleEdit}
                 disabled={disabled}
-                className={`text-sm px-3 py-1 rounded-md transition-colors ${
-                  disabled 
-                    ? 'text-gray-400 cursor-not-allowed' 
+                className={`text-sm px-3 py-1 rounded-md transition-colors ${disabled
+                    ? 'text-gray-400 cursor-not-allowed'
                     : 'text-blue-600 hover:text-blue-800 hover:bg-blue-50 border border-blue-200'
-                }`}
+                  }`}
                 title={disabled ? 'Editing disabled' : 'Edit this section'}
               >
                 <svg className="w-4 h-4 inline mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -102,11 +101,10 @@ const EditableCard: React.FC<EditableCardProps> = ({
                 <button
                   onClick={handleSave}
                   disabled={isLoading}
-                  className={`text-sm px-3 py-1 rounded-md transition-colors ${
-                    isLoading
+                  className={`text-sm px-3 py-1 rounded-md transition-colors ${isLoading
                       ? 'text-gray-400 cursor-not-allowed'
                       : 'text-green-600 hover:text-green-800 hover:bg-green-50 border border-green-200'
-                  }`}
+                    }`}
                 >
                   {isLoading ? (
                     <>
@@ -125,11 +123,10 @@ const EditableCard: React.FC<EditableCardProps> = ({
                 <button
                   onClick={handleCancel}
                   disabled={isLoading}
-                  className={`text-sm px-3 py-1 rounded-md transition-colors ${
-                    isLoading
+                  className={`text-sm px-3 py-1 rounded-md transition-colors ${isLoading
                       ? 'text-gray-400 cursor-not-allowed'
                       : 'text-gray-600 hover:text-gray-800 hover:bg-gray-50 border border-gray-200'
-                  }`}
+                    }`}
                 >
                   <svg className="w-4 h-4 inline mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />

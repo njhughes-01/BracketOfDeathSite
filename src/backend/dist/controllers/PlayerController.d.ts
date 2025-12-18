@@ -6,6 +6,7 @@ export declare class PlayerController extends BaseController<IPlayer> {
     protected buildFilter(query: any): IPlayerFilter;
     protected buildSearchFilter(searchTerm: string): any;
     getStats: (req: Request | RequestWithAuth, res: Response, next: NextFunction) => void;
+    getScoringSummary: (req: Request | RequestWithAuth, res: Response, next: NextFunction) => void;
     getChampions: (req: Request | RequestWithAuth, res: Response, next: NextFunction) => void;
     getPerformanceTrends: (req: Request | RequestWithAuth, res: Response, next: NextFunction) => void;
     updateStats: (req: Request | RequestWithAuth, res: Response, next: NextFunction) => void;

@@ -1,1 +1,5 @@
+<<<<<<< HEAD
 {"version":3,"file":"admin.d.ts","sourceRoot":"","sources":["../../routes/admin.ts"],"names":[],"mappings":"AAMA,QAAA,MAAM,MAAM,4CAAW,CAAC;AA4IxB,eAAe,MAAM,CAAC"}
+=======
+{"version":3,"file":"admin.d.ts","sourceRoot":"","sources":["../../routes/admin.ts"],"names":[],"mappings":"AAMA,QAAA,MAAM,MAAM,4CAAW,CAAC;AA8GxB,eAAe,MAAM,CAAC"}
+>>>>>>> new-ui

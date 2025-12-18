@@ -2,19 +2,26 @@
  * Utility functions for tournament status determination
  */
 
-export const getTournamentStatus = (dateString: string): 'scheduled' | 'completed' => {
+export const getTournamentStatus = (dateString: string): 'scheduled' | 'active' | 'completed' => {
   const tournamentDate = new Date(dateString);
   const today = new Date();
-  
+
   // Reset time to compare just dates
-  today.setHours(0, 0, 0, 0);
-  tournamentDate.setHours(0, 0, 0, 0);
-  
-  return tournamentDate < today ? 'completed' : 'scheduled';
+  const todayTime = new Date(today.getFullYear(), today.getMonth(), today.getDate()).getTime();
+  const tournamentTime = new Date(tournamentDate.getFullYear(), tournamentDate.getMonth(), tournamentDate.getDate()).getTime();
+
+  if (tournamentTime < todayTime) return 'completed';
+  if (tournamentTime === todayTime) return 'active';
+  return 'scheduled';
 };
 
-export const getStatusDisplayInfo = (status: 'scheduled' | 'completed') => {
+export const getStatusDisplayInfo = (status: 'scheduled' | 'active' | 'completed') => {
   switch (status) {
+    case 'active':
+      return {
+        label: 'In Progress',
+        color: 'bg-accent text-black'
+      };
     case 'scheduled':
       return {
         label: 'Scheduled',
@@ -22,7 +29,7 @@ export const getStatusDisplayInfo = (status: 'scheduled' | 'completed') => {
       };
     case 'completed':
       return {
-        label: 'Completed', 
+        label: 'Completed',
         color: 'bg-green-100 text-green-800'
       };
     default:

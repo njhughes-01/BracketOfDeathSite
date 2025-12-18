@@ -12,6 +12,7 @@ import {
   createPreSaveMiddleware,
   createIndexes,
 } from './base';
+import { validateTennisScore } from '../utils/tennisValidation';
 
 // Match-specific calculations
 const calculateMatchStats = (match: IMatch): void => {
@@ -61,6 +62,25 @@ const matchTeamSchema = new Schema({
     min: [1, 'Seed must be positive'],
     max: [64, 'Seed cannot exceed 64'],
   },
+  // Individual player scores for detailed tracking
+  playerScores: [{
+    playerId: {
+      type: Schema.Types.ObjectId,
+      ref: 'Player',
+      required: false,
+    },
+    playerName: {
+      type: String,
+      required: false,
+      trim: true,
+    },
+    score: {
+      type: Number,
+      min: [0, 'Individual score cannot be negative'],
+      max: [99, 'Individual score cannot exceed 99'],
+      default: 0,
+    },
+  }],
 }, { _id: false });
 
 const matchSchema = new Schema<IMatch>(
@@ -88,7 +108,7 @@ const matchSchema = new Schema<IMatch>(
       type: Number,
       required: [true, ErrorMessages.REQUIRED],
       min: [1, 'Round number must be positive'],
-      max: [10, 'Round number cannot exceed 10'],
+      max: [50, 'Round number cannot exceed 50'],
     },
     team1: {
       type: matchTeamSchema,
@@ -121,21 +141,40 @@ const matchSchema = new Schema<IMatch>(
       trim: true,
       validate: createStringValidator(1, 500),
     },
+    adminOverride: {
+      type: {
+        reason: {
+          type: String,
+          trim: true,
+          required: true,
+        },
+        authorizedBy: {
+          type: String,
+          trim: true,
+          required: true,
+        },
+        timestamp: {
+          type: Date,
+          default: Date.now,
+        },
+      },
+      required: false,
+    },
   },
   baseSchemaOptions
 );
 
 // Validation for team player arrays
-matchSchema.path('team1.players').validate(function(players: any[]) {
+matchSchema.path('team1.players').validate(function (players: any[]) {
   return players && players.length >= 1 && players.length <= 2;
 }, 'Team must have 1 or 2 players');
 
-matchSchema.path('team2.players').validate(function(players: any[]) {
+matchSchema.path('team2.players').validate(function (players: any[]) {
   return players && players.length >= 1 && players.length <= 2;
 }, 'Team must have 1 or 2 players');
 
 // Validation for matching player array lengths
-matchSchema.pre('validate', function() {
+matchSchema.pre('validate', function () {
   if (this.team1.players.length !== this.team1.playerNames.length) {
     this.invalidate('team1.playerNames', 'Player names must match player count');
   }
@@ -148,30 +187,45 @@ matchSchema.pre('validate', function() {
 matchSchema.index({ tournamentId: 1, matchNumber: 1 }, { unique: true });
 
 // Validation for completed matches
-matchSchema.path('status').validate(function(status: string) {
+matchSchema.path('status').validate(function (status: string) {
   if (status === 'completed') {
-    return this.winner !== undefined;
+    if (this.winner === undefined) {
+      return false;
+    }
+
+    // Validate tennis score or require admin override
+    const team1Score = this.team1?.score || 0;
+    const team2Score = this.team2?.score || 0;
+    const scoreValidation = validateTennisScore(team1Score, team2Score);
+
+    // If score is invalid and no admin override, reject
+    if (!scoreValidation.isValid && !this.adminOverride) {
+      this.invalidate('status', `Invalid tennis score (${team1Score}-${team2Score}). ${scoreValidation.reason}. Admin override required for non-standard scores.`);
+      return false;
+    }
+
+    return true;
   }
   return true;
-}, 'Completed matches must have a winner');
+}, 'Completed matches must have a winner and valid tennis score');
 
 // Validation for winner selection
-matchSchema.path('winner').validate(function(winner: string) {
+matchSchema.path('winner').validate(function (winner: string) {
   if (!winner) return true;
-  
+
   const team1Score = this.team1?.score || 0;
   const team2Score = this.team2?.score || 0;
-  
+
   if (team1Score === team2Score) {
     return false; // Ties not allowed
   }
-  
+
   if (winner === 'team1') {
     return team1Score > team2Score;
   } else if (winner === 'team2') {
     return team2Score > team1Score;
   }
-  
+
   return false;
 }, 'Winner must be the team with the higher score');
 
@@ -193,7 +247,7 @@ matchSchema.virtual('scoreDisplay').get(function (this: IMatch) {
 // Virtual for winning team names
 matchSchema.virtual('winnerNames').get(function (this: IMatch) {
   if (!this.winner) return null;
-  
+
   const winningTeam = this.winner === 'team1' ? this.team1 : this.team2;
   return winningTeam.playerNames.join(' & ');
 });
@@ -217,9 +271,11 @@ createIndexes(matchSchema, [
   { fields: { 'team1.players': 1 } },
   { fields: { 'team2.players': 1 } },
   { fields: { completedDate: -1 } },
+  { fields: { 'team1.playerScores.playerId': 1 } },
+  { fields: { 'team2.playerScores.playerId': 1 } },
 ]);
 
-export interface IMatchModel extends BaseModelStatics<IMatch> {}
+export interface IMatchModel extends BaseModelStatics<IMatch> { }
 
 export const Match = model<IMatch, IMatchModel>('Match', matchSchema);
 export default Match;

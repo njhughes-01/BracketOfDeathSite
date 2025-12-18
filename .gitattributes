@@ -1,0 +1,18 @@
+# Normalize line endings for source files to LF
+* text=auto
+
+# Enforce LF for common text/code files
+*.ts   text eol=lf
+*.tsx  text eol=lf
+*.js   text eol=lf
+*.jsx  text eol=lf
+*.json text eol=lf
+*.yml  text eol=lf
+*.yaml text eol=lf
+*.css  text eol=lf
+*.scss text eol=lf
+*.md   text eol=lf
+
+# Do not normalize build artifacts (keep as-is)
+dist/** -text
+

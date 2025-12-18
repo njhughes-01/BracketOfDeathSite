@@ -123,19 +123,43 @@ const totalStatsSchema = new Schema<ITotalStats>({
     type: Number,
     required: [true, ErrorMessages.REQUIRED],
     min: [0, 'Total games won cannot be negative'],
-    validate: createNumericValidator(0),
+    validate: [
+      createNumericValidator(0),
+      {
+        validator: function (this: any, v: number) {
+          return v <= this.totalPlayed;
+        },
+        message: 'Total games won cannot exceed total games played'
+      }
+    ]
   },
   totalLost: {
     type: Number,
     required: [true, ErrorMessages.REQUIRED],
     min: [0, 'Total games lost cannot be negative'],
-    validate: createNumericValidator(0),
+    validate: [
+      createNumericValidator(0),
+      {
+        validator: function (this: any, v: number) {
+          return v <= this.totalPlayed;
+        },
+        message: 'Total games lost cannot exceed total games played'
+      }
+    ]
   },
   totalPlayed: {
     type: Number,
     required: [true, ErrorMessages.REQUIRED],
     min: [0, 'Total games played cannot be negative'],
-    validate: createNumericValidator(0),
+    validate: [
+      createNumericValidator(0),
+      {
+        validator: function (this: any, v: number) {
+          return v === (this.totalWon + this.totalLost);
+        },
+        message: 'Total games played must equal total won plus total lost'
+      }
+    ]
   },
   winPercentage: {
     type: Number,
@@ -245,7 +269,7 @@ const tournamentResultSchema = new Schema<ITournamentResult>(
     division: {
       type: String,
       trim: true,
-      validate: createStringValidator(1, 10),
+      validate: createStringValidator(1, 50),
     },
     seed: {
       type: Number,
@@ -267,17 +291,7 @@ tournamentResultSchema.path('players').validate(function (players: Types.ObjectI
   return players && players.length >= 1 && players.length <= 2;
 }, 'A team must have 1 or 2 players');
 
-tournamentResultSchema.path('totalStats.totalWon').validate(function (totalWon: number) {
-  return totalWon <= this.totalStats.totalPlayed;
-}, 'Total games won cannot exceed total games played');
 
-tournamentResultSchema.path('totalStats.totalLost').validate(function (totalLost: number) {
-  return totalLost <= this.totalStats.totalPlayed;
-}, 'Total games lost cannot exceed total games played');
-
-tournamentResultSchema.path('totalStats.totalPlayed').validate(function (totalPlayed: number) {
-  return totalPlayed === (this.totalStats.totalWon + this.totalStats.totalLost);
-}, 'Total games played must equal total won plus total lost');
 
 // Virtual for team name
 tournamentResultSchema.virtual('teamName').get(function (this: ITournamentResult) {
@@ -319,7 +333,7 @@ createIndexes(tournamentResultSchema, [
   { fields: { createdAt: -1 } },
 ]);
 
-export interface ITournamentResultModel extends BaseModelStatics<ITournamentResult> {}
+export interface ITournamentResultModel extends BaseModelStatics<ITournamentResult> { }
 
 export const TournamentResult = model<ITournamentResult, ITournamentResultModel>('TournamentResult', tournamentResultSchema);
 export default TournamentResult;

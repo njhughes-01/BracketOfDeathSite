@@ -21,8 +21,8 @@ const calculatePlayerStats = (player: IPlayer): void => {
   }
 
   // Calculate total championships
-  player.totalChampionships = 
-    (player.individualChampionships || 0) + 
+  player.totalChampionships =
+    (player.individualChampionships || 0) +
     (player.divisionChampionships || 0);
 
   // Ensure best result is not better than average finish
@@ -105,6 +105,10 @@ const playerSchema = new Schema<IPlayer>(
       trim: true,
       validate: createStringValidator(1, 100),
     },
+    isActive: {
+      type: Boolean,
+      default: true,
+    },
   },
   baseSchemaOptions
 );
@@ -153,7 +157,7 @@ createIndexes(playerSchema, [
 // Text index for search
 playerSchema.index({ name: 'text' });
 
-export interface IPlayerModel extends BaseModelStatics<IPlayer> {}
+export interface IPlayerModel extends BaseModelStatics<IPlayer> { }
 
 export const Player = model<IPlayer, IPlayerModel>('Player', playerSchema);
 export default Player;

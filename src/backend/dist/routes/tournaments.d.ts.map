@@ -1,1 +1,5 @@
+<<<<<<< HEAD
 {"version":3,"file":"tournaments.d.ts","sourceRoot":"","sources":["../../routes/tournaments.ts"],"names":[],"mappings":"AAOA,QAAA,MAAM,MAAM,4CAAW,CAAC;AA8CxB,eAAe,MAAM,CAAC"}
+=======
+{"version":3,"file":"tournaments.d.ts","sourceRoot":"","sources":["../../routes/tournaments.ts"],"names":[],"mappings":"AAMA,QAAA,MAAM,MAAM,4CAAW,CAAC;AAyCxB,eAAe,MAAM,CAAC"}
+>>>>>>> new-ui

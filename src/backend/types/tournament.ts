@@ -23,6 +23,7 @@ export interface ITournament extends BaseDocument {
     playerName: string;
     tournamentResult?: Types.ObjectId;
   };
+<<<<<<< HEAD
   // Virtual properties
   formattedDate?: string;
   year?: number;
@@ -35,6 +36,68 @@ export interface ITournament extends BaseDocument {
   registeredPlayerCount?: number;
   waitlistCount?: number;
   isRegistrationOpen?: boolean;
+=======
+  // Tournament setup configuration
+  seedingConfig?: {
+    method: 'historical' | 'recent_form' | 'elo' | 'manual';
+    parameters?: {
+      recentTournamentCount?: number;
+      championshipWeight?: number;
+      winPercentageWeight?: number;
+      avgFinishWeight?: number;
+    };
+  };
+  teamFormationConfig?: {
+    method: 'preformed' | 'draft' | 'statistical_pairing' | 'random' | 'manual';
+    parameters?: {
+      skillBalancing?: boolean;
+      avoidRecentPartners?: boolean;
+      maxTimesPartnered?: number;
+    };
+  };
+  bracketType?: 'single_elimination' | 'double_elimination' | 'round_robin_playoff';
+  registrationDeadline?: Date;
+  // Generated tournament data
+  generatedSeeds?: Array<{
+    playerId: Types.ObjectId;
+    playerName: string;
+    seed: number;
+    statistics: {
+      avgFinish: number;
+      winningPercentage: number;
+      totalChampionships: number;
+      bodsPlayed: number;
+      recentForm?: number;
+    };
+  }>;
+  generatedTeams?: Array<{
+    teamId: string;
+    players: Array<{
+      playerId: Types.ObjectId;
+      playerName: string;
+      seed: number;
+      statistics: {
+        avgFinish: number;
+        winningPercentage: number;
+        totalChampionships: number;
+        bodsPlayed: number;
+        recentForm?: number;
+      };
+    }>;
+    combinedSeed: number;
+    teamName: string;
+    combinedStatistics: {
+      avgFinish: number;
+      combinedWinPercentage: number;
+      totalChampionships: number;
+      combinedBodsPlayed: number;
+    };
+  }>;
+  // Live management state (persist admin-selected UI context)
+  managementState?: {
+    currentRound?: string;
+  };
+>>>>>>> new-ui
 }
 
 export interface ITournamentInput {
@@ -100,6 +163,7 @@ export const TournamentStatuses = [
 ] as const;
 
 export type TournamentStatus = typeof TournamentStatuses[number];
+<<<<<<< HEAD
 
 export const RegistrationTypes = [
   'open',
@@ -107,3 +171,5 @@ export const RegistrationTypes = [
 ] as const;
 
 export type RegistrationType = typeof RegistrationTypes[number];
+=======
+>>>>>>> new-ui

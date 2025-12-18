@@ -12,7 +12,7 @@ class TournamentResultController extends base_1.BaseController {
     }
     buildFilter(query) {
         const filter = {};
-        const { page, limit, sort, select, populate, q, ...filterParams } = query;
+        const { page, limit, sort, select, populate, q, year, ...filterParams } = query;
         if (filterParams.tournamentId) {
             filter.tournamentId = new mongoose_1.Types.ObjectId(filterParams.tournamentId);
         }
@@ -75,15 +75,16 @@ class TournamentResultController extends base_1.BaseController {
         }
         return filter;
     }
-    getAll = this.asyncHandler(async (req, res, next) => {
+    getAll = async (req, res, next) => {
         try {
             const options = {
                 page: parseInt(req.query.page) || 1,
                 limit: parseInt(req.query.limit) || 10,
-                sort: req.query.sort || '-createdAt',
+                sort: req.query.sort || '-tournament.date',
                 select: req.query.select,
             };
             const filter = this.buildFilter(req.query);
+            const year = req.query.year;
             const pipeline = [
                 { $match: filter },
                 {
@@ -120,20 +121,57 @@ class TournamentResultController extends base_1.BaseController {
                         },
                     },
                 },
+            ];
+            if (year) {
+                const yearInt = parseInt(year);
+                pipeline.push({
+                    $match: {
+                        'tournament.date': {
+                            $gte: new Date(`${yearInt}-01-01`),
+                            $lte: new Date(`${yearInt}-12-31`),
+                        },
+                    },
+                });
+            }
+            pipeline.push({
+                $project: {
+                    tournamentDetails: 0,
+                    playerDetails: 0,
+                },
+            }, { $sort: this.parseSortString(options.sort) }, { $skip: (options.page - 1) * options.limit }, { $limit: options.limit });
+            const countPipeline = [
+                { $match: filter },
                 {
-                    $project: {
-                        tournamentDetails: 0,
-                        playerDetails: 0,
+                    $lookup: {
+                        from: 'tournaments',
+                        localField: 'tournamentId',
+                        foreignField: '_id',
+                        as: 'tournament',
                     },
                 },
-                { $sort: this.parseSortString(options.sort) },
-                { $skip: (options.page - 1) * options.limit },
-                { $limit: options.limit },
+                {
+                    $addFields: {
+                        tournament: { $arrayElemAt: ['$tournament', 0] },
+                    },
+                },
             ];
-            const [results, total] = await Promise.all([
+            if (year) {
+                const yearInt = parseInt(year);
+                countPipeline.push({
+                    $match: {
+                        'tournament.date': {
+                            $gte: new Date(`${yearInt}-01-01`),
+                            $lte: new Date(`${yearInt}-12-31`),
+                        },
+                    },
+                });
+            }
+            countPipeline.push({ $count: 'total' });
+            const [results, totalResult] = await Promise.all([
                 TournamentResult_1.TournamentResult.aggregate(pipeline),
-                TournamentResult_1.TournamentResult.countDocuments(filter),
+                TournamentResult_1.TournamentResult.aggregate(countPipeline),
             ]);
+            const total = totalResult.length > 0 ? totalResult[0].total : 0;
             const pages = Math.ceil(total / options.limit);
             const response = {
                 success: true,
@@ -150,7 +188,7 @@ class TournamentResultController extends base_1.BaseController {
         catch (error) {
             next(error);
         }
-    });
+    };
     getByTournament = this.asyncHandler(async (req, res, next) => {
         try {
             const { tournamentId } = req.params;
@@ -187,7 +225,7 @@ class TournamentResultController extends base_1.BaseController {
             const results = await TournamentResult_1.TournamentResult.find({
                 players: { $in: [playerId] }
             })
-                .populate('tournamentId', 'date format location bodNumber')
+                .populate('tournamentId')
                 .populate('players', 'name')
                 .sort({ 'tournament.date': -1 });
             const stats = this.calculatePlayerStats(results);
@@ -386,7 +424,7 @@ class TournamentResultController extends base_1.BaseController {
                         players: { $all: playerIds },
                     });
                     if (existingResult) {
-                        await TournamentResult_1.TournamentResult.findByIdAndUpdateSafe(existingResult._id, resultData);
+                        await TournamentResult_1.TournamentResult.findByIdAndUpdateSafe(existingResult._id.toString(), resultData);
                         importResults.updated++;
                     }
                     else {
@@ -419,7 +457,8 @@ class TournamentResultController extends base_1.BaseController {
         parts.forEach(part => {
             const trimmed = part.trim();
             if (trimmed.startsWith('-')) {
-                sort[trimmed.substring(1)] = -1;
+                const field = trimmed.substring(1);
+                sort[field] = -1;
             }
             else {
                 sort[trimmed] = 1;
@@ -478,7 +517,7 @@ class TournamentResultController extends base_1.BaseController {
         }
         return errors;
     }
-    create = this.asyncHandler(async (req, res, next) => {
+    async create(req, res, next) {
         try {
             const validationErrors = this.validateTournamentResultData(req.body);
             if (validationErrors.length > 0) {
@@ -490,8 +529,8 @@ class TournamentResultController extends base_1.BaseController {
         catch (error) {
             next(error);
         }
-    });
-    update = this.asyncHandler(async (req, res, next) => {
+    }
+    async update(req, res, next) {
         try {
             const validationErrors = this.validateTournamentResultData(req.body);
             if (validationErrors.length > 0) {
@@ -503,7 +542,7 @@ class TournamentResultController extends base_1.BaseController {
         catch (error) {
             next(error);
         }
-    });
+    }
 }
 exports.TournamentResultController = TournamentResultController;
 exports.tournamentResultController = new TournamentResultController();

@@ -1,420 +1,272 @@
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useState, useMemo } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
-import { useApi } from '../hooks/useApi';
+import { useApi, useMutation } from '../hooks/useApi';
+import { useAuth } from '../contexts/AuthContext';
 import apiClient from '../services/api';
-import Card from '../components/ui/Card';
 import LoadingSpinner from '../components/ui/LoadingSpinner';
-import StatCard from '../components/ui/StatCard';
 
 const PlayerDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const { isAdmin } = useAuth();
   const [activeTab, setActiveTab] = useState<'tournaments' | 'matches'>('tournaments');
 
-  const getPlayer = useCallback(
-    () => apiClient.getPlayer(id!),
-    [id]
+  const getPlayer = useCallback(() => apiClient.getPlayer(id!), [id]);
+  const { data: playerResponse, loading, error } = useApi(getPlayer, { immediate: true });
+
+  const getPlayerResults = useCallback(() => apiClient.getResultsByPlayer(id!), [id]);
+  const { data: resultsResponse, loading: resultsLoading } = useApi(getPlayerResults, { immediate: true });
+
+  const getPlayerScoring = useCallback(() => apiClient.getPlayerScoring(id!), [id]);
+  const { data: scoringResponse } = useApi(getPlayerScoring, { immediate: true });
+  const scoring = scoringResponse as any;
+
+  // Delete Mutation
+  const { mutate: deletePlayer, loading: deleteLoading } = useMutation(
+    () => apiClient.deletePlayer(id!),
+    {
+      onSuccess: () => navigate('/players'),
+      onError: (err) => alert(`Failed to delete player: ${err}`)
+    }
   );
 
-  const { data: playerResponse, loading, error } = useApi(
-    getPlayer,
-    { immediate: true }
-  );
-
-  const getPlayerResults = useCallback(
-    () => apiClient.getResultsByPlayer(id!),
-    [id]
-  );
-
-  const { data: resultsResponse, loading: resultsLoading } = useApi(
-    getPlayerResults,
-    { immediate: true }
-  );
-
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-96">
-        <LoadingSpinner size="lg" />
-        <span className="ml-3 text-gray-500">Loading player details...</span>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="text-center py-12">
-        <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
-          <span className="text-red-500 text-2xl">⚠️</span>
-        </div>
-        <h2 className="text-lg font-semibold text-gray-900 mb-2">Player not found</h2>
-        <p className="text-gray-600 mb-4">{error}</p>
-        <Link to="/players" className="btn btn-primary">
-          Back to Players
-        </Link>
-      </div>
-    );
-  }
+  const handleDelete = () => {
+    if (window.confirm('Are you sure you want to delete this player? This action cannot be undone.')) {
+      deletePlayer(undefined);
+    }
+  };
 
   const player = playerResponse as any;
   const resultsData = resultsResponse as any;
-  const results = resultsData?.results || [];
-  const playerStats = resultsData?.stats;
+  const results = useMemo(() => resultsData?.results || [], [resultsData]);
+  const playerStats = useMemo(() => resultsData?.stats, [resultsData]);
 
-  if (!player) {
+  if (loading || deleteLoading) {
     return (
-      <div className="text-center py-12">
-        <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
-          <span className="text-gray-400 text-2xl">👤</span>
+      <div className="flex flex-col h-screen bg-background-dark animate-pulse">
+        <div className="h-64 w-full bg-surface-dark/50"></div>
+        <div className="flex-1 p-6 space-y-4">
+          <div className="h-8 w-1/3 bg-surface-dark/50 rounded"></div>
+          <div className="h-32 bg-surface-dark/50 rounded-xl"></div>
         </div>
-        <h2 className="text-lg font-semibold text-gray-900 mb-2">Player not found</h2>
-        <p className="text-gray-600 mb-4">The requested player could not be found.</p>
-        <Link to="/players" className="btn btn-primary">
-          Back to Players
+      </div>
+    );
+  }
+
+  if (error || !player) {
+    return (
+      <div className="flex flex-col items-center justify-center h-screen bg-background-dark text-center px-4">
+        <div className="size-20 bg-surface-dark rounded-full flex items-center justify-center mb-4 border border-white/5">
+          <span className="material-symbols-outlined text-slate-500 text-3xl">person_off</span>
+        </div>
+        <h2 className="text-xl font-bold text-white mb-2">Player Not Found</h2>
+        <p className="text-slate-400 mb-6">The player you are looking for does not exist or has been removed.</p>
+        <Link to="/players" className="px-6 py-3 bg-primary text-white rounded-xl font-bold shadow-lg shadow-primary/20 hover:bg-primary-dark transition-all">
+          Return to Players
         </Link>
       </div>
     );
   }
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center space-x-4">
-          <div className="w-16 h-16 bg-gradient-to-br from-blue-500 to-purple-600 rounded-xl flex items-center justify-center shadow-lg">
-            <span className="text-white font-bold text-xl">
-              {player.name?.split(' ').map(n => n[0]).join('') || 'P'}
-            </span>
+    <div className="flex flex-col bg-background-dark min-h-screen pb-20">
+
+      {/* Hero Header */}
+      <div className="relative h-[280px] w-full bg-surface-dark overflow-hidden shrink-0">
+        <div
+          className="absolute inset-0 bg-cover bg-center opacity-40 mix-blend-overlay"
+          style={{ backgroundImage: 'url("https://lh3.googleusercontent.com/aida-public/AB6AXuArfVEx5fb164F7A5wImLDhdzfcSW6LnHlwPVwOrKjRtLggvCj1itnaz5XN7nguDVCtG-LIKOmQulidI4n8ALkhyEmAG1WYypbKjBR8KWR6SihPLdXTyQ6OVw2NM56nRlyL--H7QHfytRz4iv9oUd7UwpBJCICbEYfvaVsubL9Qu-PN1eg_0DlZqGLQWLtSp2YbjgvUmr-s78-PTfyVElfYP0csdy5hZELB8ii7cq42JsinCdWrqMiKi_dP9NWOKWtbx6ksXq8z4ZI")' }} // Use generic tennis texture if no specific image
+        ></div>
+        <div className="absolute inset-0 bg-gradient-to-t from-background-dark via-transparent to-black/60"></div>
+
+        {/* Navigation Bar inside Hero */}
+        <div className="absolute top-0 left-0 right-0 p-4 flex items-center justify-between z-20">
+          <Link to="/players" className="size-10 rounded-full bg-black/20 backdrop-blur-md text-white flex items-center justify-center hover:bg-white/20 transition-all">
+            <span className="material-symbols-outlined">arrow_back</span>
+          </Link>
+          <div className="flex items-center gap-2">
+            {isAdmin && (
+              <button
+                onClick={handleDelete}
+                className="size-10 rounded-full bg-red-500/80 backdrop-blur-md text-white flex items-center justify-center hover:bg-red-600 transition-all"
+                title="Delete Player"
+              >
+                <span className="material-symbols-outlined">delete</span>
+              </button>
+            )}
+            <Link to={`/players/${id}/edit`} className="size-10 rounded-full bg-black/20 backdrop-blur-md text-white flex items-center justify-center hover:bg-white/20 transition-all">
+              <span className="material-symbols-outlined">edit</span>
+            </Link>
           </div>
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900">{player.name}</h1>
-            <p className="text-gray-600">
-              {player.pairing ? `Partners with ${player.pairing}` : 'Individual Player'}
+        </div>
+
+        {/* Player Info */}
+        <div className="absolute bottom-0 left-0 right-0 p-6 flex items-center gap-5 z-10">
+          <div className="size-20 rounded-full bg-gradient-to-br from-gray-700 to-gray-800 border-4 border-background-dark shadow-xl flex items-center justify-center text-3xl font-bold text-white relative">
+            {player.name ? player.name.split(' ').map((n: string) => n[0]).join('').slice(0, 2).toUpperCase() : '?'}
+            {(player.winningPercentage || 0) >= 0.5 && (
+              <div className="absolute -bottom-1 -right-1 bg-background-dark rounded-full p-1">
+                <div className="size-6 flex items-center justify-center bg-accent text-black text-xs font-bold rounded-full border border-background-dark">
+                  {(player.winningPercentage || 0) >= 0.8 ? 'S' : 'A'}
+                </div>
+              </div>
+            )}
+          </div>
+          <div className="flex-1 min-w-0 pb-2">
+            <h1 className="text-3xl font-bold text-white leading-tight shadow-black drop-shadow-md truncate">
+              {player.name}
+            </h1>
+            <p className="text-slate-300 text-sm font-medium">
+              {player.pairing ? `Pairs with ${player.pairing}` : 'Individual Player'}
             </p>
           </div>
         </div>
-        <div className="flex items-center space-x-3">
+      </div>
+
+      {/* Content Container */}
+      <div className="flex-1 -mt-4 rounded-t-3xl bg-background-dark relative z-10 flex flex-col pt-6 px-4 space-y-6">
+
+        {/* Key Stats Grid */}
+        <div className="grid grid-cols-3 gap-3">
+          <div className="p-3 rounded-2xl bg-[#1c2230] border border-white/5 flex flex-col items-center justify-center gap-0.5 shadow-lg">
+            <span className="text-[10px] text-slate-500 uppercase tracking-wider font-bold">Win Rate</span>
+            <span className="text-lg font-bold text-primary">{((player.winningPercentage || 0) * 100).toFixed(0)}%</span>
+          </div>
+          <div className="p-3 rounded-2xl bg-[#1c2230] border border-white/5 flex flex-col items-center justify-center gap-0.5 shadow-lg">
+            <span className="text-[10px] text-slate-500 uppercase tracking-wider font-bold">Games</span>
+            <span className="text-lg font-bold text-white">{player.gamesPlayed || 0}</span>
+          </div>
+          <div className="p-3 rounded-2xl bg-[#1c2230] border border-white/5 flex flex-col items-center justify-center gap-0.5 shadow-lg">
+            <span className="text-[10px] text-slate-500 uppercase tracking-wider font-bold">Titles</span>
+            <span className="text-lg font-bold text-accent">{player.totalChampionships || 0}</span>
+          </div>
+        </div>
+
+        {/* Detailed Stats Row (Scrollable) */}
+        <div className="flex gap-3 overflow-x-auto no-scrollbar pb-1">
+          <div className="min-w-[120px] p-4 rounded-xl bg-[#1c2230] border border-white/5">
+            <span className="block text-xs text-slate-500 mb-1">Avg Finish</span>
+            <span className="text-xl font-bold text-white">{player.avgFinish?.toFixed(1) || '-'}</span>
+          </div>
+          <div className="min-w-[120px] p-4 rounded-xl bg-[#1c2230] border border-white/5">
+            <span className="block text-xs text-slate-500 mb-1">Best Result</span>
+            <span className="text-xl font-bold text-white">{player.bestResult || '-'}</span>
+          </div>
+          {(scoring as any)?.data?.totalPoints > 0 && (
+            <div className="min-w-[120px] p-4 rounded-xl bg-[#1c2230] border border-white/5">
+              <span className="block text-xs text-slate-500 mb-1">Live Points</span>
+              <span className="text-xl font-bold text-white">{(scoring as any).data.totalPoints}</span>
+            </div>
+          )}
+        </div>
+
+        {/* Tabs */}
+        <div className="flex border-b border-white/10">
           <button
-            onClick={() => navigate(`/players/${id}/edit`)}
-            className="btn btn-outline"
+            onClick={() => setActiveTab('tournaments')}
+            className={`flex-1 pb-3 text-sm font-bold relative transition-colors ${activeTab === 'tournaments' ? 'text-primary' : 'text-slate-500'}`}
           >
-            Edit Player
+            Tournaments
+            {activeTab === 'tournaments' && (
+              <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary rounded-t-full shadow-[0_-2px_10px_rgba(16,77,198,0.5)]"></div>
+            )}
           </button>
           <button
-            onClick={() => navigate('/players')}
-            className="btn btn-secondary"
+            onClick={() => setActiveTab('matches')}
+            className={`flex-1 pb-3 text-sm font-bold relative transition-colors ${activeTab === 'matches' ? 'text-primary' : 'text-slate-500'}`}
           >
-            Back to Players
+            Matches
+            {activeTab === 'matches' && (
+              <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary rounded-t-full shadow-[0_-2px_10px_rgba(16,77,198,0.5)]"></div>
+            )}
           </button>
         </div>
-      </div>
 
-      {/* Stats Overview */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <StatCard
-          title="BODs Played"
-          value={player.bodsPlayed || 0}
-          icon="🏆"
-          iconColor="bg-blue-100 text-blue-600"
-        />
-        
-        <StatCard
-          title="Best Result"
-          value={player.bestResult || 0}
-          icon="🥇"
-          iconColor="bg-yellow-100 text-yellow-600"
-        />
-        
-        <StatCard
-          title="Win Rate"
-          value={`${((player.winningPercentage || 0) * 100).toFixed(1)}%`}
-          icon="📊"
-          iconColor="bg-green-100 text-green-600"
-        />
-        
-        <StatCard
-          title="Championships"
-          value={player.totalChampionships || 0}
-          icon="🏅"
-          iconColor="bg-purple-100 text-purple-600"
-        />
-      </div>
-
-      {/* Detailed Statistics */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Tournament Performance */}
-        <Card>
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">Tournament Performance</h3>
-          <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <span className="text-gray-600">Average Finish</span>
-              <span className="font-medium">{player.avgFinish?.toFixed(1) || 'N/A'}</span>
-            </div>
-            <div className="flex items-center justify-between">
-              <span className="text-gray-600">BODs Played</span>
-              <span className="font-medium">{player.bodsPlayed || 0}</span>
-            </div>
-            <div className="flex items-center justify-between">
-              <span className="text-gray-600">Best Result</span>
-              <span className="font-medium">{player.bestResult || 0}</span>
-            </div>
-          </div>
-        </Card>
-
-        {/* Game Statistics */}
-        <Card>
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">Game Statistics</h3>
-          <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <span className="text-gray-600">Games Played</span>
-              <span className="font-medium">{playerStats?.totalGames || player.gamesPlayed || 0}</span>
-            </div>
-            <div className="flex items-center justify-between">
-              <span className="text-gray-600">Games Won</span>
-              <span className="font-medium">{playerStats?.totalWins || player.gamesWon || 0}</span>
-            </div>
-            <div className="flex items-center justify-between">
-              <span className="text-gray-600">Games Lost</span>
-              <span className="font-medium">{playerStats?.totalLosses || (player.gamesPlayed - player.gamesWon) || 0}</span>
-            </div>
-            <div className="flex items-center justify-between">
-              <span className="text-gray-600">Winning Percentage</span>
-              <span className="font-medium">{((playerStats?.overallWinPercentage || player.winningPercentage || 0) * 100).toFixed(1)}%</span>
-            </div>
-          </div>
-        </Card>
-      </div>
-
-      {/* Championships */}
-      <Card>
-        <h3 className="text-lg font-semibold text-gray-900 mb-4">Championships</h3>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div className="text-center p-4 bg-yellow-50 rounded-lg">
-            <div className="text-2xl font-bold text-yellow-600">
-              {player.individualChampionships || 0}
-            </div>
-            <div className="text-sm text-gray-600">Individual Championships</div>
-          </div>
-          
-          <div className="text-center p-4 bg-blue-50 rounded-lg">
-            <div className="text-2xl font-bold text-blue-600">
-              {player.divisionChampionships || 0}
-            </div>
-            <div className="text-sm text-gray-600">Division Championships</div>
-          </div>
-          
-          <div className="text-center p-4 bg-purple-50 rounded-lg">
-            <div className="text-2xl font-bold text-purple-600">
-              {player.totalChampionships || 0}
-            </div>
-            <div className="text-sm text-gray-600">Total Championships</div>
-          </div>
-        </div>
-      </Card>
-
-      {/* Tabs */}
-      <Card>
-        <div className="border-b border-gray-200">
-          <nav className="-mb-px flex space-x-8">
-            <button
-              onClick={() => setActiveTab('tournaments')}
-              className={`py-2 px-1 border-b-2 font-medium text-sm ${
-                activeTab === 'tournaments'
-                  ? 'border-blue-500 text-blue-600'
-                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-              }`}
-            >
-              Tournament Results
-            </button>
-            <button
-              onClick={() => setActiveTab('matches')}
-              className={`py-2 px-1 border-b-2 font-medium text-sm ${
-                activeTab === 'matches'
-                  ? 'border-blue-500 text-blue-600'
-                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-              }`}
-            >
-              Match History
-            </button>
-          </nav>
-        </div>
-        
-        <div className="mt-4">
-          {activeTab === 'tournaments' ? (
-            <div>
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">Tournament Results</h3>
-        {resultsLoading ? (
-          <div className="flex items-center justify-center py-8">
-            <LoadingSpinner size="md" />
-            <span className="ml-2 text-gray-500">Loading tournament history...</span>
-          </div>
-        ) : Array.isArray(results) && results.length > 0 ? (
-          <div className="space-y-3">
-            {results.map((result: any) => {
-              const partner = result.players?.find((p: any) => p._id !== id);
-              const tournament = result.tournamentId;
-
-              const getRankIndicatorClass = (rank: number) => {
-                switch (rank) {
-                  case 1: return 'border-l-4 border-yellow-400';
-                  case 2: return 'border-l-4 border-gray-400';
-                  case 3: return 'border-l-4 border-orange-500';
-                  default: return 'border-l-4 border-transparent';
-                }
-              };
-
-              return (
-                <Link
-                  key={result.id}
-                  to={`/tournaments/${tournament?.id || tournament?._id}`}
-                  className={`block p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-all ${getRankIndicatorClass(result.totalStats?.finalRank)}`}
-                >
-                  <div className="grid grid-cols-3 gap-4 items-center">
-                    {/* Left Column: Tournament Info */}
-                    <div className="col-span-2">
-                      <p className="font-medium text-gray-900 hover:text-primary-600 transition-colors">
-                        {tournament.name}
-                      </p>
-                      <div className="text-sm text-gray-600 space-y-1 mt-1">
-                        <p>
-                          <span className="font-semibold">Date:</span> {new Date(tournament.date).toLocaleDateString()}
-                        </p>
-                        <p>
-                          <span className="font-semibold">Location:</span> {tournament.location}
-                        </p>
-                        <p>
-                          <span className="font-semibold">Format:</span> {tournament.format}
-                        </p>
-                        {partner && (
-                          <p>
-                            <span className="font-semibold">Partner:</span> {partner.name}
-                          </p>
-                        )}
-                      </div>
-                    </div>
-
-                    {/* Right Column: Performance Stats */}
-                    <div className="text-right">
-                      <p className="font-bold text-lg text-gray-800">
-                        Rank: {result.totalStats?.finalRank || 'N/A'}
-                      </p>
-                      <p className="text-sm text-gray-600">
-                        (Seed: {result.seed || 'N/A'})
-                      </p>
-                      <div className="mt-2">
-                        <p className="font-medium text-gray-700">
-                          {result.totalStats?.totalWon || 0}W - {result.totalStats?.totalLost || 0}L
-                        </p>
-                        <p className="text-xs text-gray-500">
-                          {result.totalStats.winPercentage != null 
-                            ? `${(result.totalStats.winPercentage * 100).toFixed(0)}% Win Rate` 
-                            : ''}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                </Link>
-              );
-            })}
-          </div>
-              ) : (
-                <div className="text-center py-8">
-                  <div className="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-3">
-                    <span className="text-gray-400 text-xl">🏆</span>
-                  </div>
-                  <p className="text-gray-500">No tournament history found for this player.</p>
+        {/* Tab Content */}
+        <div className="pb-8">
+          {activeTab === 'tournaments' && (
+            <div className="space-y-4">
+              {resultsLoading ? (
+                <div className="space-y-3">
+                  {[1, 2, 3].map(i => <div key={i} className="h-24 bg-[#1c2230] rounded-xl animate-pulse"></div>)}
                 </div>
+              ) : results.length > 0 ? (
+                results.map((result: any) => {
+                  const tournament = result.tournamentId;
+                  const rank = result.totalStats?.finalRank;
+                  const isWinner = rank === 1;
+
+                  return (
+                    <Link
+                      key={result.id}
+                      to={`/tournaments/${tournament?.id || tournament?._id}`}
+                      className={`block p-4 rounded-xl border transition-all ${isWinner ? 'bg-gradient-to-br from-[#1c2230] to-yellow-900/10 border-yellow-500/30' : 'bg-[#1c2230] border-white/5 hover:border-white/10'}`}
+                    >
+                      <div className="flex justify-between items-start mb-2">
+                        <div>
+                          <h3 className="text-white font-bold text-sm tracking-tight">{tournament.name || `BOD #${tournament.bodNumber}`}</h3>
+                          <span className="text-xs text-slate-500">{new Date(tournament.date).toLocaleDateString()}</span>
+                        </div>
+                        <div className="flex flex-col items-end">
+                          <span className={`text-lg font-bold leading-none ${isWinner ? 'text-yellow-500' : 'text-slate-400'}`}>
+                            {rank ? (rank === 1 ? '1st' : rank === 2 ? '2nd' : rank === 3 ? '3rd' : `${rank}th`) : '-'}
+                          </span>
+                          <span className="text-[10px] text-slate-600 uppercase font-bold">Rank</span>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-4 pt-2 border-t border-white/5">
+                        <div className="flex flex-col">
+                          <span className="text-[10px] text-slate-500 uppercase">Record</span>
+                          <span className="text-xs font-mono text-white">{result.totalStats?.totalWon || 0}W - {result.totalStats?.totalLost || 0}L</span>
+                        </div>
+                        <div className="flex flex-col">
+                          <span className="text-[10px] text-slate-500 uppercase">Seed</span>
+                          <span className="text-xs font-mono text-white">#{result.seed || '-'}</span>
+                        </div>
+                      </div>
+                    </Link>
+                  );
+                })
+              ) : (
+                <div className="text-center py-10 text-slate-500 text-sm">No tournament history found</div>
               )}
             </div>
-          ) : (
-            <div>
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">Match History</h3>
+          )}
+
+          {activeTab === 'matches' && (
+            <div className="space-y-4">
+              {/* This would be populated similarly if the API returns granular matches here, currently reuse logic or simple placeholder if complex */}
+
               {resultsLoading ? (
-                <div className="flex items-center justify-center py-8">
-                  <LoadingSpinner size="md" />
-                  <span className="ml-2 text-gray-500">Loading match history...</span>
+                <div className="space-y-3 animate-pulse">
+                  <div className="h-20 bg-[#1c2230] rounded-xl"></div>
                 </div>
-              ) : Array.isArray(results) && results.length > 0 ? (
-                <div className="space-y-4">
-                  {results.map((result: any) => {
-                    const partner = result.players?.find((p: any) => p._id !== id);
-                    const tournament = result.tournamentId;
-                    const matches = [];
-                    
-                    // Extract Round Robin matches
-                    if (result.roundRobinScores) {
-                      const rr = result.roundRobinScores;
-                      if (rr.round1 > 0) matches.push({ type: 'Round Robin 1', score: rr.round1, isWin: rr.round1 > 10 });
-                      if (rr.round2 > 0) matches.push({ type: 'Round Robin 2', score: rr.round2, isWin: rr.round2 > 10 });
-                      if (rr.round3 > 0) matches.push({ type: 'Round Robin 3', score: rr.round3, isWin: rr.round3 > 10 });
-                    }
-                    
-                    // Extract Bracket matches
-                    if (result.bracketScores) {
-                      const bracket = result.bracketScores;
-                      if (bracket.r16Won > 0 || bracket.r16Lost > 0) matches.push({ type: 'Round of 16', won: bracket.r16Won, lost: bracket.r16Lost });
-                      if (bracket.qfWon > 0 || bracket.qfLost > 0) matches.push({ type: 'Quarter Finals', won: bracket.qfWon, lost: bracket.qfLost });
-                      if (bracket.sfWon > 0 || bracket.sfLost > 0) matches.push({ type: 'Semi Finals', won: bracket.sfWon, lost: bracket.sfLost });
-                      if (bracket.finalsWon > 0 || bracket.finalsLost > 0) matches.push({ type: 'Finals', won: bracket.finalsWon, lost: bracket.finalsLost });
-                    }
-                    
-                    return (
-                      <div key={result.id} className="bg-gray-50 rounded-lg p-4">
-                        <div className="flex items-center justify-between mb-3">
-                          <Link
-                            to={`/tournaments/${tournament?.id || tournament?._id}`}
-                            className="font-medium text-gray-900 hover:text-blue-600"
-                          >
-                            BOD #{tournament?.bodNumber} - {tournament?.format}
-                          </Link>
-                          <div className="text-sm text-gray-500">
-                            {new Date(tournament?.date).toLocaleDateString()}
-                          </div>
+              ) : results.length > 0 ? (
+                results.map((result: any) => {
+                  // Compact match summary for the tournament
+                  return (
+                    <div key={result.id} className="bg-[#1c2230] rounded-xl p-4 border border-white/5">
+                      <h4 className="text-xs font-bold text-slate-400 uppercase mb-3">{result.tournamentId?.name || 'Tournament'} Matches</h4>
+                      <div className="grid grid-cols-2 gap-2">
+                        {/* Mocking match display based on stats */}
+                        <div className="bg-background-dark p-2 rounded border border-white/5 flex justify-between items-center">
+                          <span className="text-xs text-slate-400">Total</span>
+                          <span className="text-xs font-bold text-white">{result.totalStats?.totalWon}W - {result.totalStats?.totalLost}L</span>
                         </div>
-                        
-                        {partner && (
-                          <p className="text-sm text-gray-600 mb-3">
-                            <span className="font-medium">Partner:</span> {partner.name}
-                          </p>
-                        )}
-                        
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-                          {matches.map((match, idx) => (
-                            <div key={idx} className="bg-white rounded p-3 border">
-                              <div className="text-sm font-medium text-gray-700">{match.type}</div>
-                              {match.score !== undefined ? (
-                                <div className={`text-lg font-bold ${
-                                  match.isWin ? 'text-green-600' : 'text-red-600'
-                                }`}>
-                                  {match.score} {match.isWin ? 'W' : 'L'}
-                                </div>
-                              ) : (
-                                <div className="text-lg font-bold text-gray-700">
-                                  {match.won}W - {match.lost}L
-                                </div>
-                              )}
-                            </div>
-                          ))}
-                        </div>
-                        
-                        {matches.length === 0 && (
-                          <p className="text-sm text-gray-500 italic">No detailed match data available</p>
-                        )}
+                        {/* Just a summary for now as specific match objects aren't always in this endpoint fully detailed */}
                       </div>
-                    );
-                  })}
-                </div>
+                    </div>
+                  )
+                })
               ) : (
-                <div className="text-center py-8">
-                  <div className="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-3">
-                    <span className="text-gray-400 text-xl">🎾</span>
-                  </div>
-                  <p className="text-gray-500">No match history found for this player.</p>
-                </div>
+                <div className="text-center py-10 text-slate-500 text-sm">No match history found</div>
               )}
             </div>
           )}
         </div>
-      </Card>
+
+      </div>
+
     </div>
   );
 };

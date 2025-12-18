@@ -32,25 +32,36 @@ export interface IPlayerUpdate extends Partial<IPlayerInput> {
 }
 export interface IPlayerFilter {
     name?: string | RegExp;
-    bodsPlayed?: {
+    bodsPlayed?: number | {
         $gte?: number;
         $lte?: number;
     };
-    bestResult?: {
+    bestResult?: number | {
         $gte?: number;
         $lte?: number;
     };
-    avgFinish?: {
+    avgFinish?: number | {
         $gte?: number;
         $lte?: number;
     };
-    winningPercentage?: {
+    winningPercentage?: number | {
         $gte?: number;
         $lte?: number;
     };
-    totalChampionships?: {
+    totalChampionships?: number | {
         $gte?: number;
         $lte?: number;
     };
+    gamesPlayed?: number | {
+        $gte?: number;
+        $lte?: number;
+    };
+    gamesWon?: number | {
+        $gte?: number;
+        $lte?: number;
+    };
+    division?: string | RegExp;
+    city?: string | RegExp;
+    state?: string | RegExp;
 }
 //# sourceMappingURL=player.d.ts.map

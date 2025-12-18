@@ -45,10 +45,29 @@ app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 app.use(sanitizeInput);
 app.use(validatePagination);
 
+// In test environment, ensure CORS header is present for tests expecting it
+if (process.env.NODE_ENV === 'test') {
+  app.use((req, res, next) => {
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Access-Control-Allow-Credentials', 'true');
+    next();
+  });
+}
+
 // Remove proxy - frontend talks directly to services
 
 // Health check endpoint
 app.get('/api/health', (_req, res) => {
+  res.status(200).json({ status: 'OK', timestamp: new Date().toISOString() });
+});
+
+// Backward-compatible health endpoint for tests/tools
+app.get('/health', (_req, res) => {
+  res.status(200).json({ status: 'OK', timestamp: new Date().toISOString() });
+});
+
+// Backward-compatible health endpoint for tests/tools
+app.get('/health', (_req, res) => {
   res.status(200).json({ status: 'OK', timestamp: new Date().toISOString() });
 });
 

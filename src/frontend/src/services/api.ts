@@ -13,6 +13,16 @@ import type {
   TournamentResultInput,
   TournamentResultFilters,
   PaginationOptions,
+  SeedingConfig,
+  TeamFormationConfig,
+  TournamentSetup,
+  PlayerSeed,
+  TeamSeed,
+  LiveTournamentStats,
+  LiveTournament,
+  TournamentAction,
+  Match,
+  MatchUpdate,
 } from '../types/api';
 import type {
   User,
@@ -25,9 +35,53 @@ import type {
 
 // Global token getter function - will be set by AuthContext
 let getKeycloakToken: (() => string | undefined) | null = null;
+let refreshKeycloakToken: (() => Promise<boolean>) | null = null;
 
 export const setTokenGetter = (getter: () => string | undefined) => {
   getKeycloakToken = getter;
+};
+
+export const setTokenRefresher = (refresher: () => Promise<boolean>) => {
+  refreshKeycloakToken = refresher;
+};
+
+// Helper: ensure token is fresh before protected calls
+// Increased leeway to 300 seconds (5 minutes) to account for network latency and processing time
+const tokenExpiringSoon = (token?: string, leewayMs = 300000): boolean => {
+  if (!token) return true;
+  try {
+    const body = JSON.parse(atob(token.split('.')[1]));
+    const expMs = (body?.exp || 0) * 1000;
+    const willExpire = Date.now() + leewayMs >= expMs;
+    if (willExpire) {
+      console.log('Token expiring soon, will attempt refresh');
+    }
+    return willExpire;
+  } catch {
+    return true;
+  }
+};
+
+const ensureFreshToken = async (): Promise<void> => {
+  const token = getKeycloakToken?.();
+  if (!tokenExpiringSoon(token)) {
+    console.log('Token still valid, no refresh needed');
+    return;
+  }
+  if (refreshKeycloakToken) {
+    try {
+      console.log('Proactively refreshing token before API call...');
+      const refreshed = await refreshKeycloakToken();
+      if (refreshed) {
+        console.log('Token proactively refreshed successfully');
+      } else {
+        console.warn('Token refresh returned false, proceeding with current token');
+      }
+    } catch (e) {
+      console.warn('Proactive token refresh failed, letting interceptor handle it:', e);
+      // Let interceptor handle 401s if refresh fails
+    }
+  }
 };
 
 class ApiClient {
@@ -64,18 +118,34 @@ class ApiClient {
     this.client.interceptors.response.use(
       (response) => response,
       async (error) => {
-        if (error.response?.status === 401) {
-          // Token expired or invalid - Keycloak will handle this
+        const original = error.config || {};
+
+        // Attempt one silent refresh on 401 then retry once
+        if (error.response?.status === 401 && !original.__isRetryRequest && refreshKeycloakToken) {
+          try {
+            const refreshed = await refreshKeycloakToken();
+            if (refreshed) {
+              original.__isRetryRequest = true;
+              const token = getKeycloakToken?.();
+              if (token) {
+                original.headers = original.headers || {};
+                original.headers['Authorization'] = `Bearer ${token}`;
+              }
+              return this.client.request(original);
+            }
+          } catch (e) {
+            console.warn('Token refresh failed on 401');
+          }
           console.warn('Authentication failed - redirecting to login');
         }
-        
+
         // Handle rate limiting (429 errors)
         if (error.response?.status === 429) {
           const retryAfter = error.response.headers['retry-after'] || 1;
           await new Promise(resolve => setTimeout(resolve, retryAfter * 1000));
           return this.client.request(error.config);
         }
-        
+
         return Promise.reject(error);
       }
     );
@@ -117,6 +187,10 @@ class ApiClient {
 
   async getPlayer(id: string): Promise<ApiResponse<Player>> {
     return this.get<ApiResponse<Player>>(`/players/${id}`);
+  }
+
+  async getPlayerScoring(id: string): Promise<ApiResponse<{ matchesWithPoints: number; totalPoints: number }>> {
+    return this.get<ApiResponse<{ matchesWithPoints: number; totalPoints: number }>>(`/players/${id}/scoring`);
   }
 
   async createPlayer(data: PlayerInput): Promise<ApiResponse<Player>> {
@@ -198,6 +272,72 @@ class ApiClient {
 
   async getRecentTournaments(limit = 10): Promise<ApiResponse<Tournament[]>> {
     return this.get<ApiResponse<Tournament[]>>(`/tournaments/recent?limit=${limit}`);
+  }
+
+  async getNextBodNumber(): Promise<ApiResponse<{ nextBodNumber: number }>> {
+    return this.get<ApiResponse<{ nextBodNumber: number }>>('/tournaments/next-bod-number');
+  }
+
+  // Tournament Management API methods
+  async generatePlayerSeeds(config: SeedingConfig): Promise<ApiResponse<PlayerSeed[]>> {
+    await ensureFreshToken();
+    return this.post<ApiResponse<PlayerSeed[]>>('/tournaments/generate-seeds', config);
+  }
+
+  async generateTeams(playerIds: string[], config: TeamFormationConfig): Promise<ApiResponse<TeamSeed[]>> {
+    await ensureFreshToken();
+    return this.post<ApiResponse<TeamSeed[]>>('/tournaments/generate-teams', { playerIds, config });
+  }
+
+  async setupTournament(setup: TournamentSetup): Promise<ApiResponse<Tournament>> {
+    await ensureFreshToken();
+    return this.post<ApiResponse<Tournament>>('/tournaments/setup', setup);
+  }
+
+  // Live Tournament Management API methods
+  async getLiveTournament(tournamentId: string): Promise<ApiResponse<LiveTournament>> {
+    return this.get<ApiResponse<LiveTournament>>(`/tournaments/${tournamentId}/live`);
+  }
+
+  async executeTournamentAction(tournamentId: string, action: TournamentAction): Promise<ApiResponse<LiveTournament>> {
+    await ensureFreshToken();
+    return this.post<ApiResponse<LiveTournament>>(`/tournaments/${tournamentId}/action`, action);
+  }
+
+  async updateMatch(matchUpdate: MatchUpdate): Promise<ApiResponse<Match>> {
+    // Backend route is mounted under /tournaments
+    return this.put<ApiResponse<Match>>(`/tournaments/matches/${matchUpdate.matchId}`, matchUpdate);
+  }
+
+  async getTournamentMatches(tournamentId: string, round?: string): Promise<ApiResponse<Match[]>> {
+    const params = round ? `?round=${round}` : '';
+    return this.get<ApiResponse<Match[]>>(`/tournaments/${tournamentId}/matches${params}`);
+  }
+
+  async checkInTeam(tournamentId: string, teamId: string, present: boolean = true): Promise<ApiResponse<LiveTournament>> {
+    return this.post<ApiResponse<LiveTournament>>(`/tournaments/${tournamentId}/checkin`, { teamId, present });
+  }
+
+  async generateMatches(tournamentId: string, round: string): Promise<ApiResponse<Match[]>> {
+    await ensureFreshToken();
+    return this.post<ApiResponse<Match[]>>(`/tournaments/${tournamentId}/generate-matches`, { round });
+  }
+
+  async confirmCompletedMatches(tournamentId: string): Promise<ApiResponse<{ updated: number }>> {
+    await ensureFreshToken();
+    return this.post<ApiResponse<{ updated: number }>>(`/tournaments/${tournamentId}/matches/confirm-completed`, {});
+  }
+
+  async calculateStandings(tournamentId: string): Promise<ApiResponse<TournamentResult[]>> {
+    return this.get<ApiResponse<TournamentResult[]>>(`/tournaments/${tournamentId}/standings`);
+  }
+
+  async getLiveStats(tournamentId: string): Promise<ApiResponse<LiveTournamentStats>> {
+    return this.get<ApiResponse<LiveTournamentStats>>(`/tournaments/${tournamentId}/live-stats`);
+  }
+
+  async getTournamentPlayerStats(tournamentId: string): Promise<ApiResponse<any>> {
+    return this.get<ApiResponse<any>>(`/tournaments/${tournamentId}/player-stats`);
   }
 
   // Tournament Result API methods
@@ -292,6 +432,10 @@ class ApiClient {
     return this.get<ApiResponse<{ tournament: Tournament; matches: any[]; results: any[] }>>(`/admin/tournaments/${id}/details`);
   }
 
+  async deleteTournamentAdmin(id: string): Promise<ApiResponse<null>> {
+    return this.delete<ApiResponse<null>>(`/admin/tournaments/${id}`);
+  }
+
   // User Management API methods
   async getUsers(filters?: UserFilters): Promise<ApiResponse<User[]>> {
     const params = new URLSearchParams();
@@ -336,6 +480,11 @@ class ApiClient {
   // Health check
   async healthCheck(): Promise<ApiResponse> {
     return this.get<ApiResponse>('/health');
+  }
+
+  // Profile API methods
+  async linkPlayerToProfile(playerId: string): Promise<ApiResponse<User>> {
+    return this.post<ApiResponse<User>>('/profile/link-player', { playerId });
   }
 }
 

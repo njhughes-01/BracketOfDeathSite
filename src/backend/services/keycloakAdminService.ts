@@ -15,6 +15,7 @@ interface KeycloakUser {
   }>;
   realmRoles?: string[];
   groups?: string[];
+  attributes?: Record<string, string[]>;
 }
 
 interface CreateUserRequest {
@@ -25,6 +26,7 @@ interface CreateUserRequest {
   password?: string;
   temporary?: boolean;
   roles?: string[];
+  attributes?: Record<string, string[]>;
 }
 
 interface UpdateUserRequest {
@@ -33,7 +35,11 @@ interface UpdateUserRequest {
   email?: string;
   enabled?: boolean;
   roles?: string[];
+  attributes?: Record<string, string[]>;
 }
+
+// ... (KeycloakAdminService class definition)
+
 
 class KeycloakAdminService {
   private client: AxiosInstance;
@@ -49,7 +55,7 @@ class KeycloakAdminService {
 
   private async getAdminToken(): Promise<string> {
     const now = Date.now();
-    
+
     // Return cached token if still valid (with 30 second buffer)
     if (this.adminToken && now < this.tokenExpiry - 30000) {
       return this.adminToken;
@@ -73,7 +79,7 @@ class KeycloakAdminService {
 
       this.adminToken = response.data.access_token;
       this.tokenExpiry = now + (response.data.expires_in * 1000);
-      
+
       return this.adminToken;
     } catch (error) {
       console.error('Failed to get Keycloak admin token:', error);
@@ -87,7 +93,7 @@ class KeycloakAdminService {
     data?: any
   ): Promise<T> {
     const token = await this.getAdminToken();
-    
+
     const config = {
       method,
       url,
@@ -113,7 +119,7 @@ class KeycloakAdminService {
     data?: any
   ): Promise<any> {
     const token = await this.getAdminToken();
-    
+
     const config = {
       method,
       url,
@@ -142,6 +148,7 @@ class KeycloakAdminService {
       enabled: true,
       emailVerified: true,
       requiredActions: [], // Ensure no required actions block login
+      attributes: userData.attributes,
     };
 
     // Add password if provided
@@ -157,13 +164,13 @@ class KeycloakAdminService {
 
     // Create the user and get the Location header with the user ID
     const response = await this.makeAuthenticatedRequestWithResponse('POST', '/users', keycloakUser);
-    
+
     // Extract user ID from Location header (e.g., .../users/12345-abcd-6789)
     const locationHeader = response.headers?.location;
     if (!locationHeader) {
       throw new Error('User creation failed: No location header returned');
     }
-    
+
     const userId = locationHeader.split('/').pop();
     if (!userId) {
       throw new Error('User creation failed: Could not extract user ID from location header');
@@ -210,11 +217,12 @@ class KeycloakAdminService {
 
   async updateUser(userId: string, userData: UpdateUserRequest): Promise<KeycloakUser> {
     const updateData: Partial<KeycloakUser> = {};
-    
+
     if (userData.firstName !== undefined) updateData.firstName = userData.firstName;
     if (userData.lastName !== undefined) updateData.lastName = userData.lastName;
     if (userData.email !== undefined) updateData.email = userData.email;
     if (userData.enabled !== undefined) updateData.enabled = userData.enabled;
+    if (userData.attributes !== undefined) updateData.attributes = userData.attributes;
 
     await this.makeAuthenticatedRequest('PUT', `/users/${userId}`, updateData);
 
@@ -238,7 +246,7 @@ class KeycloakAdminService {
     };
 
     await this.makeAuthenticatedRequest('PUT', `/users/${userId}/reset-password`, credentialData);
-    
+
     // Clear any required actions that might prevent login
     if (!temporary) {
       try {

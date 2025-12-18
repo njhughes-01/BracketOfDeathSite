@@ -13,6 +13,7 @@ export interface IPlayer extends BaseDocument {
   totalChampionships: number;
   drawingSequence?: number;
   pairing?: string;
+  isActive: boolean;
 }
 
 export interface IPlayerInput {
@@ -28,6 +29,7 @@ export interface IPlayerInput {
   totalChampionships?: number;
   drawingSequence?: number;
   pairing?: string;
+  isActive?: boolean;
 }
 
 export interface IPlayerUpdate extends Partial<IPlayerInput> {

@@ -3,6 +3,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.tournamentController = exports.TournamentController = void 0;
 const Tournament_1 = require("../models/Tournament");
 const TournamentResult_1 = require("../models/TournamentResult");
+const Player_1 = require("../models/Player");
 const tournament_1 = require("../types/tournament");
 const base_1 = require("./base");
 class TournamentController extends base_1.BaseController {
@@ -230,6 +231,155 @@ class TournamentController extends base_1.BaseController {
             next(error);
         }
     });
+    // Get next BOD number for tournament creation
+    getNextBodNumber = this.asyncHandler(async (req, res, next) => {
+        try {
+            // Find the highest BOD number currently in use
+            const latestTournament = await Tournament_1.Tournament.findOne({})
+                .sort({ bodNumber: -1 })
+                .select('bodNumber');
+            const nextBodNumber = latestTournament ? latestTournament.bodNumber + 1 : 1;
+            const response = {
+                success: true,
+                data: { nextBodNumber },
+            };
+            res.status(200).json(response);
+        }
+        catch (error) {
+            next(error);
+        }
+    });
+    // Generate player seeds based on historical data
+    generatePlayerSeeds = this.asyncHandler(async (req, res, next) => {
+        try {
+            console.log('generatePlayerSeeds called with:', req.body);
+            const { method = 'historical', parameters = {} } = req.body;
+            // Get all players with their career statistics
+            const players = await this.getAllPlayersWithStats();
+            console.log(`Found ${players.length} players for seeding`);
+            if (players.length === 0) {
+                this.sendError(res, 404, 'No players found for seeding');
+                return;
+            }
+            // Calculate seeds based on the selected method
+            let playerSeeds = [];
+            switch (method) {
+                case 'historical':
+                    playerSeeds = this.calculateHistoricalSeeds(players, parameters);
+                    break;
+                case 'recent_form':
+                    playerSeeds = this.calculateRecentFormSeeds(players, parameters);
+                    break;
+                case 'elo':
+                    playerSeeds = this.calculateEloSeeds(players, parameters);
+                    break;
+                case 'manual':
+                    // Return players without automatic seeding
+                    playerSeeds = players.map((player, index) => ({
+                        playerId: player._id,
+                        playerName: player.name,
+                        seed: index + 1,
+                        statistics: this.getPlayerStatistics(player)
+                    }));
+                    break;
+                default:
+                    playerSeeds = this.calculateHistoricalSeeds(players, parameters);
+            }
+            console.log(`Generated ${playerSeeds.length} player seeds`);
+            const response = {
+                success: true,
+                data: playerSeeds,
+            };
+            res.status(200).json(response);
+        }
+        catch (error) {
+            console.error('Error in generatePlayerSeeds:', error);
+            next(error);
+        }
+    });
+    // Generate teams based on seeded players
+    generateTeams = this.asyncHandler(async (req, res, next) => {
+        try {
+            const { playerIds, config } = req.body;
+            if (!Array.isArray(playerIds) || playerIds.length === 0) {
+                this.sendError(res, 400, 'Player IDs array is required');
+                return;
+            }
+            // Get player data for team formation
+            const players = await this.getPlayersById(playerIds);
+            if (players.length !== playerIds.length) {
+                this.sendError(res, 400, 'Some players not found');
+                return;
+            }
+            // Generate teams based on configuration
+            const teams = await this.formTeams(players, config);
+            const response = {
+                success: true,
+                data: teams,
+            };
+            res.status(200).json(response);
+        }
+        catch (error) {
+            next(error);
+        }
+    });
+    // Setup complete tournament with all configurations
+    setupTournament = this.asyncHandler(async (req, res, next) => {
+        try {
+            console.log('setupTournament called with body:', JSON.stringify(req.body, null, 2));
+            const { basicInfo, seedingConfig, teamFormationConfig, bracketType, maxPlayers, selectedPlayers, generatedSeeds, generatedTeams } = req.body;
+            // Validate basicInfo exists and has required fields
+            if (!basicInfo) {
+                this.sendError(res, 400, 'basicInfo is required');
+                return;
+            }
+            const requiredFields = ['date', 'bodNumber', 'format', 'location', 'advancementCriteria'];
+            const missingFields = requiredFields.filter(field => !basicInfo[field]);
+            if (missingFields.length > 0) {
+                this.sendError(res, 400, `Missing required fields in basicInfo: ${missingFields.join(', ')}`);
+                return;
+            }
+            console.log('Creating tournament with data:', {
+                ...basicInfo,
+                maxPlayers,
+                status: basicInfo.status || 'scheduled',
+                players: selectedPlayers || [],
+                seedingConfig,
+                teamFormationConfig,
+                bracketType,
+                generatedSeeds: generatedSeeds || [],
+                generatedTeams: generatedTeams || []
+            });
+            // Create the tournament record
+            const tournament = await Tournament_1.Tournament.create({
+                ...basicInfo,
+                maxPlayers,
+                status: basicInfo.status || 'scheduled',
+                players: selectedPlayers || [],
+                seedingConfig,
+                teamFormationConfig,
+                bracketType,
+                generatedSeeds: generatedSeeds || [],
+                generatedTeams: generatedTeams || []
+            });
+            const response = {
+                success: true,
+                data: tournament,
+                message: 'Tournament setup completed successfully'
+            };
+            res.status(201).json(response);
+        }
+        catch (error) {
+            console.error('Error in setupTournament:', error);
+            if (error.name === 'ValidationError') {
+                const validationErrors = Object.values(error.errors).map((err) => err.message).join(', ');
+                this.sendError(res, 400, `Validation error: ${validationErrors}`);
+            }
+            else {
+                next(error);
+            }
+        }
+    });
     // Bulk import tournaments (for data migration)
     bulkImport = this.asyncHandler(async (req, res, next) => {
         try {
@@ -318,8 +468,193 @@ class TournamentController extends base_1.BaseController {
         }
         return errors;
     }
+    // Helper method to get all players with career statistics
+    async getAllPlayersWithStats() {
+        return Player_1.Player.find({}).lean();
+    }
+    // Helper method to get players by IDs
+    async getPlayersById(playerIds) {
+        return Player_1.Player.find({ _id: { $in: playerIds } }).lean();
+    }
+    // Helper method to extract player statistics
+    getPlayerStatistics(player) {
+        return {
+            avgFinish: player.avgFinish || 0,
+            winningPercentage: player.winningPercentage || 0,
+            totalChampionships: player.totalChampionships || 0,
+            bodsPlayed: player.bodsPlayed || 0,
+            recentForm: player.recentForm || 0
+        };
+    }
+    // Calculate seeds based on historical performance
+    calculateHistoricalSeeds(players, parameters) {
+        const { championshipWeight = 0.3, winPercentageWeight = 0.4, avgFinishWeight = 0.3 } = parameters;
+        // Calculate composite score for each player
+        const playersWithScores = players.map(player => {
+            const stats = this.getPlayerStatistics(player);
+            // Normalize championship count (higher = better)
+            const champScore = stats.totalChampionships;
+            // Win percentage is already normalized (0-1)
+            const winPctScore = stats.winningPercentage;
+            // Average finish (lower = better, so we invert it)
+            const avgFinishScore = stats.bodsPlayed > 0 ? (1 / (stats.avgFinish || 1)) : 0;
+            const compositeScore = (champScore * championshipWeight) +
+                (winPctScore * winPercentageWeight) +
+                (avgFinishScore * avgFinishWeight);
+            return {
+                ...player,
+                compositeScore,
+                statistics: stats
+            };
+        });
+        // Sort by composite score (descending) and assign seeds
+        playersWithScores.sort((a, b) => b.compositeScore - a.compositeScore);
+        return playersWithScores.map((player, index) => ({
+            playerId: player._id,
+            playerName: player.name,
+            seed: index + 1,
+            statistics: player.statistics
+        }));
+    }
+    // Calculate seeds based on recent form (last N tournaments)
+    calculateRecentFormSeeds(players, parameters) {
+        // For now, use similar logic to historical but could be enhanced
+        // to actually look at recent tournament results
+        return this.calculateHistoricalSeeds(players, parameters);
+    }
+    // Calculate seeds based on ELO rating
+    calculateEloSeeds(players, parameters) {
+        // For now, use historical method as ELO would require match-by-match data
+        return this.calculateHistoricalSeeds(players, parameters);
+    }
+    // Form teams based on configuration
+    async formTeams(players, config) {
+        const { method = 'manual', parameters = {} } = config;
+        switch (method) {
+            case 'preformed':
+                return this.handlePreformedTeams(players, parameters);
+            case 'draft':
+                return this.handleDraftTeams(players, parameters);
+            case 'statistical_pairing':
+                return this.handleStatisticalPairing(players, parameters);
+            case 'random':
+                return this.handleRandomPairing(players);
+            case 'manual':
+            default:
+                return this.handleManualTeams(players);
+        }
+    }
+    // Handle preformed teams
+    handlePreformedTeams(players, parameters) {
+        // Placeholder - would need team formation data
+        return this.handleManualTeams(players);
+    }
+    // Handle draft-style team formation
+    handleDraftTeams(players, parameters) {
+        // Placeholder - would implement snake draft algorithm
+        return this.handleStatisticalPairing(players, parameters);
+    }
+    // Handle statistical pairing for balanced teams
+    handleStatisticalPairing(players, parameters) {
+        const { skillBalancing = true } = parameters;
+        if (!skillBalancing) {
+            return this.handleRandomPairing(players);
+        }
+        // Sort players by skill level (composite score)
+        const sortedPlayers = players.map(player => ({
+            ...player,
+            skillScore: (player.winningPercentage || 0) * 100 + (player.totalChampionships || 0) * 10
+        })).sort((a, b) => b.skillScore - a.skillScore);
+        // Pair high with low skill players for balance
+        const teams = [];
+        const teamCount = Math.floor(sortedPlayers.length / 2);
+        for (let i = 0; i < teamCount; i++) {
+            const highSkillPlayer = sortedPlayers[i];
+            const lowSkillPlayer = sortedPlayers[sortedPlayers.length - 1 - i];
+            const combinedSeed = Math.ceil((i + 1 + (teamCount - i)) / 2);
+            teams.push({
+                teamId: `team_${i + 1}`,
+                players: [
+                    {
+                        playerId: highSkillPlayer._id,
+                        playerName: highSkillPlayer.name,
+                        seed: i + 1,
+                        statistics: this.getPlayerStatistics(highSkillPlayer)
+                    },
+                    {
+                        playerId: lowSkillPlayer._id,
+                        playerName: lowSkillPlayer.name,
+                        seed: sortedPlayers.length - i,
+                        statistics: this.getPlayerStatistics(lowSkillPlayer)
+                    }
+                ],
+                combinedSeed,
+                teamName: `${highSkillPlayer.name} & ${lowSkillPlayer.name}`,
+                combinedStatistics: {
+                    avgFinish: ((highSkillPlayer.avgFinish || 0) + (lowSkillPlayer.avgFinish || 0)) / 2,
+                    combinedWinPercentage: ((highSkillPlayer.winningPercentage || 0) + (lowSkillPlayer.winningPercentage || 0)) / 2,
+                    totalChampionships: (highSkillPlayer.totalChampionships || 0) + (lowSkillPlayer.totalChampionships || 0),
+                    combinedBodsPlayed: (highSkillPlayer.bodsPlayed || 0) + (lowSkillPlayer.bodsPlayed || 0)
+                }
+            });
+        }
+        return teams;
+    }
+    // Handle random pairing
+    handleRandomPairing(players) {
+        const shuffled = [...players].sort(() => Math.random() - 0.5);
+        const teams = [];
+        for (let i = 0; i < shuffled.length; i += 2) {
+            if (i + 1 < shuffled.length) {
+                const player1 = shuffled[i];
+                const player2 = shuffled[i + 1];
+                teams.push({
+                    teamId: `team_${Math.floor(i / 2) + 1}`,
+                    players: [
+                        {
+                            playerId: player1._id,
+                            playerName: player1.name,
+                            seed: i + 1,
+                            statistics: this.getPlayerStatistics(player1)
+                        },
+                        {
+                            playerId: player2._id,
+                            playerName: player2.name,
+                            seed: i + 2,
+                            statistics: this.getPlayerStatistics(player2)
+                        }
+                    ],
+                    combinedSeed: Math.floor(i / 2) + 1,
+                    teamName: `${player1.name} & ${player2.name}`,
+                    combinedStatistics: {
+                        avgFinish: ((player1.avgFinish || 0) + (player2.avgFinish || 0)) / 2,
+                        combinedWinPercentage: ((player1.winningPercentage || 0) + (player2.winningPercentage || 0)) / 2,
+                        totalChampionships: (player1.totalChampionships || 0) + (player2.totalChampionships || 0),
+                        combinedBodsPlayed: (player1.bodsPlayed || 0) + (player2.bodsPlayed || 0)
+                    }
+                });
+            }
+        }
+        return teams;
+    }
+    // Handle manual team assignment
+    handleManualTeams(players) {
+        // Return individual players as "teams" for manual assignment
+        return players.map((player, index) => ({
+            teamId: `player_${player._id}`,
+            players: [{
+                    playerId: player._id,
+                    playerName: player.name,
+                    seed: index + 1,
+                    statistics: this.getPlayerStatistics(player)
+                }],
+            combinedSeed: index + 1,
+            teamName: player.name,
+            combinedStatistics: this.getPlayerStatistics(player)
+        }));
+    }
     // Override create method to add custom validation
-    async create(req, res, next) {
+    create = async (req, res, next) => {
         try {
             const validationErrors = this.validateTournamentData(req.body);
             if (validationErrors.length > 0) {
@@ -332,9 +667,9 @@ class TournamentController extends base_1.BaseController {
         catch (error) {
             next(error);
         }
-    }
+    };
     // Override update method to add custom validation
-    async update(req, res, next) {
+    update = async (req, res, next) => {
         try {
             const validationErrors = this.validateTournamentData(req.body);
             if (validationErrors.length > 0) {
@@ -347,7 +682,7 @@ class TournamentController extends base_1.BaseController {
         catch (error) {
             next(error);
         }
-    }
+    };
     // Delete tournament with cascade delete of results
     delete = async (req, res, next) => {
         try {

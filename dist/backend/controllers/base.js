@@ -17,8 +17,38 @@ class BaseController {
                 select: req.query.select,
             };
             const filter = this.buildFilter(req.query);
-            const result = await this.model.paginate(filter, options);
-            res.status(200).json(result);
+            if (typeof this.model.paginate === 'function') {
+                const result = await this.model.paginate(filter, options);
+                res.status(200).json(result);
+            }
+            else {
+                const skip = (options.page - 1) * options.limit;
+                let query = this.model.find(filter);
+                if (options.select) {
+                    query = query.select(options.select);
+                }
+                if (options.sort) {
+                    query = query.sort(options.sort);
+                }
+                const [docs, totalDocs] = await Promise.all([
+                    query.skip(skip).limit(options.limit).exec(),
+                    this.model.countDocuments(filter)
+                ]);
+                const totalPages = Math.ceil(totalDocs / options.limit);
+                const result = {
+                    docs,
+                    totalDocs,
+                    limit: options.limit,
+                    page: options.page,
+                    totalPages,
+                    hasNextPage: options.page < totalPages,
+                    hasPrevPage: options.page > 1,
+                    nextPage: options.page < totalPages ? options.page + 1 : null,
+                    prevPage: options.page > 1 ? options.page - 1 : null,
+                    pagingCounter: skip + 1,
+                };
+                res.status(200).json(result);
+            }
         }
         catch (error) {
             next(error);

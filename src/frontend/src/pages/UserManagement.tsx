@@ -1,11 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { usePermissions } from '../hooks/usePermissions';
-import type { User, CreateUserInput, UpdateUserInput, ResetPasswordInput } from '../types/user';
+import type { User, CreateUserInput } from '../types/user';
 import apiClient from '../services/api';
 import CreateUserForm from '../components/users/CreateUserForm';
 import UserList from '../components/users/UserList';
-import Card from '../components/ui/Card';
 import LoadingSpinner from '../components/ui/LoadingSpinner';
 
 const UserManagement: React.FC = () => {
@@ -15,7 +14,6 @@ const UserManagement: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string>('');
   const [showCreateForm, setShowCreateForm] = useState(false);
-  const [selectedUser, setSelectedUser] = useState<User | null>(null);
 
   useEffect(() => {
     if (canManageUsers) {
@@ -28,7 +26,7 @@ const UserManagement: React.FC = () => {
       setLoading(true);
       setError('');
       const response = await apiClient.getUsers();
-      
+
       if (response.success && response.data) {
         setUsers(response.data);
       } else {
@@ -46,7 +44,7 @@ const UserManagement: React.FC = () => {
     try {
       setLoading(true);
       const response = await apiClient.createUser(userData);
-      
+
       if (response.success && response.data) {
         setUsers(prev => [...prev, response.data!]);
         setShowCreateForm(false);
@@ -57,7 +55,7 @@ const UserManagement: React.FC = () => {
       }
     } catch (err: any) {
       console.error('Failed to create user:', err);
-      throw err; // Re-throw to let the form handle it
+      throw err;
     } finally {
       setLoading(false);
     }
@@ -71,7 +69,7 @@ const UserManagement: React.FC = () => {
     try {
       setLoading(true);
       const response = await apiClient.deleteUser(userToDelete.id);
-      
+
       if (response.success) {
         setUsers(prev => prev.filter(u => u.id !== userToDelete.id));
         setError('');
@@ -96,7 +94,7 @@ const UserManagement: React.FC = () => {
         newPassword,
         temporary: true,
       });
-      
+
       if (response.success) {
         alert(`Password reset successfully for ${userToReset.username}. The user will be required to change their password on next login.`);
         setError('');
@@ -114,7 +112,7 @@ const UserManagement: React.FC = () => {
   const handleToggleStatus = async (userToToggle: User) => {
     const newStatus = !userToToggle.enabled;
     const action = newStatus ? 'enable' : 'disable';
-    
+
     if (!confirm(`Are you sure you want to ${action} user "${userToToggle.username}"?`)) {
       return;
     }
@@ -124,7 +122,7 @@ const UserManagement: React.FC = () => {
       const response = await apiClient.updateUser(userToToggle.id, {
         enabled: newStatus,
       });
-      
+
       if (response.success && response.data) {
         setUsers(prev => prev.map(u => u.id === userToToggle.id ? response.data! : u));
         setError('');
@@ -142,7 +140,7 @@ const UserManagement: React.FC = () => {
   const handleToggleAdminRole = async (userToToggle: User) => {
     const willBeAdmin = !userToToggle.isAdmin;
     const action = willBeAdmin ? 'grant admin privileges to' : 'remove admin privileges from';
-    
+
     // Prevent removing admin role from yourself
     if (!willBeAdmin && user?.id === userToToggle.id) {
       setError('You cannot remove admin privileges from your own account.');
@@ -157,7 +155,7 @@ const UserManagement: React.FC = () => {
         return;
       }
     }
-    
+
     if (!confirm(`Are you sure you want to ${action} "${userToToggle.username}"?`)) {
       return;
     }
@@ -166,7 +164,7 @@ const UserManagement: React.FC = () => {
       setLoading(true);
       const newRoles = willBeAdmin ? ['admin', 'user'] : ['user'];
       const response = await apiClient.updateUserRoles(userToToggle.id, newRoles);
-      
+
       if (response.success) {
         // Refresh the user list to get updated roles
         await loadUsers();
@@ -184,106 +182,62 @@ const UserManagement: React.FC = () => {
 
   if (!canManageUsers) {
     return (
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="text-center">
-          <h1 className="text-3xl font-bold text-gray-900 mb-4">Access Denied</h1>
-          <p className="text-gray-600">You don't have permission to manage users.</p>
-        </div>
+      <div className="flex flex-col items-center justify-center min-h-screen bg-background-dark p-4">
+        <span className="material-symbols-outlined text-red-500 text-5xl mb-4">lock</span>
+        <h1 className="text-2xl font-bold text-white mb-2">Access Denied</h1>
+        <p className="text-slate-400">You don't have permission to manage users.</p>
       </div>
     );
   }
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-      <div className="mb-8 flex justify-between items-center">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900">User Management</h1>
-          <p className="mt-2 text-gray-600">
-            Manage user accounts and permissions
-          </p>
-        </div>
-        <button
-          onClick={() => setShowCreateForm(!showCreateForm)}
-          className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-        >
-          {showCreateForm ? 'Cancel' : 'Create User'}
-        </button>
-      </div>
+    <div className="min-h-screen bg-background-dark pb-20">
+      <div className="max-w-7xl mx-auto px-6 py-8">
 
-      {error && (
-        <div className="mb-6 rounded-md bg-red-50 p-4">
-          <div className="text-sm text-red-700">{error}</div>
+        <div className="flex justify-between items-center mb-8">
+          <div>
+            <h1 className="text-3xl font-bold text-white tracking-tight">User Management</h1>
+            <p className="text-slate-400 mt-1">Manage system access, roles, and user accounts</p>
+          </div>
+          <button
+            onClick={() => setShowCreateForm(!showCreateForm)}
+            className={`flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold transition-all ${showCreateForm
+                ? 'bg-red-500/10 text-red-500 hover:bg-red-500/20 border border-red-500/20'
+                : 'bg-primary text-black hover:bg-white hover:scale-105 shadow-lg shadow-primary/20'
+              }`}
+          >
+            {showCreateForm ? (
+              <><span className="material-symbols-outlined">close</span> Cancel</>
+            ) : (
+              <><span className="material-symbols-outlined">person_add</span> Create User</>
+            )}
+          </button>
         </div>
-      )}
 
-      {showCreateForm && (
-        <div className="mb-8">
+        {error && (
+          <div className="mb-6 bg-red-500/10 border border-red-500/30 rounded-xl p-4 flex items-center gap-3 animate-in fade-in slide-in-from-top-2">
+            <span className="material-symbols-outlined text-red-500">error</span>
+            <p className="text-red-400 text-sm font-bold">{error}</p>
+          </div>
+        )}
+
+        <div className={`transition-all duration-300 ${showCreateForm ? 'opacity-100 max-h-[1000px] mb-8' : 'opacity-0 max-h-0 overflow-hidden'}`}>
           <CreateUserForm
             onSubmit={handleCreateUser}
             loading={loading}
             onCancel={() => setShowCreateForm(false)}
           />
         </div>
-      )}
 
-      <UserList
-        users={users}
-        loading={loading}
-        onDeleteUser={handleDeleteUser}
-        onResetPassword={handleResetPassword}
-        onToggleStatus={handleToggleStatus}
-        onToggleAdminRole={handleToggleAdminRole}
-      />
-
-      {user && (
-        <div className="mt-8">
-          <Card padding="lg">
-            <h2 className="text-xl font-semibold mb-4">Current User Information</h2>
-            
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <dt className="text-sm font-medium text-gray-500">Username</dt>
-                <dd className="mt-1 text-sm text-gray-900">{user.username}</dd>
-              </div>
-              <div>
-                <dt className="text-sm font-medium text-gray-500">Email</dt>
-                <dd className="mt-1 text-sm text-gray-900">{user.email}</dd>
-              </div>
-              <div>
-                <dt className="text-sm font-medium text-gray-500">Full Name</dt>
-                <dd className="mt-1 text-sm text-gray-900">{user.name}</dd>
-              </div>
-              <div>
-                <dt className="text-sm font-medium text-gray-500">Roles</dt>
-                <dd className="mt-1">
-                  {user.roles.map((role) => (
-                    <span
-                      key={role}
-                      className="inline-block bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded mr-2"
-                    >
-                      {role}
-                    </span>
-                  ))}
-                </dd>
-              </div>
-              <div>
-                <dt className="text-sm font-medium text-gray-500">Admin Status</dt>
-                <dd className="mt-1">
-                  <span
-                    className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-                      user.isAdmin
-                        ? 'bg-green-100 text-green-800'
-                        : 'bg-gray-100 text-gray-800'
-                    }`}
-                  >
-                    {user.isAdmin ? 'Administrator' : 'Regular User'}
-                  </span>
-                </dd>
-              </div>
-            </div>
-          </Card>
-        </div>
-      )}
+        <UserList
+          users={users}
+          loading={loading}
+          onDeleteUser={handleDeleteUser}
+          onResetPassword={handleResetPassword}
+          onToggleStatus={handleToggleStatus}
+          onToggleAdminRole={handleToggleAdminRole}
+        />
+      </div>
     </div>
   );
 };

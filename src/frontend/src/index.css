@@ -1,108 +1,81 @@
-@import "tailwindcss";
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+
+  /* Ensure dark mode by default/structure */
+  html {
+    @apply antialiased scroll-smooth;
+  }
+
+  body {
+    @apply bg-background-light dark:bg-background-dark text-slate-900 dark:text-white font-display selection:bg-accent selection:text-black;
+  }
+}
+
+@layer utilities {
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+
+  .text-shadow {
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  }
+
+  .mask-gradient-right {
+    mask-image: linear-gradient(to right, black 85%, transparent 100%);
+  }
+}
 
 /* Custom component styles */
 @layer components {
   .btn {
-    @apply inline-flex items-center justify-center px-4 py-2 rounded-lg font-medium transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed;
+    @apply inline-flex items-center justify-center px-4 py-2 rounded-xl font-bold transition-all duration-200 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed;
   }
 
   .btn-primary {
-    @apply bg-gradient-to-r from-blue-600 to-blue-700 text-white hover:from-blue-700 hover:to-blue-800 focus:ring-blue-500 shadow-sm hover:shadow-md;
+    @apply bg-primary text-white hover:bg-primary-hover shadow-lg shadow-primary/25;
   }
 
   .btn-secondary {
-    @apply bg-white text-gray-700 border border-gray-300 hover:bg-gray-50 focus:ring-gray-500 shadow-sm hover:shadow-md;
+    @apply bg-white dark:bg-surface-dark border border-slate-200 dark:border-white/10 text-slate-700 dark:text-white hover:bg-slate-50 dark:hover:bg-white/5;
   }
 
-  .btn-danger {
-    @apply bg-gradient-to-r from-red-600 to-red-700 text-white hover:from-red-700 hover:to-red-800 focus:ring-red-500 shadow-sm hover:shadow-md;
-  }
-
-  .btn-outline {
-    @apply border-2 border-blue-600 text-blue-600 bg-transparent hover:bg-blue-600 hover:text-white focus:ring-blue-500 shadow-sm hover:shadow-md;
-  }
-
-  .btn-sm {
-    @apply px-3 py-1.5 text-sm;
-  }
-
-  .btn-lg {
-    @apply px-6 py-3 text-lg;
+  .btn-accent {
+    @apply bg-accent text-black hover:opacity-90 shadow-[0_0_15px_rgba(204, 255, 0, 0.3)];
   }
 
   .card {
-    @apply bg-white rounded-xl shadow-sm border border-gray-200 p-6 hover:shadow-md transition-shadow duration-200;
+    @apply bg-white dark:bg-card-dark rounded-2xl shadow-sm border border-slate-200 dark:border-white/5 p-4;
   }
 
-  .card-hover {
-    @apply hover:shadow-lg hover:-translate-y-1 transform transition-all duration-200;
-  }
-
-  .card-compact {
-    @apply p-4;
-  }
-
-  .card-gradient {
-    @apply bg-gradient-to-br from-white to-gray-50;
-  }
-
-  .input {
-    @apply block w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors duration-200;
-  }
-
-  .input-error {
-    @apply border-red-300 focus:ring-red-500 focus:border-red-500;
-  }
-
-  .select {
-    @apply block w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white transition-colors duration-200;
-  }
-
-  .table {
-    @apply min-w-full divide-y divide-gray-200 rounded-lg overflow-hidden shadow-sm;
-  }
-
-  .table-header {
-    @apply bg-gray-50 px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider;
-  }
-
-  .table-cell {
-    @apply px-6 py-4 whitespace-nowrap text-sm text-gray-900 border-b border-gray-100;
-  }
-
-  .stat-card {
-    @apply bg-gradient-to-br from-white to-gray-50 p-6 rounded-xl shadow-sm border border-gray-200 hover:shadow-md transition-all duration-200;
-  }
-
-  .text-gradient {
-    @apply bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent;
+  /* Shimmer / Skeleton Animation */
+  .shimmer {
+    background: linear-gradient(90deg,
+        rgba(255, 255, 255, 0.03) 25%,
+        rgba(255, 255, 255, 0.08) 50%,
+        rgba(255, 255, 255, 0.03) 75%);
+    background-size: 200% 100%;
+    animation: shimmer 1.5s infinite;
   }
 
   .skeleton {
-    @apply animate-pulse bg-gray-200 rounded;
+    @apply shimmer bg-surface-dark rounded;
   }
 
-  .badge {
-    @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium;
-  }
+  @keyframes shimmer {
+    0% {
+      background-position: 200% 0;
+    }
 
-  .badge-primary {
-    @apply bg-blue-100 text-blue-800;
-  }
-
-  .badge-success {
-    @apply bg-green-100 text-green-800;
-  }
-
-  .badge-warning {
-    @apply bg-yellow-100 text-yellow-800;
-  }
-
-  .badge-danger {
-    @apply bg-red-100 text-red-800;
-  }
-
-  .loading-spinner {
-    @apply animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600;
+    100% {
+      background-position: -200% 0;
+    }
   }
 }

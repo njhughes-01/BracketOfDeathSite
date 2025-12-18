@@ -1,4 +1,4 @@
-import { defineConfig } from 'vite'
+import { defineConfig } from 'vite' // restart trigger v3
 import react from '@vitejs/plugin-react'
 
 const allowedHosts = process.env.VITE_ALLOWED_HOSTS?.split(',') || ['localhost']
@@ -12,12 +12,12 @@ export default defineConfig({
     allowedHosts,
     proxy: {
       '/api': {
-        target: 'http://backend:3000',
+        target: process.env.PROXY_TARGET || 'http://localhost:3000',
         changeOrigin: true,
         secure: false,
       },
       '/auth': {
-        target: 'http://keycloak:8080',
+        target: process.env.KEYCLOAK_PROXY_TARGET || 'http://localhost:8080',
         changeOrigin: true,
         secure: false,
         rewrite: (path) => path.replace(/^\/auth/, ''),

@@ -1,19 +1,43 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.sanitizeInput = exports.validatePagination = exports.validateRange = exports.validateDate = exports.validateEmail = exports.validateRequired = exports.validateObjectId = void 0;
+exports.sanitizeInput = exports.validatePagination = exports.validateRange = exports.validateDate = exports.validateEmail = exports.validateRequired = exports.validateObjectId = exports.validateRequest = void 0;
 const mongoose_1 = require("mongoose");
+const express_validator_1 = require("express-validator");
+const validateRequest = (req, res, next) => {
+    const errors = (0, express_validator_1.validationResult)(req);
+    if (!errors.isEmpty()) {
+        const response = {
+            success: false,
+            message: 'Validation failed',
+            error: errors.array().map(err => err.msg).join(', '),
+        };
+        res.status(400).json(response);
+        return;
+    }
+    next();
+};
+exports.validateRequest = validateRequest;
 const validateObjectId = (req, res, next) => {
-    const { id, tournamentId, playerId } = req.params;
+    const { id, tournamentId, playerId, matchId } = req.params;
     const idsToValidate = [
         { name: 'id', value: id },
         { name: 'tournamentId', value: tournamentId },
         { name: 'playerId', value: playerId },
+        { name: 'matchId', value: matchId },
     ].filter(item => item.value);
     for (const { name, value } of idsToValidate) {
-        if (value && !mongoose_1.Types.ObjectId.isValid(value)) {
+        if (value && value !== 'undefined' && !mongoose_1.Types.ObjectId.isValid(value)) {
             const response = {
                 success: false,
                 error: `Invalid ${name} format`,
+            };
+            res.status(400).json(response);
+            return;
+        }
+        if (value === 'undefined') {
+            const response = {
+                success: false,
+                error: `${name} is required`,
             };
             res.status(400).json(response);
             return;
@@ -127,10 +151,11 @@ const validatePagination = (req, res, next) => {
     }
     if (limit) {
         const limitNum = Number(limit);
-        if (isNaN(limitNum) || limitNum < 1 || limitNum > 100) {
+        const maxLimit = req.path.includes('/admin/') || req.headers.authorization ? 1000 : 100;
+        if (isNaN(limitNum) || limitNum < 1 || limitNum > maxLimit) {
             const response = {
                 success: false,
-                error: 'Limit must be between 1 and 100',
+                error: `Limit must be between 1 and ${maxLimit}`,
             };
             res.status(400).json(response);
             return;

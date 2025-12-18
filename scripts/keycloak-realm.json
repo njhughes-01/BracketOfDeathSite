@@ -38,7 +38,6 @@
   "actionTokenGeneratedByUserLifespan": 300,
   "oauth2DeviceCodeLifespan": 600,
   "oauth2DevicePollingInterval": 5,
-  "enabled": true,
   "sslRequired": "external",
   "clients": [
     {
@@ -47,8 +46,6 @@
       "description": "Main web application client",
       "enabled": true,
       "alwaysDisplayInConsole": false,
-      "clientAuthenticatorType": "client-secret",
-      "registrationAccessToken": "**********",
       "defaultRoles": [],
       "redirectUris": [
         "http://localhost:8080/*",
@@ -117,12 +114,16 @@
     {
       "name": "Administrators",
       "path": "/Administrators",
-      "realmRoles": ["admin"]
+      "realmRoles": [
+        "admin"
+      ]
     },
     {
       "name": "Users",
-      "path": "/Users", 
-      "realmRoles": ["user"]
+      "path": "/Users",
+      "realmRoles": [
+        "user"
+      ]
     }
   ],
   "users": []

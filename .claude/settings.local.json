@@ -33,6 +33,7 @@
       "Bash(docker restart:*)",
       "Bash(npm run typecheck:*)",
       "Bash(npx tsc:*)",
+<<<<<<< HEAD
       "mcp__archon__health_check",
       "mcp__archon__manage_project",
       "mcp__archon__manage_task",
@@ -43,6 +44,27 @@
       "Bash(cp:*)",
       "Bash(powershell:*)",
       "Bash(git add:*)"
+=======
+      "Bash(echo)",
+      "Bash(npm run dev)",
+      "mcp__sequential-thinking__sequentialthinking",
+      "mcp__desktop-commander__search_code",
+      "mcp__desktop-commander__read_file",
+      "mcp__desktop-commander__edit_block",
+      "mcp__desktop-commander__search_files",
+      "mcp__desktop-commander__list_directory",
+      "mcp__quillopy__quillopy_search",
+      "Bash(npx jest:*)",
+      "mcp__browsermcp__browser_get_console_logs",
+      "mcp__archon__find_projects",
+      "mcp__archon__find_tasks",
+      "mcp__archon__manage_task",
+      "mcp__browsermcp__browser_screenshot",
+      "Bash(for file in json/20*.json)",
+      "Bash(do echo \"=== $file ===\")",
+      "Bash(done)",
+      "Bash(python3:*)"
+>>>>>>> new-ui
     ],
     "deny": []
   },
@@ -51,7 +73,13 @@
     "memory",
     "sequential-thinking",
     "filesystem",
+<<<<<<< HEAD
     "quillopy",
     "desktop-commander"
   ]
 }
+=======
+    "quillopy"
+  ]
+}
+>>>>>>> new-ui

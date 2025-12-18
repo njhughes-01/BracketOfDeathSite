@@ -25,9 +25,9 @@ class UserController {
   async getUsers(req: RequestWithAuth, res: Response): Promise<void> {
     try {
       const { search, max = '100' } = req.query as { search?: string; max?: string };
-      
+
       const keycloakUsers = await keycloakAdminService.getUsers(search, parseInt(max));
-      
+
       const users: User[] = keycloakUsers.map(kcUser => ({
         id: kcUser.id!,
         username: kcUser.username,
@@ -39,6 +39,7 @@ class UserController {
         emailVerified: kcUser.emailVerified,
         roles: kcUser.realmRoles || [],
         isAdmin: (kcUser.realmRoles || []).includes('admin'),
+        playerId: kcUser.attributes?.playerId?.[0],
       }));
 
       const response: ApiResponse<User[]> = {
@@ -67,7 +68,7 @@ class UserController {
       }
 
       const kcUser = await keycloakAdminService.getUser(id);
-      
+
       const user: User = {
         id: kcUser.id!,
         username: kcUser.username,
@@ -79,6 +80,7 @@ class UserController {
         emailVerified: kcUser.emailVerified,
         roles: kcUser.realmRoles || [],
         isAdmin: (kcUser.realmRoles || []).includes('admin'),
+        playerId: kcUser.attributes?.playerId?.[0],
       };
 
       const response: ApiResponse<User> = {
@@ -96,7 +98,7 @@ class UserController {
         res.status(404).json(response);
         return;
       }
-      
+
       this.handleError(res, error, 'Failed to retrieve user');
     }
   }
@@ -122,8 +124,13 @@ class UserController {
         userData.roles = ['user'];
       }
 
-      const kcUser = await keycloakAdminService.createUser(userData);
-      
+      const serviceRequest = {
+        ...userData,
+        attributes: userData.playerId ? { playerId: [userData.playerId] } : undefined,
+      };
+
+      const kcUser = await keycloakAdminService.createUser(serviceRequest);
+
       const user: User = {
         id: kcUser.id!,
         username: kcUser.username,
@@ -135,6 +142,7 @@ class UserController {
         emailVerified: kcUser.emailVerified,
         roles: userData.roles,
         isAdmin: userData.roles.includes('admin'),
+        playerId: userData.playerId,
       };
 
       const response: ApiResponse<User> = {
@@ -153,7 +161,7 @@ class UserController {
         res.status(409).json(response);
         return;
       }
-      
+
       this.handleError(res, error, 'Failed to create user');
     }
   }
@@ -184,8 +192,13 @@ class UserController {
         return;
       }
 
-      const kcUser = await keycloakAdminService.updateUser(id, userData);
-      
+      const serviceRequest = {
+        ...userData,
+        attributes: userData.playerId ? { playerId: [userData.playerId] } : undefined,
+      };
+
+      const kcUser = await keycloakAdminService.updateUser(id, serviceRequest);
+
       const user: User = {
         id: kcUser.id!,
         username: kcUser.username,
@@ -197,6 +210,7 @@ class UserController {
         emailVerified: kcUser.emailVerified,
         roles: kcUser.realmRoles || [],
         isAdmin: (kcUser.realmRoles || []).includes('admin'),
+        playerId: kcUser.attributes?.playerId?.[0],
       };
 
       const response: ApiResponse<User> = {
@@ -215,7 +229,7 @@ class UserController {
         res.status(404).json(response);
         return;
       }
-      
+
       this.handleError(res, error, 'Failed to update user');
     }
   }
@@ -260,7 +274,7 @@ class UserController {
         res.status(404).json(response);
         return;
       }
-      
+
       this.handleError(res, error, 'Failed to delete user');
     }
   }
@@ -289,7 +303,7 @@ class UserController {
       }
 
       await keycloakAdminService.resetUserPassword(id, newPassword, temporary);
-      
+
       // Clear required actions to ensure user can login immediately
       if (!temporary) {
         try {
@@ -314,7 +328,7 @@ class UserController {
         res.status(404).json(response);
         return;
       }
-      
+
       this.handleError(res, error, 'Failed to reset password');
     }
   }
@@ -371,7 +385,7 @@ class UserController {
         res.status(404).json(response);
         return;
       }
-      
+
       this.handleError(res, error, 'Failed to update user roles');
     }
   }
@@ -379,7 +393,7 @@ class UserController {
   async getAvailableRoles(req: RequestWithAuth, res: Response): Promise<void> {
     try {
       const kcRoles = await keycloakAdminService.getAvailableRoles();
-      
+
       const roles: UserRole[] = kcRoles.map(role => ({
         id: role.id,
         name: role.name,
@@ -396,6 +410,65 @@ class UserController {
       this.handleError(res, error, 'Failed to retrieve available roles');
     }
   }
+  async linkPlayerToSelf(req: RequestWithAuth, res: Response): Promise<void> {
+    try {
+      const userId = req.user?.id;
+      const { playerId } = req.body;
+
+      if (!userId) {
+        const response: ApiResponse = {
+          success: false,
+          error: 'User not authenticated',
+        };
+        res.status(401).json(response);
+        return;
+      }
+
+      if (!playerId) {
+        const response: ApiResponse = {
+          success: false,
+          error: 'Player ID is required',
+        };
+        res.status(400).json(response);
+        return;
+      }
+
+      // Update the user's attributes
+      const serviceRequest = {
+        attributes: { playerId: [playerId] },
+      };
+
+      await keycloakAdminService.updateUser(userId, serviceRequest);
+
+      // Fetch the updated user to return
+      const kcUser = await keycloakAdminService.getUser(userId);
+
+      const user: User = {
+        id: kcUser.id!,
+        username: kcUser.username,
+        email: kcUser.email,
+        firstName: kcUser.firstName,
+        lastName: kcUser.lastName,
+        fullName: [kcUser.firstName, kcUser.lastName].filter(Boolean).join(' ') || kcUser.username,
+        enabled: kcUser.enabled,
+        emailVerified: kcUser.emailVerified,
+        roles: kcUser.realmRoles || [],
+        isAdmin: (kcUser.realmRoles || []).includes('admin'),
+        playerId: kcUser.attributes?.playerId?.[0],
+      };
+
+      const response: ApiResponse<User> = {
+        success: true,
+        data: user,
+        message: 'Player profile linked successfully',
+      };
+
+      res.json(response);
+    } catch (error: any) {
+      this.handleError(res, error, 'Failed to link player profile');
+    }
+  }
+
 
   private validateCreateUser(userData: CreateUserInput): { isValid: boolean; errors?: string[] } {
     const errors: string[] = [];

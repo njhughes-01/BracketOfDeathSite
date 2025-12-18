@@ -31,6 +31,7 @@ export interface Player {
   totalChampionships: number;
   drawingSequence?: number;
   pairing?: string;
+  isActive: boolean;
   createdAt: string;
   updatedAt: string;
 }
@@ -57,6 +58,8 @@ export interface Tournament {
   date: string;
   bodNumber: number;
   format: 'M' | 'W' | 'Mixed' | "Men's Singles" | "Men's Doubles" | "Women's Doubles" | "Mixed Doubles";
+  // Bracket/play structure selected during setup. Optional for legacy data.
+  bracketType?: 'single_elimination' | 'double_elimination' | 'round_robin_playoff';
   location: string;
   advancementCriteria: string;
   notes?: string;
@@ -214,6 +217,173 @@ export interface TournamentResultUpdate extends Partial<TournamentResultInput> {
   tournamentId?: never; // Prevent tournament ID updates
 }
 
+// Tournament Management Types
+export interface SeedingConfig {
+  method: 'historical' | 'recent_form' | 'elo' | 'manual';
+  parameters?: {
+    recentTournamentCount?: number;
+    championshipWeight?: number;
+    winPercentageWeight?: number;
+    avgFinishWeight?: number;
+  };
+}
+
+export interface TeamFormationConfig {
+  method: 'preformed' | 'draft' | 'statistical_pairing' | 'random' | 'manual';
+  parameters?: {
+    skillBalancing?: boolean;
+    avoidRecentPartners?: boolean;
+    maxTimesPartnered?: number;
+  };
+}
+
+export interface TournamentSetup {
+  basicInfo: TournamentInput;
+  seedingConfig: SeedingConfig;
+  teamFormationConfig: TeamFormationConfig;
+  bracketType: 'single_elimination' | 'double_elimination' | 'round_robin_playoff';
+  registrationDeadline?: string;
+  maxPlayers: number;
+}
+
+export interface PlayerSeed {
+  playerId: string;
+  playerName: string;
+  seed: number;
+  statistics: {
+    avgFinish: number;
+    winningPercentage: number;
+    totalChampionships: number;
+    bodsPlayed: number;
+    recentForm?: number;
+  };
+}
+
+export interface TeamSeed {
+  teamId: string;
+  players: PlayerSeed[];
+  combinedSeed: number;
+  teamName: string;
+  combinedStatistics: {
+    avgFinish: number;
+    combinedWinPercentage: number;
+    totalChampionships: number;
+    combinedBodsPlayed: number;
+  };
+}
+
+// Live Tournament Management Types
+export interface Match {
+  _id: string;
+  id: string;
+  tournamentId: string;
+  round: 'RR_R1' | 'RR_R2' | 'RR_R3' | 'quarterfinal' | 'semifinal' | 'final';
+  matchNumber: number;
+  team1: {
+    teamId: string;
+    teamName: string;
+    players: Player[];
+    score?: number;
+    // Individual player scores for detailed tracking
+    playerScores?: Array<{
+      playerId: string;
+      playerName: string;
+      score: number;
+    }>;
+  };
+  team2: {
+    teamId: string;
+    teamName: string;
+    players: Player[];
+    score?: number;
+    // Individual player scores for detailed tracking
+    playerScores?: Array<{
+      playerId: string;
+      playerName: string;
+      score: number;
+    }>;
+  };
+  status: 'scheduled' | 'in-progress' | 'in_progress' | 'completed' | 'confirmed';
+  startTime?: string;
+  endTime?: string;
+  court?: string;
+  notes?: string;
+  adminOverride?: {
+    reason: string;
+    authorizedBy: string;
+    timestamp: string;
+  };
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface TournamentPhase {
+  phase: 'setup' | 'registration' | 'check_in' | 'round_robin' | 'bracket' | 'completed';
+  currentRound?: 'RR_R1' | 'RR_R2' | 'RR_R3' | 'quarterfinal' | 'semifinal' | 'final';
+  roundStatus: 'not_started' | 'in_progress' | 'in-progress' | 'completed';
+  totalMatches: number;
+  completedMatches: number;
+  canAdvance: boolean;
+}
+
+export interface LiveTournament extends Tournament {
+  phase: TournamentPhase;
+  teams: TeamSeed[];
+  matches: Match[];
+  currentStandings: TournamentResult[];
+  managementState?: {
+    currentRound?: string;
+  };
+  bracketProgression: {
+    quarterFinalists: string[];
+    semiFinalists: string[];
+    finalists: string[];
+    champion?: string;
+  };
+  checkInStatus: {
+    [teamId: string]: {
+      checkedIn: boolean;
+      checkInTime?: string;
+      present: boolean;
+    };
+  };
+}
+
+export interface MatchUpdate {
+  matchId: string;
+  team1Score?: number;
+  team2Score?: number;
+  // Individual player scores for detailed tracking
+  team1PlayerScores?: Array<{
+    playerId: string;
+    playerName: string;
+    score: number;
+  }>;
+  team2PlayerScores?: Array<{
+    playerId: string;
+    playerName: string;
+    score: number;
+  }>;
+  status?: Match['status'];
+  court?: string;
+  notes?: string;
+  startTime?: string;
+  endTime?: string;
+  adminOverride?: {
+    reason: string;
+    authorizedBy: string;
+  };
+}
+
+export interface TournamentAction {
+  action: 'start_registration' | 'close_registration' | 'start_checkin' | 'start_round_robin' |
+  'advance_round' | 'start_bracket' | 'complete_tournament' | 'reset_tournament' | 'set_round';
+  parameters?: {
+    targetRound?: string;
+    resetToPhase?: string;
+  };
+}
+
 // Filter types
 export interface PlayerFilters {
   name?: string;
@@ -249,4 +419,60 @@ export interface PaginationOptions {
   limit?: number;
   sort?: string;
   select?: string;
+}
+
+// Live Tournament Statistics types
+export interface LiveTeamStats {
+  teamId: string;
+  teamName: string;
+  players: Array<{
+    playerId: string;
+    playerName: string;
+  }>;
+  matchesPlayed: number;
+  matchesWon: number;
+  matchesLost: number;
+  winPercentage: number;
+  pointsScored: number;
+  pointsAllowed: number;
+  pointDifferential: number;
+  currentRank: number;
+  roundRobinRecord: {
+    played: number;
+    won: number;
+    lost: number;
+    winPercentage: number;
+  };
+  bracketRecord: {
+    played: number;
+    won: number;
+    lost: number;
+    eliminated: boolean;
+    advancedTo?: string;
+  };
+  performanceGrade: string;
+}
+
+export interface LiveTournamentStats {
+  tournamentId: string;
+  totalTeams: number;
+  totalMatches: number;
+  completedMatches: number;
+  inProgressMatches: number;
+  currentPhase: string;
+  currentRound?: string;
+  teamStandings: LiveTeamStats[];
+  matchSummary: {
+    roundRobin: {
+      total: number;
+      completed: number;
+      inProgress: number;
+    };
+    bracket: {
+      total: number;
+      completed: number;
+      inProgress: number;
+    };
+  };
+  lastUpdated: string;
 }
