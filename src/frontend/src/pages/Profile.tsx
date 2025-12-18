@@ -3,7 +3,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { Link } from 'react-router-dom';
 import { apiClient } from '../services/api';
 import { useApi } from '../hooks/useApi';
-import { Player } from '../types/api';
+import type { Player } from '../types/api';
 
 const Profile: React.FC = () => {
     const { user, isAdmin, logout, refreshUser } = useAuth();

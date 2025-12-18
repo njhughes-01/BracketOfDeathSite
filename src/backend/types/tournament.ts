@@ -23,7 +23,6 @@ export interface ITournament extends BaseDocument {
     playerName: string;
     tournamentResult?: Types.ObjectId;
   };
-<<<<<<< HEAD
   // Virtual properties
   formattedDate?: string;
   year?: number;
@@ -36,7 +35,7 @@ export interface ITournament extends BaseDocument {
   registeredPlayerCount?: number;
   waitlistCount?: number;
   isRegistrationOpen?: boolean;
-=======
+
   // Tournament setup configuration
   seedingConfig?: {
     method: 'historical' | 'recent_form' | 'elo' | 'manual';
@@ -56,7 +55,6 @@ export interface ITournament extends BaseDocument {
     };
   };
   bracketType?: 'single_elimination' | 'double_elimination' | 'round_robin_playoff';
-  registrationDeadline?: Date;
   // Generated tournament data
   generatedSeeds?: Array<{
     playerId: Types.ObjectId;
@@ -97,7 +95,6 @@ export interface ITournament extends BaseDocument {
   managementState?: {
     currentRound?: string;
   };
->>>>>>> new-ui
 }
 
 export interface ITournamentInput {
@@ -144,7 +141,7 @@ export interface ITournamentFilter {
 
 export const TournamentFormats = [
   'M',
-  'W', 
+  'W',
   'Mixed',
   'Men\'s Singles',
   'Men\'s Doubles',
@@ -163,13 +160,9 @@ export const TournamentStatuses = [
 ] as const;
 
 export type TournamentStatus = typeof TournamentStatuses[number];
-<<<<<<< HEAD
-
 export const RegistrationTypes = [
   'open',
   'preselected',
 ] as const;
 
 export type RegistrationType = typeof RegistrationTypes[number];
-=======
->>>>>>> new-ui

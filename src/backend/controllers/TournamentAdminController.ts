@@ -8,12 +8,9 @@ import { IMatch, MatchRound, calculateBracketMatches } from '../types/match';
 import { BaseController, RequestWithAuth } from './base';
 import { ApiResponse, ErrorMessages } from '../types/common';
 import { Types } from 'mongoose';
-<<<<<<< HEAD
 import { TournamentRegistrationService } from '../services/TournamentRegistrationService';
 import { TournamentSeedingService } from '../services/TournamentSeedingService';
-=======
 import { TournamentDeletionService, TournamentDeletionError } from '../services/TournamentDeletionService';
->>>>>>> new-ui
 
 export class TournamentAdminController extends BaseController<ITournament> {
   constructor() {
@@ -117,7 +114,7 @@ export class TournamentAdminController extends BaseController<ITournament> {
       // Validate players exist
       const objectIds = playerIds.map(id => new Types.ObjectId(id));
       const players = await Player.find({ _id: { $in: objectIds } });
-      
+
       if (players.length !== playerIds.length) {
         res.status(400).json({
           success: false,
@@ -130,7 +127,7 @@ export class TournamentAdminController extends BaseController<ITournament> {
       // Add new players (avoid duplicates)
       const existingPlayerIds = tournament.players?.map(p => p.toString()) || [];
       const newPlayerIds = objectIds.filter(id => !existingPlayerIds.includes(id.toString()));
-      
+
       if (newPlayerIds.length === 0) {
         res.status(400).json({
           success: false,
@@ -407,7 +404,7 @@ export class TournamentAdminController extends BaseController<ITournament> {
       if (finalMatch && finalMatch.winner) {
         const winningTeam = finalMatch.winner === 'team1' ? finalMatch.team1 : finalMatch.team2;
         const championPlayer = winningTeam.players[0] as any;
-        
+
         tournament.champion = {
           playerId: championPlayer._id,
           playerName: championPlayer.name || `${championPlayer.firstName} ${championPlayer.lastName}`,
@@ -584,7 +581,7 @@ export class TournamentAdminController extends BaseController<ITournament> {
       }
 
       const playerIds = (tournament.players || tournament.registeredPlayers || []).map(p => p.toString());
-      
+
       if (playerIds.length === 0) {
         res.status(400).json({
           success: false,
@@ -664,7 +661,7 @@ export class TournamentAdminController extends BaseController<ITournament> {
   public deleteTournament = async (req: RequestWithAuth, res: Response, next: NextFunction): Promise<void> => {
     const deletionService = new TournamentDeletionService();
     const correlationId = req.headers['x-correlation-id'] as string || undefined;
-    
+
     try {
       const { id } = req.params;
       const adminUserId = req.user?.id;
@@ -680,7 +677,7 @@ export class TournamentAdminController extends BaseController<ITournament> {
 
       // Use the enhanced deletion service
       const result = await deletionService.deleteTournament(id, adminUserId, correlationId);
-      
+
       const response: ApiResponse<{
         tournamentId: string;
         operation: {
@@ -710,7 +707,7 @@ export class TournamentAdminController extends BaseController<ITournament> {
               expectedCount: step.expectedCount,
               actualCount: step.actualCount,
             })),
-            duration: result.operation.endTime 
+            duration: result.operation.endTime
               ? result.operation.endTime.getTime() - result.operation.startTime.getTime()
               : 0,
           },
@@ -724,7 +721,7 @@ export class TournamentAdminController extends BaseController<ITournament> {
       // Handle different types of errors appropriately
       if (error instanceof TournamentDeletionError) {
         const deletionError = error;
-        
+
         // Map deletion error codes to HTTP status codes
         let statusCode = 500;
         switch (deletionError.code) {
@@ -779,7 +776,7 @@ export class TournamentAdminController extends BaseController<ITournament> {
           stack: error.stack,
         } : error,
       });
-      
+
       // Let Express error handler deal with unexpected errors
       next(error);
     }
@@ -794,7 +791,7 @@ export class TournamentAdminController extends BaseController<ITournament> {
     // Get seeded rankings
     const playerIds = players.map(p => p.toString());
     const seedingResult = await TournamentSeedingService.calculateSeeding(playerIds, tournament.format);
-    
+
     if (!seedingResult.success || !seedingResult.seeds) {
       throw new Error('Failed to calculate seeding for tournament');
     }
@@ -807,7 +804,7 @@ export class TournamentAdminController extends BaseController<ITournament> {
       for (let i = 0; i < seeds.length; i += 2) {
         const player1 = seeds[i];
         const player2 = seeds[i + 1];
-        
+
         if (player1 && player2) {
           teams.push({
             players: [player1.playerId, player2.playerId],
@@ -850,10 +847,10 @@ export class TournamentAdminController extends BaseController<ITournament> {
   ): Promise<void> {
     const teamCount = teams.length;
     const bracketSize = Math.pow(2, Math.ceil(Math.log2(teamCount)));
-    
+
     // Sort teams by seed (1, 2, 3, etc.)
     const seededTeams = [...teams].sort((a, b) => a.seed - b.seed);
-    
+
     // Create bracket with traditional seeding (1 vs lowest, 2 vs 2nd lowest, etc.)
     const bracketTeams = [];
     for (let i = 0; i < bracketSize; i++) {
@@ -866,7 +863,7 @@ export class TournamentAdminController extends BaseController<ITournament> {
 
     // Rearrange for proper tournament bracket seeding
     const arrangedTeams = this.arrangeTeamsForBracket(bracketTeams);
-    
+
     let currentRound = arrangedTeams;
     let roundNumber = 1;
     let matchNumber = 1;
@@ -913,7 +910,7 @@ export class TournamentAdminController extends BaseController<ITournament> {
   private arrangeTeamsForBracket(teams: any[]): any[] {
     const arrangedTeams = [...teams];
     const teamCount = teams.filter(t => t !== null).length;
-    
+
     if (teamCount <= 2) {
       return arrangedTeams;
     }
@@ -922,10 +919,10 @@ export class TournamentAdminController extends BaseController<ITournament> {
     // This is a simplified arrangement - could be enhanced for more complex seeding
     const nonNullTeams = teams.filter(t => t !== null);
     const sortedByGoodSeed = [...nonNullTeams].sort((a, b) => a.seed - b.seed);
-    
+
     const result = [];
     const mid = Math.floor(sortedByGoodSeed.length / 2);
-    
+
     // Place top half and bottom half in alternating positions
     for (let i = 0; i < mid; i++) {
       result.push(sortedByGoodSeed[i]);
@@ -933,12 +930,12 @@ export class TournamentAdminController extends BaseController<ITournament> {
         result.push(sortedByGoodSeed[sortedByGoodSeed.length - 1 - i]);
       }
     }
-    
+
     // Fill with nulls to match bracket size
     while (result.length < teams.length) {
       result.push(null);
     }
-    
+
     return result;
   }
 
@@ -967,7 +964,7 @@ export class TournamentAdminController extends BaseController<ITournament> {
 
       // Update or create TournamentResult for winning team
       await this.updateTeamResult(tournament, winningTeam, true, match);
-      
+
       // Update or create TournamentResult for losing team  
       await this.updateTeamResult(tournament, losingTeam, false, match);
 
@@ -1033,10 +1030,10 @@ export class TournamentAdminController extends BaseController<ITournament> {
 
         // Update bracket statistics based on match round and outcome
         result.bracketScores.bracketPlayed = (result.bracketScores.bracketPlayed || 0) + 1;
-        
+
         if (won) {
           result.bracketScores.bracketWon = (result.bracketScores.bracketWon || 0) + 1;
-          
+
           // Set finish position based on round
           if (match.round === 'final') {
             result.totalStats.bodFinish = 1; // Champion
@@ -1045,7 +1042,7 @@ export class TournamentAdminController extends BaseController<ITournament> {
           }
         } else {
           result.bracketScores.bracketLost = (result.bracketScores.bracketLost || 0) + 1;
-          
+
           // Set finish position for losing rounds
           if (match.round === 'final') {
             result.totalStats.bodFinish = 2; // Runner-up
@@ -1058,7 +1055,7 @@ export class TournamentAdminController extends BaseController<ITournament> {
         result.totalStats.totalPlayed = (result.bracketScores.bracketPlayed || 0) + (result.roundRobinScores?.rrPlayed || 0);
         result.totalStats.totalWon = (result.bracketScores.bracketWon || 0) + (result.roundRobinScores?.rrWon || 0);
         result.totalStats.totalLost = (result.bracketScores.bracketLost || 0) + (result.roundRobinScores?.rrLost || 0);
-        
+
         if (result.totalStats.totalPlayed > 0) {
           result.totalStats.winPercentage = result.totalStats.totalWon / result.totalStats.totalPlayed;
         }
@@ -1072,14 +1069,14 @@ export class TournamentAdminController extends BaseController<ITournament> {
 
   private calculatePlayerPoints(result: any): number {
     let points = 0;
-    
+
     // Points for round robin
     points += (result.roundRobinScores?.rrWon || 0) * 2; // 2 points per win
     points += (result.roundRobinScores?.rrLost || 0) * 1; // 1 point per loss (participation)
-    
+
     // Points for bracket performance
     points += (result.bracketScores?.bracketWon || 0) * 3; // 3 points per bracket win
-    
+
     // Bonus points for final position
     const finish = result.totalStats?.bodFinish;
     if (finish === 1) {
@@ -1089,7 +1086,7 @@ export class TournamentAdminController extends BaseController<ITournament> {
     } else if (finish === 3) {
       points += 10; // Semifinalist
     }
-    
+
     return points;
   }
 

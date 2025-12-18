@@ -40,15 +40,13 @@ const calculateTournamentStats = (tournament: ITournament): void => {
     tournament.location = tournament.location.trim();
   }
 
-<<<<<<< HEAD
   // Set default registration behavior
   if (tournament.allowSelfRegistration === undefined) {
     tournament.allowSelfRegistration = tournament.registrationType === 'open';
-=======
+  }
   // Ensure bracketType has a default if not provided (fixes legacy/custom format issues)
   if (!tournament.bracketType) {
     tournament.bracketType = 'round_robin_playoff';
->>>>>>> new-ui
   }
 };
 
@@ -155,7 +153,7 @@ const tournamentSchema = new Schema<ITournament>(
     registrationOpensAt: {
       type: Date,
       validate: {
-        validator: function(this: ITournament, date: Date) {
+        validator: function (this: ITournament, date: Date) {
           if (!date) return true;
           return date <= this.date;
         },
@@ -165,7 +163,7 @@ const tournamentSchema = new Schema<ITournament>(
     registrationDeadline: {
       type: Date,
       validate: {
-        validator: function(this: ITournament, date: Date) {
+        validator: function (this: ITournament, date: Date) {
           if (!date) return true;
           const now = new Date();
           const tournamentDate = this.date;
@@ -176,7 +174,7 @@ const tournamentSchema = new Schema<ITournament>(
     },
     allowSelfRegistration: {
       type: Boolean,
-      default: function(this: ITournament) {
+      default: function (this: ITournament) {
         return this.registrationType === 'open';
       },
     },
@@ -226,9 +224,6 @@ const tournamentSchema = new Schema<ITournament>(
     bracketType: {
       type: String,
       enum: ['single_elimination', 'double_elimination', 'round_robin_playoff'],
-    },
-    registrationDeadline: {
-      type: Date,
     },
     // Generated tournament data
     generatedSeeds: [{
@@ -388,7 +383,7 @@ tournamentSchema.virtual('registrationStatus').get(function (this: ITournament) 
   const now = new Date();
   const registrationOpen = this.registrationOpensAt || new Date(0);
   const registrationDeadline = this.registrationDeadline || this.date;
-  
+
   if (now < registrationOpen) return 'pending';
   if (now > registrationDeadline) return 'closed';
   if (this.isFull) return 'full';
@@ -415,7 +410,7 @@ tournamentSchema.methods = { ...baseMethods } as any;
 (tournamentSchema.statics as any) = { ...baseStatics };
 
 // Auto-generate BOD number if not provided
-tournamentSchema.pre('save', async function(this: ITournament) {
+tournamentSchema.pre('save', async function (this: ITournament) {
   if (this.isNew && !this.bodNumber) {
     try {
       const lastTournament = await Tournament.findOne().sort({ bodNumber: -1 }).exec();

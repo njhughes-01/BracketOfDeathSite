@@ -1,10 +1,7 @@
 import { Router } from 'express';
 import { tournamentController } from '../controllers/TournamentController';
-<<<<<<< HEAD
 import { TournamentAdminController } from '../controllers/TournamentAdminController';
-=======
 import { liveTournamentController } from '../controllers/LiveTournamentController';
->>>>>>> new-ui
 import { requireAuth } from '../middleware/auth';
 import { validateObjectId, validatePagination, validateRequest } from '../middleware/validation';
 import { body, param } from 'express-validator';
@@ -30,7 +27,6 @@ router.post('/', requireAuth, tournamentController.create);
 router.put('/:id', requireAuth, validateObjectId, tournamentController.update);
 router.delete('/:id', requireAuth, validateObjectId, tournamentController.delete);
 
-<<<<<<< HEAD
 // Public registration routes (for self-registration)
 router.post(
   '/:id/register',
@@ -53,7 +49,7 @@ router.delete(
   validateRequest,
   tournamentAdminController.unregisterPlayer
 );
-=======
+
 // Tournament management routes
 router.post('/generate-seeds', tournamentController.generatePlayerSeeds);
 router.post('/generate-teams', tournamentController.generateTeams);
@@ -72,7 +68,6 @@ router.post('/:id/matches/confirm-completed', requireAuth, validateObjectId, liv
 
 // Match management routes (create separate route file later if needed)
 router.put('/matches/:matchId', requireAuth, liveTournamentController.updateMatch);
->>>>>>> new-ui
 
 // Admin routes
 router.post('/bulk-import', requireAuth, tournamentController.bulkImport);
