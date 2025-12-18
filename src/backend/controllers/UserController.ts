@@ -504,6 +504,48 @@ class UserController {
     }
   }
 
+  // Public Login endpoint (proxy to Keycloak for scripts/testing)
+  async login(req: RequestWithAuth, res: Response): Promise<void> {
+    try {
+      const { username, password } = req.body;
+
+      if (!username || !password) {
+        res.status(400).json({ success: false, error: 'Username and password are required' });
+        return;
+      }
+
+      const tokenUrl = `${process.env.KEYCLOAK_URL}/realms/${process.env.KEYCLOAK_REALM}/protocol/openid-connect/token`;
+
+      const params = new URLSearchParams();
+      params.append('username', username);
+      params.append('password', password);
+      params.append('grant_type', 'password');
+      params.append('client_id', process.env.KEYCLOAK_CLIENT_ID || 'bod-app');
+      if (process.env.KEYCLOAK_CLIENT_SECRET) {
+        params.append('client_secret', process.env.KEYCLOAK_CLIENT_SECRET);
+      }
+
+      try {
+        const response = await import('axios').then(a => a.default.post(tokenUrl, params, {
+          headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
+        }));
+
+        res.json({
+          success: true,
+          token: response.data.access_token,
+          refreshToken: response.data.refresh_token,
+          expiresIn: response.data.expires_in
+        });
+
+      } catch (authError: any) {
+        console.error('Keycloak login failed:', authError.response?.data || authError.message);
+        res.status(401).json({ success: false, error: 'Invalid credentials' });
+      }
+    } catch (error) {
+      this.handleError(res, error, 'Login failed');
+    }
+  }
+
   // Public Registration endpoint (moved logic from routes/auth.ts to controller for better organization)
   async register(req: RequestWithAuth, res: Response): Promise<void> {
     try {

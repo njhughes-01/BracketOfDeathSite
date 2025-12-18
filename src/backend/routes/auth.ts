@@ -5,6 +5,9 @@ import { requireAuth } from '../middleware/auth';
 const router = Router();
 const userController = new UserController();
 
+// Login endpoint
+router.post('/login', userController.login.bind(userController));
+
 // Registration endpoint
 router.post('/register', userController.register.bind(userController));
 
