@@ -1,617 +1,279 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useMemo } from 'react';
 import { Link } from 'react-router-dom';
-import { useApi } from '../hooks/useApi';
+import { usePaginatedApi } from '../hooks/useApi';
 import { useAuth } from '../contexts/AuthContext';
 import apiClient from '../services/api';
-import Card from '../components/ui/Card';
-import LoadingSpinner from '../components/ui/LoadingSpinner';
-import ConfirmationModal from '../components/ui/ConfirmationModal';
-import { getTournamentStatus, getStatusDisplayInfo } from '../utils/tournamentStatus';
-import { EditableText, EditableNumber, EditableSelect, EditableDate } from '../components/admin';
-import type { Tournament, TournamentUpdate } from '../types/api';
+import { getTournamentStatus } from '../utils/tournamentStatus';
+import type { Tournament } from '../types/api';
 
 const Tournaments: React.FC = () => {
-  const { isAdmin } = useAuth();
-  const [page, setPage] = useState(1);
-  const [tournaments, setTournaments] = useState<Tournament[]>([]);
-  const [filters, setFilters] = useState({
-    format: '',
-    location: '',
-    year: undefined as number | undefined,
-    bodNumber_min: undefined as number | undefined,
-    bodNumber_max: undefined as number | undefined,
-    sort: '-date',
-  });
-  
-  // Delete modal state
-  const [deleteModal, setDeleteModal] = useState<{
-    isOpen: boolean;
-    tournament: Tournament | null;
-    isLoading: boolean;
-  }>({
-    isOpen: false,
-    tournament: null,
-    isLoading: false,
-  });
-  
-  const [successMessage, setSuccessMessage] = useState<string | null>(null);
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const { isAdmin, user } = useAuth();
+  const [searchTerm, setSearchTerm] = useState('');
+  const [activeFilter, setActiveFilter] = useState<'All' | 'Live' | 'Upcoming' | 'My Registered'>('All');
 
-  // Tournament format options matching backend schema
-  const formatOptions = [
-    { value: 'M', label: "Men's (Legacy)" },
-    { value: 'W', label: "Women's (Legacy)" },
-    { value: 'Mixed', label: "Mixed (Legacy)" },
-    { value: "Men's Singles", label: "Men's Singles" },
-    { value: "Men's Doubles", label: "Men's Doubles" },
-    { value: "Women's Doubles", label: "Women's Doubles" },
-    { value: "Mixed Doubles", label: "Mixed Doubles" }
-  ];
-
-  // Tournament status options matching backend schema
-  const statusOptions = [
-    { value: 'scheduled', label: 'Scheduled' },
-    { value: 'open', label: 'Open for Registration' },
-    { value: 'active', label: 'In Progress' },
-    { value: 'completed', label: 'Completed' },
-    { value: 'cancelled', label: 'Cancelled' }
-  ];
-
-  const getTournaments = useCallback(
-    () => apiClient.getTournaments({ 
-      page, 
-      limit: 20, 
-      ...filters 
-    }),
-    [page, filters]
+  // Use usePaginatedApi
+  const {
+    data: tournaments,
+    loading,
+    refresh,
+  } = usePaginatedApi<Tournament>(
+    (page, filters) => apiClient.getTournaments({ page, ...filters }),
+    { pageSize: 50, immediate: true }
   );
 
-  const { data: tournamentsData, loading, error, execute } = useApi(
-    getTournaments,
-    { 
-      immediate: true,
-      dependencies: [page, filters]
-    }
-  );
+  // Filter and Sort Logic
+  const filteredTournaments = useMemo(() => {
+    if (!tournaments) return [];
 
-  // Update local state when tournament data changes
-  React.useEffect(() => {
-    if (tournamentsData && 'data' in tournamentsData && Array.isArray(tournamentsData.data)) {
-      setTournaments(tournamentsData.data);
-    }
-  }, [tournamentsData]);
+    let filtered = [...tournaments];
 
-  // Function to update tournament field
-  const updateTournamentField = async (
-    tournamentId: string,
-    field: keyof TournamentUpdate,
-    value: any
-  ): Promise<void> => {
-    try {
-      const updateData: TournamentUpdate = { [field]: value } as TournamentUpdate;
-      const response = await apiClient.updateTournament(tournamentId, updateData);
-      
-      if (response.success && response.data) {
-        // Update local state
-        setTournaments(prev => prev.map(t => 
-          t._id === tournamentId || t.id === tournamentId ? response.data! : t
-        ));
-      }
-    } catch (error) {
-      console.error(`Failed to update tournament ${field}:`, error);
-      throw error;
-    }
-  };
-
-  // Delete tournament functions
-  const openDeleteModal = (tournament: Tournament) => {
-    setDeleteModal({
-      isOpen: true,
-      tournament,
-      isLoading: false,
-    });
-  };
-
-  const closeDeleteModal = () => {
-    setDeleteModal({
-      isOpen: false,
-      tournament: null,
-      isLoading: false,
-    });
-  };
-
-  const handleDeleteTournament = async () => {
-    if (!deleteModal.tournament) return;
-
-    setDeleteModal(prev => ({ ...prev, isLoading: true }));
-
-    try {
-      const response = await apiClient.deleteTournamentAdmin(deleteModal.tournament._id || deleteModal.tournament.id);
-      
-      if (response.success) {
-        // Remove tournament from local state
-        setTournaments(prev => prev.filter(t => 
-          (t._id || t.id) !== (deleteModal.tournament!._id || deleteModal.tournament!.id)
-        ));
-        
-        // Show success message
-        setSuccessMessage(response.message || 'Tournament deleted successfully');
-        
-        // Auto-hide success message after 5 seconds
-        setTimeout(() => setSuccessMessage(null), 5000);
-      }
-    } catch (error: any) {
-      console.error('Error deleting tournament:', error);
-      setErrorMessage(
-        error.response?.data?.message || 
-        error.message || 
-        'Failed to delete tournament'
+    // Search Filter
+    if (searchTerm) {
+      const lowerTerm = searchTerm.toLowerCase();
+      filtered = filtered.filter(t =>
+        t.bodNumber?.toString().includes(lowerTerm) ||
+        t.location?.toLowerCase().includes(lowerTerm) ||
+        t.format?.toLowerCase().includes(lowerTerm)
       );
-      
-      // Auto-hide error message after 10 seconds
-      setTimeout(() => setErrorMessage(null), 10000);
-    } finally {
-      closeDeleteModal();
     }
-  };
 
-  const handleFilterChange = (key: string, value: string) => {
-    setFilters(prev => ({ 
-      ...prev, 
-      [key]: key === 'year' 
-        ? (value === '0' ? undefined : parseInt(value))
-        : key.includes('_min') || key.includes('_max')
-        ? (value === '' ? undefined : parseInt(value))
-        : value 
-    }));
-    setPage(1);
-  };
+    // Status/Tab Filter
+    const now = new Date();
+    if (activeFilter === 'Upcoming') {
+      filtered = filtered.filter(t => new Date(t.date) > now);
+    } else if (activeFilter === 'Live') {
+      filtered = filtered.filter(t => getTournamentStatus(t.date) === 'active');
+    } else if (activeFilter === 'My Registered') {
+      // Filter by user registration
+      if (user) {
+        filtered = filtered.filter(t => t.players?.some(p => p._id === user.id || p.name === user.username));
+      } else {
+        filtered = []; // No results if not logged in
+      }
+    }
 
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric'
-    });
-  };
+    // Sort by Date (Default)
+    // Upcoming -> Ascending
+    // Others -> Descending (newest first)
+    if (activeFilter === 'Upcoming') {
+      return filtered.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+    }
+    return filtered.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+  }, [tournaments, searchTerm, activeFilter, user]);
 
-  // Format badge helper function (not used in current design but kept for future use)
-  // const getFormatBadgeColor = (format: string) => {
-  //   switch (format) {
-  //     case 'M':
-  //       return 'bg-blue-100 text-blue-800';
-  //     case 'W':
-  //       return 'bg-pink-100 text-pink-800';
-  //     case 'Mixed':
-  //       return 'bg-green-100 text-green-800';
-  //     default:
-  //       return 'bg-gray-100 text-gray-800';
-  //   }
-  // };
+  const liveTournament = useMemo(() => {
+    if (!tournaments) return null;
+    return tournaments.find(t => getTournamentStatus(t.date) === 'active');
+  }, [tournaments]);
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">Tournaments</h1>
-          <p className="text-gray-600">Manage tournament events and brackets</p>
+    <div className="flex flex-col h-full bg-background-light dark:bg-background-dark min-h-screen pb-24 relative overflow-hidden">
+      {/* Header Section - Sticky */}
+      <div className="flex-none bg-background-light dark:bg-background-dark z-10 border-b border-gray-200 dark:border-white/5 sticky top-0">
+        {/* Top Bar */}
+        <div className="flex items-center px-4 py-3 justify-between">
+          <div className="flex items-center gap-3">
+            {/* Admin Add Button in Header or user defaults */}
+            {isAdmin && (
+              <Link to="/tournaments/create" className="flex items-center justify-center w-8 h-8 rounded-full hover:bg-gray-200 dark:hover:bg-white/10 transition-colors text-primary">
+                <span className="material-symbols-outlined text-[24px]">add_circle</span>
+              </Link>
+            )}
+            <h1 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-white">Tournaments</h1>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <button onClick={() => refresh()} className="relative p-2 rounded-full hover:bg-gray-200 dark:hover:bg-white/10 transition-colors">
+              <span className="material-symbols-outlined text-slate-600 dark:text-slate-400 text-[24px]">refresh</span>
+            </button>
+            {/* Notification */}
+            <button className="relative p-2 rounded-full hover:bg-gray-200 dark:hover:bg-white/10 transition-colors">
+              <span className="material-symbols-outlined text-slate-600 dark:text-slate-400 text-[24px]">notifications</span>
+              <span className="absolute top-2 right-2 h-2 w-2 rounded-full bg-neon-accent shadow-[0_0_8px_rgba(212,248,0,0.6)]"></span>
+            </button>
+          </div>
         </div>
-        <Link to="/tournaments/create" className="btn btn-primary">
-          Create Tournament
-        </Link>
+
+        {/* Search Bar */}
+        <div className="px-4 pb-2">
+          <div className="flex w-full items-center rounded-xl bg-white dark:bg-surface-dark border border-gray-200 dark:border-white/5 h-11 focus-within:ring-2 focus-within:ring-primary/50 transition-all">
+            <div className="pl-3 pr-2 flex items-center justify-center text-slate-400">
+              <span className="material-symbols-outlined text-[20px]">search</span>
+            </div>
+            <input
+              className="w-full bg-transparent border-none text-sm text-slate-900 dark:text-white placeholder-slate-400 focus:ring-0 p-0"
+              placeholder="Search tournaments..."
+              type="text"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
+            {searchTerm && (
+              <button onClick={() => setSearchTerm('')} className="pr-3 pl-2 flex items-center justify-center text-slate-400 hover:text-primary">
+                <span className="material-symbols-outlined text-[20px]">close</span>
+              </button>
+            )}
+          </div>
+        </div>
+
+        {/* Chips / Tabs */}
+        <div className="flex gap-2 px-4 py-3 overflow-x-auto no-scrollbar items-center">
+          {/* All Events */}
+          <button
+            onClick={() => setActiveFilter('All')}
+            className={`shrink-0 flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium transition-all ${activeFilter === 'All'
+              ? 'bg-primary text-white shadow-lg shadow-primary/25'
+              : 'bg-white dark:bg-surface-dark border border-gray-200 dark:border-white/5 text-slate-600 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-white/5'}`}
+          >
+            <span>All Events</span>
+          </button>
+
+          {/* Live Now */}
+          <button
+            onClick={() => setActiveFilter('Live')}
+            className={`shrink-0 flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium transition-all ${activeFilter === 'Live'
+              ? 'bg-primary text-white shadow-lg shadow-primary/25'
+              : 'bg-white dark:bg-surface-dark border border-gray-200 dark:border-white/5 text-slate-600 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-white/5'}`}
+          >
+            <span className={`w-2 h-2 rounded-full bg-neon-accent shadow-[0_0_6px_rgba(212,248,0,0.8)] ${activeFilter === 'Live' ? 'animate-none' : 'animate-pulse'}`}></span>
+            <span>Live Now</span>
+          </button>
+
+          {/* Upcoming */}
+          <button
+            onClick={() => setActiveFilter('Upcoming')}
+            className={`shrink-0 flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium transition-all ${activeFilter === 'Upcoming'
+              ? 'bg-primary text-white shadow-lg shadow-primary/25'
+              : 'bg-white dark:bg-surface-dark border border-gray-200 dark:border-white/5 text-slate-600 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-white/5'}`}
+          >
+            <span>Upcoming</span>
+          </button>
+
+          {/* My Registered */}
+          <button
+            onClick={() => setActiveFilter('My Registered')}
+            className={`shrink-0 flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium transition-all ${activeFilter === 'My Registered'
+              ? 'bg-primary text-white shadow-lg shadow-primary/25'
+              : 'bg-white dark:bg-[#1c2230] border border-gray-200 dark:border-gray-700 text-slate-600 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-gray-800'}`}
+          >
+            <span>My Registered</span>
+          </button>
+        </div>
+
+        {/* Secondary Filters (Hidden for now or static) */}
+        <div className="flex items-center justify-between px-4 pb-3 pt-1 border-t border-gray-100 dark:border-gray-800/50">
+          <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">{filteredTournaments.length} Tournaments</p>
+          {/* Sorting placeholder if needed */}
+        </div>
       </div>
 
-      {/* Success/Error Messages */}
-      {successMessage && (
-        <div className="bg-green-50 border border-green-200 rounded-md p-4">
-          <div className="flex items-center">
-            <span className="text-green-500 text-xl mr-2">✅</span>
-            <div>
-              <h3 className="text-sm font-medium text-green-800">Success</h3>
-              <p className="text-sm text-green-700">{successMessage}</p>
+      {/* Main Content Area */}
+      <div className="flex-1 overflow-y-auto overflow-x-hidden p-4 space-y-4">
+
+        {/* Featured Live Card */}
+        {liveTournament && (
+          <Link to={`/tournaments/${liveTournament.id}`} className="block group relative overflow-hidden rounded-2xl bg-surface-dark border border-primary/30 p-0 shadow-lg shadow-primary/5 transition-all hover:border-primary/50">
+            <div className="absolute top-0 right-0 p-3 z-10">
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-neon-accent px-2.5 py-1 text-xs font-bold text-black shadow-[0_0_10px_rgba(212,248,0,0.4)] animate-pulse">
+                <span className="h-1.5 w-1.5 rounded-full bg-black"></span>
+                LIVE
+              </span>
             </div>
-            <button
-              onClick={() => setSuccessMessage(null)}
-              className="ml-auto text-green-500 hover:text-green-700"
-            >
-              ✕
-            </button>
-          </div>
-        </div>
-      )}
 
-      {errorMessage && (
-        <div className="bg-red-50 border border-red-200 rounded-md p-4">
-          <div className="flex items-center">
-            <span className="text-red-500 text-xl mr-2">⚠️</span>
-            <div>
-              <h3 className="text-sm font-medium text-red-800">Error</h3>
-              <p className="text-sm text-red-700">{errorMessage}</p>
-            </div>
-            <button
-              onClick={() => setErrorMessage(null)}
-              className="ml-auto text-red-500 hover:text-red-700"
-            >
-              ✕
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* Filters */}
-      <Card>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Format
-            </label>
-            <select
-              value={filters.format}
-              onChange={(e) => handleFilterChange('format', e.target.value)}
-              className="select"
-            >
-              <option value="">All Formats</option>
-              <option value="M">Men's (Legacy)</option>
-              <option value="W">Women's (Legacy)</option>
-              <option value="Mixed">Mixed (Legacy)</option>
-              <option value="Men's Singles">Men's Singles</option>
-              <option value="Men's Doubles">Men's Doubles</option>
-              <option value="Women's Doubles">Women's Doubles</option>
-              <option value="Mixed Doubles">Mixed Doubles</option>
-            </select>
-          </div>
-          
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Location
-            </label>
-            <input
-              type="text"
-              value={filters.location}
-              onChange={(e) => handleFilterChange('location', e.target.value)}
-              placeholder="Filter by location..."
-              className="input"
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Year
-            </label>
-            <select
-              value={filters.year}
-              onChange={(e) => handleFilterChange('year', e.target.value)}
-              className="select"
-            >
-              <option value={0}>All Years</option>
-              {Array.from({ length: 2024 - 2009 + 1 }, (_, i) => 2024 - i).map(year => (
-                <option key={year} value={year}>{year}</option>
-              ))}
-            </select>
-          </div>
-        </div>
-        
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Min BOD Number
-            </label>
-            <input
-              type="number"
-              value={filters.bodNumber_min || ''}
-              onChange={(e) => handleFilterChange('bodNumber_min', e.target.value)}
-              placeholder="e.g., 200901"
-              className="input"
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Max BOD Number
-            </label>
-            <input
-              type="number"
-              value={filters.bodNumber_max || ''}
-              onChange={(e) => handleFilterChange('bodNumber_max', e.target.value)}
-              placeholder="e.g., 202412"
-              className="input"
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Sort By
-            </label>
-            <select
-              value={filters.sort}
-              onChange={(e) => handleFilterChange('sort', e.target.value)}
-              className="select"
-            >
-              <option value="-date">Date (Newest First)</option>
-              <option value="date">Date (Oldest First)</option>
-              <option value="-bodNumber">BOD Number (High to Low)</option>
-              <option value="bodNumber">BOD Number (Low to High)</option>
-              <option value="location">Location (A-Z)</option>
-              <option value="-location">Location (Z-A)</option>
-              <option value="format">Format</option>
-            </select>
-          </div>
-        </div>
-      </Card>
-
-      {/* Summary Stats */}
-      {tournaments.length > 0 && (
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          <Card padding="md">
-            <div className="text-center">
-              <div className="text-2xl font-bold text-blue-600">
-                {tournaments.filter((t: Tournament) => t.format.includes('Men')).length}
+            <div className="flex flex-col sm:flex-row">
+              <div className="h-32 w-full sm:w-32 sm:h-auto relative bg-gray-800 shrink-0">
+                <div
+                  className="absolute inset-0 bg-cover bg-center opacity-80 group-hover:opacity-100 transition-opacity"
+                  style={{ backgroundImage: 'url("https://lh3.googleusercontent.com/aida-public/AB6AXuAaQ_oN9Qgwao-ZSZQjJ9QDYpsp0T1EtvGSKNed9sv515fUBVPkGBinAC8i7NzoN5JtuieSEmeGVTXm6RQZ83QaCNln8_yJ_k-s_ykaCW5Pc4feD14_rEm_LNGMzEXHCxuO2E6Dw92yNK0Cj9vZ2TaLU3UgCR-UyGDC9OuZJ0IM9IV4ifggudKpav2PmqVd-ya5QgjG1IfpKrz6QEf-HfONtzH6L33t7o3CDuvT_0UuqkZR82nx_z9lAp_oLFHYk8304yP3arqsyHk")' }}
+                ></div>
+                <div className="absolute inset-0 bg-gradient-to-t from-[#1c2230] to-transparent sm:bg-gradient-to-r sm:from-transparent sm:to-[#1c2230]"></div>
               </div>
-              <div className="text-sm text-gray-600">Men's Tournaments</div>
-            </div>
-          </Card>
-          
-          <Card padding="md">
-            <div className="text-center">
-              <div className="text-2xl font-bold text-pink-600">
-                {tournaments.filter((t: Tournament) => t.format.includes('Women')).length}
-              </div>
-              <div className="text-sm text-gray-600">Women's Tournaments</div>
-            </div>
-          </Card>
-          
-          <Card padding="md">
-            <div className="text-center">
-              <div className="text-2xl font-bold text-green-600">
-                {tournaments.filter((t: Tournament) => t.format.includes('Mixed')).length}
-              </div>
-              <div className="text-sm text-gray-600">Mixed Tournaments</div>
-            </div>
-          </Card>
-          
-          <Card padding="md">
-            <div className="text-center">
-              <div className="text-2xl font-bold text-purple-600">
-                {[...new Set(tournaments.map((t: Tournament) => new Date(t.date).getFullYear()))].length}
-              </div>
-              <div className="text-sm text-gray-600">Years Active</div>
-            </div>
-          </Card>
-        </div>
-      )}
 
-      {/* Tournaments List */}
-      <Card>
-        {loading ? (
-          <div className="flex items-center justify-center py-12">
-            <LoadingSpinner size="lg" />
-            <span className="ml-3 text-gray-500">Loading tournaments...</span>
-          </div>
-        ) : error ? (
-          <div className="text-center py-12">
-            <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
-              <span className="text-red-500 text-2xl">⚠️</span>
-            </div>
-            <p className="text-red-600 font-medium mb-2">Error loading tournaments</p>
-            <p className="text-gray-500 text-sm">{error}</p>
-          </div>
-        ) : tournaments.length > 0 ? (
-          <div className="grid grid-cols-1 gap-6">
-            {tournaments.map((tournament: Tournament) => {
-              const actualStatus = getTournamentStatus(tournament.date);
-              const statusInfo = getStatusDisplayInfo(actualStatus);
-              
-              return (
-                <div key={tournament.id || tournament._id} className="group">
-                  <Card variant="hover" padding="lg">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center space-x-6">
-                        <div className="w-20 h-20 bg-gradient-to-br from-blue-500 to-purple-600 rounded-xl flex items-center justify-center shadow-lg">
-                          <span className="text-white font-bold text-xl">#</span>
-                          {isAdmin ? (
-                            <EditableNumber
-                              value={tournament.bodNumber}
-                              onSave={(value) => updateTournamentField(tournament._id || tournament.id, 'bodNumber', value)}
-                              min={1}
-                              integer
-                              displayClassName="text-white font-bold text-xl"
-                              required
-                            />
-                          ) : (
-                            <span className="text-white font-bold text-xl">{tournament.bodNumber}</span>
-                          )}
-                        </div>
-                        <div className="flex-1">
-                          <div className="flex items-center space-x-3 mb-2">
-                            <h3 className="text-xl font-semibold text-gray-900 group-hover:text-blue-600 transition-colors duration-200">
-                              {isAdmin ? (
-                                <EditableSelect
-                                  value={tournament.format}
-                                  options={formatOptions}
-                                  onSave={(value) => updateTournamentField(tournament._id || tournament.id, 'format', value as Tournament['format'])}
-                                  required
-                                  displayClassName="text-xl font-semibold text-gray-900 group-hover:text-blue-600 transition-colors duration-200"
-                                />
-                              ) : (
-                                tournament.format
-                              )} Tournament
-                            </h3>
-                            <span className={`badge ${
-                              tournament.format.includes('Men') ? 'badge-primary' : 
-                              tournament.format.includes('Women') ? 'bg-pink-100 text-pink-800' : 
-                              'badge-success'
-                            }`}>
-                              {tournament.format}
-                            </span>
-                          </div>
-                          <div className="space-y-1">
-                            <p className="text-gray-700 font-medium">
-                              📍 {isAdmin ? (
-                                <EditableText
-                                  value={tournament.location}
-                                  onSave={(value) => updateTournamentField(tournament._id || tournament.id, 'location', value)}
-                                  required
-                                  displayClassName="text-gray-700 font-medium"
-                                  validator={(value) => {
-                                    if (value.length < 2) return 'Location must be at least 2 characters';
-                                    if (value.length > 100) return 'Location must be less than 100 characters';
-                                    return null;
-                                  }}
-                                />
-                              ) : (
-                                tournament.location
-                              )}
-                            </p>
-                            <p className="text-gray-600">
-                              📅 {isAdmin ? (
-                                <EditableDate
-                                  value={tournament.date}
-                                  onSave={(value) => updateTournamentField(tournament._id || tournament.id, 'date', value)}
-                                  required
-                                  displayClassName="text-gray-600"
-                                />
-                              ) : (
-                                formatDate(tournament.date)
-                              )}
-                            </p>
-                            {(tournament.notes || isAdmin) && (
-                              <p className="text-sm text-gray-500">
-                                📝 {isAdmin ? (
-                                  <EditableText
-                                    value={tournament.notes || ''}
-                                    onSave={(value) => updateTournamentField(tournament._id || tournament.id, 'notes', value || undefined)}
-                                    multiline
-                                    displayClassName="text-sm text-gray-500"
-                                    placeholder="No notes"
-                                    validator={(value) => {
-                                      if (value && value.length > 1000) return 'Notes must be less than 1000 characters';
-                                      return null;
-                                    }}
-                                  />
-                                ) : (
-                                  tournament.notes || 'No notes'
-                                )}
-                              </p>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-                      
-                      <div className="flex items-center space-x-4">
-                        <div className="text-right">
-                          <div className="flex items-center space-x-2 mb-2">
-                            {isAdmin ? (
-                              <EditableSelect
-                                value={tournament.status}
-                                options={statusOptions}
-                                onSave={(value) => updateTournamentField(tournament._id || tournament.id, 'status', value as Tournament['status'])}
-                                required
-                                displayClassName={`px-2 py-1 text-xs font-medium rounded-full ${statusInfo.color}`}
-                              />
-                            ) : (
-                              <span className={`px-2 py-1 text-xs font-medium rounded-full ${statusInfo.color}`}>
-                                {tournament.status}
-                              </span>
-                            )}
-                          </div>
-                          <p className="text-sm text-gray-600">
-                            BOD #{tournament.bodNumber}
-                          </p>
-                        </div>
-                      
-                      <div className="flex flex-col space-y-2">
-                        <Link
-                          to={`/tournaments/${tournament.id || tournament._id}`}
-                          className="btn btn-primary btn-sm"
-                        >
-                          View Details
-                        </Link>
-                        <Link
-                          to={`/tournaments/${tournament.id || tournament._id}/bracket`}
-                          className="btn btn-outline btn-sm"
-                        >
-                          View Bracket
-                        </Link>
-                        {isAdmin && (
-                          <Link
-                            to={`/tournaments/${tournament.id || tournament._id}/manage`}
-                            className="btn btn-secondary btn-sm"
-                          >
-                            Manage Live
-                          </Link>
-                        )}
-                        {isAdmin && (actualStatus === 'scheduled' || actualStatus === 'completed') && (
-                          <button
-                            onClick={() => openDeleteModal(tournament)}
-                            className="btn btn-danger btn-sm"
-                            title={actualStatus === 'scheduled' ? 'Delete scheduled tournament' : 'Delete completed tournament'}
-                          >
-                            Delete
-                          </button>
-                        )}
-                        </div>
-                      </div>
-                    </div>
-                  </Card>
+              <div className="flex-1 p-4 pt-2 sm:p-5 sm:pl-2">
+                <div className="flex justify-between items-start mb-1">
+                  <span className="text-xs font-bold text-primary uppercase tracking-wider">Major Event</span>
                 </div>
-              );
-            })}
-          </div>
-        ) : (
-          <div className="text-center py-12">
-            <div className="w-20 h-20 bg-gradient-to-br from-blue-100 to-purple-100 rounded-full flex items-center justify-center mx-auto mb-6">
-              <span className="text-blue-500 text-3xl">🏆</span>
+                <h3 className="text-lg font-bold text-white mb-1 leading-tight">{`BOD #${liveTournament.bodNumber}`}</h3>
+                <div className="flex items-center text-slate-400 text-xs mb-3 gap-2">
+                  <span className="flex items-center gap-1"><span className="material-symbols-outlined text-[14px]">location_on</span> {liveTournament.location}</span>
+                  <span className="flex items-center gap-1"><span className="material-symbols-outlined text-[14px]">sports_tennis</span> {liveTournament.format}</span>
+                </div>
+
+                <div className="flex items-center justify-between mt-2 pt-3 border-t border-gray-700/50">
+                  <div className="flex -space-x-2">
+                    <div className="h-6 w-6 rounded-full ring-2 ring-[#1c2230] bg-gray-600"></div>
+                    <div className="h-6 w-6 rounded-full ring-2 ring-[#1c2230] bg-gray-500"></div>
+                    <div className="h-6 w-6 rounded-full ring-2 ring-[#1c2230] bg-gray-700 flex items-center justify-center text-[8px] text-white font-bold">+{liveTournament.currentPlayerCount || 10}</div>
+                  </div>
+                  <span className="text-neon-accent text-xs font-bold hover:underline flex items-center gap-1">
+                    Watch Live <span className="material-symbols-outlined" style={{ fontSize: '14px' }}>arrow_forward</span>
+                  </span>
+                </div>
+              </div>
             </div>
-            <h3 className="text-lg font-semibold text-gray-900 mb-2">No tournaments found</h3>
-            <p className="text-gray-500 mb-6">Get started by creating your first tournament</p>
-            <Link to="/tournaments/create" className="btn btn-primary btn-lg">
-              Create Your First Tournament
-            </Link>
+          </Link>
+        )}
+
+        {/* Filtered Lists */}
+        {loading ? (
+          <div className="space-y-4">
+            {[1, 2, 3].map(i => <div key={i} className="h-24 bg-card-dark rounded-xl animate-pulse"></div>)}
+          </div>
+        ) : filteredTournaments.length > 0 ? (
+          filteredTournaments.map(tournament => {
+            const date = new Date(tournament.date);
+            const month = date.toLocaleString('default', { month: 'short' });
+            const day = date.getDate();
+            const status = getTournamentStatus(tournament.date);
+
+            return (
+              <Link key={tournament.id} to={`/tournaments/${tournament.id}`} className="flex flex-col rounded-xl bg-white dark:bg-card-dark p-4 shadow-sm border border-transparent hover:border-white/10 transition-all">
+                <div className="flex gap-4">
+                  {/* Date Box */}
+                  <div className="flex flex-col items-center justify-center h-14 w-14 rounded-lg bg-background-light dark:bg-surface-dark shrink-0 border border-gray-200 dark:border-white/5">
+                    <span className={`text-[10px] font-bold uppercase ${status === 'active' ? 'text-red-500' : 'text-slate-500'}`}>{month}</span>
+                    <span className="text-xl font-bold text-slate-900 dark:text-white leading-none">{day}</span>
+                  </div>
+
+                  <div className="flex-1 min-w-0">
+                    <div className="flex justify-between items-start">
+                      <h3 className="text-base font-bold text-slate-900 dark:text-gray-100 truncate pr-2">{`BOD #${tournament.bodNumber}`}</h3>
+                      <span className={`shrink-0 inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium ring-1 ring-inset ${status === 'active' ? 'bg-primary/10 text-primary ring-primary/20' :
+                        status === 'scheduled' ? 'bg-green-500/10 text-green-500 ring-green-500/20' :
+                          status === 'completed' ? 'bg-gray-500/10 text-gray-400 ring-gray-500/20' :
+                            'bg-blue-500/10 text-blue-400 ring-blue-500/20'
+                        }`}>
+                        {status === 'active' ? 'Live' : status}
+                      </span>
+                    </div>
+                    <p className="text-sm text-slate-500 dark:text-slate-400 mt-0.5 flex items-center gap-1">
+                      {tournament.location} <span className="text-slate-700 dark:text-slate-600">•</span> {tournament.format}
+                    </p>
+                    <div className="mt-2 flex items-center gap-2">
+                      <span className="inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[10px] font-medium bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400">
+                        <span className="material-symbols-outlined text-[12px]">group</span> {tournament.maxPlayers || 16} Players
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="flex flex-col items-end justify-center shrink-0 pl-1">
+                    <span className="material-symbols-outlined text-slate-400 hover:text-white transition-colors">chevron_right</span>
+                  </div>
+                </div>
+              </Link>
+            );
+          })
+        ) : (
+          <div className="flex flex-col items-center justify-center py-16 text-center">
+            <div className="size-16 rounded-full bg-slate-100 dark:bg-card-dark flex items-center justify-center mb-4">
+              <span className="material-symbols-outlined text-slate-400 text-3xl">sports_tennis</span>
+            </div>
+            <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-1">No tournaments found</h3>
+            <p className="text-slate-500 dark:text-slate-400 text-sm mb-4">Try adjusting your filters.</p>
+            <button onClick={() => { setActiveFilter('All'); setSearchTerm(''); }} className="text-primary font-bold text-sm hover:underline">Clear Filters</button>
           </div>
         )}
-      </Card>
 
-      {/* Pagination */}
-      {tournamentsData && 'pagination' in tournamentsData && (tournamentsData as any).pagination && (tournamentsData as any).pagination.pages > 1 && (
-        <div className="flex items-center justify-center space-x-2">
-          <button
-            onClick={() => setPage(page - 1)}
-            disabled={page === 1}
-            className="btn btn-secondary disabled:opacity-50"
-          >
-            Previous
-          </button>
-          
-          <span className="text-sm text-gray-700">
-            Page {page} of {tournamentsData && 'pagination' in tournamentsData && (tournamentsData as any).pagination ? (tournamentsData as any).pagination.pages : 1}
-          </span>
-          
-          <button
-            onClick={() => setPage(page + 1)}
-            disabled={tournamentsData && 'pagination' in tournamentsData ? page === (tournamentsData as any).pagination.pages : true}
-            className="btn btn-secondary disabled:opacity-50"
-          >
-            Next
-          </button>
-        </div>
-      )}
-
-      {/* Delete Confirmation Modal */}
-      <ConfirmationModal
-        isOpen={deleteModal.isOpen}
-        onClose={closeDeleteModal}
-        onConfirm={handleDeleteTournament}
-        title="Delete Tournament"
-        message={
-          deleteModal.tournament
-            ? `Are you sure you want to permanently delete the "${deleteModal.tournament.format}" tournament (BOD #${deleteModal.tournament.bodNumber}) scheduled for ${formatDate(deleteModal.tournament.date)}? This action cannot be undone and will remove all associated data.`
-            : ''
-        }
-        confirmText="Delete Tournament"
-        cancelText="Cancel"
-        isDangerous={true}
-        isLoading={deleteModal.isLoading}
-      />
+      </div>
     </div>
   );
 };

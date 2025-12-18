@@ -69,10 +69,10 @@ const BracketView: React.FC<BracketViewProps> = ({
         key={match._id}
         className={`
           p-3 border rounded-lg cursor-pointer transition-all duration-200
-          ${isActive ? 'border-blue-500 bg-blue-50' : 'border-gray-200 bg-white'}
-          ${isInProgress ? 'border-yellow-500 bg-yellow-50' : ''}
-          ${isCompleted ? 'border-green-500 bg-green-50' : ''}
-          ${editable ? 'hover:border-blue-400 hover:shadow-md' : ''}
+          ${isActive ? 'border-primary bg-primary/5' : 'border-slate-200 dark:border-white/10 bg-white dark:bg-card-dark'}
+          ${isInProgress ? 'border-accent bg-accent/5' : ''}
+          ${isCompleted ? 'border-green-500/50 bg-green-500/5' : ''}
+          ${editable ? 'hover:border-primary/50 hover:shadow-md' : ''}
         `}
         onClick={() => onMatchClick?.(match)}
         title={editable ? 'Click to edit match' : ''}
@@ -80,13 +80,13 @@ const BracketView: React.FC<BracketViewProps> = ({
         <div className="space-y-2">
           {/* Match Header */}
           <div className="flex items-center justify-between">
-            <span className="text-xs font-medium text-gray-600">
+            <span className="text-xs font-medium text-slate-500 dark:text-slate-400">
               Match {match.matchNumber}
             </span>
             <div className="flex items-center space-x-2">
               {isInProgress && (
                 <span className="flex items-center">
-                  <span className="animate-pulse w-2 h-2 bg-yellow-500 rounded-full mr-1"></span>
+                  <span className="animate-pulse w-2 h-2 bg-accent rounded-full mr-1"></span>
                 </span>
               )}
               <span className={`
@@ -97,7 +97,7 @@ const BracketView: React.FC<BracketViewProps> = ({
               `}>
                 {match.status === 'confirmed' ? 'Final' :
                   match.status === 'completed' ? 'Done' :
-                    match.status === 'in_progress' ? '🔴 Live' : 'Scheduled'}
+                    match.status === 'in_progress' ? 'Live' : 'Scheduled'}
               </span>
             </div>
           </div>
@@ -105,9 +105,9 @@ const BracketView: React.FC<BracketViewProps> = ({
           {/* Team 1 */}
           <div className={`
             flex items-center justify-between p-2 rounded
-            ${team1Won ? 'bg-green-100 border border-green-200' : 'bg-gray-50'}
+            ${team1Won ? 'bg-green-500/10 border border-green-500/20' : 'bg-slate-50 dark:bg-black/20'}
           `}>
-            <span className={`text-sm font-medium ${team1Won ? 'text-green-800' : 'text-gray-800'}`}>
+            <span className={`text-sm font-medium ${team1Won ? 'text-green-600 dark:text-green-400' : 'text-slate-800 dark:text-slate-200'}`}>
               {getTeamName(match.team1.teamId, match.team1 as any)}
             </span>
             {showScores && (
@@ -128,9 +128,9 @@ const BracketView: React.FC<BracketViewProps> = ({
           {/* Team 2 */}
           <div className={`
             flex items-center justify-between p-2 rounded
-            ${team2Won ? 'bg-green-100 border border-green-200' : 'bg-gray-50'}
+            ${team2Won ? 'bg-green-500/10 border border-green-500/20' : 'bg-slate-50 dark:bg-black/20'}
           `}>
-            <span className={`text-sm font-medium ${team2Won ? 'text-green-800' : 'text-gray-800'}`}>
+            <span className={`text-sm font-medium ${team2Won ? 'text-green-600 dark:text-green-400' : 'text-slate-800 dark:text-slate-200'}`}>
               {getTeamName(match.team2.teamId, match.team2 as any)}
             </span>
             {showScores && (
@@ -170,7 +170,7 @@ const BracketView: React.FC<BracketViewProps> = ({
       <div className="flex flex-col justify-center h-full px-4">
         {Array.from({ length: Math.floor(matchCount / 2) }).map((_, i) => (
           <div key={i} className="flex-1 flex items-center">
-            <div className="w-8 border-t-2 border-gray-300"></div>
+            <div className="w-8 border-t-2 border-slate-300 dark:border-white/10"></div>
           </div>
         ))}
       </div>
@@ -197,7 +197,7 @@ const BracketView: React.FC<BracketViewProps> = ({
     <div className="space-y-6">
       {/* Bracket Header with Live Stats */}
       <div className="text-center">
-        <h3 className="text-xl font-bold text-gray-900 mb-2">Tournament Bracket</h3>
+        <h3 className="text-xl font-bold text-slate-900 dark:text-white mb-2">Tournament Bracket</h3>
         {currentRound && (
           <div className="space-y-2">
             <p className="text-sm text-gray-600">

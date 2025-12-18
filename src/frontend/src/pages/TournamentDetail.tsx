@@ -1,1037 +1,329 @@
-import React, { useState, useCallback, useEffect } from 'react';
-import { useParams, Link, useLocation } from 'react-router-dom';
-import { useApi } from '../hooks/useApi';
+import React, { useState, useCallback, useMemo } from 'react';
+import { useParams, Link, useNavigate } from 'react-router-dom';
+import { useApi, useMutation } from '../hooks/useApi';
 import { useAuth } from '../contexts/AuthContext';
-import { usePermissions } from '../hooks/usePermissions';
 import apiClient from '../services/api';
-import Card from '../components/ui/Card';
-import LoadingSpinner from '../components/ui/LoadingSpinner';
-import { getTournamentStatus, getStatusDisplayInfo } from '../utils/tournamentStatus';
-import { EditableText, EditableNumber, EditableSelect, EditableDate, EditableCard } from '../components/admin';
+
 import LiveStats from '../components/tournament/LiveStats';
-import type { Tournament, TournamentUpdate } from '../types/api';
+import BracketView from '../components/tournament/BracketView';
+import { getTournamentStatus } from '../utils/tournamentStatus';
+import type { Tournament, Match } from '../types/api';
 
 const TournamentDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
-  const location = useLocation();
+  const navigate = useNavigate();
   const { isAdmin } = useAuth();
-  const { canViewAdmin } = usePermissions();
-  const [activeTab, setActiveTab] = useState<'overview' | 'results' | 'bracket'>('overview');
-  const [tournamentData, setTournamentData] = useState<Tournament | null>(null);
+  const [activeTab, setActiveTab] = useState<'Overview' | 'Matches' | 'Players' | 'Bracket'>('Overview');
 
-  // Tournament format options matching backend schema
-  const formatOptions = [
-    { value: 'M', label: "Men's (Legacy)" },
-    { value: 'W', label: "Women's (Legacy)" },
-    { value: 'Mixed', label: "Mixed (Legacy)" },
-    { value: "Men's Singles", label: "Men's Singles" },
-    { value: "Men's Doubles", label: "Men's Doubles" },
-    { value: "Women's Doubles", label: "Women's Doubles" },
-    { value: "Mixed Doubles", label: "Mixed Doubles" }
-  ];
+  const getTournament = useCallback(() => apiClient.getTournament(id!), [id]);
+  const { data: tournamentWrapper, loading } = useApi(getTournament, { immediate: true });
 
-  // Tournament status options matching backend schema
-  const statusOptions = [
-    { value: 'scheduled', label: 'Scheduled' },
-    { value: 'open', label: 'Open for Registration' },
-    { value: 'active', label: 'In Progress' },
-    { value: 'completed', label: 'Completed' },
-    { value: 'cancelled', label: 'Cancelled' }
-  ];
+  const getMatches = useCallback(() => apiClient.getTournamentMatches(id!), [id]);
+  const { data: matchesWrapper } = useApi(getMatches, { immediate: true });
 
-  // Set initial tab based on URL
-  useEffect(() => {
-    if (location.pathname.includes('/bracket')) {
-      setActiveTab('bracket');
-    } else {
-      setActiveTab('overview');
+  // Delete Mutation
+  const { mutate: deleteTournament, loading: deleteLoading } = useMutation(
+    () => apiClient.deleteTournament(id!),
+    {
+      onSuccess: () => navigate('/tournaments'),
+      onError: (err) => alert(`Failed to delete tournament: ${err}`)
     }
-  }, [location.pathname]);
-
-  const getTournament = useCallback(
-    () => apiClient.getTournament(id!),
-    [id]
   );
 
-  const { data: tournament, loading: tournamentLoading, error: tournamentError, execute: refetchTournament } = useApi(
-    getTournament,
-    { immediate: true }
-  );
-
-  // Update local state when tournament data changes
-  useEffect(() => {
-    console.log('Tournament data received:', tournament);
-    if (tournament) {
-      if ('data' in tournament && tournament.data) {
-        console.log('Setting tournament data from tournament.data:', tournament.data);
-        setTournamentData(tournament.data as Tournament);
-      } else if (tournament.success === false) {
-        console.log('Tournament API returned success=false');
-        setTournamentData(null);
-      } else {
-        console.log('Using tournament directly as data:', tournament);
-        setTournamentData(tournament as any);
-      }
-    } else {
-      console.log('No tournament data received');
-    }
-  }, [tournament]);
-
-  const getResults = useCallback(
-    () => apiClient.getResultsByTournament(id!),
-    [id]
-  );
-
-  const { data: results, loading: resultsLoading } = useApi(
-    getResults,
-    { immediate: true }
-  );
-
-  // Function to update tournament field
-  const updateTournamentField = async <K extends keyof TournamentUpdate>(
-    field: K,
-    value: TournamentUpdate[K]
-  ): Promise<void> => {
-    if (!tournamentData || !id) return;
-
-    try {
-      const updateData: TournamentUpdate = { [field]: value } as TournamentUpdate;
-      const response = await apiClient.updateTournament(id, updateData);
-
-      if (response.success && response.data) {
-        setTournamentData(response.data);
-        // Optionally refetch to ensure consistency
-        // await refetchTournament();
-      }
-    } catch (error) {
-      console.error(`Failed to update ${String(field)}:`, error);
-      throw error;
+  const handleDelete = () => {
+    if (window.confirm('Are you sure you want to delete this tournament? This action cannot be undone.')) {
+      deleteTournament(undefined);
     }
   };
 
-  // Function to update tournament result field
-  const updateTournamentResultField = async (
-    resultId: string,
-    field: string,
-    value: any
-  ): Promise<void> => {
-    try {
-      const updateData = { [field]: value };
-      await apiClient.updateTournamentResult(resultId, updateData);
+  // Helper to safely extract tournament data
+  const tournament = useMemo(() => {
+    if (!tournamentWrapper) return null;
+    if ('data' in tournamentWrapper) return tournamentWrapper.data as Tournament;
+    return tournamentWrapper as unknown as Tournament;
+  }, [tournamentWrapper]);
 
-      // Refetch results to get updated data with recalculated values
-      const resultsResponse = await getResults();
-      console.log('Results updated:', resultsResponse);
-    } catch (error) {
-      console.error(`Failed to update result ${field}:`, error);
-      throw error;
-    }
-  };
+  const matches = useMemo(() => {
+    if (!matchesWrapper) return [];
+    if ('data' in matchesWrapper && Array.isArray(matchesWrapper.data)) return matchesWrapper.data as Match[];
+    return [];
+  }, [matchesWrapper]);
 
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric'
+  const matchesByRound = useMemo(() => {
+    if (!matches.length) return {};
+    const grouped: Record<string, Match[]> = {};
+    matches.forEach(m => {
+      if (!grouped[m.round]) grouped[m.round] = [];
+      grouped[m.round].push(m);
     });
-  };
+    return grouped;
+  }, [matches]);
 
-  const getFormatDisplayName = (format: string) => {
-    if (!format) return '';
-    switch (format.toUpperCase()) {
-      case 'M': return "Men's";
-      case 'W': return "Women's";
-      case 'MIXED': return "Mixed";
-      default: return format;
-    }
-  };
+  const status = tournament ? getTournamentStatus(tournament.date) : 'scheduled';
+  const isLive = status === 'active';
 
-  const getFormatBadgeColor = (format: string) => {
-    switch (format) {
-      case 'M': return 'bg-blue-100 text-blue-800';
-      case 'W': return 'bg-pink-100 text-pink-800';
-      case 'Mixed': return 'bg-green-100 text-green-800';
-      default: return 'bg-gray-100 text-gray-800';
-    }
-  };
-
-  // Debug logging to help diagnose the issue
-  console.log('TournamentDetail Debug:', {
-    id,
-    tournamentLoading,
-    tournamentError,
-    tournament,
-    tournamentData
-  });
-
-  if (tournamentError) {
+  if (loading) {
     return (
-      <div className="text-center py-12">
-        <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
-          <span className="text-red-500 text-2xl">⚠️</span>
+      <div className="flex flex-col h-screen bg-background-dark animate-pulse">
+        <div className="h-64 w-full bg-surface-dark/50"></div>
+        <div className="flex-1 p-6 space-y-4">
+          <div className="h-8 w-1/3 bg-surface-dark/50 rounded"></div>
+          <div className="h-32 bg-surface-dark/50 rounded-xl"></div>
         </div>
-        <h2 className="text-lg font-semibold text-gray-900 mb-2">Error loading tournament</h2>
-        <p className="text-gray-600 mb-4">{tournamentError}</p>
-        <Link to="/tournaments" className="btn btn-primary">
-          Back to Tournaments
-        </Link>
       </div>
     );
   }
 
-  // Show loading state while tournament is being fetched
-  if (tournamentLoading) {
+  if (!tournament) {
+    return <div className="p-10 text-center text-gray-500">Tournament not found</div>;
+  }
+
+  const renderMatchList = () => {
+    if (matches.length === 0) return <div className="text-center py-10 text-gray-500">No matches scheduled yet</div>;
+
+    const roundOrder = ['RR_R1', 'RR_R2', 'RR_R3', 'quarterfinal', 'semifinal', 'final'];
+    const roundNames: Record<string, string> = {
+      'RR_R1': 'Round Robin 1', 'RR_R2': 'Round Robin 2', 'RR_R3': 'Round Robin 3',
+      'quarterfinal': 'Quarter Finals', 'semifinal': 'Semi Finals', 'final': 'Final'
+    };
+
+    // Sort rounds
+    const rounds = Object.keys(matchesByRound).sort((a, b) => roundOrder.indexOf(a) - roundOrder.indexOf(b));
+
     return (
-      <div className="flex items-center justify-center min-h-96">
-        <LoadingSpinner size="lg" />
-        <span className="ml-3 text-gray-500">Loading tournament...</span>
+      <div className="space-y-6">
+        {rounds.map(round => (
+          <div key={round} className="space-y-3">
+            <div className="flex items-center gap-2">
+              <div className="h-px bg-white/10 flex-1"></div>
+              <h4 className="text-slate-400 font-bold uppercase text-xs tracking-wider">{roundNames[round] || round}</h4>
+              <div className="h-px bg-white/10 flex-1"></div>
+            </div>
+
+            {matchesByRound[round].map(match => (
+              <div key={match.id} className="bg-surface-dark rounded-xl p-4 border border-white/5 flex flex-col gap-3 shadow-lg">
+                {/* Meta Header */}
+                <div className="flex items-center justify-between text-[10px] text-slate-500 uppercase tracking-wider font-bold">
+                  <span>Match {match.matchNumber}</span>
+                  <span className={match.status === 'completed' ? 'text-green-500' : 'text-blue-500'}>{match.status}</span>
+                </div>
+
+                {/* Teams & Scores */}
+                <div className="flex flex-col gap-3">
+                  {/* Team 1 */}
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      {/* Avatar placeholder */}
+                      <div className={`size-8 rounded-full border border-white/5 flex items-center justify-center text-xs font-bold ${match.team1.score && match.team2.score && match.team1.score > match.team2.score ? 'bg-primary text-white' : 'bg-gray-800 text-gray-400'}`}>
+                        {match.team1.teamName?.[0]}
+                      </div>
+                      <span className={`text-base ${match.team1.score && match.team2.score && match.team1.score > match.team2.score ? 'text-white font-bold' : 'text-slate-400 font-medium'}`}>{match.team1.teamName}</span>
+                    </div>
+                    <span className={`text-lg font-mono ${match.team1.score && match.team2.score && match.team1.score > match.team2.score ? 'text-primary font-bold' : 'text-slate-500'}`}>{match.team1.score}</span>
+                  </div>
+
+                  {/* Divider */}
+                  <div className="h-px bg-white/5 w-full"></div>
+
+                  {/* Team 2 */}
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className={`size-8 rounded-full border border-white/5 flex items-center justify-center text-xs font-bold ${match.team2.score && match.team1.score && match.team2.score > match.team1.score ? 'bg-primary text-white' : 'bg-gray-800 text-gray-400'}`}>
+                        {match.team2.teamName?.[0]}
+                      </div>
+                      <span className={`text-base ${match.team2.score && match.team1.score && match.team2.score > match.team1.score ? 'text-white font-bold' : 'text-slate-400 font-medium'}`}>{match.team2.teamName}</span>
+                    </div>
+                    <span className={`text-lg font-mono ${match.team2.score && match.team1.score && match.team2.score > match.team1.score ? 'text-primary font-bold' : 'text-slate-500'}`}>{match.team2.score}</span>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        ))}
       </div>
     );
-  }
-
-  // Show not found if loading is complete but no data exists
-  if (!tournamentData) {
-    return (
-      <div className="text-center py-12">
-        <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
-          <span className="text-gray-400 text-2xl">🏆</span>
-        </div>
-        <h2 className="text-lg font-semibold text-gray-900 mb-2">Tournament not found</h2>
-        <p className="text-gray-600 mb-4">The requested tournament could not be found.</p>
-        <p className="text-xs text-gray-400 mb-4">Debug: Loading={String(tournamentLoading)}, Error={tournamentError || 'none'}, ID={id}</p>
-        <Link to="/tournaments" className="btn btn-primary">
-          Back to Tournaments
-        </Link>
-      </div>
-    );
-  }
-
-  const actualStatus = getTournamentStatus(tournamentData.date);
-  const statusInfo = getStatusDisplayInfo(actualStatus);
+  };
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-start justify-between">
-        <div className="flex items-center space-x-4">
-          <div className="w-16 h-16 bg-primary-100 rounded-lg flex items-center justify-center flex-shrink-0">
-            <span className="text-primary-600 font-bold text-xl">
-              #{tournamentData.bodNumber}
+    <div className="flex flex-col bg-background-dark min-h-screen pb-20">
+
+      {/* Hero Header */}
+      <div className="relative h-[300px] w-full bg-surface-dark overflow-hidden shrink-0">
+        <div
+          className="absolute inset-0 bg-cover bg-center opacity-60 mix-blend-overlay"
+          style={{ backgroundImage: 'url("https://lh3.googleusercontent.com/aida-public/AB6AXuArfVEx5fb164F7A5wImLDhdzfcSW6LnHlwPVwOrKjRtLggvCj1itnaz5XN7nguDVCtG-LIKOmQulidI4n8ALkhyEmAG1WYypbKjBR8KWR6SihPLdXTyQ6OVw2NM56nRlyL--H7QHfytRz4iv9oUd7UwpBJCICbEYfvaVsubL9Qu-PN1eg_0DlZqGLQWLtSp2YbjgvUmr-s78-PTfyVElfYP0csdy5hZELB8ii7cq42JsinCdWrqMiKi_dP9NWOKWtbx6ksXq8z4ZI")' }}
+        ></div>
+        <div className="absolute inset-0 bg-gradient-to-t from-background-dark via-transparent to-black/60"></div>
+
+        {/* Navigation Bar inside Hero */}
+        <div className="absolute top-0 left-0 right-0 p-4 flex items-center justify-between z-20">
+          <Link to="/tournaments" className="size-10 rounded-full bg-black/20 backdrop-blur-md text-white flex items-center justify-center hover:bg-white/20 transition-all">
+            <span className="material-symbols-outlined">arrow_back</span>
+          </Link>
+          <div className="flex gap-2">
+            <button className="size-10 rounded-full bg-black/20 backdrop-blur-md text-white flex items-center justify-center hover:bg-white/20 transition-all">
+              <span className="material-symbols-outlined">share</span>
+            </button>
+            {isAdmin && (
+              <>
+                <button
+                  onClick={handleDelete}
+                  className="size-10 rounded-full bg-red-500/80 backdrop-blur-md text-white flex items-center justify-center hover:bg-red-600 transition-all shadow-lg shadow-red-500/20"
+                  title="Delete Tournament"
+                >
+                  <span className="material-symbols-outlined">delete</span>
+                </button>
+                <Link to={`/tournaments/${tournament.id}/edit`} className="size-10 rounded-full bg-white/10 backdrop-blur-md text-white flex items-center justify-center hover:bg-white/20 transition-all">
+                  <span className="material-symbols-outlined">edit</span>
+                </Link>
+                <Link to={`/tournaments/${tournament.id}/manage`} className="size-10 rounded-full bg-primary/80 backdrop-blur-md text-white flex items-center justify-center hover:bg-primary transition-all shadow-lg shadow-primary/20">
+                  <span className="material-symbols-outlined">settings</span>
+                </Link>
+              </>
+            )}
+          </div>
+        </div>
+
+        {/* Tournament Info */}
+        <div className="absolute bottom-0 left-0 right-0 p-6 flex flex-col gap-2 z-10">
+          <div className="flex items-center gap-2 mb-1">
+            {isLive && (
+              <span className="px-2.5 py-1 rounded bg-accent text-black text-[10px] font-bold uppercase tracking-wider animate-pulse shadow-[0_0_10px_rgba(204,255,0,0.4)]">
+                Live Now
+              </span>
+            )}
+            <span className="px-2.5 py-1 rounded bg-white/10 backdrop-blur-md text-white border border-white/10 text-[10px] font-bold uppercase tracking-wider">
+              {tournament.format}
             </span>
           </div>
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900">{tournamentData.name || `${getFormatDisplayName(tournamentData.format)} Tournament`}</h1>
-            <div className="flex items-center space-x-3 text-gray-600 mt-1">
-              <span className={`px-2 py-1 text-xs font-medium rounded-full ${getFormatBadgeColor(tournamentData.format)}`}>
-                {getFormatDisplayName(tournamentData.format)}
-              </span>
-              <span>•</span>
-              <span className={`px-2 py-1 text-xs font-medium rounded-full ${statusInfo.color}`}>
-                {statusInfo.label}
-              </span>
-              <span>•</span>
-              <span>{tournamentData.location}</span>
-              <span>•</span>
-              <span>{formatDate(tournamentData.date)}</span>
-            </div>
+          <h1 className="text-3xl md:text-4xl font-bold text-white leading-none shadow-black drop-shadow-lg">
+            {`BOD Tournament #${tournament.bodNumber}`}
+          </h1>
+          <div className="flex items-center gap-4 text-white/80 text-sm font-medium mt-1">
+            <span className="flex items-center gap-1.5 backdrop-blur-sm bg-black/20 px-2 py-0.5 rounded-lg">
+              <span className="material-symbols-outlined text-[16px]">location_on</span> {tournament.location}
+            </span>
+            <span className="flex items-center gap-1.5 backdrop-blur-sm bg-black/20 px-2 py-0.5 rounded-lg">
+              <span className="material-symbols-outlined text-[16px]">calendar_today</span> {new Date(tournament.date).toLocaleDateString()}
+            </span>
           </div>
         </div>
-        <div className="flex items-center space-x-3">
-          {canViewAdmin && (
-            <div className="flex items-center space-x-2">
-              <Link
-                to={`/tournaments/${id}/manage`}
-                className="btn btn-secondary btn-sm"
-              >
-                Manage Live Tournament
-              </Link>
-              <Link
-                to="/admin"
-                className="text-sm text-blue-600 hover:text-blue-800 px-3 py-1 border border-blue-200 rounded-md hover:bg-blue-50"
-              >
-                Admin Dashboard
-              </Link>
-              <Link
-                to="/admin/users"
-                className="text-sm text-gray-600 hover:text-gray-800 px-3 py-1 border border-gray-200 rounded-md hover:bg-gray-50"
-              >
-                Manage Users
-              </Link>
-            </div>
-          )}
-          <Link to="/tournaments" className="btn btn-outline">
-            Back to Tournaments
-          </Link>
+      </div>
+
+      {/* Content Container */}
+      <div className="flex-1 -mt-6 rounded-t-3xl bg-background-dark relative z-10 overflow-hidden flex flex-col">
+
+        {/* Stats Grid */}
+        <div className="grid grid-cols-2 gap-3 p-6 pb-2">
+          <div className="p-4 rounded-2xl bg-[#1c2230] border border-white/5 flex flex-col items-center justify-center gap-1 shadow-lg">
+            <span className="text-3xl font-bold text-white">{tournament.players?.length || 0}</span>
+            <span className="text-[10px] text-slate-400 uppercase tracking-wider font-bold">Players</span>
+          </div>
+          <div className="p-4 rounded-2xl bg-[#1c2230] border border-white/5 flex flex-col items-center justify-center gap-1 shadow-lg">
+            <span className="text-3xl font-bold text-primary">{tournament.maxPlayers || '-'}</span>
+            <span className="text-[10px] text-slate-400 uppercase tracking-wider font-bold">Capacity</span>
+          </div>
         </div>
-      </div>
 
-      {/* Tabs */}
-      <div className="border-b border-gray-200">
-        <nav className="-mb-px flex space-x-8">
-          {[
-            { key: 'overview', label: 'Overview' },
-            { key: 'results', label: 'Results' },
-            { key: 'bracket', label: 'Bracket' }
-          ].map((tab) => (
-            <button
-              key={tab.key}
-              onClick={() => setActiveTab(tab.key as any)}
-              className={`py-2 px-1 border-b-2 font-medium text-sm ${activeTab === tab.key
-                  ? 'border-primary-500 text-primary-600'
-                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                }`}
-            >
-              {tab.label}
-            </button>
-          ))}
-        </nav>
-      </div>
+        {/* Tabs */}
+        <div className="px-6 border-b border-white/5">
+          <div className="flex gap-6 overflow-x-auto no-scrollbar">
+            {['Overview', 'Matches', 'Players', 'Bracket'].map((tab) => (
+              <button
+                key={tab}
+                onClick={() => setActiveTab(tab as any)}
+                className={`pb-4 text-sm font-bold relative shrink-0 transition-colors ${activeTab === tab ? 'text-primary' : 'text-slate-500 hover:text-slate-300'
+                  }`}
+              >
+                {tab}
+                {activeTab === tab && (
+                  <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary rounded-t-full shadow-[0_-2px_10px_rgba(16,77,198,0.5)]"></div>
+                )}
+              </button>
+            ))}
+          </div>
+        </div>
 
-      {/* Tab Content */}
-      {activeTab === 'overview' && (
-        <div className="space-y-6">
-          {/* Live Tournament Statistics - show for active tournaments */}
-          {(actualStatus === 'in-progress' || tournamentData.status === 'in_progress') && (
-            <LiveStats
-              tournamentId={id!}
-              refreshInterval={20000}
-              compact={false}
-              bracketType={tournamentData.bracketType as any}
-            />
-          )}
-          {/* Final Standings */}
-          <Card>
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">Final Standings</h3>
-            <div className="flex justify-center items-end space-x-4 md:space-x-8 pt-4">
-              {/* Second Place */}
-              {(() => {
-                const secondPlace = ((results as any)?.results || []).find((r: any) => r.totalStats?.bodFinish === 2);
-                return secondPlace ? (
-                  <div className="text-center">
-                    <div className="w-24 h-20 bg-gray-200 rounded-t-lg flex items-center justify-center mb-2">
-                      <span className="text-4xl">🥈</span>
-                    </div>
-                    <div className="font-bold text-gray-800">{secondPlace.teamName}</div>
-                    <div className="text-sm text-gray-600">2nd Place</div>
-                  </div>
-                ) : <div className="w-24" />;
-              })()}
-
-              {/* First Place */}
-              {(() => {
-                const firstPlace = ((results as any)?.results || []).find((r: any) => r.totalStats?.bodFinish === 1);
-                return firstPlace ? (
-                  <div className="text-center">
-                    <div className="w-28 h-24 bg-yellow-300 rounded-t-lg flex items-center justify-center mb-2">
-                      <span className="text-5xl">🏆</span>
-                    </div>
-                    <div className="font-bold text-gray-800">{firstPlace.teamName}</div>
-                    <div className="text-sm text-gray-600">Champion</div>
-                  </div>
-                ) : <div className="w-28" />;
-              })()}
-
-              {/* Third Place */}
-              {(() => {
-                const thirdPlace = ((results as any)?.results || []).find((r: any) => r.totalStats?.bodFinish === 3);
-                return thirdPlace ? (
-                  <div className="text-center">
-                    <div className="w-24 h-16 bg-orange-300 rounded-t-lg flex items-center justify-center mb-2">
-                      <span className="text-4xl">🥉</span>
-                    </div>
-                    <div className="font-bold text-gray-800">{thirdPlace.teamName}</div>
-                    <div className="text-sm text-gray-600">3rd Place</div>
-                  </div>
-                ) : <div className="w-24" />;
-              })()}
-            </div>
-          </Card>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {/* Tournament Info */}
-            <div className="md:col-span-2">
-              <EditableCard title="Tournament Information" showEditButton={false}>
+        {/* Tab Content Area */}
+        <div className="flex-1 p-6">
+          {activeTab === 'Overview' && (
+            <div className="space-y-6">
+              {/* About Section */}
+              <div className="bg-[#1c2230] rounded-2xl p-6 border border-white/5 shadow-lg">
+                <h3 className="text-white font-bold text-lg mb-3">Tournament Details</h3>
                 <div className="space-y-4">
-                  {/* Basic Tournament Fields */}
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                      <label className="text-sm font-semibold text-gray-700 block mb-1">Date</label>
-                      <EditableDate
-                        value={tournamentData.date}
-                        onSave={(value) => updateTournamentField('date', value)}
-                        required
-                        displayClassName="text-gray-900"
-                      />
-                    </div>
-                    <div>
-                      <label className="text-sm font-semibold text-gray-700 block mb-1">BOD Number</label>
-                      <EditableNumber
-                        value={tournamentData.bodNumber}
-                        onSave={(value) => updateTournamentField('bodNumber', value)}
-                        required
-                        min={1}
-                        integer
-                        displayClassName="text-gray-900"
-                      />
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                      <label className="text-sm font-semibold text-gray-700 block mb-1">Format</label>
-                      <EditableSelect
-                        value={tournamentData.format}
-                        options={formatOptions}
-                        onSave={(value) => updateTournamentField('format', value as Tournament['format'])}
-                        required
-                        displayClassName="text-gray-900"
-                      />
-                    </div>
-                    <div>
-                      <label className="text-sm font-semibold text-gray-700 block mb-1">Status</label>
-                      <EditableSelect
-                        value={tournamentData.status}
-                        options={statusOptions}
-                        onSave={(value) => updateTournamentField('status', value as Tournament['status'])}
-                        required
-                        displayClassName="text-gray-900"
-                      />
-                    </div>
-                  </div>
-
                   <div>
-                    <label className="text-sm font-semibold text-gray-700 block mb-1">Location</label>
-                    <EditableText
-                      value={tournamentData.location}
-                      onSave={(value) => updateTournamentField('location', value)}
-                      required
-                      displayClassName="text-gray-900"
-                      validator={(value) => {
-                        if (value.length < 2) return 'Location must be at least 2 characters';
-                        if (value.length > 100) return 'Location must be less than 100 characters';
-                        return null;
-                      }}
-                    />
+                    <span className="text-[10px] text-slate-500 uppercase tracking-wider font-bold block mb-1">Description</span>
+                    <p className="text-slate-300 text-sm leading-relaxed">
+                      {tournament.notes || "No specific notes provided for this tournament."}
+                    </p>
                   </div>
-
+                  <div className="h-px bg-white/5"></div>
                   <div>
-                    <label className="text-sm font-semibold text-gray-700 block mb-1">Max Players</label>
-                    <EditableNumber
-                      value={tournamentData.maxPlayers}
-                      onSave={(value) => updateTournamentField('maxPlayers', value)}
-                      min={2}
-                      max={64}
-                      integer
-                      displayClassName="text-gray-900"
-                      placeholder="Not set"
-                      validator={(value) => {
-                        // Must be a power of 2 for bracket tournaments
-                        if (value && !Number.isInteger(Math.log2(value))) {
-                          return 'Maximum players must be a power of 2 (2, 4, 8, 16, 32, 64)';
-                        }
-                        return null;
-                      }}
-                    />
-                  </div>
-
-                  <div>
-                    <label className="text-sm font-semibold text-gray-700 block mb-1">Advancement Criteria</label>
-                    <EditableText
-                      value={tournamentData.advancementCriteria}
-                      onSave={(value) => updateTournamentField('advancementCriteria', value)}
-                      required
-                      multiline
-                      displayClassName="text-gray-900"
-                      validator={(value) => {
-                        if (value.length < 5) return 'Advancement criteria must be at least 5 characters';
-                        if (value.length > 500) return 'Advancement criteria must be less than 500 characters';
-                        return null;
-                      }}
-                    />
-                  </div>
-
-                  <div>
-                    <label className="text-sm font-semibold text-gray-700 block mb-1">Notes</label>
-                    <EditableText
-                      value={tournamentData.notes || ''}
-                      onSave={(value) => updateTournamentField('notes', value || undefined)}
-                      multiline
-                      displayClassName="text-gray-900"
-                      placeholder="No notes"
-                      validator={(value) => {
-                        if (value && value.length > 1000) return 'Notes must be less than 1000 characters';
-                        return null;
-                      }}
-                    />
-                  </div>
-
-                  <div>
-                    <label className="text-sm font-semibold text-gray-700 block mb-1">Photo Albums URL</label>
-                    <EditableText
-                      value={tournamentData.photoAlbums || ''}
-                      onSave={(value) => updateTournamentField('photoAlbums', value || undefined)}
-                      displayClassName="text-gray-900"
-                      placeholder="No photo album"
-                      validator={(value) => {
-                        if (value) {
-                          const urlRegex = /^(https?:\/\/)?([\da-z\.-]+)\.([a-z\.]{2,6})([\/\w \.-]*)*\/?$/;
-                          if (!urlRegex.test(value)) {
-                            return 'Please enter a valid URL';
-                          }
-                        }
-                        return null;
-                      }}
-                    />
-                    {tournamentData.photoAlbums && (
-                      <a
-                        href={tournamentData.photoAlbums}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="btn btn-primary btn-sm mt-2"
-                      >
-                        View Photo Album
-                      </a>
-                    )}
+                    <span className="text-[10px] text-slate-500 uppercase tracking-wider font-bold block mb-1">Rules</span>
+                    <p className="text-slate-300 text-sm leading-relaxed">
+                      {tournament.advancementCriteria || "Standard tournament rules apply."}
+                    </p>
                   </div>
                 </div>
-              </EditableCard>
-            </div>
-            {/* Quick Stats */}
-            <div className="space-y-4">
-              <Card>
-                <h3 className="text-lg font-semibold text-gray-900 mb-4">Quick Stats</h3>
-                <div className="space-y-3">
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">Status</span>
-                    <span className="font-medium text-green-600">
-                      {actualStatus === 'completed' ? 'Completed' :
-                        actualStatus === 'active' ? 'In Progress' :
-                          actualStatus === 'upcoming' ? 'Upcoming' : 'Scheduled'}
-                    </span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">Teams</span>
-                    <span className="font-medium">
-                      {(results as any)?.results?.length || tournamentData?.generatedTeams?.length || 0}
-                    </span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">Players</span>
-                    <span className="font-medium">
-                      {tournamentData?.players?.length || 0}
-                    </span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">Total Games Played</span>
-                    <span className="font-medium">
-                      {((results as any)?.results || []).reduce((sum: number, r: any) => sum + (r.totalStats?.totalPlayed || 0), 0)}
-                    </span>
-                  </div>
-                </div>
-              </Card>
+              </div>
 
-              {/* Selected Players */}
-              {tournamentData?.players && tournamentData.players.length > 0 && (
-                <Card>
-                  <h3 className="text-lg font-semibold text-gray-900 mb-4">Selected Players</h3>
-                  <div className="text-sm text-gray-600 mb-3">
-                    {tournamentData.players.length} players selected for this tournament
+              {/* Live Section Placeholders */}
+              {isLive && (
+                <div className="bg-gradient-to-br from-primary/10 to-primary/5 rounded-2xl p-6 border border-primary/20">
+                  <div className="flex items-center gap-2 mb-3">
+                    <span className="material-symbols-outlined text-primary">live_tv</span>
+                    <h3 className="text-white font-bold">Live Coverage</h3>
                   </div>
-                  <div className="max-h-32 overflow-y-auto">
-                    <div className="text-sm text-gray-700 space-y-1">
-                      {/* Note: Player names would be populated from the API when players are populated */}
-                      <div className="text-xs text-gray-500">
-                        Player details will be shown when the tournament loads with populated player data
-                      </div>
-                    </div>
-                  </div>
-                </Card>
+                  <LiveStats tournamentId={id!} refreshInterval={30000} compact={true} />
+                </div>
               )}
             </div>
-          </div>
-        </div>
-      )}
-
-      {activeTab === 'results' && (
-        <div className="space-y-6">
-          {/* Tournament Summary */}
-          {results && (results as any).results && (
-            <Card>
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">Tournament Summary</h3>
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                <div className="text-center">
-                  <div className="text-2xl font-bold text-gray-900">{(results as any).results.length}</div>
-                  <div className="text-sm text-gray-600">Teams</div>
-                </div>
-                <div className="text-center">
-                  <div className="text-2xl font-bold text-yellow-600">
-                    {(results as any).results.filter((r: any) => r.totalStats?.bodFinish === 1).length}
-                  </div>
-                  <div className="text-sm text-gray-600">Champions</div>
-                </div>
-                <div className="text-center">
-                  <div className="text-2xl font-bold text-blue-600">
-                    {(results as any).results.reduce((sum: number, r: any) => sum + (r.totalStats?.totalWon || 0), 0)}
-                  </div>
-                  <div className="text-sm text-gray-600">Total Games Won</div>
-                </div>
-                <div className="text-center">
-                  <div className="text-2xl font-bold text-gray-600">
-                    {(results as any).results.reduce((sum: number, r: any) => sum + (r.totalStats?.totalPlayed || 0), 0)}
-                  </div>
-                  <div className="text-sm text-gray-600">Total Games Played</div>
-                </div>
-              </div>
-            </Card>
           )}
 
-          {/* Results Table */}
-          <Card>
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">Tournament Results</h3>
-            {resultsLoading ? (
-              <div className="flex items-center justify-center py-8">
-                <LoadingSpinner size="md" />
-                <span className="ml-2 text-gray-500">Loading results...</span>
-              </div>
-            ) : results && (results as any).results && (results as any).results.length > 0 ? (
-              <div className="overflow-x-auto">
-                <table className="min-w-full divide-y divide-gray-200">
-                  <thead className="bg-gray-50">
-                    <tr>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Rank</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Team</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Division</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Seed</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">RR Record</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Bracket Record</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Total Record</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Win %</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Grade</th>
-                    </tr>
-                  </thead>
-                  <tbody className="bg-white divide-y divide-gray-200">
-                    {((results as any).results as any[]).sort((a, b) => (a.totalStats?.bodFinish || 999) - (b.totalStats?.bodFinish || 999)).map((result) => (
-                      <tr key={result.id} className="hover:bg-gray-50">
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="flex items-center">
-                            <span className="font-medium text-gray-900">#</span>
-                            <EditableNumber
-                              value={result.totalStats?.bodFinish}
-                              onSave={(value) => updateTournamentResultField(result.id, 'totalStats.bodFinish', value)}
-                              min={1}
-                              integer
-                              placeholder="N/A"
-                              className="ml-1"
-                              displayClassName="font-medium text-gray-900"
-                            />
-                            {result.totalStats?.bodFinish === 1 && <span className="ml-2">🏆</span>}
-                            {result.totalStats?.bodFinish === 2 && <span className="ml-2">🥈</span>}
-                            {result.totalStats?.bodFinish === 3 && <span className="ml-2">🥉</span>}
-                          </div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="font-medium text-gray-900">{result.teamName}</div>
-                          <div className="text-sm text-gray-500">
-                            {result.players?.map((player: any, index: number) => (
-                              <React.Fragment key={player._id}>
-                                <Link to={`/players/${player._id}`} className="hover:text-primary-600 hover:underline">
-                                  {player.name}
-                                </Link>
-                                {index < result.players.length - 1 && ' & '}
-                              </React.Fragment>
-                            ))}
-                          </div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <EditableText
-                            value={result.division || ''}
-                            onSave={(value) => updateTournamentResultField(result.id, 'division', value || undefined)}
-                            placeholder="N/A"
-                            displayClassName="px-2 py-1 text-xs font-medium bg-blue-100 text-blue-800 rounded-full"
-                            validator={(value) => {
-                              if (value && value.length > 10) return 'Division must be 10 characters or less';
-                              return null;
-                            }}
-                          />
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                          <span>#</span>
-                          <EditableNumber
-                            value={result.seed}
-                            onSave={(value) => updateTournamentResultField(result.id, 'seed', value)}
-                            min={1}
-                            integer
-                            placeholder="N/A"
-                            className="ml-1"
-                            displayClassName="text-gray-900"
-                          />
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                          <div className="flex flex-col space-y-1">
-                            <div className="flex items-center space-x-1">
-                              <EditableNumber
-                                value={result.roundRobinScores?.rrWon}
-                                onSave={(value) => updateTournamentResultField(result.id, 'roundRobinScores.rrWon', value)}
-                                min={0}
-                                integer
-                                placeholder="0"
-                                displayClassName="font-medium"
-                              />
-                              <span>-</span>
-                              <EditableNumber
-                                value={result.roundRobinScores?.rrLost}
-                                onSave={(value) => updateTournamentResultField(result.id, 'roundRobinScores.rrLost', value)}
-                                min={0}
-                                integer
-                                placeholder="0"
-                                displayClassName="font-medium"
-                              />
-                            </div>
-                            <span className="text-xs text-gray-500">
-                              ({((result.roundRobinScores?.rrWinPercentage || 0) * 100).toFixed(1)}%)
-                            </span>
-                          </div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                          <div className="flex flex-col space-y-1">
-                            <div className="flex items-center space-x-1">
-                              <EditableNumber
-                                value={result.bracketScores?.bracketWon}
-                                onSave={(value) => updateTournamentResultField(result.id, 'bracketScores.bracketWon', value)}
-                                min={0}
-                                integer
-                                placeholder="0"
-                                displayClassName="font-medium"
-                              />
-                              <span>-</span>
-                              <EditableNumber
-                                value={result.bracketScores?.bracketLost}
-                                onSave={(value) => updateTournamentResultField(result.id, 'bracketScores.bracketLost', value)}
-                                min={0}
-                                integer
-                                placeholder="0"
-                                displayClassName="font-medium"
-                              />
-                            </div>
-                            <span className="text-xs text-gray-500">
-                              ({result.bracketScores?.bracketPlayed || 0} games)
-                            </span>
-                          </div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="flex flex-col">
-                            <span className="font-medium text-gray-900">
-                              {result.totalStats?.totalWon || 0}-{result.totalStats?.totalLost || 0}
-                            </span>
-                            <span className="text-xs text-gray-500">
-                              ({result.totalStats?.totalPlayed || 0} games)
-                            </span>
-                          </div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <span className="font-medium text-gray-900">
-                            {result.totalStats?.totalPlayed > 0 ?
-                              ((result.totalStats?.totalWon / result.totalStats?.totalPlayed) * 100).toFixed(1) + '%' :
-                              '0%'
-                            }
-                          </span>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <span className={`px-2 py-1 text-xs font-medium rounded-full ${result.performanceGrade === 'A' ? 'bg-green-100 text-green-800' :
-                              result.performanceGrade === 'B' ? 'bg-blue-100 text-blue-800' :
-                                result.performanceGrade === 'C' ? 'bg-yellow-100 text-yellow-800' :
-                                  result.performanceGrade === 'D' ? 'bg-orange-100 text-orange-800' :
-                                    'bg-red-100 text-red-800'
-                            }`}>
-                            {result.performanceGrade || 'N/A'}
-                          </span>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            ) : (
-              <div className="text-center py-8">
-                <p className="text-gray-500">No results found for this tournament</p>
-              </div>
-            )}
-          </Card>
-        </div>
-      )}
+          {activeTab === 'Matches' && renderMatchList()}
 
-      {activeTab === 'bracket' && (
-        <div className="space-y-6">
-          {/* Tournament Setup Information */}
-          {tournamentData?.generatedTeams && tournamentData.generatedTeams.length > 0 && (
-            <Card>
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">Tournament Setup</h3>
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                {/* Tournament Configuration */}
-                <div>
-                  <h4 className="text-md font-semibold text-gray-900 mb-3">Configuration</h4>
-                  <div className="space-y-2 text-sm">
-                    <div className="flex justify-between">
-                      <span className="text-gray-600">Max Players:</span>
-                      <span className="font-medium">{tournamentData.maxPlayers}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-gray-600">Selected Players:</span>
-                      <span className="font-medium">{tournamentData.players?.length || 0}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-gray-600">Generated Teams:</span>
-                      <span className="font-medium">{tournamentData.generatedTeams?.length || 0}</span>
-                    </div>
-                    {tournamentData.bracketType && (
-                      <div className="flex justify-between">
-                        <span className="text-gray-600">Bracket Type:</span>
-                        <span className="font-medium capitalize">{tournamentData.bracketType.replace('_', ' ')}</span>
+          {activeTab === 'Players' && (
+            <div className="space-y-3">
+              {tournament.players?.length ? (
+                tournament.players.map((player: any) => (
+                  <Link to={`/players/${player._id}`} key={player._id} className="flex items-center justify-between p-3 rounded-xl bg-[#1c2230] border border-white/5 hover:border-white/10 transition-all group">
+                    <div className="flex items-center gap-4">
+                      <div className="size-10 rounded-full bg-gray-700 flex items-center justify-center text-white font-bold text-xs ring-2 ring-transparent group-hover:ring-primary transition-all">
+                        {player.name?.[0]}
                       </div>
-                    )}
-                    {tournamentData.seedingConfig && (
-                      <div className="flex justify-between">
-                        <span className="text-gray-600">Seeding Method:</span>
-                        <span className="font-medium capitalize">{tournamentData.seedingConfig.method.replace('_', ' ')}</span>
+                      <div>
+                        <p className="text-white font-bold text-sm group-hover:text-primary transition-colors">{player.name}</p>
+                        <p className="text-xs text-slate-500">Seed #{player.seed || '-'}</p>
                       </div>
-                    )}
-                    {tournamentData.teamFormationConfig && (
-                      <div className="flex justify-between">
-                        <span className="text-gray-600">Team Formation:</span>
-                        <span className="font-medium capitalize">{tournamentData.teamFormationConfig.method.replace('_', ' ')}</span>
-                      </div>
-                    )}
-                  </div>
-                </div>
-
-                {/* Generated Teams */}
-                <div>
-                  <h4 className="text-md font-semibold text-gray-900 mb-3">Generated Teams</h4>
-                  <div className="space-y-2 max-h-48 overflow-y-auto">
-                    {tournamentData.generatedTeams.map((team: any, index: number) => (
-                      <div key={team.teamId} className="p-3 bg-gray-50 rounded-lg">
-                        <div className="flex items-center justify-between mb-1">
-                          <span className="font-medium text-sm">Team #{index + 1}</span>
-                          <span className="text-xs text-gray-500">Seed #{team.combinedSeed}</span>
-                        </div>
-                        <div className="text-sm text-gray-700 mb-1">{team.teamName}</div>
-                        <div className="text-xs text-gray-600">
-                          Win%: {(team.combinedStatistics.combinedWinPercentage * 100).toFixed(1)}% |
-                          Avg Finish: {team.combinedStatistics.avgFinish.toFixed(1)} |
-                          BODs: {team.combinedStatistics.combinedBodsPlayed}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            </Card>
-          )}
-
-          {/* Player Seeds */}
-          {tournamentData?.generatedSeeds && tournamentData.generatedSeeds.length > 0 && (
-            <Card>
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">Player Seeds</h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 max-h-64 overflow-y-auto">
-                {tournamentData.generatedSeeds.map((seed: any) => (
-                  <div key={seed.playerId} className="p-3 bg-gray-50 rounded-lg">
-                    <div className="flex items-center justify-between mb-1">
-                      <span className="font-medium text-sm">#{seed.seed}</span>
-                      <span className="text-xs text-gray-500">
-                        {(seed.statistics.winningPercentage * 100).toFixed(1)}%
-                      </span>
                     </div>
-                    <div className="text-sm font-medium text-gray-900">{seed.playerName}</div>
-                    <div className="text-xs text-gray-600">
-                      Avg: {seed.statistics.avgFinish.toFixed(1)} |
-                      BODs: {seed.statistics.bodsPlayed} |
-                      Champ: {seed.statistics.totalChampionships}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </Card>
-          )}
-
-          {/* Bracket Header */}
-          <Card>
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">Tournament Bracket</h3>
-            {results && (results as any).results ? (
-              <div className="text-sm text-gray-600 mb-4">
-                Showing bracket progression for {(results as any).results.length} teams
-              </div>
-            ) : tournamentData?.generatedTeams && tournamentData.generatedTeams.length > 0 ? (
-              <div className="text-sm text-gray-600 mb-4">
-                Tournament ready with {tournamentData.generatedTeams.length} teams. Start tournament to see live bracket progression.
-              </div>
-            ) : null}
-          </Card>
-
-          {/* Bracket Visualization */}
-          {results && (results as any).results && (results as any).results.length > 0 ? (
-            <div className="space-y-6">
-              {/* Bracket Rounds */}
-              <Card>
-                <h4 className="text-md font-semibold text-gray-900 mb-4">Bracket Results</h4>
-                <div className="overflow-x-auto">
-                  <table className="min-w-full divide-y divide-gray-200">
-                    <thead className="bg-gray-50">
-                      <tr>
-                        <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Team</th>
-                        <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">R16</th>
-                        <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">QF</th>
-                        <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">SF</th>
-                        <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Finals</th>
-                        <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Result</th>
-                      </tr>
-                    </thead>
-                    <tbody className="bg-white divide-y divide-gray-200">
-                      {((results as any).results as any[])
-                        .sort((a, b) => (a.totalStats?.bodFinish || 999) - (b.totalStats?.bodFinish || 999))
-                        .filter(result => (result.bracketScores?.bracketPlayed || 0) > 0)
-                        .map((result) => (
-                          <tr key={result.id} className="hover:bg-gray-50">
-                            <td className="px-4 py-2 whitespace-nowrap">
-                              <div className="flex items-center">
-                                <span className="font-medium text-sm">{result.teamName}</span>
-                                {result.totalStats?.bodFinish === 1 && <span className="ml-2">🏆</span>}
-                                {result.totalStats?.bodFinish === 2 && <span className="ml-2">🥈</span>}
-                                {result.totalStats?.bodFinish === 3 && <span className="ml-2">🥉</span>}
-                              </div>
-                            </td>
-                            <td className="px-4 py-2 whitespace-nowrap text-sm">
-                              {(result.bracketScores?.r16Won || 0) > 0 || (result.bracketScores?.r16Lost || 0) > 0 ? (
-                                <div className="flex items-center space-x-1">
-                                  <EditableNumber
-                                    value={result.bracketScores?.r16Won}
-                                    onSave={(value) => updateTournamentResultField(result.id, 'bracketScores.r16Won', value)}
-                                    min={0}
-                                    integer
-                                    placeholder="0"
-                                    displayClassName={result.bracketScores.r16Won > result.bracketScores.r16Lost ? 'text-green-600 font-medium' : 'text-red-600'}
-                                  />
-                                  <span>-</span>
-                                  <EditableNumber
-                                    value={result.bracketScores?.r16Lost}
-                                    onSave={(value) => updateTournamentResultField(result.id, 'bracketScores.r16Lost', value)}
-                                    min={0}
-                                    integer
-                                    placeholder="0"
-                                    displayClassName={result.bracketScores.r16Won > result.bracketScores.r16Lost ? 'text-green-600 font-medium' : 'text-red-600'}
-                                  />
-                                </div>
-                              ) : (
-                                <span className="text-gray-400">-</span>
-                              )}
-                            </td>
-                            <td className="px-4 py-2 whitespace-nowrap text-sm">
-                              {(result.bracketScores?.qfWon || 0) > 0 || (result.bracketScores?.qfLost || 0) > 0 ? (
-                                <div className="flex items-center space-x-1">
-                                  <EditableNumber
-                                    value={result.bracketScores?.qfWon}
-                                    onSave={(value) => updateTournamentResultField(result.id, 'bracketScores.qfWon', value)}
-                                    min={0}
-                                    integer
-                                    placeholder="0"
-                                    displayClassName={result.bracketScores.qfWon > result.bracketScores.qfLost ? 'text-green-600 font-medium' : 'text-red-600'}
-                                  />
-                                  <span>-</span>
-                                  <EditableNumber
-                                    value={result.bracketScores?.qfLost}
-                                    onSave={(value) => updateTournamentResultField(result.id, 'bracketScores.qfLost', value)}
-                                    min={0}
-                                    integer
-                                    placeholder="0"
-                                    displayClassName={result.bracketScores.qfWon > result.bracketScores.qfLost ? 'text-green-600 font-medium' : 'text-red-600'}
-                                  />
-                                </div>
-                              ) : (
-                                <span className="text-gray-400">-</span>
-                              )}
-                            </td>
-                            <td className="px-4 py-2 whitespace-nowrap text-sm">
-                              {(result.bracketScores?.sfWon || 0) > 0 || (result.bracketScores?.sfLost || 0) > 0 ? (
-                                <div className="flex items-center space-x-1">
-                                  <EditableNumber
-                                    value={result.bracketScores?.sfWon}
-                                    onSave={(value) => updateTournamentResultField(result.id, 'bracketScores.sfWon', value)}
-                                    min={0}
-                                    integer
-                                    placeholder="0"
-                                    displayClassName={result.bracketScores.sfWon > result.bracketScores.sfLost ? 'text-green-600 font-medium' : 'text-red-600'}
-                                  />
-                                  <span>-</span>
-                                  <EditableNumber
-                                    value={result.bracketScores?.sfLost}
-                                    onSave={(value) => updateTournamentResultField(result.id, 'bracketScores.sfLost', value)}
-                                    min={0}
-                                    integer
-                                    placeholder="0"
-                                    displayClassName={result.bracketScores.sfWon > result.bracketScores.sfLost ? 'text-green-600 font-medium' : 'text-red-600'}
-                                  />
-                                </div>
-                              ) : (
-                                <span className="text-gray-400">-</span>
-                              )}
-                            </td>
-                            <td className="px-4 py-2 whitespace-nowrap text-sm">
-                              {(result.bracketScores?.finalsWon || 0) > 0 || (result.bracketScores?.finalsLost || 0) > 0 ? (
-                                <div className="flex items-center space-x-1">
-                                  <EditableNumber
-                                    value={result.bracketScores?.finalsWon}
-                                    onSave={(value) => updateTournamentResultField(result.id, 'bracketScores.finalsWon', value)}
-                                    min={0}
-                                    integer
-                                    placeholder="0"
-                                    displayClassName={result.bracketScores.finalsWon > result.bracketScores.finalsLost ? 'text-green-600 font-medium' : 'text-red-600'}
-                                  />
-                                  <span>-</span>
-                                  <EditableNumber
-                                    value={result.bracketScores?.finalsLost}
-                                    onSave={(value) => updateTournamentResultField(result.id, 'bracketScores.finalsLost', value)}
-                                    min={0}
-                                    integer
-                                    placeholder="0"
-                                    displayClassName={result.bracketScores.finalsWon > result.bracketScores.finalsLost ? 'text-green-600 font-medium' : 'text-red-600'}
-                                  />
-                                </div>
-                              ) : (
-                                <span className="text-gray-400">-</span>
-                              )}
-                            </td>
-                            <td className="px-4 py-2 whitespace-nowrap">
-                              <div className="flex items-center">
-                                <span className="font-medium text-sm">#{result.totalStats?.bodFinish}</span>
-                                <span className={`ml-2 px-2 py-1 text-xs font-medium rounded-full ${result.performanceGrade === 'A' ? 'bg-green-100 text-green-800' :
-                                    result.performanceGrade === 'B' ? 'bg-blue-100 text-blue-800' :
-                                      result.performanceGrade === 'C' ? 'bg-yellow-100 text-yellow-800' :
-                                        result.performanceGrade === 'D' ? 'bg-orange-100 text-orange-800' :
-                                          'bg-red-100 text-red-800'
-                                  }`}>
-                                  {result.performanceGrade || 'F'}
-                                </span>
-                              </div>
-                            </td>
-                          </tr>
-                        ))}
-                    </tbody>
-                  </table>
-                </div>
-              </Card>
-
+                    <span className="material-symbols-outlined text-slate-600 group-hover:text-white transition-colors">chevron_right</span>
+                  </Link>
+                ))
+              ) : (
+                <div className="text-center py-10 text-slate-500">No registered players</div>
+              )}
             </div>
-          ) : (
-            <Card>
-              <div className="text-center py-8">
-                <p className="text-gray-500">No bracket data available for this tournament</p>
-                <p className="text-sm text-gray-400 mt-2">
-                  Check the Results tab to see team performance data
-                </p>
-              </div>
-            </Card>
+          )}
+
+          {activeTab === 'Bracket' && (
+            <div className="bg-[#1c2230] rounded-2xl border border-white/5 p-4 overflow-hidden">
+              {matches.length > 0 ? (
+                <div className="overflow-x-auto">
+                  <BracketView matches={matches} teams={[]} currentRound={isLive ? 'semifinal' : undefined} />
+                </div>
+              ) : (
+                <div className="flex flex-col items-center justify-center py-12 text-slate-500">
+                  <span className="material-symbols-outlined text-4xl mb-2 opacity-30">account_tree</span>
+                  <p className="text-sm">Bracket pending generation</p>
+                </div>
+              )}
+            </div>
           )}
         </div>
-      )}
+
+      </div>
+
     </div>
   );
 };

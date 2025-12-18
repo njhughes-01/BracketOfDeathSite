@@ -14,7 +14,13 @@
     "lint:fix": "eslint src/**/*.ts --fix",
     "typecheck": "tsc --noEmit"
   },
-  "keywords": ["tennis", "tournament", "api", "nodejs", "mongodb"],
+  "keywords": [
+    "tennis",
+    "tournament",
+    "api",
+    "nodejs",
+    "mongodb"
+  ],
   "author": "Bracket of Death",
   "license": "MIT",
   "dependencies": {
@@ -56,8 +62,14 @@
   "jest": {
     "preset": "ts-jest",
     "testEnvironment": "node",
-    "roots": ["<rootDir>/src", "<rootDir>/tests"],
-    "testMatch": ["**/__tests__/**/*.ts", "**/?(*.)+(spec|test).ts"],
+    "roots": [
+      "<rootDir>",
+      "<rootDir>/tests"
+    ],
+    "testMatch": [
+      "**/__tests__/**/*.ts",
+      "**/?(*.)+(spec|test).ts"
+    ],
     "collectCoverageFrom": [
       "src/**/*.ts",
       "!src/**/*.d.ts",

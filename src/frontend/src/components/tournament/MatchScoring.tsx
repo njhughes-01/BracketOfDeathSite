@@ -275,15 +275,15 @@ const MatchScoring: React.FC<MatchScoringProps> = ({ match, onUpdateMatch, compa
         </div>
 
         {showDetailedScoring && (
-          <div className="mt-3 p-3 bg-gray-50 rounded-lg space-y-3">
-            <h4 className="text-sm font-medium text-gray-700">Individual Player Scores</h4>
+          <div className="mt-3 p-3 bg-black/20 rounded-lg space-y-3 border border-white/5">
+            <h4 className="text-sm font-medium text-slate-300">Individual Player Scores</h4>
 
             {/* Team 1 Players */}
             <div>
-              <p className="text-xs font-medium text-gray-600 mb-1">{getTeamName(match.team1)}</p>
+              <p className="text-xs font-medium text-slate-500 mb-1">{getTeamName(match.team1)}</p>
               {team1PlayerScores.map((player, index) => (
                 <div key={player.playerId} className="flex items-center justify-between py-1">
-                  <span className="text-xs">{player.playerName}</span>
+                  <span className="text-xs text-slate-300">{player.playerName}</span>
                   <input
                     type="number"
                     min={0}
@@ -294,7 +294,7 @@ const MatchScoring: React.FC<MatchScoringProps> = ({ match, onUpdateMatch, compa
                       updatePlayerScore(1, index, v);
                     }}
                     onKeyDown={(e) => { if (e.key === 'Enter') { immediateCommitPlayerScores(); (e.target as HTMLInputElement).blur(); } }}
-                    className="w-12 text-sm font-medium text-center border border-gray-300 rounded px-1 py-0.5 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    className="w-12 text-sm font-medium text-center bg-background-dark border border-white/10 rounded px-1 py-0.5 text-white focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary"
                   />
                 </div>
               ))}
@@ -302,10 +302,10 @@ const MatchScoring: React.FC<MatchScoringProps> = ({ match, onUpdateMatch, compa
 
             {/* Team 2 Players */}
             <div>
-              <p className="text-xs font-medium text-gray-600 mb-1">{getTeamName(match.team2)}</p>
+              <p className="text-xs font-medium text-slate-500 mb-1">{getTeamName(match.team2)}</p>
               {team2PlayerScores.map((player, index) => (
                 <div key={player.playerId} className="flex items-center justify-between py-1">
-                  <span className="text-xs">{player.playerName}</span>
+                  <span className="text-xs text-slate-300">{player.playerName}</span>
                   <input
                     type="number"
                     min={0}
@@ -316,7 +316,7 @@ const MatchScoring: React.FC<MatchScoringProps> = ({ match, onUpdateMatch, compa
                       updatePlayerScore(2, index, v);
                     }}
                     onKeyDown={(e) => { if (e.key === 'Enter') { immediateCommitPlayerScores(); (e.target as HTMLInputElement).blur(); } }}
-                    className="w-12 text-sm font-medium text-center border border-gray-300 rounded px-1 py-0.5 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    className="w-12 text-sm font-medium text-center bg-background-dark border border-white/10 rounded px-1 py-0.5 text-white focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary"
                   />
                 </div>
               ))}
@@ -435,37 +435,37 @@ const MatchScoring: React.FC<MatchScoringProps> = ({ match, onUpdateMatch, compa
   return (
     <div className="space-y-4">
       {/* Team Totals */}
-      <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+      <div className="flex items-center justify-between p-3 bg-black/20 rounded-lg border border-white/5">
         <div className="text-center">
-          <p className="text-sm font-medium text-gray-700 flex items-center space-x-2">
+          <p className="text-sm font-medium text-slate-300 flex items-center space-x-2">
             <span>{getTeamName(match.team1)}</span>
             {(match.status === 'completed' || match.status === 'confirmed') && winningSide === 'team1' && (
-              <span className="px-1 py-0.5 text-[10px] rounded bg-green-100 text-green-700">Winner</span>
+              <span className="px-1 py-0.5 text-[10px] rounded bg-green-500/20 text-green-500">Winner</span>
             )}
           </p>
-          <p className="text-2xl font-bold text-blue-600">{team1Total}</p>
+          <p className="text-2xl font-bold text-primary">{team1Total}</p>
         </div>
-        <div className="text-gray-400 font-bold">VS</div>
+        <div className="text-slate-600 font-bold">VS</div>
         <div className="text-center">
-          <p className="text-sm font-medium text-gray-700 flex items-center space-x-2">
+          <p className="text-sm font-medium text-slate-300 flex items-center space-x-2">
             <span>{getTeamName(match.team2)}</span>
             {(match.status === 'completed' || match.status === 'confirmed') && winningSide === 'team2' && (
-              <span className="px-1 py-0.5 text-[10px] rounded bg-green-100 text-green-700">Winner</span>
+              <span className="px-1 py-0.5 text-[10px] rounded bg-green-500/20 text-green-500">Winner</span>
             )}
           </p>
-          <p className="text-2xl font-bold text-blue-600">{team2Total}</p>
+          <p className="text-2xl font-bold text-primary">{team2Total}</p>
         </div>
       </div>
 
       {/* Individual Player Scoring */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {/* Team 1 */}
-        <div className="border rounded-lg p-3">
-          <h4 className="font-medium text-gray-700 mb-3">{match.team1.teamName} Players</h4>
+        <div className="border border-white/10 rounded-lg p-3 bg-black/20">
+          <h4 className="font-medium text-slate-300 mb-3">{match.team1.teamName} Players</h4>
           <div className="space-y-2">
             {team1PlayerScores.map((player, index) => (
               <div key={player.playerId} className="flex items-center justify-between">
-                <span className="text-sm">{player.playerName}</span>
+                <span className="text-sm text-slate-400">{player.playerName}</span>
                 <input
                   type="number"
                   min={0}
@@ -476,7 +476,7 @@ const MatchScoring: React.FC<MatchScoringProps> = ({ match, onUpdateMatch, compa
                     updatePlayerScore(1, index, v);
                   }}
                   onKeyDown={(e) => { if (e.key === 'Enter') { immediateCommitPlayerScores(); (e.target as HTMLInputElement).blur(); } }}
-                  className="w-14 text-lg font-medium text-blue-600 text-center border border-gray-300 rounded px-1 py-0.5 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  className="w-14 text-lg font-medium text-white text-center bg-background-dark border border-white/10 rounded px-1 py-0.5 focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary"
                 />
               </div>
             ))}
@@ -484,12 +484,12 @@ const MatchScoring: React.FC<MatchScoringProps> = ({ match, onUpdateMatch, compa
         </div>
 
         {/* Team 2 */}
-        <div className="border rounded-lg p-3">
-          <h4 className="font-medium text-gray-700 mb-3">{match.team2.teamName} Players</h4>
+        <div className="border border-white/10 rounded-lg p-3 bg-black/20">
+          <h4 className="font-medium text-slate-300 mb-3">{match.team2.teamName} Players</h4>
           <div className="space-y-2">
             {team2PlayerScores.map((player, index) => (
               <div key={player.playerId} className="flex items-center justify-between">
-                <span className="text-sm">{player.playerName}</span>
+                <span className="text-sm text-slate-400">{player.playerName}</span>
                 <input
                   type="number"
                   min={0}
@@ -500,7 +500,7 @@ const MatchScoring: React.FC<MatchScoringProps> = ({ match, onUpdateMatch, compa
                     updatePlayerScore(2, index, v);
                   }}
                   onKeyDown={(e) => { if (e.key === 'Enter') { immediateCommitPlayerScores(); (e.target as HTMLInputElement).blur(); } }}
-                  className="w-14 text-lg font-medium text-blue-600 text-center border border-gray-300 rounded px-1 py-0.5 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  className="w-14 text-lg font-medium text-white text-center bg-background-dark border border-white/10 rounded px-1 py-0.5 focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary"
                 />
               </div>
             ))}
@@ -560,24 +560,24 @@ const MatchScoring: React.FC<MatchScoringProps> = ({ match, onUpdateMatch, compa
 
       {/* Admin Override Dialog */}
       {showOverrideDialog && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg shadow-xl p-6 max-w-md w-full mx-4">
-            <h3 className="text-lg font-bold text-gray-900 mb-2">Admin Override Required</h3>
-            <p className="text-sm text-gray-700 mb-4">
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50">
+          <div className="bg-surface-dark border border-white/10 rounded-xl shadow-2xl p-6 max-w-md w-full mx-4">
+            <h3 className="text-lg font-bold text-white mb-2">Admin Override Required</h3>
+            <p className="text-sm text-red-400 mb-4 bg-red-500/10 p-3 rounded-lg border border-red-500/20">
               {scoreValidation.reason}
             </p>
-            <p className="text-sm text-gray-600 mb-4">
+            <p className="text-sm text-slate-400 mb-4">
               This score doesn't follow standard tennis rules. Please provide a reason for completing this match with a non-standard score.
             </p>
             <div className="mb-4">
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="block text-sm font-medium text-slate-300 mb-2">
                 Reason for Override:
               </label>
               <textarea
                 value={overrideReason}
                 onChange={(e) => setOverrideReason(e.target.value)}
                 placeholder="e.g., Retire due to injury"
-                className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                className="w-full bg-background-dark border border-white/10 rounded px-3 py-2 text-sm text-white focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary placeholder:text-slate-600"
                 rows={3}
                 autoFocus
               />
@@ -588,7 +588,7 @@ const MatchScoring: React.FC<MatchScoringProps> = ({ match, onUpdateMatch, compa
                   setShowOverrideDialog(false);
                   setOverrideReason('');
                 }}
-                className="btn btn-sm btn-secondary"
+                className="btn btn-sm btn-ghost text-slate-400 hover:text-white"
               >
                 Cancel
               </button>

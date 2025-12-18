@@ -1,11 +1,10 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { useParams, useNavigate, useLocation } from 'react-router-dom';
-import { useApi } from '../hooks/useApi';
+import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
+import { useParams, useNavigate, useLocation, Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import apiClient from '../services/api';
-import Card from '../components/ui/Card';
+// import Card from '../components/ui/Card'; // Replaced
 import LoadingSpinner from '../components/ui/LoadingSpinner';
-import { EditableCard, EditableNumber } from '../components/admin';
+// import { EditableCard, EditableNumber } from '../components/admin'; // Replaced
 import BracketView from '../components/tournament/BracketView';
 import LiveStats from '../components/tournament/LiveStats';
 import MatchScoring from '../components/tournament/MatchScoring';
@@ -16,8 +15,7 @@ import type {
   LiveTournament,
   Match,
   TournamentAction,
-  MatchUpdate,
-  TournamentResult
+  MatchUpdate
 } from '../types/api';
 
 const TournamentManage: React.FC = () => {
@@ -26,7 +24,7 @@ const TournamentManage: React.FC = () => {
   const location = useLocation();
   const { isAdmin } = useAuth();
 
-  // Helpers for persistence (declare before useState)
+  // Helpers for persistence
   function storageKey(suffix: string) { return `tm:${id}:${suffix}`; }
   function persistSelectedRound(round: string) { try { localStorage.setItem(storageKey('selectedRound'), round); } catch { } }
   function readPersistedRound(): string | null { try { return localStorage.getItem(storageKey('selectedRound')); } catch { return null; } }
@@ -46,7 +44,7 @@ const TournamentManage: React.FC = () => {
   const initializedRoundRef = useRef(false);
 
   // Deduplicate matches by stable key to avoid duplicates in UI
-  const uniqueMatches = React.useMemo(() => {
+  const uniqueMatches = useMemo(() => {
     const seen = new Set<string>();
     const result: Match[] = [] as any;
     for (const m of currentMatches) {
@@ -69,16 +67,15 @@ const TournamentManage: React.FC = () => {
         setLiveTournament(response.data);
         const bt = (response.data as LiveTournament).bracketType;
         // Determine selected round priority:
-        // URL param > server managementState > persisted > phase.currentRound > default
         const params = new URLSearchParams(location.search);
         const urlRound = params.get('round') || '';
         const options = getRoundOptions(bt).map(o => o.value);
         let nextRound = response.data.phase.currentRound || getDefaultRoundFor(bt);
         const serverRound = (response.data as any).managementState?.currentRound as string | undefined;
-        if (serverRound && options.includes(serverRound)) nextRound = serverRound;
-        if (urlRound && options.includes(urlRound)) nextRound = urlRound;
+        if (serverRound && options.includes(serverRound)) nextRound = serverRound as any;
+        if (urlRound && options.includes(urlRound)) nextRound = urlRound as any;
         const persisted = readPersistedRound();
-        if (!urlRound && persisted && options.includes(persisted)) nextRound = persisted;
+        if (!urlRound && persisted && options.includes(persisted)) nextRound = persisted as any;
         setSelectedRound(nextRound);
         initializedRoundRef.current = true;
 
@@ -96,7 +93,7 @@ const TournamentManage: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  }, [id]);
+  }, [id, location.search]);
 
   useEffect(() => {
     let pollInterval: any;
@@ -106,32 +103,6 @@ const TournamentManage: React.FC = () => {
     if (id && typeof window !== 'undefined') {
       const es = new EventSource(`/api/tournaments/${id}/stream`);
       eventSourceRef.current = es;
-
-      const handleSnapshot = (event: MessageEvent) => {
-        try {
-          const payload = JSON.parse(event.data);
-          const live = (payload?.data as any) ?? (payload?.live as any) ?? null;
-          if (live) {
-            const liveData = live as LiveTournament;
-            setLiveTournament(liveData);
-            const bt = liveData.bracketType;
-            const options = getRoundOptions(bt).map(o => o.value);
-            let round = selectedRound;
-            if (!initializedRoundRef.current) {
-              round = liveData.phase.currentRound || getDefaultRoundFor(bt);
-              initializedRoundRef.current = true;
-              setSelectedRound(round);
-            } else if (!options.includes(round)) {
-              round = getDefaultRoundFor(bt);
-              setSelectedRound(round);
-            }
-            const matches = (liveData.matches || []).filter((m: any) => m.round === round);
-            setCurrentMatches(matches);
-          }
-        } catch (e) {
-          // ignore parse errors
-        }
-      };
 
       const handleUpdate = (event: MessageEvent) => {
         try {
@@ -143,14 +114,18 @@ const TournamentManage: React.FC = () => {
             const bt = liveData.bracketType;
             const options = getRoundOptions(bt).map(o => o.value);
             let round = selectedRound;
+
+            // Should we switch round? Only if not initialized or actively following
             if (!initializedRoundRef.current) {
               round = liveData.phase.currentRound || getDefaultRoundFor(bt);
               initializedRoundRef.current = true;
               setSelectedRound(round);
             } else if (!options.includes(round)) {
+              // Current selected round is invalid for this tournament type? (unlikely but safe)
               round = getDefaultRoundFor(bt);
               setSelectedRound(round);
             }
+
             const matches = (liveData.matches || []).filter((m: any) => m.round === round);
             setCurrentMatches(matches);
           } else {
@@ -164,7 +139,8 @@ const TournamentManage: React.FC = () => {
 
       es.addEventListener('open', () => { streamConnectedRef.current = true; });
       es.addEventListener('error', () => { streamConnectedRef.current = false; });
-      es.addEventListener('snapshot', handleSnapshot as any);
+      // Listen for both snapshot and update (snapshot logic is similar to update usually)
+      es.addEventListener('snapshot', handleUpdate as any);
       es.addEventListener('update', handleUpdate as any);
 
       // Poll as a safety net if stream drops
@@ -181,7 +157,7 @@ const TournamentManage: React.FC = () => {
     }
 
     return () => { if (pollInterval) clearInterval(pollInterval); };
-  }, [id, loadTournamentData]);
+  }, [id, loadTournamentData, selectedRound]);
 
   // Execute tournament action
   const executeTournamentAction = async (action: TournamentAction) => {
@@ -209,18 +185,13 @@ const TournamentManage: React.FC = () => {
       setLoading(true);
       const response = await apiClient.updateMatch(matchUpdate);
       if (response.success) {
-        // Refresh current matches
+        // We will get update via SSE, but also manually refresh for immediate feedback
         if (liveTournament?.phase.currentRound) {
-          const matchesResponse = await apiClient.getTournamentMatches(id!, liveTournament.phase.currentRound);
-          if (matchesResponse.success && matchesResponse.data) {
-            setCurrentMatches(matchesResponse.data);
-          }
+          // Optimistically or explicitly refresh
+          await loadTournamentData();
         }
-        // Refresh tournament data for standings update
-        await loadTournamentData();
       }
     } catch (err: any) {
-      // Surface backend validation errors to the user
       const backendMsg = err?.response?.data?.error || err?.response?.data?.message || err?.message;
       setError(backendMsg ? `Failed to update match: ${backendMsg}` : 'Failed to update match score');
       console.error('Update match error:', err?.response?.data || err);
@@ -247,21 +218,19 @@ const TournamentManage: React.FC = () => {
     }
   };
 
-  // Removed explicit starting; completing a match via scores is the primary action.
-
   // Batch: confirm all completed (not yet confirmed)
   const confirmAllCompletedInRound = async () => {
     if (!currentMatches || currentMatches.length === 0) return;
     try {
       setLoading(true);
       const completed = currentMatches.filter(m => (m.status as any) === 'completed');
-      for (const m of completed) {
-        await apiClient.updateMatch({
-          matchId: (m._id || (m as any).id) as string,
-          status: 'confirmed',
-        });
+      if (completed.length === 0) return;
+
+      const response = await apiClient.confirmCompletedMatches(id!);
+      if (response.success && response.data) {
+        // Refresh data
+        await loadTournamentData();
       }
-      await loadTournamentData();
     } catch (err) {
       setError('Failed to confirm all completed matches');
       console.error(err);
@@ -273,7 +242,6 @@ const TournamentManage: React.FC = () => {
   // Check in team
   const checkInTeam = async (teamId: string, present: boolean) => {
     if (!id) return;
-
     try {
       const response = await apiClient.checkInTeam(id, teamId, present);
       if (response.success && response.data) {
@@ -288,12 +256,12 @@ const TournamentManage: React.FC = () => {
   // Get phase display info
   const getPhaseDisplayInfo = (phase: string) => {
     const phaseMap = {
-      'setup': { label: 'Setup', color: 'bg-gray-100 text-gray-800', icon: '⚙️' },
-      'registration': { label: 'Registration Open', color: 'bg-blue-100 text-blue-800', icon: '📝' },
-      'check_in': { label: 'Check-In', color: 'bg-yellow-100 text-yellow-800', icon: '✅' },
-      'round_robin': { label: 'Round Robin', color: 'bg-orange-100 text-orange-800', icon: '🔄' },
-      'bracket': { label: 'Bracket Play', color: 'bg-red-100 text-red-800', icon: '🏆' },
-      'completed': { label: 'Completed', color: 'bg-green-100 text-green-800', icon: '🎉' }
+      'setup': { label: 'Setup', color: 'bg-gray-700 text-gray-300', icon: 'settings' },
+      'registration': { label: 'Registration Open', color: 'bg-blue-500/20 text-blue-400 border border-blue-500/50', icon: 'app_registration' },
+      'check_in': { label: 'Check-In', color: 'bg-yellow-500/20 text-yellow-500 border border-yellow-500/50', icon: 'check_circle' },
+      'round_robin': { label: 'Round Robin', color: 'bg-orange-500/20 text-orange-400 border border-orange-500/50', icon: 'sync' },
+      'bracket': { label: 'Bracket Play', color: 'bg-purple-500/20 text-purple-400 border border-purple-500/50', icon: 'emoji_events' },
+      'completed': { label: 'Completed', color: 'bg-green-500/20 text-green-400 border border-green-500/50', icon: 'celebration' }
     };
     return phaseMap[phase as keyof typeof phaseMap] || phaseMap.setup;
   };
@@ -307,42 +275,37 @@ const TournamentManage: React.FC = () => {
       'quarterfinal': 'Quarterfinals',
       'semifinal': 'Semifinals',
       'final': 'Final',
-      'lbr-round-1': 'Losers R1',
-      'lbr-round-2': 'Losers R2',
-      'lbr-quarterfinal': 'Losers Quarterfinal',
-      'lbr-semifinal': 'Losers Semifinal',
-      'lbr-final': 'Losers Final',
-      'grand-final': 'Grand Final'
     };
-    return roundMap[round] || round;
+    return roundMap[round] || round.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
   };
 
   if (!isAdmin) {
     return (
-      <div className="text-center py-12">
-        <h2 className="text-lg font-semibold text-gray-900 mb-2">Access Denied</h2>
-        <p className="text-gray-600 mb-4">You need admin privileges to manage tournaments.</p>
+      <div className="flex flex-col items-center justify-center min-h-screen bg-background-dark text-center px-4">
+        <span className="material-symbols-outlined text-red-500 text-5xl mb-4">lock</span>
+        <h2 className="text-xl font-bold text-white mb-2">Access Denied</h2>
+        <p className="text-slate-400 mb-6">You need admin privileges to manage tournaments.</p>
+        <Link to="/tournaments" className="btn btn-primary">Back to Tournaments</Link>
       </div>
     );
   }
 
   if (loading && !liveTournament) {
     return (
-      <div className="flex items-center justify-center min-h-96">
+      <div className="flex flex-col items-center justify-center min-h-screen bg-background-dark">
         <LoadingSpinner size="lg" />
-        <span className="ml-3 text-gray-500">Loading tournament...</span>
+        <span className="mt-4 text-slate-500 animate-pulse">Loading tournament data...</span>
       </div>
     );
   }
 
   if (!liveTournament) {
     return (
-      <div className="text-center py-12">
-        <h2 className="text-lg font-semibold text-gray-900 mb-2">Tournament Not Found</h2>
-        <p className="text-gray-600 mb-4">Could not load tournament management data.</p>
-        <button onClick={() => navigate('/tournaments')} className="btn btn-primary">
-          Back to Tournaments
-        </button>
+      <div className="flex flex-col items-center justify-center min-h-screen bg-background-dark text-center px-4">
+        <span className="material-symbols-outlined text-slate-500 text-5xl mb-4">error</span>
+        <h2 className="text-xl font-bold text-white mb-2">Tournament Not Found</h2>
+        <p className="text-slate-400 mb-6">Could not load tournament management data.</p>
+        <Link to="/tournaments" className="btn btn-primary">Back to Tournaments</Link>
       </div>
     );
   }
@@ -350,315 +313,180 @@ const TournamentManage: React.FC = () => {
   const phaseInfo = getPhaseDisplayInfo(liveTournament.phase.phase);
 
   return (
-    <div className="space-y-6">
+    <div className="min-h-screen bg-background-dark text-white pb-20">
+
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <div className="flex items-center space-x-3">
-            <h1 className="text-2xl font-bold text-gray-900">Tournament Management</h1>
-            <span className={`px-3 py-1 text-sm font-medium rounded-full ${phaseInfo.color}`}>
-              {phaseInfo.icon} {phaseInfo.label}
-            </span>
+      <div className="sticky top-0 z-20 bg-background-dark/95 backdrop-blur-md border-b border-white/10 px-4 py-3">
+        <div className="flex items-center justify-between gap-4">
+          <div className="min-w-0">
+            <div className="flex items-center gap-3">
+              <h1 className="text-lg font-bold truncate">{`BOD #${liveTournament.bodNumber}`}</h1>
+              <div className={`px-2 py-0.5 rounded-full text-[10px] uppercase font-bold flex items-center gap-1 ${phaseInfo.color}`}>
+                <span className="material-symbols-outlined text-[12px]">{phaseInfo.icon}</span>
+                {phaseInfo.label}
+              </div>
+            </div>
+            <div className="text-xs text-slate-400 flex items-center gap-2 mt-0.5">
+              <span>{new Date(liveTournament.date).toLocaleDateString()}</span>
+              <span>•</span>
+              <span>{liveTournament.location}</span>
+            </div>
           </div>
-          <p className="text-gray-600 mt-1">
-            {liveTournament.location} • {new Date(liveTournament.date).toLocaleDateString()} • BOD #{liveTournament.bodNumber}
-          </p>
-          {liveTournament.phase.currentRound && (
-            <p className="text-sm text-gray-500">
-              Current: {getRoundDisplayInfo(liveTournament.phase.currentRound)}
-              ({liveTournament.phase.completedMatches}/{liveTournament.phase.totalMatches} matches completed)
-            </p>
-          )}
+
+          <div className="flex items-center gap-2">
+            <Link to={`/tournaments/${id}`} className="size-9 rounded-full bg-white/5 flex items-center justify-center hover:bg-white/10 transition-colors" title="View Public Page">
+              <span className="material-symbols-outlined text-white text-[20px]">visibility</span>
+            </Link>
+            <Link to="/tournaments" className="size-9 rounded-full bg-white/5 flex items-center justify-center hover:bg-white/10 transition-colors" title="Back to List">
+              <span className="material-symbols-outlined text-white text-[20px]">close</span>
+            </Link>
+          </div>
         </div>
-        <div className="flex items-center space-x-2">
-          <button
-            onClick={() => navigate(`/tournaments/${id}`)}
-            className="btn btn-outline btn-sm"
-          >
-            View Details
-          </button>
-          <button
-            onClick={() => navigate('/tournaments')}
-            className="btn btn-secondary btn-sm"
-          >
-            Back to List
-          </button>
-        </div>
+
+        {/* Phase Progress Bar for Current Phase */}
+        {liveTournament.phase.currentRound && (
+          <div className="mt-3">
+            <div className="flex justify-between text-[10px] text-slate-500 uppercase font-bold mb-1">
+              <span>{getRoundDisplayInfo(liveTournament.phase.currentRound)}</span>
+              <span>{liveTournament.phase.completedMatches}/{liveTournament.phase.totalMatches} Matches</span>
+            </div>
+            <div className="h-1 bg-white/5 rounded-full overflow-hidden">
+              <div className="h-full bg-primary transition-all duration-500" style={{ width: `${(liveTournament.phase.completedMatches / Math.max(1, liveTournament.phase.totalMatches)) * 100}%` }}></div>
+            </div>
+          </div>
+        )}
       </div>
 
-      {/* Error Display */}
-      {error && (
-        <div className="bg-red-50 border border-red-200 rounded-md p-4">
-          <div className="flex items-center">
-            <span className="text-red-500 text-xl mr-2">⚠️</span>
-            <div>
-              <h3 className="text-sm font-medium text-red-800">Error</h3>
-              <p className="text-sm text-red-700">{error}</p>
-            </div>
-            <button
-              onClick={() => setError(null)}
-              className="ml-auto text-red-500 hover:text-red-700"
-            >
-              ✕
-            </button>
-          </div>
-        </div>
-      )}
+      <div className="p-4 grid grid-cols-1 lg:grid-cols-3 gap-6 max-w-7xl mx-auto">
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Main Control Panel */}
+        {/* Main Control Area */}
         <div className="lg:col-span-2 space-y-6">
-          {/* Tournament Control Panel */}
-          <div className="bg-red-100 p-2 mb-4 border border-red-400 text-red-700">DEBUG: bracketType="{liveTournament.bracketType}" (isRR: {String(isRoundRobin(liveTournament.bracketType))})</div>
-          <EditableCard title="Tournament Controls" showEditButton={false}>
-            <div className="space-y-4">
-              {/* Phase Actions */}
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                {liveTournament.phase.phase === 'setup' && (() => {
-                  const preselectedPlayerCount = (liveTournament.players?.length ?? 0) +
-                    (liveTournament.teams?.reduce((sum, team) => sum + (team.players?.length || 0), 0) ?? 0);
-                  const maxPlayers = liveTournament.maxPlayers ?? 0;
-                  const isFullyPreselected = maxPlayers > 0 && preselectedPlayerCount >= maxPlayers;
-                  const bt = liveTournament.bracketType;
 
-                  return (
-                    <>
-                      {isFullyPreselected ? (
-                        isRoundRobin(bt) ? (
-                          <button
-                            onClick={() => executeTournamentAction({ action: 'start_round_robin' })}
-                            className="btn btn-primary btn-sm"
-                            disabled={loading}
-                            title="Start immediately with preselected players/teams"
-                          >
-                            Start Round Robin
-                          </button>
-                        ) : (
-                          <button
-                            onClick={() => executeTournamentAction({ action: 'start_bracket' })}
-                            className="btn btn-primary btn-sm"
-                            disabled={loading}
-                            title="Start bracket play with current teams"
-                          >
-                            Start Bracket
-                          </button>
-                        )
-                      ) : (
-                        <button
-                          onClick={() => executeTournamentAction({ action: 'start_registration' })}
-                          className="btn btn-outline btn-sm"
-                          disabled={loading}
-                          title="Open tournament for first-come, first-served registration"
-                        >
-                          Open Registration
-                        </button>
-                      )}
-                    </>
-                  );
-                })()}
+          <div className="bg-red-500/10 border border-red-500/30 p-4 rounded-xl flex items-center justify-between animate-in fade-in slide-in-from-top-2">
+            <div className="flex items-center gap-3">
+              <span className="material-symbols-outlined text-red-500">error</span>
+              <span className="text-sm text-red-400">{error}</span>
+            </div>
+            <button onClick={() => setError(null)} className="text-red-500 hover:text-white"><span className="material-symbols-outlined">close</span></button>
+          </div>
 
-                {liveTournament.phase.phase === 'registration' && (
-                  <>
-                    <button
-                      onClick={() => executeTournamentAction({ action: 'close_registration' })}
-                      className="btn btn-outline btn-sm"
-                      disabled={loading}
-                    >
-                      Close Registration
-                    </button>
-                    <button
-                      onClick={() => executeTournamentAction({ action: 'start_checkin' })}
-                      className="btn btn-primary btn-sm"
-                      disabled={loading}
-                    >
-                      Start Check-In
-                    </button>
-                  </>
-                )}
 
-                {liveTournament.phase.phase === 'check_in' && (() => {
-                  const bt = liveTournament.bracketType;
-                  const action = isRoundRobin(bt) ? 'start_round_robin' : 'start_bracket';
-                  const label = isRoundRobin(bt) ? 'Start Round Robin' : 'Start Bracket';
-                  return (
-                    <button
-                      onClick={() => executeTournamentAction({ action: action as any })}
-                      className="btn btn-primary btn-sm"
-                      disabled={loading}
-                    >
-                      {label}
-                    </button>
-                  );
-                })()}
-
-                {liveTournament.phase.phase === 'round_robin' && (
-                  <>
-                    {liveTournament.phase.canAdvance && liveTournament.phase.currentRound !== 'RR_R3' && (
-                      <button
-                        onClick={() => executeTournamentAction({ action: 'advance_round' })}
-                        className="btn btn-primary btn-sm"
-                        disabled={loading}
-                      >
-                        Next Round
-                      </button>
-                    )}
-                    {liveTournament.phase.canAdvance && liveTournament.phase.currentRound === 'RR_R3' && (
-                      <button
-                        onClick={() => executeTournamentAction({ action: 'start_bracket' })}
-                        className="btn btn-primary btn-sm"
-                        disabled={loading}
-                      >
-                        Start Bracket
-                      </button>
-                    )}
-                  </>
-                )}
-
-                {liveTournament.phase.phase === 'bracket' && (
-                  <>
-                    {liveTournament.phase.canAdvance && (
-                      <button
-                        onClick={() => executeTournamentAction({ action: 'advance_round' })}
-                        className="btn btn-primary btn-sm"
-                        disabled={loading}
-                      >
-                        Next Round
-                      </button>
-                    )}
-                    {liveTournament.phase.currentRound === 'final' && liveTournament.phase.canAdvance && (
-                      <button
-                        onClick={() => executeTournamentAction({ action: 'complete_tournament' })}
-                        className="btn btn-success btn-sm"
-                        disabled={loading}
-                      >
-                        Complete Tournament
-                      </button>
-                    )}
-                  </>
-                )}
-
-                {/* Emergency Controls */}
-                <button
-                  onClick={() => executeTournamentAction({ action: 'reset_tournament' })}
-                  className="btn btn-danger btn-sm"
-                  disabled={loading}
-                  title="Reset tournament to setup phase"
-                >
-                  Emergency Reset
+          {/* Actions Panel */}
+          <div className="bg-surface-dark rounded-2xl border border-white/5 p-5 shadow-lg">
+            <h3 className="text-sm font-bold text-slate-400 uppercase tracking-wider mb-4">Phase Controls</h3>
+            <div className="flex flex-wrap gap-3">
+              {/* Logic for buttons based on phase */}
+              {liveTournament.phase.phase === 'setup' && (
+                <>
+                  {/* Only show open registration if we don't have a pre-filled roster */}
+                  {(!liveTournament.teams?.length && !liveTournament.players?.length) && (
+                    <button onClick={() => executeTournamentAction({ action: 'start_registration' })} className="btn btn-primary btn-sm rounded-lg shadow-lg hover:shadow-primary/20" disabled={loading}>Open Registration</button>
+                  )}
+                  {(liveTournament.teams?.length || 0) > 0 && <button onClick={() => executeTournamentAction({ action: 'start_bracket' })} className="btn btn-secondary btn-sm rounded-lg" disabled={loading}>Start with Current Teams</button>}
+                </>
+              )}
+              {liveTournament.phase.phase === 'registration' && (
+                <>
+                  <button onClick={() => executeTournamentAction({ action: 'close_registration' })} className="px-4 py-2 rounded-lg bg-orange-500/20 text-orange-500 font-bold hover:bg-orange-500/30 text-sm" disabled={loading}>Close Reg</button>
+                  <button onClick={() => executeTournamentAction({ action: 'start_checkin' })} className="px-4 py-2 rounded-lg bg-primary text-white font-bold hover:bg-primary-hover text-sm" disabled={loading}>Start Check-In</button>
+                </>
+              )}
+              {liveTournament.phase.phase === 'check_in' && (
+                <button onClick={() => executeTournamentAction({ action: isRoundRobin(liveTournament.bracketType) ? 'start_round_robin' : 'start_bracket' as any })} className="px-4 py-2 rounded-lg bg-accent text-background-dark font-bold hover:brightness-110 text-sm shadow-glow-accent" disabled={loading}>
+                  {isRoundRobin(liveTournament.bracketType) ? 'Start Round Robin' : 'Start Bracket'}
                 </button>
-              </div>
+              )}
+              {(liveTournament.phase.phase === 'round_robin' || liveTournament.phase.phase === 'bracket') && (
+                <>
+                  {liveTournament.phase.canAdvance && (
+                    <button onClick={() => executeTournamentAction({ action: liveTournament.phase.currentRound === 'final' ? 'complete_tournament' : 'advance_round' })} className="px-4 py-2 rounded-lg bg-accent text-background-dark font-bold hover:brightness-110 text-sm shadow-glow-accent" disabled={loading}>
+                      {liveTournament.phase.currentRound === 'final' ? 'Complete Tournament' : 'Advance to Next Round'}
+                    </button>
+                  )}
+                  {liveTournament.phase.phase === 'bracket' && liveTournament.phase.totalMatches === 0 && (
+                    <button onClick={() => executeTournamentAction({ action: 'start_bracket' })} className="px-4 py-2 rounded-lg bg-primary text-white font-bold hover:bg-primary-hover text-sm" disabled={loading}>
+                      Start Bracket
+                    </button>
+                  )}
+                  {liveTournament.phase.phase === 'round_robin' && liveTournament.phase.totalMatches === 0 && (
+                    <button onClick={() => executeTournamentAction({ action: 'start_round_robin' })} className="px-4 py-2 rounded-lg bg-primary text-white font-bold hover:bg-primary-hover text-sm" disabled={loading}>
+                      Start Round Robin
+                    </button>
+                  )}
+                  {/* Removed redundant/harmful Start Bracket Play button for RR_R3 - advance_round handles this correctly */}
+                </>
+              )}
 
-              {/* Round Progress */}
-              {liveTournament.phase.currentRound && (
-                <div>
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-sm font-medium text-gray-700">
-                      {getRoundDisplayInfo(liveTournament.phase.currentRound)} Progress
-                    </span>
-                    <span className="text-sm text-gray-500">
-                      {liveTournament.phase.completedMatches} / {liveTournament.phase.totalMatches}
-                    </span>
-                  </div>
-                  <div className="w-full bg-gray-200 rounded-full h-2">
-                    <div
-                      className="bg-blue-600 h-2 rounded-full transition-all duration-300"
-                      style={{
-                        width: `${(liveTournament.phase.completedMatches / liveTournament.phase.totalMatches) * 100}%`
-                      }}
-                    />
-                  </div>
+              {/* Danger Zone */}
+              <button onClick={() => { if (window.confirm('Are you sure you want to reset? This is destructive.')) executeTournamentAction({ action: 'reset_tournament' }) }} className="ml-auto px-3 py-2 rounded-lg bg-red-500/10 text-red-500 font-bold hover:bg-red-500 hover:text-white text-xs" disabled={loading}>
+                Force Reset
+              </button>
+            </div>
+          </div>
+
+          {/* Matches Management */}
+          <div className="bg-surface-dark rounded-2xl border border-white/5 p-5 shadow-lg">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-5">
+              <h3 className="text-lg font-bold text-white">Matches</h3>
+
+              {/* Round Selector */}
+              <select
+                value={selectedRound}
+                onChange={(e) => {
+                  setSelectedRound(e.target.value);
+                  persistSelectedRound(e.target.value);
+                }}
+                className="bg-background-dark border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-primary appearance-none"
+              >
+                {getRoundOptions(liveTournament.bracketType).map(opt => (
+                  <option key={opt.value} value={opt.value}>{opt.label}</option>
+                ))}
+              </select>
+            </div>
+
+            {/* Toolbar */}
+            <MatchesToolbar
+              matchCount={currentMatches.length}
+              compactListView={compactListView}
+              onToggleCompact={(v) => { setCompactListView(v); persistToggle('compact', v); }}
+              requirePerPlayerScores={requirePerPlayerScores}
+              onToggleRequirePerPlayer={(v) => { setRequirePerPlayerScores(v); persistToggle('requirePerPlayerScores', v); }}
+              strictTotals={strictTotals}
+              onToggleStrictTotals={(v) => { setStrictTotals(v); persistToggle('strictTotals', v); }}
+              canConfirmAll={isAdmin && currentMatches.some(m => (m.status as any) === "completed")}
+              onConfirmAll={confirmAllCompletedInRound}
+              loading={loading}
+            />
+
+            {/* Grid */}
+            <div className={`mt-4 grid gap-3 ${compactListView ? 'grid-cols-1' : 'grid-cols-1 xl:grid-cols-2'}`}>
+              {currentMatches.length === 0 && (
+                <div className="col-span-full py-10 text-center border-2 border-dashed border-white/5 rounded-xl">
+                  <p className="text-slate-500 mb-2">No matches scheduled for this round</p>
+                  <button onClick={generateMatchesForSelectedRound} className="text-primary font-bold text-sm hover:underline">Generate Matches</button>
                 </div>
               )}
-            </div>
-          </EditableCard>
 
-          {/* Match Management */}
-          <EditableCard title={`${getRoundDisplayInfo(selectedRound)} Matches`} showEditButton={false}>
-            <div className="space-y-4">
-              {/* Round Selector */}
-              <div className="flex items-center space-x-4">
-                <label className="text-sm font-medium text-gray-700">Round:</label>
-                <select
-                  value={selectedRound}
-                  onChange={async (e) => {
-                    setSelectedRound(e.target.value);
-                    persistSelectedRound(e.target.value);
-                    const params = new URLSearchParams(location.search);
-                    params.set('round', e.target.value);
-                    navigate({ search: params.toString() }, { replace: true });
-                    // Persist globally on the server
-                    try {
-                      await apiClient.executeTournamentAction(id!, { action: 'set_round', parameters: { targetRound: e.target.value } });
-                    } catch (err) {
-                      console.warn('Failed to persist selected round to server', err);
-                    }
-                    const matchesResponse = await apiClient.getTournamentMatches(id!, e.target.value);
-                    if (matchesResponse.success && matchesResponse.data) {
-                      setCurrentMatches(matchesResponse.data);
-                    }
-                  }}
-                  className="select select-sm"
+              {uniqueMatches.map((match, idx) => (
+                <div
+                  key={`${(match as any).id || idx}`}
+                  className={`rounded-xl border transition-all ${match.status === 'completed' ? 'bg-surface-dark border-green-500/30 shadow-[0_0_10px_rgba(34,197,94,0.1)]' :
+                    (match.status as any) === 'in-progress' ? 'bg-surface-dark border-yellow-500/30' :
+                      'bg-surface-dark border-white/5'
+                    }`}
                 >
-                  {getRoundOptions(((liveTournament as any).bracketType as any)).map(opt => (
-                    <option key={opt.value} value={opt.value}>{opt.label}</option>
-                  ))}
-                </select>
-              </div>
-
-              {/* Matches Grid */}
-              {/* Grid Toolbar */}
-              <MatchesToolbar
-                matchCount={currentMatches.length}
-                compactListView={compactListView}
-                onToggleCompact={(v) => { setCompactListView(v); persistToggle('compact', v); }}
-                requirePerPlayerScores={requirePerPlayerScores}
-                onToggleRequirePerPlayer={(v) => { setRequirePerPlayerScores(v); persistToggle('requirePerPlayerScores', v); }}
-                strictTotals={strictTotals}
-                onToggleStrictTotals={(v) => { setStrictTotals(v); persistToggle('strictTotals', v); }}
-                canConfirmAll={isAdmin && currentMatches.some(m => (m.status as any) === "completed")}
-                onConfirmAll={confirmAllCompletedInRound}
-                loading={loading}
-              />
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {currentMatches.length === 0 && (
-                  <div className="col-span-full flex items-center justify-between p-3 bg-yellow-50 border border-yellow-200 rounded">
-                    <span className="text-sm text-yellow-800">No matches found for this round.</span>
-                    {isAdmin && (
-                      <button
-                        onClick={generateMatchesForSelectedRound}
-                        className="btn btn-sm btn-primary"
-                        disabled={loading}
-                      >
-                        Generate Matches
-                      </button>
-                    )}
+                  <div className="p-3 border-b border-white/5 flex items-center justify-between">
+                    <span className="text-xs font-bold text-slate-500 uppercase">Match {match.matchNumber}</span>
+                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full uppercase ${match.status === 'completed' ? 'bg-green-500/20 text-green-500' :
+                      (match.status as any) === 'in-progress' ? 'bg-yellow-500/20 text-yellow-500' :
+                        'bg-slate-700 text-slate-400'
+                      }`}>
+                      {match.status.replace('_', ' ')}
+                    </span>
                   </div>
-                )}
-                {uniqueMatches.map((match, idx) => (
-                  <div
-                    key={`${(match as any)._id || (match as any).id || `${(match as any).tournamentId}-${(match as any).round}-${(match as any).matchNumber}`
-                      }-${idx}`}
-                    className={`p-4 border rounded-lg ${match.status === 'completed' ? 'bg-green-50 border-green-200' :
-                      (match.status as any) === 'in-progress' ? 'bg-yellow-50 border-yellow-200' :
-                        'bg-white border-gray-200'
-                      }`}
-                  >
-                    <div className="flex items-center justify-between mb-3">
-                      <span className="text-sm font-medium text-gray-900">
-                        Match {match.matchNumber}
-                      </span>
-                      <span
-                        className={`px-2 py-1 text-xs font-medium rounded-full ${match.status === 'completed' ? 'bg-green-100 text-green-800' :
-                          (match.status as any) === 'in-progress' ? 'bg-yellow-100 text-yellow-800' :
-                            match.status === 'confirmed' ? 'bg-blue-100 text-blue-800' :
-                              'bg-gray-100 text-gray-800'
-                          }`}
-                      >
-                        {match.status.replace('_', ' ')}
-                      </span>
-                    </div>
 
-                    {/* Match Scoring with Individual Player Scores */}
+                  {/* Scoring Component */}
+                  <div className="p-3 text-white">
                     <MatchScoring
                       match={match}
                       onUpdateMatch={updateMatchScore}
@@ -666,182 +494,72 @@ const TournamentManage: React.FC = () => {
                       requirePerPlayerScores={requirePerPlayerScores}
                       strictTotals={strictTotals}
                     />
-
-                    {/* Match Details */}
-                    {(match.court || match.startTime || match.notes) && (
-                      <div className="mt-3 pt-3 border-t border-gray-200">
-                        <div className="space-y-1 text-xs text-gray-500">
-                          {match.court && <p>Court: {match.court}</p>}
-                          {match.startTime && <p>Started: {new Date(match.startTime).toLocaleTimeString()}</p>}
-                          {match.notes && <p>Notes: {match.notes}</p>}
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Quick Actions */}
-                    <div className="mt-3 flex space-x-2">
-                      {/* Removed per-match Start; enter scores below to complete */}
-                      {((match.status as any) === 'completed') && (
-                        <button
-                          onClick={() => updateMatchScore({
-                            matchId: (match._id || (match as any).id) as string,
-                            status: 'confirmed'
-                          })}
-                          className="btn btn-primary btn-xs"
-                        >
-                          Confirm Result
-                        </button>
-                      )}
-                    </div>
                   </div>
-                ))}
-              </div>
-
-              {/* Generate Matches Button */}
-              {currentMatches.length === 0 && (
-                <div className="text-center py-8">
-                  <p className="text-gray-500 mb-4">No matches generated for this round</p>
-                  <button
-                    onClick={async () => {
-                      const response = await apiClient.generateMatches(id!, selectedRound);
-                      if (response.success && response.data) {
-                        setCurrentMatches(response.data);
-                      }
-                    }}
-                    className="btn btn-primary"
-                    disabled={loading}
-                  >
-                    Generate Matches
-                  </button>
                 </div>
-              )}
+              ))}
             </div>
-          </EditableCard>
 
-          {/* Bracket Visualization */}
-          {liveTournament.phase.phase === 'bracket' && liveTournament.matches.length > 0 && (
-            <EditableCard title="Tournament Bracket" showEditButton={false}>
+          </div>
+
+          {/* Bracket Visualization (Only for bracket phase) */}
+          {liveTournament.phase.phase === 'bracket' && (
+            <div className="bg-surface-dark rounded-2xl border border-white/5 p-5 overflow-x-auto shadow-lg">
+              <h3 className="text-sm font-bold text-slate-400 uppercase tracking-wider mb-4">Bracket View</h3>
               <BracketView
                 matches={liveTournament.matches.filter(m => ['quarterfinal', 'semifinal', 'final'].includes(m.round))}
                 teams={liveTournament.teams}
                 currentRound={liveTournament.phase.currentRound}
-                onMatchClick={(match) => {
-                  // Handle match click for editing
-                  console.log('Match clicked:', match);
-                }}
+                onMatchClick={() => { }}
                 showScores={true}
                 editable={true}
               />
-            </EditableCard>
+            </div>
           )}
+
         </div>
 
-        {/* Sidebar - Live Stats & Teams */}
+        {/* Sidebar */}
         <div className="space-y-6">
-          {/* Live Tournament Statistics */}
           <LiveStats
             tournamentId={id!}
             refreshInterval={15000}
             compact={true}
             bracketType={liveTournament.bracketType}
           />
+
           <PlayerLeaderboard tournamentId={id!} />
-          {/* Check-In Status */}
+
+          {/* Check-In list if active */}
           {liveTournament.phase.phase === 'check_in' && (
-            <EditableCard title="Team Check-In" showEditButton={false}>
-              <div className="space-y-3">
+            <div className="bg-surface-dark rounded-2xl border border-white/5 p-4 shadow-lg">
+              <h3 className="text-sm font-bold text-white mb-3">Check-In Status</h3>
+              <div className="space-y-2 max-h-[400px] overflow-y-auto custom-scrollbar">
                 {liveTournament.teams.map((team) => {
                   const checkInStatus = liveTournament.checkInStatus[team.teamId];
+                  const checkedIn = checkInStatus?.checkedIn;
                   return (
-                    <div
-                      key={team.teamId}
-                      className="flex items-center justify-between p-3 bg-gray-50 rounded-lg"
-                    >
+                    <div key={team.teamId} className="flex items-center justify-between p-2 rounded-lg bg-background-dark border border-white/5 transition-colors hover:bg-white/5">
                       <div>
-                        <p className="font-medium text-sm">{team.teamName}</p>
-                        <p className="text-xs text-gray-500">
-                          {team.players.map(p => p.playerName).join(' & ')}
-                        </p>
+                        <p className="text-sm font-bold text-white">{team.teamName}</p>
+                        <p className="text-[10px] text-slate-500">{team.players.map(p => p.playerName).join(', ')}</p>
                       </div>
                       <button
-                        onClick={() => checkInTeam(team.teamId, !checkInStatus?.checkedIn)}
-                        className={`btn btn-xs ${checkInStatus?.checkedIn
-                          ? 'btn-success'
-                          : 'btn-outline'
-                          }`}
+                        onClick={() => checkInTeam(team.teamId, !checkedIn)}
+                        className={`size-8 rounded flex items-center justify-center transition-colors ${checkedIn ? 'bg-green-500 text-black' : 'bg-white/10 text-slate-500 hover:bg-white/20'}`}
                       >
-                        {checkInStatus?.checkedIn ? '✓ Checked In' : 'Check In'}
+                        <span className="material-symbols-outlined text-lg">{checkedIn ? 'check' : 'login'}</span>
                       </button>
                     </div>
                   );
                 })}
               </div>
-            </EditableCard>
-          )}
-
-          {/* Current Standings */}
-          {liveTournament.currentStandings.length > 0 && (
-            <EditableCard title="Current Standings" showEditButton={false}>
-              <div className="space-y-2">
-                {liveTournament.currentStandings
-                  .sort((a, b) => (a.totalStats.bodFinish || 999) - (b.totalStats.bodFinish || 999))
-                  .slice(0, 8)
-                  .map((result, index) => (
-                    <div
-                      key={result.id}
-                      className="flex items-center justify-between p-2 bg-gray-50 rounded"
-                    >
-                      <div className="flex items-center space-x-2">
-                        <span className="font-medium text-sm">#{index + 1}</span>
-                        <div>
-                          <p className="text-sm font-medium">{(result as any).teamName}</p>
-                          <p className="text-xs text-gray-500">
-                            {result.totalStats.totalWon}-{result.totalStats.totalLost}
-                            ({((result.totalStats.winPercentage || 0) * 100).toFixed(0)}%)
-                          </p>
-                        </div>
-                      </div>
-                      {index < 3 && (
-                        <span className="text-lg">
-                          {index === 0 ? '🏆' : index === 1 ? '🥈' : '🥉'}
-                        </span>
-                      )}
-                    </div>
-                  ))}
-              </div>
-            </EditableCard>
-          )}
-
-          {/* Tournament Info */}
-          <EditableCard title="Tournament Info" showEditButton={false}>
-            <div className="space-y-3 text-sm">
-              <div className="flex justify-between">
-                <span className="text-gray-600">Format:</span>
-                <span className="font-medium">{liveTournament.format}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-gray-600">Teams:</span>
-                <span className="font-medium">{liveTournament.teams.length}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-gray-600">Max Players:</span>
-                <span className="font-medium">{liveTournament.maxPlayers}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-gray-600">Status:</span>
-                <span className={`px-2 py-1 text-xs font-medium rounded-full ${phaseInfo.color}`}>
-                  {phaseInfo.label}
-                </span>
-              </div>
             </div>
-          </EditableCard>
+          )}
         </div>
+
       </div>
     </div>
   );
 };
 
 export default TournamentManage;
-
-
-

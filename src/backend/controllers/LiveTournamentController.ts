@@ -605,10 +605,19 @@ export class LiveTournamentController extends BaseController<ITournament> {
           const hasGeneratedTeams = tournament.generatedTeams && tournament.generatedTeams.length > 0;
 
           if (hasPreselectedPlayers || hasGeneratedTeams) {
-            // Skip check-in for preselected tournaments - ready to start round robin
-            phase = 'round_robin';
-            currentRound = 'RR_R1';
-            roundStatus = 'not_started';
+            // Check bracket type to determine correct phase
+            const bType = (tournament as any).bracketType;
+            if (bType === 'single_elimination' || bType === 'double_elimination') {
+              // Pre-selected players skip check-in. Start bracket directly.
+              phase = 'bracket';
+              currentRound = 'quarterfinal';
+              roundStatus = 'not_started';
+            } else {
+              // Default/Legacy behavior: Round Robin
+              phase = 'round_robin';
+              currentRound = 'RR_R1';
+              roundStatus = 'not_started';
+            }
           } else {
             // Normal flow - need check-in
             phase = 'check_in';
@@ -1400,8 +1409,17 @@ export class LiveTournamentController extends BaseController<ITournament> {
   }
 
   private async startBracket(tournament: ITournament): Promise<ITournament> {
+    const teamCount = (tournament.generatedTeams || []).length;
+    let startRound = 'quarterfinal';
+
+    if (teamCount <= 2) {
+      startRound = 'final';
+    } else if (teamCount <= 4) {
+      startRound = 'semifinal';
+    }
+
     // Generate bracket matches
-    await this.createMatchesForRound(tournament, 'quarterfinal');
+    await this.createMatchesForRound(tournament, startRound);
     return tournament;
   }
 
@@ -1643,6 +1661,7 @@ export class LiveTournamentController extends BaseController<ITournament> {
       }
 
       // Create matches in database
+      console.error(`DEBUG: About to insert ${matches.length} matches for ${round}`);
       const createdMatches = await Match.insertMany(matches);
       console.log(`Created ${createdMatches.length} matches for ${round}`);
 

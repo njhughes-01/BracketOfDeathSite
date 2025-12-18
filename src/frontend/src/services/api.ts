@@ -46,8 +46,8 @@ export const setTokenRefresher = (refresher: () => Promise<boolean>) => {
 };
 
 // Helper: ensure token is fresh before protected calls
-// Increased leeway to 90 seconds to account for network latency and processing time
-const tokenExpiringSoon = (token?: string, leewayMs = 90000): boolean => {
+// Increased leeway to 300 seconds (5 minutes) to account for network latency and processing time
+const tokenExpiringSoon = (token?: string, leewayMs = 300000): boolean => {
   if (!token) return true;
   try {
     const body = JSON.parse(atob(token.split('.')[1]));
@@ -323,6 +323,11 @@ class ApiClient {
     return this.post<ApiResponse<Match[]>>(`/tournaments/${tournamentId}/generate-matches`, { round });
   }
 
+  async confirmCompletedMatches(tournamentId: string): Promise<ApiResponse<{ updated: number }>> {
+    await ensureFreshToken();
+    return this.post<ApiResponse<{ updated: number }>>(`/tournaments/${tournamentId}/matches/confirm-completed`, {});
+  }
+
   async calculateStandings(tournamentId: string): Promise<ApiResponse<TournamentResult[]>> {
     return this.get<ApiResponse<TournamentResult[]>>(`/tournaments/${tournamentId}/standings`);
   }
@@ -475,6 +480,11 @@ class ApiClient {
   // Health check
   async healthCheck(): Promise<ApiResponse> {
     return this.get<ApiResponse>('/health');
+  }
+
+  // Profile API methods
+  async linkPlayerToProfile(playerId: string): Promise<ApiResponse<User>> {
+    return this.post<ApiResponse<User>>('/profile/link-player', { playerId });
   }
 }
 

@@ -1,35 +1,31 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useNavigate, useLocation } from 'react-router-dom';
-import Card from '../components/ui/Card';
 import LoadingSpinner from '../components/ui/LoadingSpinner';
 
 const Login: React.FC = () => {
   const { isAuthenticated, initializeAuth, login, keycloak, loading, setDirectAuthTokens } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
-  const [authInitialized, setAuthInitialized] = React.useState(false);
-  const [isLoggingIn, setIsLoggingIn] = React.useState(false);
-  const [email, setEmail] = React.useState('');
-  const [password, setPassword] = React.useState('');
-  const [loginError, setLoginError] = React.useState('');
-  const [showAdminInfo, setShowAdminInfo] = React.useState(true);
+  const [authInitialized, setAuthInitialized] = useState(false);
+  const [isLoggingIn, setIsLoggingIn] = useState(false);
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [loginError, setLoginError] = useState('');
+  const [showAdminInfo, setShowAdminInfo] = useState(true);
+  const [showPassword, setShowPassword] = useState(false);
   const initializationAttempted = useRef(false);
 
-  // Get the redirect path from location state or default to home
   const from = (location.state as any)?.from || '/';
 
-  // Check if user has logged in before and initialize auth
   useEffect(() => {
     const hasLoggedInBefore = localStorage.getItem('hasLoggedInBefore');
     if (hasLoggedInBefore) {
       setShowAdminInfo(false);
     }
 
-    // Initialize auth on component mount to prevent double login issues
     const initAuth = async () => {
       if (!initializationAttempted.current) {
-        console.log('Performing initial auth check...');
         initializationAttempted.current = true;
         try {
           await initializeAuth();
@@ -41,10 +37,9 @@ const Login: React.FC = () => {
     };
 
     initAuth();
-  }, []); // Empty dependency array - only run once on mount
+  }, []);
 
   useEffect(() => {
-    // If already authenticated, redirect to intended destination
     if (isAuthenticated) {
       const redirectPath = sessionStorage.getItem('redirectAfterLogin') || from;
       sessionStorage.removeItem('redirectAfterLogin');
@@ -56,63 +51,39 @@ const Login: React.FC = () => {
     try {
       setIsLoggingIn(true);
       setLoginError('');
-
-      // Store the intended destination before login
       sessionStorage.setItem('redirectAfterLogin', from);
-
-      // Initialize Keycloak if not already done
       if (!authInitialized) {
-        console.log('Initializing authentication...');
         await initializeAuth();
         setAuthInitialized(true);
       }
-
-      // Trigger Keycloak hosted login
-      console.log('Triggering Keycloak login...');
       login();
     } catch (error) {
       console.error('Keycloak login failed:', error);
-      setLoginError('Authentication service unavailable. Please try again.');
+      setLoginError('Authentication service unavailable.');
     } finally {
       setIsLoggingIn(false);
     }
   };
 
+
   const handleDirectLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    console.log('Form submitted with:', { email, password: password ? '[REDACTED]' : 'empty' });
-
     if (!email || !password) {
       setLoginError('Please enter both email and password');
       return;
     }
-
-    // Prevent double submission
-    if (isLoggingIn) {
-      console.log('Login already in progress, ignoring duplicate submission');
-      return;
-    }
+    if (isLoggingIn) return;
 
     try {
       setIsLoggingIn(true);
       setLoginError('');
-
-      // Store the intended destination before login
       sessionStorage.setItem('redirectAfterLogin', from);
 
-      console.log('Attempting direct login with credentials...');
-
-      // Use Keycloak direct grant flow (Resource Owner Password Credentials)
-      // The /auth proxy strips the /auth prefix, so we need the full path
+      // Use Keycloak direct grant flow
       const tokenUrl = '/auth/realms/bracketofdeathsite/protocol/openid-connect/token';
-
-      console.log('Making fetch request to:', tokenUrl);
-
       const response = await fetch(tokenUrl, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/x-www-form-urlencoded',
-        },
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
         body: new URLSearchParams({
           grant_type: 'password',
           client_id: 'bod-app',
@@ -121,50 +92,34 @@ const Login: React.FC = () => {
         }),
       });
 
-      console.log('Response status:', response.status, response.statusText);
-      console.log('Response headers:', Object.fromEntries(response.headers.entries()));
-
       if (!response.ok) {
         const errorText = await response.text();
-        console.error('Login error response:', errorText);
         let errorData;
         try {
           errorData = JSON.parse(errorText);
         } catch {
-          errorData = { error_description: errorText || 'Invalid credentials' };
+          errorData = { error_description: 'Invalid credentials' };
         }
-        throw new Error(errorData.error_description || errorData.error || 'Invalid credentials');
+        throw new Error(errorData.error_description || 'Invalid credentials');
       }
 
-      const responseText = await response.text();
-      console.log('Response text:', responseText);
+      const tokenData = await response.json();
 
-      const tokenData = JSON.parse(responseText);
-      console.log('Direct login successful, got tokens');
-
-      // Initialize Keycloak if not already done (should usually be done by now)
       if (!authInitialized) {
-        console.log('Initializing authentication during login...');
         await initializeAuth();
         setAuthInitialized(true);
       }
 
-      // Use the new direct auth method
       await setDirectAuthTokens({
         access_token: tokenData.access_token,
         refresh_token: tokenData.refresh_token,
         id_token: tokenData.id_token
       });
 
-      console.log('Direct authentication complete, navigating...');
-
-      // Mark that user has logged in before
       localStorage.setItem('hasLoggedInBefore', 'true');
-
-      // Navigate to intended destination - will be handled by useEffect when isAuthenticated changes
     } catch (error: any) {
       console.error('Direct login failed:', error);
-      setLoginError(error.message || 'Login failed. Please check your credentials.');
+      setLoginError(error.message || 'Login failed.');
     } finally {
       setIsLoggingIn(false);
     }
@@ -172,117 +127,183 @@ const Login: React.FC = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <LoadingSpinner />
+      <div className="min-h-screen flex items-center justify-center bg-background-dark">
+        <LoadingSpinner size="lg" />
       </div>
     );
   }
 
   if (isAuthenticated) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <LoadingSpinner />
-        <p className="ml-4 text-gray-600">Redirecting...</p>
+      <div className="min-h-screen flex items-center justify-center bg-background-dark">
+        <LoadingSpinner size="lg" />
+        <p className="ml-4 text-slate-400">Redirecting...</p>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-md w-full space-y-8">
-        <div className="text-center">
-          <h2 className="mt-6 text-3xl font-extrabold text-gray-900">
-            Sign in to your account
+    <div className="relative flex min-h-screen w-full flex-col overflow-hidden bg-background-dark font-display text-white">
+
+      {/* Background/Decoration */}
+      <div className="absolute inset-0 pointer-events-none overflow-hidden">
+        <div className="absolute -top-[20%] -right-[10%] w-[60%] h-[60%] bg-primary/20 blur-[120px] rounded-full"></div>
+        <div className="absolute top-[40%] -left-[10%] w-[40%] h-[40%] bg-accent/10 blur-[100px] rounded-full"></div>
+      </div>
+
+      <div className="relative flex-1 flex flex-col justify-center px-4 sm:px-6 lg:px-8 max-w-md mx-auto w-full z-10">
+
+        {/* Header */}
+        <div className="text-center mb-10">
+          {/* Logo Placeholder */}
+          <div className="mx-auto w-16 h-16 bg-gradient-to-tr from-primary to-green-600 rounded-2xl flex items-center justify-center shadow-[0_0_30px_rgba(34,197,94,0.4)] mb-6 rotate-3">
+            <span className="material-symbols-outlined text-white" style={{ fontSize: '32px' }}>sports_tennis</span>
+          </div>
+          <h2 className="text-3xl font-bold tracking-tight text-white mb-2">
+            Welcome Back
           </h2>
-          <p className="mt-2 text-sm text-gray-600">
-            Access tournament management and admin features
+          <p className="text-slate-400">
+            Sign in to manage your tournaments
           </p>
         </div>
 
-        <Card className="mt-8" padding="lg">
-          <form onSubmit={handleDirectLogin} className="space-y-6">
-            {loginError && (
-              <div className="rounded-md bg-red-50 p-4">
-                <div className="text-sm text-red-700">{loginError}</div>
-              </div>
-            )}
-
-            <div>
-              <label htmlFor="email" className="block text-sm font-medium text-gray-700">
-                Username or Email
-              </label>
-              <div className="mt-1">
-                <input
-                  id="email"
-                  name="email"
-                  type="text"
-                  autoComplete="username"
-                  required
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-                  placeholder="admin"
-                />
-              </div>
-            </div>
-
-            <div>
-              <label htmlFor="password" className="block text-sm font-medium text-gray-700">
-                Password
-              </label>
-              <div className="mt-1">
-                <input
-                  id="password"
-                  name="password"
-                  type="password"
-                  autoComplete="current-password"
-                  required
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-                  placeholder="Enter your password"
-                />
-              </div>
-            </div>
-
-            <div>
-              <button
-                type="submit"
-                disabled={isLoggingIn}
-                className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-200"
-              >
-                <span className="absolute left-0 inset-y-0 flex items-center pl-3">
-                  {isLoggingIn ? (
-                    <div className="h-5 w-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                  ) : (
-                    <svg className="h-5 w-5 text-blue-500 group-hover:text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1" />
-                    </svg>
-                  )}
-                </span>
-                {isLoggingIn ? 'Signing in...' : 'Sign in'}
-              </button>
-            </div>
-          </form>
-
-          {showAdminInfo && (
-            <div className="mt-6 p-3 bg-blue-50 rounded-lg">
-              <p className="text-sm text-blue-700">
-                <strong>Default Admin Login:</strong><br />
-                Username: admin<br />
-                Email: admin@bracketofdeathsite.com<br />
-                Password: admin123
-              </p>
+        {/* Login Form */}
+        <form onSubmit={handleDirectLogin} className="flex flex-col gap-5 w-full">
+          {loginError && (
+            <div className="p-4 rounded-xl bg-red-500/10 border border-red-500/20 text-red-500 text-sm font-medium text-center flex items-center justify-center gap-2">
+              <span className="material-symbols-outlined text-lg">error</span>
+              {loginError}
             </div>
           )}
-        </Card>
 
-        <div className="text-center">
-          <p className="text-sm text-gray-600">
-            Need access?{' '}
-            <span className="text-gray-600">
-              Contact your tournament administrator
-            </span>
+          {/* Email Field */}
+          <div className="flex flex-col gap-1.5">
+            <label className="text-sm font-bold text-slate-400 ml-1" htmlFor="email">EMAIL OR USERNAME</label>
+            <div className="relative group">
+              <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 transition-colors group-focus-within:text-primary">
+                <span className="material-symbols-outlined !text-[20px]">person</span>
+              </div>
+              <input
+                id="email"
+                name="email"
+                type="text"
+                autoComplete="username"
+                required
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                className="w-full h-14 bg-[#1c2230] border border-white/5 text-white text-base rounded-xl pl-12 pr-4 focus:ring-2 focus:ring-primary focus:border-transparent placeholder:text-slate-600 transition-all outline-none"
+                placeholder="admin"
+              />
+            </div>
+          </div>
+
+          {/* Password Field */}
+          <div className="flex flex-col gap-1.5">
+            <div className="flex justify-between items-center ml-1">
+              <label className="text-sm font-bold text-slate-400" htmlFor="password">PASSWORD</label>
+            </div>
+            <div className="relative group">
+              <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 transition-colors group-focus-within:text-primary">
+                <span className="material-symbols-outlined !text-[20px]">lock</span>
+              </div>
+              <input
+                id="password"
+                name="password"
+                type={showPassword ? 'text' : 'password'}
+                autoComplete="current-password"
+                required
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className="w-full h-14 bg-[#1c2230] border border-white/5 text-white text-base rounded-xl pl-12 pr-12 focus:ring-2 focus:ring-primary focus:border-transparent placeholder:text-slate-600 transition-all outline-none"
+                placeholder="••••••••"
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-500 hover:text-white transition-colors focus:outline-none"
+              >
+                <span className="material-symbols-outlined !text-[20px]">{showPassword ? 'visibility_off' : 'visibility'}</span>
+              </button>
+            </div>
+            {/* Forgot Password Link */}
+            <div className="flex justify-end mt-1">
+              <a href="#" className="text-xs font-bold text-primary hover:text-primary-light transition-colors">Forgot Password?</a>
+            </div>
+          </div>
+
+          {/* Login Button */}
+          <button
+            type="submit"
+            disabled={isLoggingIn}
+            className="mt-2 w-full h-14 bg-primary hover:bg-primary-dark active:scale-[0.98] text-black text-base font-bold rounded-xl shadow-[0_0_20px_rgba(34,197,94,0.3)] hover:shadow-[0_0_30px_rgba(34,197,94,0.5)] transition-all flex items-center justify-center gap-2 group disabled:opacity-70 disabled:cursor-not-allowed"
+          >
+            {isLoggingIn ? (
+              <>
+                <div className="size-5 border-2 border-black/30 border-t-black rounded-full animate-spin"></div>
+                <span>Signing In...</span>
+              </>
+            ) : (
+              <>
+                <span>Log In</span>
+                <span className="material-symbols-outlined !text-[20px] group-hover:translate-x-1 transition-transform">arrow_forward</span>
+              </>
+            )}
+          </button>
+        </form>
+
+        {/* Admin Info (Optional/Dev helper) */}
+        {showAdminInfo && (
+          <div className="mt-8 p-4 bg-white/5 border border-white/10 rounded-xl relative">
+            <button
+              onClick={() => setShowAdminInfo(false)}
+              className="absolute top-2 right-2 text-slate-500 hover:text-white"
+            >
+              <span className="material-symbols-outlined text-sm">close</span>
+            </button>
+            <div className="flex gap-3">
+              <span className="material-symbols-outlined text-primary mt-1">info</span>
+              <div>
+                <p className="text-sm font-bold text-white mb-1">Standard Login</p>
+                <div className="text-xs text-slate-400 space-y-0.5 font-mono">
+                  <p>User: admin</p>
+                  <p>Pass: admin123</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Divider */}
+        <div className="relative py-8">
+          <div className="absolute inset-0 flex items-center">
+            <div className="w-full border-t border-white/10"></div>
+          </div>
+          <div className="relative flex justify-center text-xs uppercase">
+            <span className="bg-background-dark px-3 text-slate-500 font-bold tracking-wider">Or continue with</span>
+          </div>
+        </div>
+
+        {/* Social Actions (Mock) */}
+        <div className="grid grid-cols-2 gap-3">
+          <button
+            type="button"
+            onClick={handleKeycloakLogin}
+            className="flex h-12 items-center justify-center gap-2 rounded-xl border border-white/10 bg-[#1c2230] text-white hover:bg-white/5 transition-colors"
+          >
+            <span className="material-symbols-outlined">verified_user</span>
+            <span className="text-sm font-bold">Keycloak SSO</span>
+          </button>
+          <button className="flex h-12 items-center justify-center gap-2 rounded-xl border border-white/10 bg-[#1c2230] text-white hover:bg-white/5 transition-colors">
+            <span className="material-symbols-outlined">mail</span>
+            <span className="text-sm font-bold">Google</span>
+          </button>
+        </div>
+
+        {/* Sign Up Footer */}
+        <div className="mt-10 text-center pb-8">
+          <p className="text-slate-500 text-sm">
+            Don't have an account?
+            <a href="#" className="font-bold text-white hover:text-primary transition-colors ml-1">Sign Up</a>
           </p>
         </div>
       </div>

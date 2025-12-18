@@ -21,7 +21,7 @@ export class PlayerController extends BaseController<IPlayer> {
 
     // Numeric range filters
     const numericFields = ['bodsPlayed', 'bestResult', 'avgFinish', 'winningPercentage', 'totalChampionships', 'gamesPlayed', 'gamesWon'];
-    
+
     numericFields.forEach(field => {
       const value = filterParams[field];
       const minValue = filterParams[`${field}_min`];
@@ -117,7 +117,8 @@ export class PlayerController extends BaseController<IPlayer> {
             ]
           }
         },
-        { $project: {
+        {
+          $project: {
             _id: 1,
             tournamentId: 1,
             round: 1,
@@ -130,10 +131,12 @@ export class PlayerController extends BaseController<IPlayer> {
                 { $ifNull: ['$team2.playerScores', []] }
               ]
             }
-        }},
+          }
+        },
         { $unwind: '$scores' },
         { $match: { 'scores.playerId': new (require('mongoose').Types.ObjectId)(id) } },
-        { $group: {
+        {
+          $group: {
             _id: '$scores.playerId',
             matchesWithPoints: { $sum: 1 },
             totalPoints: { $sum: { $ifNull: ['$scores.score', 0] } },
@@ -158,7 +161,7 @@ export class PlayerController extends BaseController<IPlayer> {
   getChampions = this.asyncHandler(async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
       const minChampionships = parseInt(req.query.min as string) || 1;
-      
+
       const champions = await Player.find({
         totalChampionships: { $gte: minChampionships }
       })
@@ -260,7 +263,7 @@ export class PlayerController extends BaseController<IPlayer> {
       for (const playerData of players) {
         try {
           const existingPlayer = await Player.findOne({ name: playerData.name });
-          
+
           if (existingPlayer) {
             await Player.findByIdAndUpdateSafe(existingPlayer._id.toString(), playerData);
             results.updated++;
@@ -317,6 +320,8 @@ export class PlayerController extends BaseController<IPlayer> {
       errors.push('Best result cannot be worse than average finish');
     }
 
+    // Active status is boolean, so no validation needed other than type check handled by mongoose
+
     return errors;
   }
 
@@ -324,7 +329,7 @@ export class PlayerController extends BaseController<IPlayer> {
   override async create(req: RequestWithAuth, res: Response, next: NextFunction): Promise<void> {
     try {
       const validationErrors = this.validatePlayerData(req.body);
-      
+
       if (validationErrors.length > 0) {
         this.sendError(res, 400, validationErrors.join(', '));
         return;
@@ -341,7 +346,7 @@ export class PlayerController extends BaseController<IPlayer> {
   override async update(req: RequestWithAuth, res: Response, next: NextFunction): Promise<void> {
     try {
       const validationErrors = this.validatePlayerData(req.body);
-      
+
       if (validationErrors.length > 0) {
         this.sendError(res, 400, validationErrors.join(', '));
         return;

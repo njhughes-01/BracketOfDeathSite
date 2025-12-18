@@ -4,7 +4,7 @@ services:
     image: quay.io/keycloak/keycloak:23.0
     container_name: bod-keycloak
     restart: unless-stopped
-    command: ["start-dev"]
+    command: [ "start-dev" ]
     environment:
       KEYCLOAK_ADMIN: ${KEYCLOAK_ADMIN_USER}
       KEYCLOAK_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD}
@@ -22,7 +22,7 @@ services:
     networks:
       - bod-network
     healthcheck:
-      test: ["CMD-SHELL", "echo > /dev/tcp/localhost/8080"]
+      test: [ "CMD-SHELL", "echo > /dev/tcp/localhost/8080" ]
       interval: 15s
       timeout: 5s
       retries: 3
@@ -41,7 +41,7 @@ services:
     networks:
       - bod-network
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${KEYCLOAK_DB_USER} -d keycloak"]
+      test: [ "CMD-SHELL", "pg_isready -U ${KEYCLOAK_DB_USER} -d keycloak" ]
       interval: 30s
       timeout: 10s
       retries: 5
@@ -51,7 +51,7 @@ services:
     image: mongo:7.0
     container_name: bod-mongodb
     restart: unless-stopped
-    command: ["mongod", "--logpath", "/var/log/mongodb/mongod.log", "--logappend", "--quiet"]
+    command: [ "mongod", "--logpath", "/var/log/mongodb/mongod.log", "--logappend", "--quiet" ]
     env_file:
       - .env
     environment:
@@ -69,7 +69,7 @@ services:
     networks:
       - bod-network
     healthcheck:
-      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      test: [ "CMD", "mongosh", "--eval", "db.adminCommand('ping')" ]
       interval: 30s
       timeout: 10s
       retries: 5
@@ -94,7 +94,7 @@ services:
     networks:
       - bod-network
     restart: "no"
-    entrypoint: ["/bin/sh", "/scripts/init-keycloak.sh"]
+    entrypoint: [ "/bin/sh", "/scripts/init-keycloak.sh" ]
 
   # Data Initialization Service (runs once)
   data-init:
@@ -149,7 +149,7 @@ services:
     networks:
       - bod-network
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:3000/api/health"]
+      test: [ "CMD", "curl", "-f", "http://localhost:3000/api/health" ]
       interval: 30s
       timeout: 10s
       retries: 5
@@ -171,12 +171,14 @@ services:
       VITE_KEYCLOAK_URL: ${VITE_KEYCLOAK_URL}
       VITE_KEYCLOAK_REALM: ${KEYCLOAK_REALM}
       VITE_KEYCLOAK_CLIENT_ID: ${KEYCLOAK_CLIENT_ID}
+      PROXY_TARGET: http://backend:3000
+      KEYCLOAK_PROXY_TARGET: http://keycloak:8080
     ports:
       - "${FRONTEND_EXTERNAL_PORT}:${FRONTEND_PORT}"
     networks:
       - bod-network
     healthcheck:
-      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://0.0.0.0:5173"]
+      test: [ "CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://0.0.0.0:5173" ]
       interval: 30s
       timeout: 10s
       retries: 3

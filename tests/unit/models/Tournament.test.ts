@@ -47,7 +47,7 @@ describe('Tournament Model', () => {
 
     it('should enforce unique BOD number', async () => {
       await Tournament.create(validTournamentData);
-      
+
       const duplicateTournament = new Tournament(validTournamentData);
       await expect(duplicateTournament.save()).rejects.toThrow();
     });
@@ -276,7 +276,7 @@ describe('Tournament Model', () => {
     });
 
     it('should filter tournaments by format', async () => {
-      const result = await Tournament.paginate({ format: 'Men\'s' });
+      const result = await Tournament.paginate({ format: 'Men\'s' }, { page: 1, limit: 10 });
 
       expect(result.success).toBe(true);
       expect(result.data).toHaveLength(1);

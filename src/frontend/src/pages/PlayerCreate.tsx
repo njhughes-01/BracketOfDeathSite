@@ -2,8 +2,6 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useMutation } from '../hooks/useApi';
 import apiClient from '../services/api';
-import Card from '../components/ui/Card';
-import LoadingSpinner from '../components/ui/LoadingSpinner';
 import type { PlayerInput } from '../types/api';
 
 const PlayerCreate: React.FC = () => {
@@ -25,16 +23,12 @@ const PlayerCreate: React.FC = () => {
   const { mutate: createPlayer, loading, error } = useMutation(
     (data: PlayerInput) => apiClient.createPlayer(data),
     {
-      onSuccess: (data) => {
-        navigate('/players');
-      },
-      onError: (error) => {
-        console.error('Failed to create player:', error);
-      }
+      onSuccess: () => navigate('/players'),
+      onError: (err) => console.error('Failed to create player:', err)
     }
   );
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value, type } = e.target;
     setFormData(prev => ({
       ...prev,
@@ -48,246 +42,135 @@ const PlayerCreate: React.FC = () => {
   };
 
   return (
-    <div className="max-w-2xl mx-auto space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">Create New Player</h1>
-          <p className="text-gray-600">Add a new player to the tournament system</p>
-        </div>
-        <button
-          onClick={() => navigate('/players')}
-          className="btn btn-secondary"
-        >
-          Cancel
+    <div className="flex flex-col min-h-screen bg-background-dark pb-20">
+      {/* Header */}
+      <div className="sticky top-0 z-10 bg-background-dark/80 backdrop-blur-md border-b border-white/5 px-4 py-4 flex items-center gap-3">
+        <button onClick={() => navigate('/players')} className="p-2 -ml-2 rounded-full hover:bg-white/10 text-white transition-colors">
+          <span className="material-symbols-outlined">arrow_back</span>
         </button>
+        <h1 className="text-xl font-bold text-white">New Player</h1>
       </div>
 
-      <Card>
+      <div className="flex-1 p-4 max-w-lg mx-auto w-full">
         <form onSubmit={handleSubmit} className="space-y-6">
-          {/* Basic Information */}
-          <div>
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">Basic Information</h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+
+          {/* Photo Upload Placeholder */}
+          <div className="flex flex-col items-center justify-center gap-3 py-6">
+            <div className="relative group">
+              <div className="size-24 rounded-full bg-[#1c2230] border-2 border-dashed border-white/20 flex items-center justify-center group-hover:border-primary transition-colors cursor-pointer">
+                <span className="material-symbols-outlined text-slate-500 group-hover:text-primary">add_a_photo</span>
+              </div>
+              <div className="absolute bottom-0 right-0 p-1.5 bg-primary rounded-full text-black shadow-lg">
+                <span className="material-symbols-outlined text-[16px] font-bold">edit</span>
+              </div>
+            </div>
+            <p className="text-xs text-slate-500">Upload profile photo</p>
+          </div>
+
+          {/* Basic Info Section */}
+          <div className="space-y-4">
+            <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider pl-1">Basic Info</h3>
+            <div className="space-y-3">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Player Name *
-                </label>
+                <label className="block text-sm text-slate-400 mb-1 ml-1">Name</label>
                 <input
                   type="text"
                   name="name"
                   value={formData.name}
                   onChange={handleChange}
                   required
-                  className="input"
-                  placeholder="Enter player name"
+                  placeholder="e.g. John Doe"
+                  className="w-full bg-[#1c2230] border border-white/5 rounded-xl px-4 py-3 text-white placeholder-slate-600 focus:outline-none focus:border-primary/50 focus:ring-1 focus:ring-primary/50 transition-all"
                 />
               </div>
-              
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Pairing Partner
-                </label>
+                <label className="block text-sm text-slate-400 mb-1 ml-1">Usual Partner</label>
                 <input
                   type="text"
                   name="pairing"
-                  value={formData.pairing || ''}
+                  value={formData.pairing}
                   onChange={handleChange}
-                  className="input"
-                  placeholder="Enter partner name"
+                  placeholder="Optional"
+                  className="w-full bg-[#1c2230] border border-white/5 rounded-xl px-4 py-3 text-white placeholder-slate-600 focus:outline-none focus:border-primary/50 focus:ring-1 focus:ring-primary/50 transition-all"
                 />
               </div>
             </div>
           </div>
 
-          {/* Tournament Statistics */}
-          <div>
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">Tournament Statistics</h3>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  BODs Played
-                </label>
-                <input
-                  type="number"
-                  name="bodsPlayed"
-                  value={formData.bodsPlayed}
-                  onChange={handleChange}
-                  min="0"
-                  className="input"
-                />
-              </div>
-              
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Best Result
-                </label>
-                <input
-                  type="number"
-                  name="bestResult"
-                  value={formData.bestResult}
-                  onChange={handleChange}
-                  min="0"
-                  className="input"
-                />
-              </div>
-              
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Average Finish
-                </label>
-                <input
-                  type="number"
-                  name="avgFinish"
-                  value={formData.avgFinish}
-                  onChange={handleChange}
-                  min="0"
-                  step="0.1"
-                  className="input"
-                />
-              </div>
+          {/* Stats Section */}
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider pl-1">Initial Stats</h3>
+              <span className="text-[10px] text-slate-600 italic">Optional (Legacy Data)</span>
             </div>
-          </div>
 
-          {/* Game Statistics */}
-          <div>
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">Game Statistics</h3>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Games Played
-                </label>
-                <input
-                  type="number"
-                  name="gamesPlayed"
-                  value={formData.gamesPlayed}
-                  onChange={handleChange}
-                  min="0"
-                  className="input"
-                />
-              </div>
-              
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Games Won
-                </label>
-                <input
-                  type="number"
-                  name="gamesWon"
-                  value={formData.gamesWon}
-                  onChange={handleChange}
-                  min="0"
-                  className="input"
-                />
-              </div>
-              
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Winning Percentage
-                </label>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="bg-[#1c2230] p-3 rounded-xl border border-white/5">
+                <label className="block text-xs text-slate-500 mb-1">Win % (0.00-1.00)</label>
                 <input
                   type="number"
                   name="winningPercentage"
                   value={formData.winningPercentage}
                   onChange={handleChange}
+                  step="0.01"
                   min="0"
                   max="1"
-                  step="0.01"
-                  className="input"
-                  placeholder="0.00 - 1.00"
+                  className="w-full bg-transparent border-none p-0 text-white font-mono text-lg focus:ring-0"
                 />
               </div>
-            </div>
-          </div>
-
-          {/* Championships */}
-          <div>
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">Championships</h3>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Individual Championships
-                </label>
-                <input
-                  type="number"
-                  name="individualChampionships"
-                  value={formData.individualChampionships}
-                  onChange={handleChange}
-                  min="0"
-                  className="input"
-                />
-              </div>
-              
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Division Championships
-                </label>
-                <input
-                  type="number"
-                  name="divisionChampionships"
-                  value={formData.divisionChampionships}
-                  onChange={handleChange}
-                  min="0"
-                  className="input"
-                />
-              </div>
-              
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Total Championships
-                </label>
+              <div className="bg-[#1c2230] p-3 rounded-xl border border-white/5">
+                <label className="block text-xs text-slate-500 mb-1">Total Titles</label>
                 <input
                   type="number"
                   name="totalChampionships"
                   value={formData.totalChampionships}
                   onChange={handleChange}
                   min="0"
-                  className="input"
+                  className="w-full bg-transparent border-none p-0 text-white font-mono text-lg focus:ring-0"
+                />
+              </div>
+              <div className="bg-[#1c2230] p-3 rounded-xl border border-white/5">
+                <label className="block text-xs text-slate-500 mb-1">Games Played</label>
+                <input
+                  type="number"
+                  name="gamesPlayed"
+                  value={formData.gamesPlayed}
+                  onChange={handleChange}
+                  min="0"
+                  className="w-full bg-transparent border-none p-0 text-white font-mono text-lg focus:ring-0"
+                />
+              </div>
+              <div className="bg-[#1c2230] p-3 rounded-xl border border-white/5">
+                <label className="block text-xs text-slate-500 mb-1">BODs Played</label>
+                <input
+                  type="number"
+                  name="bodsPlayed"
+                  value={formData.bodsPlayed}
+                  onChange={handleChange}
+                  min="0"
+                  className="w-full bg-transparent border-none p-0 text-white font-mono text-lg focus:ring-0"
                 />
               </div>
             </div>
           </div>
 
-          {/* Error Display */}
+          {/* Error Message */}
           {error && (
-            <div className="bg-red-50 border border-red-200 rounded-md p-4">
-              <div className="flex">
-                <div className="flex-shrink-0">
-                  <span className="text-red-500 text-xl">⚠️</span>
-                </div>
-                <div className="ml-3">
-                  <h3 className="text-sm font-medium text-red-800">Error creating player</h3>
-                  <p className="text-sm text-red-700 mt-1">{error}</p>
-                </div>
-              </div>
+            <div className="p-3 rounded-lg bg-red-500/10 border border-red-500/20 text-red-500 text-sm">
+              Error: {error}
             </div>
           )}
 
-          {/* Action Buttons */}
-          <div className="flex items-center justify-end space-x-4 pt-6 border-t border-gray-200">
-            <button
-              type="button"
-              onClick={() => navigate('/players')}
-              className="btn btn-secondary"
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              disabled={loading || !formData.name.trim()}
-              className="btn btn-primary disabled:opacity-50"
-            >
-              {loading ? (
-                <>
-                  <LoadingSpinner size="sm" />
-                  <span className="ml-2">Creating...</span>
-                </>
-              ) : (
-                'Create Player'
-              )}
-            </button>
-          </div>
+          {/* Submit Button */}
+          <button
+            type="submit"
+            disabled={loading || !formData.name}
+            className="w-full py-4 rounded-xl bg-primary text-white font-bold text-lg shadow-lg shadow-primary/20 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-primary-dark active:scale-[0.98] transition-all"
+          >
+            {loading ? 'Creating...' : 'Create Player'}
+          </button>
         </form>
-      </Card>
+      </div>
     </div>
   );
 };

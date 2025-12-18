@@ -44,22 +44,22 @@ export class BaseController<T extends Document> {
         // Fallback for models without pagination
         const skip = (options.page - 1) * options.limit;
         let query = this.model.find(filter);
-        
+
         if (options.select) {
           query = query.select(options.select);
         }
-        
+
         if (options.sort) {
           query = query.sort(options.sort);
         }
-        
+
         const [docs, totalDocs] = await Promise.all([
           query.skip(skip).limit(options.limit).exec(),
           this.model.countDocuments(filter)
         ]);
 
         const totalPages = Math.ceil(totalDocs / options.limit);
-        
+
         const result = {
           docs,
           totalDocs,
@@ -72,7 +72,7 @@ export class BaseController<T extends Document> {
           prevPage: options.page > 1 ? options.page - 1 : null,
           pagingCounter: skip + 1,
         };
-        
+
         res.status(200).json(result);
       }
     } catch (error) {
@@ -87,7 +87,7 @@ export class BaseController<T extends Document> {
       const populate = req.query.populate as string;
 
       let query = this.model.findById(id);
-      
+
       if (populate) {
         const populateFields = populate.split(',').map(field => field.trim());
         populateFields.forEach(field => {
@@ -139,7 +139,7 @@ export class BaseController<T extends Document> {
   async update(req: RequestWithAuth, res: Response, next: NextFunction): Promise<void> {
     try {
       const { id } = req.params;
-      
+
       const updatedItem = await (this.model as any).findByIdAndUpdateSafe(
         id,
         req.body,
@@ -250,7 +250,7 @@ export class BaseController<T extends Document> {
   // Validation helper
   protected validateRequired(fields: string[], body: any): string[] {
     const missing: string[] = [];
-    
+
     fields.forEach(field => {
       if (!body[field] || (typeof body[field] === 'string' && body[field].trim() === '')) {
         missing.push(field);
@@ -271,9 +271,9 @@ export class BaseController<T extends Document> {
 
   // Success response helper
   protected sendSuccess<T>(
-    res: Response, 
-    data?: T, 
-    message?: string, 
+    res: Response,
+    data?: T,
+    message?: string,
     status: number = 200
   ): void {
     const response: ApiResponse<T> = {
@@ -288,8 +288,8 @@ export class BaseController<T extends Document> {
   protected asyncHandler = (
     fn: (req: Request | RequestWithAuth, res: Response, next: NextFunction) => Promise<void>
   ) => {
-    return (req: Request | RequestWithAuth, res: Response, next: NextFunction): void => {
-      Promise.resolve(fn(req, res, next)).catch(next);
+    return (req: Request | RequestWithAuth, res: Response, next: NextFunction): Promise<void> => {
+      return Promise.resolve(fn(req, res, next)).catch(next);
     };
   };
 }

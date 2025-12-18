@@ -3,7 +3,6 @@ import { Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { usePermissions } from '../hooks/usePermissions';
 import LoadingSpinner from '../components/ui/LoadingSpinner';
-import Card from '../components/ui/Card';
 import apiClient from '../services/api';
 import { getTournamentStatus, getStatusDisplayInfo } from '../utils/tournamentStatus';
 import type { Tournament } from '../types/api';
@@ -18,16 +17,12 @@ const Admin: React.FC = () => {
   useEffect(() => {
     const fetchTournaments = async () => {
       try {
-        const response = await apiClient.getTournaments({ 
+        const response = await apiClient.getTournaments({
           sort: '-date',
-          limit: 50 
+          limit: 50
         });
-        
-        // Handle both paginated and direct array responses
-        const tournamentsData = response.docs || response.data || [];
-        console.log('Tournaments response:', response);
-        console.log('Tournaments data:', tournamentsData);
-        
+
+        const tournamentsData = response.data || [];
         setTournaments(tournamentsData);
       } catch (err) {
         setError('Failed to load tournaments');
@@ -44,23 +39,19 @@ const Admin: React.FC = () => {
 
   if (!canViewAdmin) {
     return (
-      <div className="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
-        <Card>
-          <div className="text-center py-8">
-            <h2 className="text-2xl font-bold text-gray-900 mb-4">Access Denied</h2>
-            <p className="text-gray-600">You need administrative privileges to access this page.</p>
-          </div>
-        </Card>
+      <div className="flex flex-col items-center justify-center min-h-screen bg-background-dark p-4 text-center">
+        <span className="material-symbols-outlined text-red-500 text-6xl mb-4">lock</span>
+        <h2 className="text-2xl font-bold text-white mb-2">Access Denied</h2>
+        <p className="text-slate-400 max-w-md">You need administrative privileges to access this area.</p>
+        <Link to="/" className="mt-6 btn btn-primary">Go Home</Link>
       </div>
     );
   }
 
   if (loading) {
     return (
-      <div className="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
-        <div className="flex justify-center">
-          <LoadingSpinner />
-        </div>
+      <div className="flex flex-col items-center justify-center min-h-screen bg-background-dark">
+        <LoadingSpinner size="lg" />
       </div>
     );
   }
@@ -74,141 +65,156 @@ const Admin: React.FC = () => {
   const groupedTournaments = {
     scheduled: tournamentsWithStatus.filter(t => t.actualStatus === 'scheduled'),
     completed: tournamentsWithStatus.filter(t => t.actualStatus === 'completed'),
+    active: tournamentsWithStatus.filter(t => t.actualStatus === 'active'),
   };
 
   return (
-    <div className="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-900">Tournament Administration</h1>
-        <p className="mt-2 text-gray-600">
-          Manage tournaments, players, and match results
-        </p>
+    <div className="min-h-screen bg-background-dark pb-20">
+
+      {/* Header */}
+      <div className="sticky top-0 z-20 bg-background-dark/95 backdrop-blur-md border-b border-white/10 px-6 py-6">
+        <div className="max-w-7xl mx-auto flex items-center justify-between">
+          <div>
+            <h1 className="text-2xl font-bold text-white tracking-tight">Admin Dashboard</h1>
+            <p className="text-slate-400 text-sm mt-1">Manage tournaments, users, and settings</p>
+          </div>
+          <Link to="/" className="p-2 rounded-full bg-white/5 hover:bg-white/10 transition-colors">
+            <span className="material-symbols-outlined text-white">close</span>
+          </Link>
+        </div>
       </div>
 
-      {error && (
-        <div className="mb-6 bg-red-50 border border-red-200 rounded-md p-4">
-          <p className="text-red-600">{error}</p>
-        </div>
-      )}
+      <div className="max-w-7xl mx-auto px-6 py-8 space-y-8">
 
-      {/* Quick Actions */}
-      <div className="mb-8 grid grid-cols-1 md:grid-cols-3 gap-6">
-        <Card>
-          <div className="p-6">
-            <h3 className="text-lg font-medium text-gray-900 mb-4">Create New Tournament</h3>
+        {error && (
+          <div className="bg-red-500/10 border border-red-500/30 rounded-xl p-4 flex items-center gap-3">
+            <span className="material-symbols-outlined text-red-500">error</span>
+            <p className="text-red-400 text-sm font-bold">{error}</p>
+          </div>
+        )}
+
+        {/* Quick Actions Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+
+          {/* Manage Players */}
+          <div className="bg-[#1c2230] p-6 rounded-2xl border border-white/5 hover:border-white/10 transition-all group">
+            <div className="size-12 rounded-xl bg-green-500/20 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform duration-300">
+              <span className="material-symbols-outlined text-green-500 text-2xl">groups</span>
+            </div>
+            <h3 className="text-lg font-bold text-white mb-2">Manage Players</h3>
+            <p className="text-slate-400 text-sm mb-4">Add new players, edit profiles, and view statistics.</p>
+            <Link to="/players" className="text-green-500 text-sm font-bold flex items-center gap-1 hover:gap-2 transition-all">
+              Go to Players <span className="material-symbols-outlined text-sm">arrow_forward</span>
+            </Link>
+          </div>
+
+          {/* Manage News */}
+          <div className="bg-[#1c2230] p-6 rounded-2xl border border-white/5 hover:border-white/10 transition-all group">
+            <div className="size-12 rounded-xl bg-orange-500/20 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform duration-300">
+              <span className="material-symbols-outlined text-orange-500 text-2xl">newspaper</span>
+            </div>
+            <h3 className="text-lg font-bold text-white mb-2">Manage News</h3>
+            <p className="text-slate-400 text-sm mb-4">Post updates, announcements, and match recaps.</p>
+            <Link to="/news" className="text-orange-500 text-sm font-bold flex items-center gap-1 hover:gap-2 transition-all">
+              Go to News <span className="material-symbols-outlined text-sm">arrow_forward</span>
+            </Link>
+          </div>
+
+          {/* Create Tournament */}
+          <div className="bg-[#1c2230] p-6 rounded-2xl border border-white/5 hover:border-white/10 transition-all group">
+            <div className="size-12 rounded-xl bg-blue-500/20 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform duration-300">
+              <span className="material-symbols-outlined text-blue-500 text-2xl">add_circle</span>
+            </div>
+            <h3 className="text-lg font-bold text-white mb-2">New Tournament</h3>
+            <p className="text-slate-400 text-sm mb-4">Set up a new bracket, configure seeds, and open registration.</p>
             {canCreateTournaments ? (
-              <Link
-                to="/tournaments/create"
-                className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700"
-              >
-                New Tournament
+              <Link to="/tournaments/create" className="text-blue-500 text-sm font-bold flex items-center gap-1 hover:gap-2 transition-all">
+                Start Setup <span className="material-symbols-outlined text-sm">arrow_forward</span>
               </Link>
             ) : (
-              <p className="text-sm text-gray-500">You don't have permission to create tournaments</p>
+              <span className="text-slate-600 text-xs font-bold uppercase">Permission Denied</span>
             )}
           </div>
-        </Card>
 
-        <Card>
-          <div className="p-6">
-            <h3 className="text-lg font-medium text-gray-900 mb-4">Tournament Statistics</h3>
-            <div className="space-y-2 text-sm text-gray-600">
-              <div>Scheduled: {groupedTournaments.scheduled.length}</div>
-              <div>Completed: {groupedTournaments.completed.length}</div>
-              <div>Total: {tournaments.length}</div>
+          {/* User Management */}
+          <div className="bg-[#1c2230] p-6 rounded-2xl border border-white/5 hover:border-white/10 transition-all group">
+            <div className="size-12 rounded-xl bg-purple-500/20 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform duration-300">
+              <span className="material-symbols-outlined text-purple-500 text-2xl">group_add</span>
             </div>
-          </div>
-        </Card>
-
-        <Card>
-          <div className="p-6">
-            <h3 className="text-lg font-medium text-gray-900 mb-4">Quick Links</h3>
-            <div className="space-y-2">
-              <Link
-                to="/players"
-                className="block text-sm text-blue-600 hover:text-blue-800"
-              >
-                Manage Players
+            <h3 className="text-lg font-bold text-white mb-2">User Management</h3>
+            <p className="text-slate-400 text-sm mb-4">Manage user roles, approvals, and system access.</p>
+            {canManageUsers ? (
+              <Link to="/admin/users" className="text-purple-500 text-sm font-bold flex items-center gap-1 hover:gap-2 transition-all">
+                Manage Users <span className="material-symbols-outlined text-sm">arrow_forward</span>
               </Link>
-              <Link
-                to="/results"
-                className="block text-sm text-blue-600 hover:text-blue-800"
-              >
-                View Results
-              </Link>
-              {canManageUsers && (
-                <Link
-                  to="/admin/users"
-                  className="block text-sm text-blue-600 hover:text-blue-800"
-                >
-                  User Management
-                </Link>
-              )}
-            </div>
-          </div>
-        </Card>
-      </div>
-
-      {/* Tournaments by Status */}
-      <div className="space-y-8">
-        {Object.entries(groupedTournaments).map(([status, tournamentList]) => (
-          <div key={status}>
-            <h2 className="text-xl font-semibold text-gray-900 mb-4 capitalize">
-              {status} Tournaments ({tournamentList.length})
-            </h2>
-            
-            {tournamentList.length === 0 ? (
-              <Card>
-                <div className="p-6 text-center text-gray-500">
-                  No {status} tournaments
-                </div>
-              </Card>
             ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {tournamentList.map((tournament) => {
-                  const statusInfo = getStatusDisplayInfo(tournament.actualStatus);
-                  return (
-                    <Card key={tournament._id || tournament.id}>
-                      <div className="p-6">
-                        <div className="flex items-center justify-between mb-4">
-                          <h3 className="text-lg font-medium text-gray-900">
-                            BOD #{tournament.bodNumber}
-                          </h3>
-                          <span className={`px-2 py-1 text-xs font-medium rounded-full ${statusInfo.color}`}>
-                            {statusInfo.label}
-                          </span>
-                        </div>
-                        
-                        <div className="space-y-2 text-sm text-gray-600 mb-4">
-                          <div><strong>Date:</strong> {new Date(tournament.date).toLocaleDateString()}</div>
-                          <div><strong>Format:</strong> {tournament.format}</div>
-                          <div><strong>Location:</strong> {tournament.location}</div>
-                        </div>
+              <span className="text-slate-600 text-xs font-bold uppercase">Permission Denied</span>
+            )}
+          </div>
 
-                        <div className="flex space-x-2">
-                          <Link
-                            to={`/tournaments/${tournament._id || tournament.id}`}
-                            className="flex-1 text-center px-3 py-2 text-sm font-medium text-blue-600 bg-blue-50 rounded-md hover:bg-blue-100"
-                          >
-                            View Details
+          {/* System Status / Stats */}
+          <div className="bg-[#1c2230] p-6 rounded-2xl border border-white/5">
+            <h3 className="text-sm font-bold text-slate-500 uppercase tracking-wider mb-4">System Overview</h3>
+            <div className="space-y-3">
+              <div className="flex justify-between items-center bg-background-dark p-3 rounded-lg border border-white/5">
+                <span className="text-slate-400 text-sm font-medium">Total Tournaments</span>
+                <span className="text-white font-bold">{tournaments.length}</span>
+              </div>
+              <div className="flex justify-between items-center bg-background-dark p-3 rounded-lg border border-white/5">
+                <span className="text-slate-400 text-sm font-medium">Completed</span>
+                <span className="text-green-500 font-bold">{groupedTournaments.completed.length}</span>
+              </div>
+              <div className="flex justify-between items-center bg-background-dark p-3 rounded-lg border border-white/5">
+                <span className="text-slate-400 text-sm font-medium">Scheduled</span>
+                <span className="text-blue-500 font-bold">{groupedTournaments.scheduled.length}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Tournaments Lists */}
+        {/* We reuse the same loop structure */}
+        <div className="space-y-8">
+          {['active', 'scheduled', 'completed'].map((status) => {
+            const list = groupedTournaments[status as keyof typeof groupedTournaments];
+            if (!list || list.length === 0) return null;
+
+            return (
+              <div key={status}>
+                <h2 className="text-xl font-bold text-white mb-4 capitalize flex items-center gap-2">
+                  {status} Tournaments <span className="bg-white/10 text-xs px-2 py-0.5 rounded-full text-slate-400">{list.length}</span>
+                </h2>
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                  {list.map(tournament => {
+                    const statusInfo = getStatusDisplayInfo(tournament.actualStatus);
+                    return (
+                      <div key={tournament._id || tournament.id} className="bg-[#1c2230] border border-white/5 rounded-xl p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 hover:border-white/10 transition-colors">
+                        <div>
+                          <div className="flex items-center gap-2 mb-1">
+                            <span className="text-lg font-bold text-white">BOD #{tournament.bodNumber}</span>
+                            <span className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded-full ${statusInfo.color}`}>{statusInfo.label}</span>
+                          </div>
+                          <div className="text-xs text-slate-400 flex items-center gap-3">
+                            <span className="flex items-center gap-1"><span className="material-symbols-outlined text-[14px]">event</span> {new Date(tournament.date).toLocaleDateString()}</span>
+                            <span className="flex items-center gap-1"><span className="material-symbols-outlined text-[14px]">location_on</span> {tournament.location}</span>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2 w-full sm:w-auto">
+                          <Link to={`/tournaments/${tournament._id || tournament.id}/manage`} className="flex-1 sm:flex-none px-4 py-2 rounded-lg bg-white/5 text-white text-sm font-bold hover:bg-white/10 transition-colors text-center">
+                            Manage
                           </Link>
-                          {canViewAdmin && (
-                            <Link
-                              to={`/tournaments/${tournament._id || tournament.id}/bracket`}
-                              className="flex-1 text-center px-3 py-2 text-sm font-medium text-green-600 bg-green-50 rounded-md hover:bg-green-100"
-                            >
-                              View Bracket
-                            </Link>
-                          )}
+                          <Link to={`/tournaments/${tournament._id || tournament.id}`} className="size-9 flex items-center justify-center rounded-lg border border-white/10 hover:bg-white/5 text-slate-400 hover:text-white transition-colors">
+                            <span className="material-symbols-outlined text-[20px]">visibility</span>
+                          </Link>
                         </div>
                       </div>
-                    </Card>
-                  );
-                })}
+                    );
+                  })}
+                </div>
               </div>
-            )}
-          </div>
-        ))}
+            );
+          })}
+        </div>
       </div>
     </div>
   );

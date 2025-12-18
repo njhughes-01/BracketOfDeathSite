@@ -31,6 +31,7 @@ export interface Player {
   totalChampionships: number;
   drawingSequence?: number;
   pairing?: string;
+  isActive: boolean;
   createdAt: string;
   updatedAt: string;
 }
@@ -332,8 +333,8 @@ export interface MatchUpdate {
 }
 
 export interface TournamentAction {
-  action: 'start_registration' | 'close_registration' | 'start_checkin' | 'start_round_robin' | 
-          'advance_round' | 'start_bracket' | 'complete_tournament' | 'reset_tournament' | 'set_round';
+  action: 'start_registration' | 'close_registration' | 'start_checkin' | 'start_round_robin' |
+  'advance_round' | 'start_bracket' | 'complete_tournament' | 'reset_tournament' | 'set_round';
   parameters?: {
     targetRound?: string;
     resetToPhase?: string;

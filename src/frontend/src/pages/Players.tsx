@@ -1,314 +1,189 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { useApi } from '../hooks/useApi';
 import apiClient from '../services/api';
-import Card from '../components/ui/Card';
-import LoadingSpinner from '../components/ui/LoadingSpinner';
+import { useAuth } from '../contexts/AuthContext';
+import type { Player } from '../types/api';
 
 const Players: React.FC = () => {
+  const { isAdmin } = useAuth();
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState('');
+  const [showFilters, setShowFilters] = useState(false);
   const [filters, setFilters] = useState({
     winningPercentage_min: undefined as number | undefined,
-    winningPercentage_max: undefined as number | undefined,
-    totalChampionships_min: undefined as number | undefined,
     gamesPlayed_min: undefined as number | undefined,
-    bodsPlayed_min: undefined as number | undefined,
-    bestResult_max: undefined as number | undefined,
     sort: 'name',
   });
 
   const getPlayers = useCallback(
     () => {
+      // Keep API contract
+      const params = { page, limit: 50, ...filters };
       if (search.trim()) {
-        return apiClient.searchPlayers(search.trim(), { 
-          page, 
-          limit: 20, 
-          ...filters 
-        });
+        return apiClient.searchPlayers(search.trim(), params);
       } else {
-        return apiClient.getPlayers({ 
-          page, 
-          limit: 20, 
-          ...filters 
-        });
+        return apiClient.getPlayers(params);
       }
     },
     [page, filters, search]
   );
 
-  const { data: players, loading, error, execute } = useApi(
+  const { data: playersData, loading, execute: refresh } = useApi(
     getPlayers,
-    { 
+    {
       immediate: true,
       dependencies: [page, filters, search]
     }
   );
 
-  const handleFilterChange = (key: string, value: string) => {
-    setFilters(prev => ({ 
-      ...prev, 
-      [key]: key.includes('_min') || key.includes('_max') 
-        ? (value === '' ? undefined : key.includes('winningPercentage') ? parseInt(value) / 100 : parseInt(value)) // Convert percentage to decimal, others stay as numbers
-        : value 
-    }));
-    setPage(1);
-  };
+  const playersList = useMemo(() => {
+    if (!playersData || !('data' in playersData) || !Array.isArray(playersData.data)) return [];
+    return playersData.data;
+  }, [playersData]);
 
-  const handleSearch = (e: React.FormEvent) => {
-    e.preventDefault();
-    setPage(1);
-    // The search will be triggered automatically by the dependencies change
+  // Handle Sort Change
+  const handleSortChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    setFilters(prev => ({ ...prev, sort: e.target.value }));
   };
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">Players</h1>
-          <p className="text-gray-600">Manage player profiles and statistics</p>
+    <div className="flex flex-col h-full bg-background-light dark:bg-background-dark min-h-screen pb-24 relative overflow-hidden">
+
+      {/* Header Section - Sticky */}
+      <div className="flex-none bg-background-light dark:bg-background-dark z-10 border-b border-gray-200 dark:border-white/5 sticky top-0">
+
+        {/* Top Bar */}
+        <div className="flex items-center px-4 py-3 justify-between">
+          <div className="flex items-center gap-3">
+            <h1 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-white">Players</h1>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <button onClick={() => refresh()} className="relative p-2 rounded-full hover:bg-gray-200 dark:hover:bg-white/10 transition-colors">
+              <span className="material-symbols-outlined text-slate-600 dark:text-slate-400 text-[24px]">refresh</span>
+            </button>
+            <button
+              onClick={() => setShowFilters(!showFilters)}
+              className={`relative p-2 rounded-full hover:bg-gray-200 dark:hover:bg-white/10 transition-colors ${showFilters ? 'text-primary' : 'text-slate-600 dark:text-slate-400'}`}
+            >
+              <span className="material-symbols-outlined text-[24px]">tune</span>
+            </button>
+          </div>
         </div>
-        <Link to="/players/create" className="btn btn-primary">
-          Add Player
-        </Link>
-      </div>
 
-      {/* Search and Filters */}
-      <Card>
-        <form onSubmit={handleSearch} className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            <div className="md:col-span-2">
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Search Players
-              </label>
-              <input
-                type="text"
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                placeholder="Search by name..."
-                className="input"
-              />
+        {/* Search Bar */}
+        <div className="px-4 pb-2">
+          <div className="flex w-full items-center rounded-xl bg-white dark:bg-[#1c2230] border border-gray-200 dark:border-gray-700 h-11 focus-within:ring-2 focus-within:ring-primary/50 transition-all">
+            <div className="pl-3 pr-2 flex items-center justify-center text-slate-400">
+              <span className="material-symbols-outlined text-[20px]">search</span>
             </div>
-            
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Min Games Played
-              </label>
-              <input
-                type="number"
-                value={filters.gamesPlayed_min || ''}
-                onChange={(e) => handleFilterChange('gamesPlayed_min', e.target.value)}
-                placeholder="0+"
-                min="0"
-                className="input"
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Min BODs Played
-              </label>
-              <input
-                type="number"
-                value={filters.bodsPlayed_min || ''}
-                onChange={(e) => handleFilterChange('bodsPlayed_min', e.target.value)}
-                placeholder="0+"
-                min="0"
-                className="input"
-              />
-            </div>
+            <input
+              className="w-full bg-transparent border-none text-sm text-slate-900 dark:text-white placeholder-slate-400 focus:ring-0 p-0"
+              placeholder="Search players..."
+              type="text"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+            />
+            {search && (
+              <button onClick={() => setSearch('')} className="pr-3 pl-2 flex items-center justify-center text-slate-400 hover:text-primary">
+                <span className="material-symbols-outlined text-[20px]">close</span>
+              </button>
+            )}
           </div>
-          
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Min Win Rate %
-              </label>
-              <input
-                type="number"
-                value={filters.winningPercentage_min || ''}
-                onChange={(e) => handleFilterChange('winningPercentage_min', e.target.value)}
-                placeholder="0-100"
-                min="0"
-                max="100"
-                className="input"
-              />
-            </div>
+        </div>
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Max Win Rate %
-              </label>
-              <input
-                type="number"
-                value={filters.winningPercentage_max || ''}
-                onChange={(e) => handleFilterChange('winningPercentage_max', e.target.value)}
-                placeholder="0-100"
-                min="0"
-                max="100"
-                className="input"
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Best Finish (1st = 1)
-              </label>
-              <input
-                type="number"
-                value={filters.bestResult_max || ''}
-                onChange={(e) => handleFilterChange('bestResult_max', e.target.value)}
-                placeholder="1-20"
-                min="1"
-                className="input"
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Sort By
-              </label>
-              <select
-                value={filters.sort}
-                onChange={(e) => handleFilterChange('sort', e.target.value)}
-                className="select"
-              >
-                <option value="name">Name (A-Z)</option>
-                <option value="-name">Name (Z-A)</option>
-                <option value="-winningPercentage">Win Rate (High to Low)</option>
-                <option value="winningPercentage">Win Rate (Low to High)</option>
-                <option value="-gamesPlayed">Games Played (Most to Least)</option>
-                <option value="gamesPlayed">Games Played (Least to Most)</option>
-                <option value="-totalChampionships">Championships (Most to Least)</option>
-                <option value="totalChampionships">Championships (Least to Most)</option>
-                <option value="-bodsPlayed">BODs Played (Most to Least)</option>
-                <option value="bodsPlayed">BODs Played (Least to Most)</option>
-                <option value="bestResult">Best Finish (1st to Last)</option>
-                <option value="-avgFinish">Avg Finish (Best to Worst)</option>
-                <option value="avgFinish">Avg Finish (Worst to Best)</option>
-              </select>
-            </div>
-          </div>
-          
-          <button type="submit" className="btn btn-primary">
-            Apply Filters
-          </button>
-        </form>
-      </Card>
-
-      {/* Players List */}
-      <Card>
-        {loading ? (
-          <div className="flex items-center justify-center py-12">
-            <LoadingSpinner size="lg" />
-            <span className="ml-3 text-gray-500">Loading players...</span>
-          </div>
-        ) : error ? (
-          <div className="text-center py-12">
-            <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
-              <span className="text-red-500 text-2xl">⚠️</span>
-            </div>
-            <p className="text-red-600 font-medium mb-2">Error loading players</p>
-            <p className="text-gray-500 text-sm">{error}</p>
-          </div>
-        ) : (players && 'data' in players && Array.isArray(players.data) && players.data.length > 0) ? (
-          <div className="grid grid-cols-1 gap-4">
-            {(players.data as any[]).map((player: any) => (
-              <div key={player.id || player._id} className="group">
-                <Card variant="hover" padding="md">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center space-x-4">
-                      <div className="w-14 h-14 bg-gradient-to-br from-blue-500 to-purple-600 rounded-xl flex items-center justify-center shadow-sm">
-                        <span className="text-white font-bold text-lg">
-                          {player.name?.split(' ').map((n: string) => n[0]).join('') || 'P'}
-                        </span>
-                      </div>
-                      <div>
-                        <h3 className="font-semibold text-gray-900 group-hover:text-blue-600 transition-colors duration-200">
-                          {player.name || 'Unknown Player'}
-                        </h3>
-                        <div className="flex items-center space-x-4 mt-1">
-                          <span className="text-sm text-gray-600">
-                            BODs: {player.bodsPlayed || 0}
-                          </span>
-                          <span className="text-sm text-gray-600">
-                            Avg: {player.avgFinish ? player.avgFinish.toFixed(1) : 'N/A'}
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-                    
-                    <div className="flex items-center space-x-6">
-                      <div className="text-center">
-                        <p className="text-lg font-bold text-gray-900">
-                          {((player.winningPercentage || 0) * 100).toFixed(1)}%
-                        </p>
-                        <p className="text-xs text-gray-500 uppercase tracking-wide">Win Rate</p>
-                      </div>
-                      
-                      <div className="text-center">
-                        <p className="text-lg font-bold text-gray-900">
-                          {player.gamesPlayed || 0}
-                        </p>
-                        <p className="text-xs text-gray-500 uppercase tracking-wide">Games</p>
-                      </div>
-                      
-                      <div className="text-center">
-                        <p className="text-lg font-bold text-gray-900">
-                          {player.totalChampionships || 0}
-                        </p>
-                        <p className="text-xs text-gray-500 uppercase tracking-wide">Championships</p>
-                      </div>
-                      
-                      <Link
-                        to={`/players/${player.id || player._id}`}
-                        className="btn btn-outline btn-sm"
-                      >
-                        View Details
-                      </Link>
-                    </div>
-                  </div>
-                </Card>
+        {/* Filters Panel (Expandable) */}
+        {showFilters && (
+          <div className="px-4 py-3 bg-gray-50 dark:bg-white/5 border-t border-gray-200 dark:border-white/5 animate-in slide-in-from-top-2">
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="text-[10px] uppercase font-bold text-slate-500 mb-1 block">Sort By</label>
+                <select
+                  value={filters.sort}
+                  onChange={handleSortChange}
+                  className="w-full rounded-lg bg-white dark:bg-[#1c2230] border border-gray-200 dark:border-gray-700 text-sm py-2 pl-3 pr-8 focus:ring-primary focus:border-primary"
+                >
+                  <option value="name">Name (A-Z)</option>
+                  <option value="-winningPercentage">Win Rate</option>
+                  <option value="-totalChampionships">Championships</option>
+                  <option value="-gamesPlayed">Games Played</option>
+                </select>
               </div>
-            ))}
-          </div>
-        ) : (
-          <div className="text-center py-12">
-            <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
-              <span className="text-gray-400 text-2xl">👥</span>
             </div>
-            <p className="text-gray-500 mb-4">No players found</p>
-            <Link to="/players/create" className="btn btn-primary">
-              Add Your First Player
-            </Link>
           </div>
         )}
-      </Card>
+      </div>
 
-      {/* Pagination */}
-      {players && 'pagination' in players && (players as any).pagination && (players as any).pagination.pages > 1 && (
-        <div className="flex items-center justify-center space-x-2">
-          <button
-            onClick={() => setPage(page - 1)}
-            disabled={page === 1}
-            className="btn btn-secondary disabled:opacity-50"
-          >
-            Previous
-          </button>
-          
-          <span className="text-sm text-gray-700">
-            Page {page} of {players && 'pagination' in players && (players as any).pagination ? (players as any).pagination.pages : 1}
-          </span>
-          
-          <button
-            onClick={() => setPage(page + 1)}
-            disabled={players && 'pagination' in players ? page === (players as any).pagination.pages : true}
-            className="btn btn-secondary disabled:opacity-50"
-          >
-            Next
-          </button>
-        </div>
+      {/* Main Content Area */}
+      <div className="flex-1 overflow-y-auto p-4 space-y-3">
+        {loading ? (
+          <div className="space-y-3">
+            {[1, 2, 3, 4, 5].map(i => <div key={i} className="h-20 bg-card-dark rounded-xl animate-pulse"></div>)}
+          </div>
+        ) : playersList.length > 0 ? (
+          playersList.map((player: Player) => (
+            <Link key={player.id} to={`/players/${player.id}`} className="flex items-center gap-4 p-4 rounded-xl bg-white dark:bg-[#1c2230] border border-gray-200 dark:border-white/5 shadow-sm hover:border-primary/50 transition-all group active:scale-[0.99]">
+              <div className="relative shrink-0">
+                {/* Avatar Placeholder with Initials */}
+                <div className="size-12 rounded-full bg-gradient-to-br from-gray-700 to-gray-800 flex items-center justify-center text-white font-bold text-lg border-2 border-transparent group-hover:border-primary transition-all shadow-lg">
+                  {player.name ? player.name.split(' ').map((n: string) => n[0]).join('').slice(0, 2).toUpperCase() : '?'}
+                </div>
+                {/* Rank Badge for Top Players (Mock logic: if win rate > 0.5) */}
+                {(player.winningPercentage || 0) >= 0.5 && (
+                  <div className="absolute -bottom-1 -right-1 bg-background-dark rounded-full p-0.5">
+                    <div className="size-5 flex items-center justify-center bg-accent text-black text-[10px] font-bold rounded-full border border-background-dark">
+                      {(player.winningPercentage || 0) >= 0.8 ? 'S' : 'A'}
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              <div className="flex-1 min-w-0">
+                <div className="flex justify-between items-start mb-0.5">
+                  <h3 className="text-base font-bold text-slate-900 dark:text-white truncate pr-2 group-hover:text-primary transition-colors">{player.name}</h3>
+                  <div className="flex items-center gap-1">
+                    {(player.totalChampionships || 0) > 0 && (
+                      <span className="inline-flex items-center gap-1 text-[10px] font-bold bg-yellow-500/10 text-yellow-500 px-1.5 py-0.5 rounded border border-yellow-500/20">
+                        <span className="material-symbols-outlined text-[12px]">trophy</span> {player.totalChampionships}
+                      </span>
+                    )}
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-3 text-xs text-slate-500 dark:text-slate-400">
+                  <div className="flex items-center gap-1">
+                    <span className="material-symbols-outlined text-[14px]">sports_tennis</span>
+                    <span>{player.gamesPlayed || 0} Games</span>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <span className="material-symbols-outlined text-[14px]">trending_up</span>
+                    <span>{((player.winningPercentage || 0) * 100).toFixed(0)}% Win Rate</span>
+                  </div>
+                </div>
+              </div>
+
+              <span className="material-symbols-outlined text-slate-300 dark:text-slate-600 group-hover:text-white transition-colors">chevron_right</span>
+            </Link>
+          ))
+        ) : (
+          <div className="flex flex-col items-center justify-center py-16 text-center">
+            <div className="size-16 rounded-full bg-slate-100 dark:bg-card-dark flex items-center justify-center mb-4">
+              <span className="material-symbols-outlined text-slate-400 text-3xl">group_off</span>
+            </div>
+            <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-1">No players found</h3>
+            <p className="text-slate-500 dark:text-slate-400 text-sm">Try adjusting your search.</p>
+          </div>
+        )}
+      </div>
+
+      {/* FAB for Admin */}
+      {isAdmin && (
+        <Link to="/players/create" className="absolute bottom-6 right-6 z-20 size-14 rounded-full bg-neon-accent text-black shadow-[0_0_20px_rgba(204,255,0,0.4)] flex items-center justify-center hover:scale-110 active:scale-95 transition-all">
+          <span className="material-symbols-outlined text-3xl font-bold">add</span>
+        </Link>
       )}
+
     </div>
   );
 };

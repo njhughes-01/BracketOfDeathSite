@@ -5,6 +5,7 @@ import tournamentResultsRoutes from './tournamentResults';
 import dataRoutes from './data';
 import adminRoutes from './admin';
 import usersRoutes from './users';
+import profileRoutes from './profile';
 
 const router = Router();
 
@@ -15,6 +16,7 @@ router.use('/tournament-results', tournamentResultsRoutes);
 router.use('/data', dataRoutes);
 router.use('/admin', adminRoutes);
 router.use('/admin/users', usersRoutes);
+router.use('/profile', profileRoutes);
 
 // API info endpoint
 router.get('/', (_req, res) => {
@@ -29,6 +31,7 @@ router.get('/', (_req, res) => {
       data: '/api/data',
       admin: '/api/admin',
       users: '/api/admin/users',
+      profile: '/api/profile',
     },
     documentation: 'See CLAUDE.md for API documentation',
   });

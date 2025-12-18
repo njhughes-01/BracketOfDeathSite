@@ -26,6 +26,7 @@ export interface User {
   isAdmin: boolean;
   createdAt?: Date;
   lastLogin?: Date;
+  playerId?: string;
 }
 
 export interface UserProfile {
@@ -51,6 +52,7 @@ export interface CreateUserInput {
   password?: string;
   temporary?: boolean;
   roles?: string[];
+  playerId?: string;
 }
 
 export interface UpdateUserInput {
@@ -59,6 +61,7 @@ export interface UpdateUserInput {
   email?: string;
   enabled?: boolean;
   roles?: string[];
+  playerId?: string;
 }
 
 export interface CreateUserRequest {
@@ -69,6 +72,7 @@ export interface CreateUserRequest {
   password: string;
   roleIds: string[];
   isActive: boolean;
+  playerId?: string;
 }
 
 export interface UpdateUserRequest {
@@ -78,6 +82,7 @@ export interface UpdateUserRequest {
   lastName?: string;
   roleIds?: string[];
   isActive?: boolean;
+  playerId?: string;
 }
 
 export interface ResetPasswordInput {
@@ -114,21 +119,21 @@ export const PERMISSIONS = {
   TOURNAMENT_VIEW: 'tournament:view',
   TOURNAMENT_MANAGE_BRACKETS: 'tournament:manage-brackets',
   TOURNAMENT_FINALIZE: 'tournament:finalize',
-  
+
   // Player permissions
   PLAYER_CREATE: 'player:create',
   PLAYER_EDIT: 'player:edit',
   PLAYER_DELETE: 'player:delete',
   PLAYER_VIEW: 'player:view',
   PLAYER_MANAGE_STATS: 'player:manage-stats',
-  
+
   // User management permissions
   USER_CREATE: 'user:create',
   USER_EDIT: 'user:edit',
   USER_DELETE: 'user:delete',
   USER_VIEW: 'user:view',
   USER_MANAGE_ROLES: 'user:manage-roles',
-  
+
   // System permissions
   SYSTEM_ADMIN: 'system:admin',
   SYSTEM_VIEW_LOGS: 'system:view-logs',

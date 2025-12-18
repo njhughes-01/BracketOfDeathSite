@@ -40,44 +40,57 @@ const PlayerLeaderboard: React.FC<{ tournamentId: string }> = ({ tournamentId })
   }, [tournamentId]);
 
   return (
-    <Card>
-      <div className="flex items-center justify-between mb-3">
-        <h3 className="text-lg font-semibold text-gray-900">Player Leaderboard</h3>
-      </div>
-      {loading && <p className="text-sm text-gray-500">Loading…</p>}
-      {error && <p className="text-sm text-red-600">{error}</p>}
+    <div className="bg-surface-dark rounded-2xl border border-white/5 p-4 shadow-lg">
+      <h3 className="text-sm font-bold text-white mb-3">Player Leaderboard</h3>
+
+      {loading && (
+        <div className="flex items-center justify-center py-8">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+        </div>
+      )}
+
+      {error && <p className="text-sm text-red-500">{error}</p>}
+
       {!loading && !error && (
-        <div className="overflow-x-auto">
+        <div className="overflow-x-auto custom-scrollbar">
           <table className="w-full text-sm">
-            <thead className="bg-gray-50">
+            <thead className="bg-black/20 text-slate-400 font-bold uppercase text-[10px]">
               <tr>
-                <th className="text-left p-2">Player</th>
+                <th className="text-left p-2 rounded-l-lg">Player</th>
                 <th className="text-right p-2">Points</th>
                 <th className="text-right p-2">Matches</th>
-                <th className="text-right p-2">W</th>
-                <th className="text-right p-2">L</th>
+                <th className="text-right p-2 hidden sm:table-cell">W</th>
+                <th className="text-right p-2 rounded-r-lg hidden sm:table-cell">L</th>
               </tr>
             </thead>
-            <tbody>
-              {stats.map((s) => (
-                <tr key={s.playerId} className="border-t border-gray-200">
-                  <td className="p-2">{s.playerName || s.playerId}</td>
-                  <td className="p-2 text-right font-medium">{s.totalPoints}</td>
-                  <td className="p-2 text-right">{s.matchesWithPoints}</td>
-                  <td className="p-2 text-right text-green-700">{s.wins}</td>
-                  <td className="p-2 text-right text-red-700">{s.losses}</td>
+            <tbody className="divide-y divide-white/5">
+              {stats.slice(0, 10).map((s, idx) => (
+                <tr key={s.playerId} className="group hover:bg-white/5 transition-colors">
+                  <td className="p-2 flex items-center gap-2">
+                    <span className={`text-[10px] w-4 text-slate-500 font-mono ${(idx < 3) ? 'text-accent' : ''}`}>{idx + 1}</span>
+                    <span className="font-medium text-white group-hover:text-primary transition-colors truncate max-w-[100px]">{s.playerName || s.playerId}</span>
+                  </td>
+                  <td className="p-2 text-right font-bold text-primary">{s.totalPoints}</td>
+                  <td className="p-2 text-right text-slate-400">{s.matchesWithPoints}</td>
+                  <td className="p-2 text-right text-green-500 hidden sm:table-cell">{s.wins}</td>
+                  <td className="p-2 text-right text-red-500 hidden sm:table-cell">{s.losses}</td>
                 </tr>
               ))}
               {stats.length === 0 && (
                 <tr>
-                  <td colSpan={5} className="p-3 text-center text-gray-500">No player stats yet</td>
+                  <td colSpan={5} className="p-6 text-center text-slate-500 text-xs">No stats available</td>
                 </tr>
               )}
             </tbody>
           </table>
+          {stats.length > 10 && (
+            <div className="text-center mt-2">
+              <button className="text-xs text-primary hover:text-white transition-colors">View All</button>
+            </div>
+          )}
         </div>
       )}
-    </Card>
+    </div>
   );
 };
 
