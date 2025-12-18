@@ -14,6 +14,8 @@ export interface IPlayer extends BaseDocument {
   drawingSequence?: number;
   pairing?: string;
   isActive: boolean;
+  gender?: 'male' | 'female' | 'other';
+  bracketPreference?: 'mens' | 'womens' | 'mixed';
 }
 
 export interface IPlayerInput {
@@ -30,6 +32,8 @@ export interface IPlayerInput {
   drawingSequence?: number;
   pairing?: string;
   isActive?: boolean;
+  gender?: 'male' | 'female' | 'other';
+  bracketPreference?: 'mens' | 'womens' | 'mixed';
 }
 
 export interface IPlayerUpdate extends Partial<IPlayerInput> {

@@ -152,6 +152,23 @@ const Admin: React.FC = () => {
             )}
           </div>
 
+
+          {/* System Settings */}
+          <div className="bg-[#1c2230] p-6 rounded-2xl border border-white/5 hover:border-white/10 transition-all group">
+            <div className="size-12 rounded-xl bg-teal-500/20 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform duration-300">
+              <span className="material-symbols-outlined text-teal-500 text-2xl">settings</span>
+            </div>
+            <h3 className="text-lg font-bold text-white mb-2">System Settings</h3>
+            <p className="text-slate-400 text-sm mb-4">Configure API keys, integrations (Mailjet), and system globals.</p>
+            {isAdmin ? (
+              <Link to="/admin/settings" className="text-teal-500 text-sm font-bold flex items-center gap-1 hover:gap-2 transition-all">
+                Configure System <span className="material-symbols-outlined text-sm">arrow_forward</span>
+              </Link>
+            ) : (
+              <span className="text-slate-600 text-xs font-bold uppercase">Permission Denied</span>
+            )}
+          </div>
+
           {/* System Status / Stats */}
           <div className="bg-[#1c2230] p-6 rounded-2xl border border-white/5">
             <h3 className="text-sm font-bold text-slate-500 uppercase tracking-wider mb-4">System Overview</h3>

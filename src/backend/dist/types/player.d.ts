@@ -12,6 +12,9 @@ export interface IPlayer extends BaseDocument {
     totalChampionships: number;
     drawingSequence?: number;
     pairing?: string;
+    isActive: boolean;
+    gender?: 'male' | 'female' | 'other';
+    bracketPreference?: 'mens' | 'womens' | 'mixed';
 }
 export interface IPlayerInput {
     name: string;
@@ -26,6 +29,9 @@ export interface IPlayerInput {
     totalChampionships?: number;
     drawingSequence?: number;
     pairing?: string;
+    isActive?: boolean;
+    gender?: 'male' | 'female' | 'other';
+    bracketPreference?: 'mens' | 'womens' | 'mixed';
 }
 export interface IPlayerUpdate extends Partial<IPlayerInput> {
     _id?: never;

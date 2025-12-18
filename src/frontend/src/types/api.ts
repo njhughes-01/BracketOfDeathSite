@@ -34,6 +34,10 @@ export interface Player {
   isActive: boolean;
   createdAt: string;
   updatedAt: string;
+  firstName?: string;
+  lastName?: string;
+  nickname?: string;
+  email?: string;
 }
 
 export interface PlayerInput {
@@ -49,6 +53,7 @@ export interface PlayerInput {
   totalChampionships?: number;
   drawingSequence?: number;
   pairing?: string;
+  isActive?: boolean;
 }
 
 // Tournament types - matching backend schema exactly

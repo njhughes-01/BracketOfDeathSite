@@ -92,6 +92,20 @@ const playerSchema = new mongoose_1.Schema({
         trim: true,
         validate: (0, base_1.createStringValidator)(1, 100),
     },
+    isActive: {
+        type: Boolean,
+        default: true,
+    },
+    gender: {
+        type: String,
+        enum: ['male', 'female', 'other'],
+        trim: true,
+    },
+    bracketPreference: {
+        type: String,
+        enum: ['mens', 'womens', 'mixed'],
+        trim: true,
+    },
 }, base_1.baseSchemaOptions);
 // Custom validation for games won vs games played
 playerSchema.path('gamesWon').validate(function (gamesWon) {

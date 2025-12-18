@@ -9,6 +9,7 @@ export interface User {
     emailVerified?: boolean;
     roles: string[];
     isAdmin: boolean;
+    playerId?: string;
     createdAt?: Date;
     lastLogin?: Date;
 }
@@ -20,6 +21,7 @@ export interface CreateUserInput {
     password?: string;
     temporary?: boolean;
     roles?: string[];
+    playerId?: string;
 }
 export interface UpdateUserInput {
     firstName?: string;
@@ -27,6 +29,7 @@ export interface UpdateUserInput {
     email?: string;
     enabled?: boolean;
     roles?: string[];
+    playerId?: string;
 }
 export interface UserFilters {
     search?: string;

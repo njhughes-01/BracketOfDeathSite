@@ -6,6 +6,7 @@ import apiClient from '../services/api';
 import CreateUserForm from '../components/users/CreateUserForm';
 import UserList from '../components/users/UserList';
 import LoadingSpinner from '../components/ui/LoadingSpinner';
+import ClaimUserModal from '../components/users/ClaimUserModal';
 
 const UserManagement: React.FC = () => {
   const { user } = useAuth();
@@ -14,6 +15,7 @@ const UserManagement: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string>('');
   const [showCreateForm, setShowCreateForm] = useState(false);
+  const [showClaimModal, setShowClaimModal] = useState(false);
 
   useEffect(() => {
     if (canManageUsers) {
@@ -202,8 +204,8 @@ const UserManagement: React.FC = () => {
           <button
             onClick={() => setShowCreateForm(!showCreateForm)}
             className={`flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold transition-all ${showCreateForm
-                ? 'bg-red-500/10 text-red-500 hover:bg-red-500/20 border border-red-500/20'
-                : 'bg-primary text-black hover:bg-white hover:scale-105 shadow-lg shadow-primary/20'
+              ? 'bg-red-500/10 text-red-500 hover:bg-red-500/20 border border-red-500/20'
+              : 'bg-primary text-black hover:bg-white hover:scale-105 shadow-lg shadow-primary/20'
               }`}
           >
             {showCreateForm ? (
@@ -211,6 +213,13 @@ const UserManagement: React.FC = () => {
             ) : (
               <><span className="material-symbols-outlined">person_add</span> Create User</>
             )}
+          </button>
+
+          <button
+            onClick={() => setShowClaimModal(true)}
+            className="flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold transition-all bg-emerald-500/10 text-emerald-500 hover:bg-emerald-500/20 border border-emerald-500/20 ml-2"
+          >
+            <span className="material-symbols-outlined">mark_email_unread</span> Invite User
           </button>
         </div>
 
@@ -238,6 +247,16 @@ const UserManagement: React.FC = () => {
           onToggleAdminRole={handleToggleAdminRole}
         />
       </div>
+
+      {showClaimModal && (
+        <ClaimUserModal
+          onClose={() => setShowClaimModal(false)}
+          onSuccess={() => {
+            // Optional: refresh users if we want to show pending claims? 
+            // Currently claim just sends email, they aren't users yet.
+          }}
+        />
+      )}
     </div>
   );
 };

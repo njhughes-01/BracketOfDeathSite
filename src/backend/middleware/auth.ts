@@ -245,3 +245,29 @@ export const requireAdmin = async (
     }
   });
 };
+
+// Super Admin middleware (for system settings)
+export const requireSuperAdmin = async (
+  req: RequestWithAuth,
+  res: Response,
+  next: NextFunction
+): Promise<void> => {
+  // First check authentication
+  await requireAuth(req, res, () => {
+    const username = req.user?.username;
+    const isAdmin = req.user?.isAdmin;
+
+    // Check if username matches env-configured admin or simply 'admin'
+    const isSuperUser = username === 'admin' || username === (process.env.KEYCLOAK_ADMIN_USER || 'admin');
+
+    if (isAdmin && isSuperUser) {
+      next();
+    } else {
+      const response: ApiResponse = {
+        success: false,
+        error: 'Super Admin access required',
+      };
+      res.status(403).json(response);
+    }
+  });
+};

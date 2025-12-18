@@ -14,8 +14,8 @@ const Profile: React.FC = () => {
     const [isLinking, setIsLinking] = useState(false);
 
     // Fetch player stats if linked
-    const { data: playerStats, loading: statsLoading, execute: fetchStats } = useApi(
-        () => user?.playerId ? apiClient.getPlayerScoring(user.playerId) : Promise.resolve(null)
+    const { data: playerStats, loading: statsLoading, execute: fetchStats } = useApi<{ matchesWithPoints: number; totalPoints: number }>(
+        () => user?.playerId ? apiClient.getPlayerScoring(user.playerId) : Promise.resolve({ success: true, data: { matchesWithPoints: 0, totalPoints: 0 } })
     );
 
     useEffect(() => {
@@ -77,8 +77,9 @@ const Profile: React.FC = () => {
     }
 
     // Generate initials
-    const initials = user.name
-        ? user.name.split(' ').map((n) => n[0]).join('').slice(0, 2).toUpperCase()
+    const displayName = user.fullName || user.username;
+    const initials = displayName
+        ? displayName.split(' ').map((n) => n[0]).join('').slice(0, 2).toUpperCase()
         : '??';
 
     return (
@@ -106,7 +107,7 @@ const Profile: React.FC = () => {
 
                         {/* Info */}
                         <div className="flex-1 text-center md:text-left space-y-2 pt-2">
-                            <h1 className="text-4xl font-black text-white tracking-tight">{user.name}</h1>
+                            <h1 className="text-4xl font-black text-white tracking-tight">{displayName}</h1>
                             <p className="text-slate-400 font-bold font-mono text-sm bg-white/5 px-3 py-1 rounded-lg inline-block">{user.email}</p>
                             <div className="flex flex-wrap gap-2 justify-center md:justify-start mt-4">
                                 {user.roles.map(role => (
@@ -156,11 +157,11 @@ const Profile: React.FC = () => {
                                     <div className="text-center space-y-6 py-4">
                                         <div className="grid grid-cols-2 gap-4">
                                             <div className="bg-black/20 p-4 rounded-xl border border-white/5">
-                                                <div className="text-2xl font-black text-white">{playerStats?.data?.matchesWithPoints || 0}</div>
+                                                <div className="text-2xl font-black text-white">{playerStats?.matchesWithPoints || 0}</div>
                                                 <div className="text-xs text-slate-500 uppercase tracking-wider font-bold mt-1">Matches</div>
                                             </div>
                                             <div className="bg-black/20 p-4 rounded-xl border border-white/5">
-                                                <div className="text-2xl font-black text-primary">{playerStats?.data?.totalPoints || 0}</div>
+                                                <div className="text-2xl font-black text-primary">{playerStats?.totalPoints || 0}</div>
                                                 <div className="text-xs text-slate-500 uppercase tracking-wider font-bold mt-1">Total Points</div>
                                             </div>
                                         </div>

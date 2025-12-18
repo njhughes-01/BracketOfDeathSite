@@ -22,7 +22,6 @@ export interface ITournament extends BaseDocument {
         playerName: string;
         tournamentResult?: Types.ObjectId;
     };
-<<<<<<< HEAD
     formattedDate?: string;
     year?: number;
     month?: number;
@@ -34,7 +33,6 @@ export interface ITournament extends BaseDocument {
     registeredPlayerCount?: number;
     waitlistCount?: number;
     isRegistrationOpen?: boolean;
-=======
     seedingConfig?: {
         method: 'historical' | 'recent_form' | 'elo' | 'manual';
         parameters?: {
@@ -53,7 +51,6 @@ export interface ITournament extends BaseDocument {
         };
     };
     bracketType?: 'single_elimination' | 'double_elimination' | 'round_robin_playoff';
-    registrationDeadline?: Date;
     generatedSeeds?: Array<{
         playerId: Types.ObjectId;
         playerName: string;
@@ -92,7 +89,6 @@ export interface ITournament extends BaseDocument {
     managementState?: {
         currentRound?: string;
     };
->>>>>>> new-ui
 }
 export interface ITournamentInput {
     date: Date | string;

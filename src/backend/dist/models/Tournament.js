@@ -31,6 +31,10 @@ const calculateTournamentStats = (tournament) => {
     if (tournament.allowSelfRegistration === undefined) {
         tournament.allowSelfRegistration = tournament.registrationType === 'open';
     }
+    // Ensure bracketType has a default if not provided (fixes legacy/custom format issues)
+    if (!tournament.bracketType) {
+        tournament.bracketType = 'round_robin_playoff';
+    }
 };
 const tournamentSchema = new mongoose_1.Schema({
     date: {
@@ -210,9 +214,6 @@ const tournamentSchema = new mongoose_1.Schema({
     bracketType: {
         type: String,
         enum: ['single_elimination', 'double_elimination', 'round_robin_playoff'],
-    },
-    registrationDeadline: {
-        type: Date,
     },
     // Generated tournament data
     generatedSeeds: [{

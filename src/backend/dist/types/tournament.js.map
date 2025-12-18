@@ -1,5 +1,1 @@
-<<<<<<< HEAD
-{"version":3,"file":"tournament.js","sourceRoot":"","sources":["../../types/tournament.ts"],"names":[],"mappings":";;;AAiFa,QAAA,iBAAiB,GAAG;IAC/B,GAAG;IACH,GAAG;IACH,OAAO;IACP,gBAAgB;IAChB,gBAAgB;IAChB,kBAAkB;IAClB,eAAe;CACP,CAAC;AAIE,QAAA,kBAAkB,GAAG;IAChC,WAAW;IACX,MAAM;IACN,QAAQ;IACR,WAAW;IACX,WAAW;CACH,CAAC;AAIE,QAAA,iBAAiB,GAAG;IAC/B,MAAM;IACN,aAAa;CACL,CAAC"}
-=======
-{"version":3,"file":"tournament.js","sourceRoot":"","sources":["../../types/tournament.ts"],"names":[],"mappings":";;;AAkHa,QAAA,iBAAiB,GAAG;IAC/B,GAAG;IACH,GAAG;IACH,OAAO;IACP,gBAAgB;IAChB,gBAAgB;IAChB,kBAAkB;IAClB,eAAe;CACP,CAAC;AAIE,QAAA,kBAAkB,GAAG;IAChC,WAAW;IACX,MAAM;IACN,QAAQ;IACR,WAAW;IACX,WAAW;CACH,CAAC"}
->>>>>>> new-ui
+{"version":3,"file":"tournament.js","sourceRoot":"","sources":["../../types/tournament.ts"],"names":[],"mappings":";;;AA6Ia,QAAA,iBAAiB,GAAG;IAC/B,GAAG;IACH,GAAG;IACH,OAAO;IACP,gBAAgB;IAChB,gBAAgB;IAChB,kBAAkB;IAClB,eAAe;CACP,CAAC;AAIE,QAAA,kBAAkB,GAAG;IAChC,WAAW;IACX,MAAM;IACN,QAAQ;IACR,WAAW;IACX,WAAW;CACH,CAAC;AAGE,QAAA,iBAAiB,GAAG;IAC/B,MAAM;IACN,aAAa;CACL,CAAC"}

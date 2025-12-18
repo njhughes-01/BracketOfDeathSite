@@ -33,6 +33,13 @@ import type {
   UserRole,
 } from '../types/user';
 
+export interface SystemSettings {
+  mailjetConfigured: boolean;
+  mailjetSenderEmail: string;
+  hasApiKey: boolean;
+  hasApiSecret: boolean;
+}
+
 // Global token getter function - will be set by AuthContext
 let getKeycloakToken: (() => string | undefined) | null = null;
 let refreshKeycloakToken: (() => Promise<boolean>) | null = null;
@@ -477,12 +484,41 @@ class ApiClient {
     return this.get<ApiResponse<UserRole[]>>('/admin/users/roles');
   }
 
+  async claimUser(email: string, playerId: string): Promise<ApiResponse> {
+    return this.post<ApiResponse>('/admin/users/claim', { email, playerId });
+  }
+
+  async requestPasswordReset(email: string): Promise<ApiResponse> {
+    return this.post<ApiResponse>('/auth/forgot-password', { email });
+  }
+
+  // System Settings API methods
+  async getSystemSettings(): Promise<SystemSettings> {
+    return this.get<SystemSettings>('/settings');
+  }
+
+  async updateSystemSettings(settings: {
+    mailjetApiKey?: string;
+    mailjetApiSecret?: string;
+    mailjetSenderEmail?: string;
+  }): Promise<ApiResponse> {
+    return this.put<ApiResponse>('/settings', settings);
+  }
+
   // Health check
   async healthCheck(): Promise<ApiResponse> {
     return this.get<ApiResponse>('/health');
   }
 
   // Profile API methods
+  async getProfile(): Promise<ApiResponse<{ user: User; player: Player | null; isComplete: boolean }>> {
+    return this.get<ApiResponse<{ user: User; player: Player | null; isComplete: boolean }>>('/profile');
+  }
+
+  async updateProfile(data: { gender: string; bracketPreference: string }): Promise<ApiResponse<Player>> {
+    return this.put<ApiResponse<Player>>('/profile', data);
+  }
+
   async linkPlayerToProfile(playerId: string): Promise<ApiResponse<User>> {
     return this.post<ApiResponse<User>>('/profile/link-player', { playerId });
   }

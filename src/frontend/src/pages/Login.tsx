@@ -1,7 +1,8 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useNavigate, useLocation, Link } from 'react-router-dom';
 import LoadingSpinner from '../components/ui/LoadingSpinner';
+import ForgotPasswordModal from '../components/auth/ForgotPasswordModal';
 
 const Login: React.FC = () => {
   const { isAuthenticated, initializeAuth, login, keycloak, loading, setDirectAuthTokens } = useAuth();
@@ -14,6 +15,7 @@ const Login: React.FC = () => {
   const [loginError, setLoginError] = useState('');
   const [showAdminInfo, setShowAdminInfo] = useState(true);
   const [showPassword, setShowPassword] = useState(false);
+  const [showForgotPassword, setShowForgotPassword] = useState(false);
   const initializationAttempted = useRef(false);
 
   const from = (location.state as any)?.from || '/';
@@ -227,7 +229,13 @@ const Login: React.FC = () => {
             </div>
             {/* Forgot Password Link */}
             <div className="flex justify-end mt-1">
-              <a href="#" className="text-xs font-bold text-primary hover:text-primary-light transition-colors">Forgot Password?</a>
+              <button
+                type="button"
+                onClick={() => setShowForgotPassword(true)}
+                className="text-xs font-bold text-primary hover:text-primary-light transition-colors hover:underline"
+              >
+                Forgot Password?
+              </button>
             </div>
           </div>
 
@@ -303,10 +311,14 @@ const Login: React.FC = () => {
         <div className="mt-10 text-center pb-8">
           <p className="text-slate-500 text-sm">
             Don't have an account?
-            <a href="#" className="font-bold text-white hover:text-primary transition-colors ml-1">Sign Up</a>
+            <Link to="/register" className="font-bold text-white hover:text-primary transition-colors ml-1">Sign Up</Link>
           </p>
         </div>
       </div>
+
+      {showForgotPassword && (
+        <ForgotPasswordModal onClose={() => setShowForgotPassword(false)} />
+      )}
     </div>
   );
 };

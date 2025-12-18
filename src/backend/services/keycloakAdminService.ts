@@ -333,6 +333,14 @@ class KeycloakAdminService {
       requiredActions: []
     });
   }
+
+  async executeActionsEmail(userId: string, actions: string[]): Promise<void> {
+    await this.makeAuthenticatedRequest(
+      'PUT',
+      `/users/${userId}/execute-actions-email`,
+      actions
+    );
+  }
 }
 
 export const keycloakAdminService = new KeycloakAdminService();

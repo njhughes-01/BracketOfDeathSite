@@ -8,8 +8,11 @@ import usersRoutes from './users';
 import profileRoutes from './profile';
 
 const router = Router();
+import authRoutes from './auth';
+import settingsRoutes from './settings';
 
 // Mount all route modules
+router.use('/auth', authRoutes);
 router.use('/players', playersRoutes);
 router.use('/tournaments', tournamentsRoutes);
 router.use('/tournament-results', tournamentResultsRoutes);
@@ -17,6 +20,7 @@ router.use('/data', dataRoutes);
 router.use('/admin', adminRoutes);
 router.use('/admin/users', usersRoutes);
 router.use('/profile', profileRoutes);
+router.use('/settings', settingsRoutes);
 
 // API info endpoint
 router.get('/', (_req, res) => {

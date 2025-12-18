@@ -5,6 +5,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.keycloakAdminService = void 0;
 const axios_1 = __importDefault(require("axios"));
+// ... (KeycloakAdminService class definition)
 class KeycloakAdminService {
     client;
     adminToken = null;
@@ -90,6 +91,7 @@ class KeycloakAdminService {
             enabled: true,
             emailVerified: true,
             requiredActions: [], // Ensure no required actions block login
+            attributes: userData.attributes,
         };
         // Add password if provided
         if (userData.password) {
@@ -145,6 +147,8 @@ class KeycloakAdminService {
             updateData.email = userData.email;
         if (userData.enabled !== undefined)
             updateData.enabled = userData.enabled;
+        if (userData.attributes !== undefined)
+            updateData.attributes = userData.attributes;
         await this.makeAuthenticatedRequest('PUT', `/users/${userId}`, updateData);
         // Update roles if provided
         if (userData.roles) {
@@ -215,6 +219,9 @@ class KeycloakAdminService {
         await this.makeAuthenticatedRequest('PUT', `/users/${userId}`, {
             requiredActions: []
         });
+    }
+    async executeActionsEmail(userId, actions) {
+        await this.makeAuthenticatedRequest('PUT', `/users/${userId}/execute-actions-email`, actions);
     }
 }
 exports.keycloakAdminService = new KeycloakAdminService();

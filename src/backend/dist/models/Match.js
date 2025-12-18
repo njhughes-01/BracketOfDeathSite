@@ -96,7 +96,7 @@ const matchSchema = new mongoose_1.Schema({
         type: Number,
         required: [true, common_1.ErrorMessages.REQUIRED],
         min: [1, 'Round number must be positive'],
-        max: [10, 'Round number cannot exceed 10'],
+        max: [50, 'Round number cannot exceed 50'],
     },
     team1: {
         type: matchTeamSchema,

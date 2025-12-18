@@ -10,6 +10,10 @@ declare class UserController {
     resetPassword(req: RequestWithAuth, res: Response): Promise<void>;
     updateUserRoles(req: RequestWithAuth, res: Response): Promise<void>;
     getAvailableRoles(req: RequestWithAuth, res: Response): Promise<void>;
+    linkPlayerToSelf(req: RequestWithAuth, res: Response): Promise<void>;
+    claimUser(req: RequestWithAuth, res: Response): Promise<void>;
+    register(req: RequestWithAuth, res: Response): Promise<void>;
+    publicRequestPasswordReset(req: RequestWithAuth, res: Response): Promise<void>;
     private validateCreateUser;
     private validateUpdateUser;
 }

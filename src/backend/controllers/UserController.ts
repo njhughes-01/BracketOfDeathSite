@@ -12,6 +12,9 @@ import {
   UpdateUserValidation,
 } from '../types/user';
 import keycloakAdminService from '../services/keycloakAdminService';
+import mailjetService from '../services/MailjetService';
+import jwt from 'jsonwebtoken';
+import { Player } from '../models/Player';
 
 class UserController {
   protected handleError(res: Response, error: any, message: string): void {
@@ -466,6 +469,171 @@ class UserController {
       res.json(response);
     } catch (error: any) {
       this.handleError(res, error, 'Failed to link player profile');
+    }
+  }
+
+  async claimUser(req: RequestWithAuth, res: Response): Promise<void> {
+    try {
+      const { email, playerId } = req.body;
+
+      if (!email || !playerId) {
+        res.status(400).json({ success: false, error: 'Email and Player ID are required' });
+        return;
+      }
+
+      // 1. Verify player exists
+      const player = await Player.findById(playerId);
+      if (!player) {
+        res.status(404).json({ success: false, error: 'Player not found' });
+        return;
+      }
+
+      // 2. Generate Claim Token
+      const token = jwt.sign(
+        { email, playerId, type: 'claim_profile' },
+        process.env.JWT_SECRET || 'secret',
+        { expiresIn: '7d' }
+      );
+
+      // 3. Send Email
+      await mailjetService.sendClaimInvitation(email, token, player.name);
+
+      res.json({ success: true, message: 'Invitation sent successfully' });
+    } catch (error: any) {
+      this.handleError(res, error, 'Failed to send claim invitation');
+    }
+  }
+
+  // Public Registration endpoint (moved logic from routes/auth.ts to controller for better organization)
+  async register(req: RequestWithAuth, res: Response): Promise<void> {
+    try {
+      const { userData, claimToken } = req.body;
+
+      // If claim token exists, decode and override/verify specific fields
+      let linkedPlayerId: string | undefined;
+
+      if (claimToken) {
+        try {
+          const decoded = jwt.verify(claimToken, process.env.JWT_SECRET || 'secret') as any;
+          if (decoded.type === 'claim_profile') {
+            // Enforce the email/player connection from the token
+            userData.email = decoded.email;
+            linkedPlayerId = decoded.playerId;
+          }
+        } catch (e) {
+          console.error("Invalid claim token", e);
+          // Proceed without linking if token is invalid? Or fail? 
+          // For now, let's fail to prevent security issues if someone thinks they are claiming but aren't
+          res.status(400).json({ success: false, error: "Invalid or expired claim token" });
+          return;
+        }
+      }
+
+      // Validate required fields
+      if (!userData.username || !userData.email || !userData.password) {
+        const response: ApiResponse = {
+          success: false,
+          error: 'Missing required fields: username, email, password',
+        };
+        res.status(400).json(response);
+        return;
+      }
+
+      // Validate username
+      if (
+        userData.username.length < CreateUserValidation.username.minLength ||
+        userData.username.length > CreateUserValidation.username.maxLength ||
+        !CreateUserValidation.username.pattern.test(userData.username)
+      ) {
+        const response: ApiResponse = {
+          success: false,
+          error: 'Invalid username format',
+        };
+        res.status(400).json(response);
+        return;
+      }
+
+      // Validate email
+      if (!CreateUserValidation.email.pattern.test(userData.email)) {
+        const response: ApiResponse = {
+          success: false,
+          error: 'Invalid email format',
+        };
+        res.status(400).json(response);
+        return;
+      }
+
+      // Validate password
+      if (userData.password.length < CreateUserValidation.password.minLength) {
+        const response: ApiResponse = {
+          success: false,
+          error: `Password must be at least ${CreateUserValidation.password.minLength} characters`,
+        };
+        res.status(400).json(response);
+        return;
+      }
+
+      // Force safe roles for public registration
+      const safeUserData = {
+        ...userData,
+        roles: ['user'],
+        enabled: true,
+        emailVerified: false,
+        attributes: linkedPlayerId ? { playerId: [linkedPlayerId] } : undefined
+      };
+
+      // Create user in Keycloak
+      const createdUser = await keycloakAdminService.createUser(safeUserData);
+
+      const response: ApiResponse = {
+        success: true,
+        data: {
+          id: createdUser.id,
+          username: createdUser.username,
+          email: createdUser.email,
+          message: 'Registration successful. Please login.',
+        },
+      };
+
+      res.status(201).json(response);
+    } catch (error: any) {
+      if (error.response?.status === 409) {
+        const response: ApiResponse = {
+          success: false,
+          error: 'User with this username or email already exists',
+        };
+        res.status(409).json(response);
+        return;
+      }
+      this.handleError(res, error, 'Registration failed');
+    }
+  }
+
+  async publicRequestPasswordReset(req: RequestWithAuth, res: Response): Promise<void> {
+    try {
+      const { email } = req.body;
+      if (!email) {
+        res.status(400).json({ success: false, error: 'Email is required' });
+        return;
+      }
+
+      // Find user by email
+      const users = await keycloakAdminService.getUsers(email);
+      // Keycloak search is fuzzy, so filter exact match
+      const user = users.find(u => u.email.toLowerCase() === email.toLowerCase());
+
+      if (user && user.id) {
+        // Trigger Keycloak reset email
+        await keycloakAdminService.executeActionsEmail(user.id, ['UPDATE_PASSWORD']);
+      }
+
+      // Always return success to prevent user enumeration
+      res.json({ success: true, message: 'If an account exists, a password reset email has been sent.' });
+
+    } catch (error: any) {
+      // Log but return success
+      console.error("Password reset request error:", error);
+      res.json({ success: true, message: 'If an account exists, a password reset email has been sent.' });
     }
   }
 

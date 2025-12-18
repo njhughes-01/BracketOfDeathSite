@@ -5,12 +5,12 @@ export declare class PlayerController extends BaseController<IPlayer> {
     constructor();
     protected buildFilter(query: any): IPlayerFilter;
     protected buildSearchFilter(searchTerm: string): any;
-    getStats: (req: Request | RequestWithAuth, res: Response, next: NextFunction) => void;
-    getScoringSummary: (req: Request | RequestWithAuth, res: Response, next: NextFunction) => void;
-    getChampions: (req: Request | RequestWithAuth, res: Response, next: NextFunction) => void;
-    getPerformanceTrends: (req: Request | RequestWithAuth, res: Response, next: NextFunction) => void;
-    updateStats: (req: Request | RequestWithAuth, res: Response, next: NextFunction) => void;
-    bulkImport: (req: Request | RequestWithAuth, res: Response, next: NextFunction) => void;
+    getStats: (req: Request | RequestWithAuth, res: Response, next: NextFunction) => Promise<void>;
+    getScoringSummary: (req: Request | RequestWithAuth, res: Response, next: NextFunction) => Promise<void>;
+    getChampions: (req: Request | RequestWithAuth, res: Response, next: NextFunction) => Promise<void>;
+    getPerformanceTrends: (req: Request | RequestWithAuth, res: Response, next: NextFunction) => Promise<void>;
+    updateStats: (req: Request | RequestWithAuth, res: Response, next: NextFunction) => Promise<void>;
+    bulkImport: (req: Request | RequestWithAuth, res: Response, next: NextFunction) => Promise<void>;
     private calculateConsistencyScore;
     private validatePlayerData;
     create(req: RequestWithAuth, res: Response, next: NextFunction): Promise<void>;

@@ -43,7 +43,8 @@ const TournamentSetupPage: React.FC = () => {
       notes: '',
       photoAlbums: '',
       status: 'scheduled',
-      maxPlayers: 16
+      maxPlayers: 16,
+      registrationType: 'preselected'
     },
     seedingConfig: {
       method: 'historical',

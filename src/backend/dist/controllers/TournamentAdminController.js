@@ -7,12 +7,9 @@ const Match_1 = require("../models/Match");
 const TournamentResult_1 = require("../models/TournamentResult");
 const base_1 = require("./base");
 const mongoose_1 = require("mongoose");
-<<<<<<< HEAD
 const TournamentRegistrationService_1 = require("../services/TournamentRegistrationService");
 const TournamentSeedingService_1 = require("../services/TournamentSeedingService");
-=======
 const TournamentDeletionService_1 = require("../services/TournamentDeletionService");
->>>>>>> new-ui
 class TournamentAdminController extends base_1.BaseController {
     constructor() {
         super(Tournament_1.Tournament, 'Tournament');

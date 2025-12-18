@@ -17,7 +17,8 @@ const TournamentEdit: React.FC = () => {
         notes: '',
         photoAlbums: '',
         status: 'scheduled',
-        maxPlayers: 16
+        maxPlayers: 16,
+        registrationType: 'open'
     });
 
     // Fetch Tournament Data
@@ -39,7 +40,8 @@ const TournamentEdit: React.FC = () => {
                 notes: t.notes || '',
                 photoAlbums: t.photoAlbums || '',
                 status: t.status || 'scheduled',
-                maxPlayers: t.maxPlayers || 16
+                maxPlayers: t.maxPlayers || 16,
+                registrationType: t.registrationType || 'open'
             });
         }
     }, [tournament]);

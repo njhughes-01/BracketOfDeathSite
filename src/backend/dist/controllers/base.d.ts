@@ -26,6 +26,6 @@ export declare class BaseController<T extends Document> {
     protected validateRequired(fields: string[], body: any): string[];
     protected sendError(res: Response, status: number, message: string): void;
     protected sendSuccess<T>(res: Response, data?: T, message?: string, status?: number): void;
-    protected asyncHandler: (fn: (req: Request | RequestWithAuth, res: Response, next: NextFunction) => Promise<void>) => (req: Request | RequestWithAuth, res: Response, next: NextFunction) => void;
+    protected asyncHandler: (fn: (req: Request | RequestWithAuth, res: Response, next: NextFunction) => Promise<void>) => (req: Request | RequestWithAuth, res: Response, next: NextFunction) => Promise<void>;
 }
 //# sourceMappingURL=base.d.ts.map

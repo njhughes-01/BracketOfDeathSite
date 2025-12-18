@@ -13,6 +13,7 @@ interface KeycloakUser {
     }>;
     realmRoles?: string[];
     groups?: string[];
+    attributes?: Record<string, string[]>;
 }
 interface CreateUserRequest {
     username: string;
@@ -22,6 +23,7 @@ interface CreateUserRequest {
     password?: string;
     temporary?: boolean;
     roles?: string[];
+    attributes?: Record<string, string[]>;
 }
 interface UpdateUserRequest {
     firstName?: string;
@@ -29,6 +31,7 @@ interface UpdateUserRequest {
     email?: string;
     enabled?: boolean;
     roles?: string[];
+    attributes?: Record<string, string[]>;
 }
 declare class KeycloakAdminService {
     private client;
@@ -53,6 +56,7 @@ declare class KeycloakAdminService {
         description?: string;
     }>>;
     clearUserRequiredActions(userId: string): Promise<void>;
+    executeActionsEmail(userId: string, actions: string[]): Promise<void>;
 }
 export declare const keycloakAdminService: KeycloakAdminService;
 export default keycloakAdminService;

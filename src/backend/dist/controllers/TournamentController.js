@@ -327,7 +327,11 @@ class TournamentController extends base_1.BaseController {
     setupTournament = this.asyncHandler(async (req, res, next) => {
         try {
             console.log('setupTournament called with body:', JSON.stringify(req.body, null, 2));
-            const { basicInfo, seedingConfig, teamFormationConfig, bracketType, maxPlayers, selectedPlayers, generatedSeeds, generatedTeams } = req.body;
+            let { basicInfo, seedingConfig, teamFormationConfig, bracketType, maxPlayers, selectedPlayers, generatedSeeds, generatedTeams } = req.body;
+            // Ensure bracketType has a default if not provided
+            if (!bracketType) {
+                bracketType = 'round_robin_playoff'; // Default to standard format
+            }
             // Validate basicInfo exists and has required fields
             if (!basicInfo) {
                 this.sendError(res, 400, 'basicInfo is required');

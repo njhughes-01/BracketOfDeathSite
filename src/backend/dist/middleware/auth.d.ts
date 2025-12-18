@@ -22,5 +22,6 @@ export declare const isAuthorizedUser: (token: KeycloakToken) => boolean;
 export declare const requireAuth: (req: RequestWithAuth, res: Response, next: NextFunction) => Promise<void>;
 export declare const optionalAuth: (req: RequestWithAuth, _res: Response, next: NextFunction) => Promise<void>;
 export declare const requireAdmin: (req: RequestWithAuth, res: Response, next: NextFunction) => Promise<void>;
+export declare const requireSuperAdmin: (req: RequestWithAuth, res: Response, next: NextFunction) => Promise<void>;
 export {};
 //# sourceMappingURL=auth.d.ts.map

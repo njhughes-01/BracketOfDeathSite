@@ -3,7 +3,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.requireAdmin = exports.optionalAuth = exports.requireAuth = exports.isAuthorizedUser = exports.hasAdminRole = exports.verifyKeycloakToken = void 0;
+exports.requireSuperAdmin = exports.requireAdmin = exports.optionalAuth = exports.requireAuth = exports.isAuthorizedUser = exports.hasAdminRole = exports.verifyKeycloakToken = void 0;
 const jsonwebtoken_1 = __importDefault(require("jsonwebtoken"));
 const jwks_rsa_1 = __importDefault(require("jwks-rsa"));
 // JWKS client for validating Keycloak tokens
@@ -38,6 +38,7 @@ const verifyKeycloakToken = async (token) => {
                 `http://localhost:8080/auth/realms/${process.env.KEYCLOAK_REALM}`,
             ],
             algorithms: ['RS256'],
+            clockTolerance: 120, // Tolerate 2 minutes of clock skew
         }, (err, decoded) => {
             if (err) {
                 console.error('DEBUG: JWT Verify Error:', err);
@@ -197,4 +198,25 @@ const requireAdmin = async (req, res, next) => {
     });
 };
 exports.requireAdmin = requireAdmin;
+// Super Admin middleware (for system settings)
+const requireSuperAdmin = async (req, res, next) => {
+    // First check authentication
+    await (0, exports.requireAuth)(req, res, () => {
+        const username = req.user?.username;
+        const isAdmin = req.user?.isAdmin;
+        // Check if username matches env-configured admin or simply 'admin'
+        const isSuperUser = username === 'admin' || username === (process.env.KEYCLOAK_ADMIN_USER || 'admin');
+        if (isAdmin && isSuperUser) {
+            next();
+        }
+        else {
+            const response = {
+                success: false,
+                error: 'Super Admin access required',
+            };
+            res.status(403).json(response);
+        }
+    });
+};
+exports.requireSuperAdmin = requireSuperAdmin;
 //# sourceMappingURL=auth.js.map

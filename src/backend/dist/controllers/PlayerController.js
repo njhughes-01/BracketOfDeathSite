@@ -103,7 +103,8 @@ class PlayerController extends base_1.BaseController {
                         ]
                     }
                 },
-                { $project: {
+                {
+                    $project: {
                         _id: 1,
                         tournamentId: 1,
                         round: 1,
@@ -116,10 +117,12 @@ class PlayerController extends base_1.BaseController {
                                 { $ifNull: ['$team2.playerScores', []] }
                             ]
                         }
-                    } },
+                    }
+                },
                 { $unwind: '$scores' },
                 { $match: { 'scores.playerId': new (require('mongoose').Types.ObjectId)(id) } },
-                { $group: {
+                {
+                    $group: {
                         _id: '$scores.playerId',
                         matchesWithPoints: { $sum: 1 },
                         totalPoints: { $sum: { $ifNull: ['$scores.score', 0] } },
@@ -277,6 +280,7 @@ class PlayerController extends base_1.BaseController {
         if (data.bestResult && data.avgFinish && data.bestResult > data.avgFinish) {
             errors.push('Best result cannot be worse than average finish');
         }
+        // Active status is boolean, so no validation needed other than type check handled by mongoose
         return errors;
     }
     // Override create method to add custom validation

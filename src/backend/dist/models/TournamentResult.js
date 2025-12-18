@@ -112,19 +112,43 @@ const totalStatsSchema = new mongoose_1.Schema({
         type: Number,
         required: [true, common_1.ErrorMessages.REQUIRED],
         min: [0, 'Total games won cannot be negative'],
-        validate: (0, base_1.createNumericValidator)(0),
+        validate: [
+            (0, base_1.createNumericValidator)(0),
+            {
+                validator: function (v) {
+                    return v <= this.totalPlayed;
+                },
+                message: 'Total games won cannot exceed total games played'
+            }
+        ]
     },
     totalLost: {
         type: Number,
         required: [true, common_1.ErrorMessages.REQUIRED],
         min: [0, 'Total games lost cannot be negative'],
-        validate: (0, base_1.createNumericValidator)(0),
+        validate: [
+            (0, base_1.createNumericValidator)(0),
+            {
+                validator: function (v) {
+                    return v <= this.totalPlayed;
+                },
+                message: 'Total games lost cannot exceed total games played'
+            }
+        ]
     },
     totalPlayed: {
         type: Number,
         required: [true, common_1.ErrorMessages.REQUIRED],
         min: [0, 'Total games played cannot be negative'],
-        validate: (0, base_1.createNumericValidator)(0),
+        validate: [
+            (0, base_1.createNumericValidator)(0),
+            {
+                validator: function (v) {
+                    return v === (this.totalWon + this.totalLost);
+                },
+                message: 'Total games played must equal total won plus total lost'
+            }
+        ]
     },
     winPercentage: {
         type: Number,
@@ -238,7 +262,7 @@ const tournamentResultSchema = new mongoose_1.Schema({
     division: {
         type: String,
         trim: true,
-        validate: (0, base_1.createStringValidator)(1, 10),
+        validate: (0, base_1.createStringValidator)(1, 50),
     },
     seed: {
         type: Number,
@@ -256,15 +280,6 @@ const tournamentResultSchema = new mongoose_1.Schema({
 tournamentResultSchema.path('players').validate(function (players) {
     return players && players.length >= 1 && players.length <= 2;
 }, 'A team must have 1 or 2 players');
-tournamentResultSchema.path('totalStats.totalWon').validate(function (totalWon) {
-    return totalWon <= this.totalStats.totalPlayed;
-}, 'Total games won cannot exceed total games played');
-tournamentResultSchema.path('totalStats.totalLost').validate(function (totalLost) {
-    return totalLost <= this.totalStats.totalPlayed;
-}, 'Total games lost cannot exceed total games played');
-tournamentResultSchema.path('totalStats.totalPlayed').validate(function (totalPlayed) {
-    return totalPlayed === (this.totalStats.totalWon + this.totalStats.totalLost);
-}, 'Total games played must equal total won plus total lost');
 // Virtual for team name
 tournamentResultSchema.virtual('teamName').get(function () {
     if (!this.populated('players'))

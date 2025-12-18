@@ -20,14 +20,23 @@ interface KeycloakTokenParsed {
   };
 }
 
-interface User {
-  id: string;
-  email: string;
-  username: string;
-  name: string;
-  roles: string[];
-  isAdmin: boolean;
-  playerId?: string;
+import type { User } from '../types/user';
+
+interface KeycloakTokenParsed {
+  sub: string;
+  email?: string;
+  preferred_username?: string;
+  given_name?: string;
+  family_name?: string;
+  name?: string;
+  realm_access?: {
+    roles: string[];
+  };
+  resource_access?: {
+    [key: string]: {
+      roles: string[];
+    };
+  };
 }
 
 interface AuthContextType {
@@ -117,10 +126,13 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         id: profile.id || tokenParsed.sub,
         email: profile.email || tokenParsed.email || '',
         username: profile.username || tokenParsed.preferred_username || '',
-        name: `${profile.firstName || tokenParsed.given_name || ''} ${profile.lastName || tokenParsed.family_name || ''}`.trim() || tokenParsed.name || profile.username || tokenParsed.preferred_username || '',
+        firstName: profile.firstName || tokenParsed.given_name,
+        lastName: profile.lastName || tokenParsed.family_name,
+        fullName: `${profile.firstName || tokenParsed.given_name || ''} ${profile.lastName || tokenParsed.family_name || ''}`.trim() || tokenParsed.name || profile.username || tokenParsed.preferred_username || '',
         roles,
         isAdmin: roles.includes('admin'),
         playerId: profile.attributes?.playerId?.[0],
+        enabled: true, // Keycloak users are enabled if we are here
       };
 
       setUser(userData);

@@ -109,6 +109,16 @@ const playerSchema = new Schema<IPlayer>(
       type: Boolean,
       default: true,
     },
+    gender: {
+      type: String,
+      enum: ['male', 'female', 'other'],
+      trim: true,
+    },
+    bracketPreference: {
+      type: String,
+      enum: ['mens', 'womens', 'mixed'],
+      trim: true,
+    },
   },
   baseSchemaOptions
 );

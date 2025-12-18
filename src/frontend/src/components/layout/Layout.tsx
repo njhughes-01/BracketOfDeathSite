@@ -1,12 +1,15 @@
 import React, { type ReactNode } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 
+import { useAuth } from '../../contexts/AuthContext';
+
 interface LayoutProps {
   children: ReactNode;
 }
 
 const Layout: React.FC<LayoutProps> = ({ children }) => {
   const location = useLocation();
+  const { isAdmin } = useAuth();
 
   const isActive = (path: string) => {
     // Exact match for home, startsWith for others to handle sub-routes
@@ -23,6 +26,17 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
     return location.pathname.startsWith(path) ? "text-primary" : "text-slate-400 group-hover:text-white";
   };
 
+  const navItems = [
+    { path: '/', icon: 'dashboard', label: 'Home' },
+    { path: '/tournaments', icon: 'emoji_events', label: 'Tournaments' },
+    { path: '/players', icon: 'groups', label: 'Players' },
+    { path: '/profile', icon: 'person', label: 'Profile' }
+  ];
+
+  if (isAdmin) {
+    navItems.push({ path: '/admin', icon: 'admin_panel_settings', label: 'Admin' });
+  }
+
   return (
     <div className="bg-background-light dark:bg-background-dark text-slate-900 dark:text-white font-display antialiased min-h-screen flex flex-col md:flex-row">
 
@@ -33,11 +47,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
         </div>
 
         <nav className="flex-1 px-4 space-y-2">
-          {[{ path: '/', icon: 'dashboard', label: 'Home' },
-          { path: '/tournaments', icon: 'emoji_events', label: 'Tournaments' },
-          { path: '/players', icon: 'groups', label: 'Players' },
-          { path: '/profile', icon: 'person', label: 'Profile' }
-          ].map(item => (
+          {navItems.map(item => (
             <Link key={item.path} to={item.path} className={`flex items-center gap-4 px-4 py-3 rounded-xl transition-all group ${(item.path === '/' && location.pathname === '/') || (item.path !== '/' && location.pathname.startsWith(item.path))
               ? "bg-primary/10 text-primary border border-primary/20"
               : "text-slate-400 hover:bg-white/5 hover:text-white"
@@ -106,7 +116,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
             </span>
           </Link>
 
-          {/* Profile/Admin Tab */}
+          {/* Profile Tab */}
           <Link to="/profile" className="flex flex-col items-center justify-center gap-1 group">
             <span className={`material-symbols-outlined text-2xl transition-all duration-300 group-hover:scale-110 ${isActive('/profile').includes('text-primary') ? 'text-primary' : 'text-slate-500'}`}>
               person
@@ -115,6 +125,18 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
               Profile
             </span>
           </Link>
+
+          {/* Admin Tab (Mobile) - Only if Admin */}
+          {isAdmin && (
+            <Link to="/admin" className="flex flex-col items-center justify-center gap-1 group">
+              <span className={`material-symbols-outlined text-2xl transition-all duration-300 group-hover:scale-110 ${isActive('/admin').includes('text-primary') ? 'text-primary' : 'text-slate-500'}`}>
+                admin_panel_settings
+              </span>
+              <span className={`text-[10px] font-medium transition-colors ${getTextClass('/admin')}`}>
+                Admin
+              </span>
+            </Link>
+          )}
 
         </div>
       </nav>
