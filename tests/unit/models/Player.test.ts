@@ -63,13 +63,13 @@ describe('Player Model', () => {
 
     it('should require name field', async () => {
       const player = new Player({});
-      
+
       await expect(player.save()).rejects.toThrow('This field is required');
     });
 
     it('should enforce unique name constraint', async () => {
       await Player.create({ name: 'Duplicate Name' });
-      
+
       const duplicatePlayer = new Player({ name: 'Duplicate Name' });
       await expect(duplicatePlayer.save()).rejects.toThrow();
     });
@@ -201,9 +201,9 @@ describe('Player Model', () => {
 
     it('should safely update by ID', async () => {
       const player = await Player.findOne({ name: 'Player 1' });
-      
+
       const updated = await Player.findByIdAndUpdateSafe(
-        player!._id,
+        player!._id.toString(),
         { bodsPlayed: 10 }
       );
 

@@ -6,6 +6,14 @@ module.exports = {
     '**/__tests__/**/*.ts',
     '**/?(*.)+(spec|test).ts'
   ],
+  testPathIgnorePatterns: [
+    '/node_modules/',
+    '/dist/',
+    'tests/e2e/',
+    '\\.spec\\.ts$',  // Exclude Playwright spec files
+    'tests/unit/models/',  // Exclude model integration tests (require MongoDB)
+    'tests/unit/liveStats\\.playerStats\\.test\\.ts',  // Requires MongoDB
+  ],
   transform: {
     '^.+\\.ts$': 'ts-jest',
   },

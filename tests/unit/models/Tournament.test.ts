@@ -22,6 +22,7 @@ describe('Tournament Model', () => {
       format: 'Men\'s',
       location: 'Local Tennis Club',
       advancementCriteria: 'Top 2 from each group advance to knockout rounds',
+      registrationType: 'open',
     };
 
     it('should create a valid tournament', async () => {

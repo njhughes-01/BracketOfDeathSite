@@ -176,7 +176,7 @@ describe('TournamentResult Model', () => {
 
     it('should enforce unique tournament-players combination', async () => {
       await TournamentResult.create(validResultData);
-      
+
       const duplicateResult = new TournamentResult(validResultData);
       await expect(duplicateResult.save()).rejects.toThrow();
     });
@@ -378,10 +378,10 @@ describe('TournamentResult Model', () => {
     });
 
     it('should paginate results', async () => {
-      const result = await TournamentResult.paginate({}, { 
-        page: 1, 
-        limit: 1, 
-        sort: '-totalStats.winPercentage' 
+      const result = await TournamentResult.paginate({}, {
+        page: 1,
+        limit: 1,
+        sort: '-totalStats.winPercentage'
       });
 
       expect(result.success).toBe(true);
@@ -390,7 +390,7 @@ describe('TournamentResult Model', () => {
     });
 
     it('should filter by tournament', async () => {
-      const result = await TournamentResult.paginate({ tournamentId });
+      const result = await TournamentResult.paginate({ tournamentId }, { page: 1, limit: 10 });
 
       expect(result.success).toBe(true);
       expect(result.data).toHaveLength(2);
