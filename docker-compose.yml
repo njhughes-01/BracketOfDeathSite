@@ -6,16 +6,15 @@ services:
     restart: unless-stopped
     command: [ "start-dev" ]
     environment:
-      KEYCLOAK_ADMIN: ${KEYCLOAK_ADMIN_USER:-admin}
+      KEYCLOAK_ADMIN: admin
       KEYCLOAK_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD:-keycloak123}
       KC_DB: postgres
       KC_DB_URL: jdbc:postgresql://keycloak-db:5432/keycloak
-      KC_DB_USERNAME: ${KEYCLOAK_DB_USER:-keycloak}
+      KC_DB_USERNAME: keycloak
       KC_DB_PASSWORD: ${KEYCLOAK_DB_PASSWORD:-keycloak123}
       KC_HOSTNAME_STRICT: false
       KC_HOSTNAME_STRICT_HTTPS: false
       KC_HTTP_ENABLED: true
-    # No external port exposure - accessed via backend proxy
     depends_on:
       keycloak-db:
         condition: service_healthy
@@ -34,7 +33,7 @@ services:
     restart: unless-stopped
     environment:
       POSTGRES_DB: keycloak
-      POSTGRES_USER: ${KEYCLOAK_DB_USER:-keycloak}
+      POSTGRES_USER: keycloak
       POSTGRES_PASSWORD: ${KEYCLOAK_DB_PASSWORD:-keycloak123}
     volumes:
       - keycloak-db-data:/var/lib/postgresql/data
@@ -53,16 +52,12 @@ services:
     restart: unless-stopped
     command: [ "mongod", "--logpath", "/var/log/mongodb/mongod.log", "--logappend", "--quiet" ]
     environment:
-      MONGO_INITDB_ROOT_USERNAME: ${MONGO_INITDB_ROOT_USERNAME:-bodadmin}
-      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_INITDB_ROOT_PASSWORD:-bodpassword123}
-      MONGO_INITDB_DATABASE: ${MONGO_INITDB_DATABASE:-bracket_of_death}
-    # No external port - accessed via service name
+      MONGO_INITDB_ROOT_USERNAME: bodadmin
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_PASSWORD:-bodpassword123}
+      MONGO_INITDB_DATABASE: bracket_of_death
     volumes:
-      # Use Docker volume instead of bind mount to avoid permission issues
       - mongodb-data:/data/db
-      # Log directory
       - mongodb-logs:/var/log/mongodb
-      # Initialization scripts
       - ./scripts/init-mongo.js:/docker-entrypoint-initdb.d/init-mongo.js:ro
     networks:
       - bod-network
@@ -82,11 +77,11 @@ services:
       keycloak:
         condition: service_healthy
     environment:
-      KEYCLOAK_ADMIN_USER: ${KEYCLOAK_ADMIN_USER:-admin}
+      KEYCLOAK_ADMIN_USER: admin
       KEYCLOAK_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD:-keycloak123}
       KEYCLOAK_CLIENT_SECRET: ${KEYCLOAK_CLIENT_SECRET:-bodclient123}
-      KEYCLOAK_REALM: ${KEYCLOAK_REALM:-bracketofdeathsite}
-      KEYCLOAK_CLIENT_ID: ${KEYCLOAK_CLIENT_ID:-bod-app}
+      KEYCLOAK_REALM: bracketofdeathsite
+      KEYCLOAK_CLIENT_ID: bod-app
     volumes:
       - ./scripts:/scripts:ro
     networks:
@@ -104,7 +99,7 @@ services:
       mongodb:
         condition: service_healthy
     environment:
-      MONGODB_URI: mongodb://${MONGO_INITDB_ROOT_USERNAME:-bodadmin}:${MONGO_INITDB_ROOT_PASSWORD:-bodpassword123}@mongodb:27017/${MONGO_INITDB_DATABASE:-bracket_of_death}?authSource=admin
+      MONGODB_URI: mongodb://bodadmin:${MONGO_PASSWORD:-bodpassword123}@mongodb:27017/bracket_of_death?authSource=admin
     volumes:
       - ./json:/app/data:ro
       - data-init-status:/app/status
@@ -128,18 +123,16 @@ services:
         condition: service_completed_successfully
     environment:
       NODE_ENV: ${NODE_ENV:-development}
-      PORT: ${PORT:-3000}
-      MONGODB_URI: mongodb://${MONGO_INITDB_ROOT_USERNAME:-bodadmin}:${MONGO_INITDB_ROOT_PASSWORD:-bodpassword123}@mongodb:27017/${MONGO_INITDB_DATABASE:-bracket_of_death}?authSource=admin
+      PORT: 3000
+      MONGODB_URI: mongodb://bodadmin:${MONGO_PASSWORD:-bodpassword123}@mongodb:27017/bracket_of_death?authSource=admin
       JWT_SECRET: ${JWT_SECRET:-bracket-of-death-jwt-secret-key-2024}
       CORS_ORIGIN: ${CORS_ORIGIN:-http://localhost:5173,http://127.0.0.1:5173}
-      KEYCLOAK_URL: ${KEYCLOAK_URL:-http://keycloak:8080}
-      KEYCLOAK_REALM: ${KEYCLOAK_REALM:-bracketofdeathsite}
-      KEYCLOAK_CLIENT_ID: ${KEYCLOAK_CLIENT_ID:-bod-app}
+      KEYCLOAK_URL: http://keycloak:8080
+      KEYCLOAK_REALM: bracketofdeathsite
+      KEYCLOAK_CLIENT_ID: bod-app
       KEYCLOAK_CLIENT_SECRET: ${KEYCLOAK_CLIENT_SECRET:-bodclient123}
-      KEYCLOAK_ISSUER: ${KEYCLOAK_URL:-http://keycloak:8080}/realms/${KEYCLOAK_REALM:-bracketofdeathsite}
-    # No external port - accessed via service name from frontend
+      KEYCLOAK_ISSUER: http://keycloak:8080/realms/bracketofdeathsite
     volumes:
-      # Backend logs
       - ./data/logs/backend:/app/logs
     networks:
       - bod-network
@@ -149,7 +142,7 @@ services:
       timeout: 10s
       retries: 5
 
-  # Frontend
+  # Frontend (exposed to user)
   frontend:
     build:
       context: ./src/frontend
@@ -161,13 +154,13 @@ services:
         condition: service_healthy
     environment:
       VITE_API_URL: /api
-      VITE_KEYCLOAK_URL: ${VITE_KEYCLOAK_URL:-/auth}
-      VITE_KEYCLOAK_REALM: ${KEYCLOAK_REALM:-bracketofdeathsite}
-      VITE_KEYCLOAK_CLIENT_ID: ${KEYCLOAK_CLIENT_ID:-bod-app}
+      VITE_KEYCLOAK_URL: /auth
+      VITE_KEYCLOAK_REALM: bracketofdeathsite
+      VITE_KEYCLOAK_CLIENT_ID: bod-app
       PROXY_TARGET: http://backend:3000
       KEYCLOAK_PROXY_TARGET: http://keycloak:8080
     ports:
-      - "${VITE_PORT:-5173}:5173"
+      - "${PORT:-5173}:5173"
     networks:
       - bod-network
     healthcheck:
