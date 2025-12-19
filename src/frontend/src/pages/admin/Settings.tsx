@@ -7,6 +7,7 @@ const SettingsPage: React.FC = () => {
     const [settings, setSettings] = useState<SystemSettings | null>(null);
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
+    const [testing, setTesting] = useState(false);
     const [error, setError] = useState('');
     const [success, setSuccess] = useState('');
 
@@ -14,6 +15,7 @@ const SettingsPage: React.FC = () => {
     const [apiKey, setApiKey] = useState('');
     const [apiSecret, setApiSecret] = useState('');
     const [senderEmail, setSenderEmail] = useState('');
+    const [testEmailAddress, setTestEmailAddress] = useState('');
 
     useEffect(() => {
         loadSettings();
@@ -58,6 +60,24 @@ const SettingsPage: React.FC = () => {
             setError(err.response?.data?.error || 'Failed to save settings');
         } finally {
             setSaving(false);
+        }
+    };
+
+    const handleTestEmail = async () => {
+        if (!testEmailAddress) {
+            setError('Please enter an email address to send a test to');
+            return;
+        }
+        try {
+            setTesting(true);
+            setError('');
+            setSuccess('');
+            await apiClient.testEmail(testEmailAddress);
+            setSuccess('Test email sent successfully! Check your inbox.');
+        } catch (err: any) {
+            setError(err.response?.data?.error || 'Failed to send test email');
+        } finally {
+            setTesting(false);
         }
     };
 
@@ -176,6 +196,37 @@ const SettingsPage: React.FC = () => {
                         </button>
                     </div>
                 </form>
+
+                {/* Test Email Section */}
+                {settings?.mailjetConfigured && (
+                    <div className="mt-6 pt-6 border-t border-white/5">
+                        <h3 className="text-lg font-bold text-white mb-4">Test Email Configuration</h3>
+                        <div className="flex gap-4">
+                            <input
+                                type="email"
+                                value={testEmailAddress}
+                                onChange={(e) => setTestEmailAddress(e.target.value)}
+                                placeholder="Enter email address to test"
+                                className="flex-1 h-12 bg-black/20 border border-white/10 rounded-xl px-4 text-white focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-all placeholder:text-slate-600"
+                            />
+                            <button
+                                type="button"
+                                onClick={handleTestEmail}
+                                disabled={testing || !testEmailAddress}
+                                className="h-12 px-6 bg-blue-500 hover:bg-blue-600 text-white font-bold rounded-xl flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+                            >
+                                {testing ? (
+                                    <LoadingSpinner size="sm" color="white" />
+                                ) : (
+                                    <>
+                                        <span className="material-symbols-outlined">send</span>
+                                        Send Test
+                                    </>
+                                )}
+                            </button>
+                        </div>
+                    </div>
+                )}
             </div>
         </div>
     );

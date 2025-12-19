@@ -505,6 +505,15 @@ class ApiClient {
     return this.put<ApiResponse>('/settings', settings);
   }
 
+  async testEmail(email: string): Promise<ApiResponse> {
+    return this.post<ApiResponse>('/settings/email/test', { testEmail: email });
+  }
+
+  async isEmailConfigured(): Promise<{ configured: boolean }> {
+    const response = await this.get<ApiResponse<{ configured: boolean }>>('/settings/email/status');
+    return response.data || { configured: false };
+  }
+
   // Health check
   async healthCheck(): Promise<ApiResponse> {
     return this.get<ApiResponse>('/health');

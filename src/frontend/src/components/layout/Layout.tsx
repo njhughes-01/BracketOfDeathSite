@@ -1,7 +1,8 @@
-import React, { type ReactNode } from 'react';
+import React, { type ReactNode, useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 
 import { useAuth } from '../../contexts/AuthContext';
+import apiClient from '../../services/api';
 
 interface LayoutProps {
   children: ReactNode;
@@ -9,7 +10,24 @@ interface LayoutProps {
 
 const Layout: React.FC<LayoutProps> = ({ children }) => {
   const location = useLocation();
-  const { isAdmin } = useAuth();
+  const { isAdmin, user, isAuthenticated } = useAuth();
+  const [showEmailBanner, setShowEmailBanner] = useState(false);
+
+  // Check if superadmin and email not configured
+  useEffect(() => {
+    const checkEmailConfig = async () => {
+      // Only check for superadmin (username === 'admin')
+      if (isAuthenticated && isAdmin && user?.username === 'admin') {
+        try {
+          const { configured } = await apiClient.isEmailConfigured();
+          setShowEmailBanner(!configured);
+        } catch {
+          // Silently fail - don't show banner if check fails
+        }
+      }
+    };
+    checkEmailConfig();
+  }, [isAuthenticated, isAdmin, user?.username]);
 
   const isActive = (path: string) => {
     // Exact match for home, startsWith for others to handle sub-routes
@@ -41,8 +59,28 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
   return (
     <div className="bg-background-light dark:bg-background-dark text-slate-900 dark:text-white font-display antialiased min-h-screen flex flex-col md:flex-row">
 
+      {/* Email Configuration Banner for Superadmin */}
+      {showEmailBanner && (
+        <div className="fixed top-0 left-0 right-0 z-50 bg-yellow-500/90 text-black py-2 px-4 flex items-center justify-center gap-4">
+          <span className="material-symbols-outlined">warning</span>
+          <span className="font-bold text-sm">Email is not configured.</span>
+          <Link
+            to="/admin/settings"
+            className="bg-black/20 hover:bg-black/30 px-3 py-1 rounded-lg text-sm font-bold transition-colors"
+          >
+            Configure Now
+          </Link>
+          <button
+            onClick={() => setShowEmailBanner(false)}
+            className="ml-2 hover:bg-black/20 p-1 rounded transition-colors"
+          >
+            <span className="material-symbols-outlined text-sm">close</span>
+          </button>
+        </div>
+      )}
+
       {/* Desktop Sidebar - Hidden on Mobile */}
-      <aside className="hidden md:flex flex-col w-64 border-r border-slate-200 dark:border-white/10 bg-background-dark h-screen sticky top-0 z-50">
+      <aside className={`hidden md:flex flex-col w-64 border-r border-slate-200 dark:border-white/10 bg-background-dark h-screen sticky top-0 z-50 ${showEmailBanner ? 'mt-10' : ''}`}>
         <div className="p-6">
           <h1 className="text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-primary to-accent">MatchPoint</h1>
         </div>
@@ -70,7 +108,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
       </aside>
 
       {/* Main Content Area */}
-      <main className="flex-1 w-full pb-24 md:pb-0 relative overflow-x-hidden md:h-screen md:overflow-y-auto bg-background-dark">
+      <main className={`flex-1 w-full pb-24 md:pb-0 relative overflow-x-hidden md:h-screen md:overflow-y-auto bg-background-dark ${showEmailBanner ? 'mt-10' : ''}`}>
         <div className="md:max-w-7xl md:mx-auto md:p-6 w-full">
           {children}
         </div>

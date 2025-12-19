@@ -61,6 +61,51 @@ export class SettingsController {
             res.status(500).json({ success: false, error: 'Failed to update settings' });
         }
     };
+
+    // Test email configuration
+    public testEmail = async (req: RequestWithAuth, res: Response) => {
+        try {
+            const { testEmail } = req.body;
+
+            if (!testEmail) {
+                res.status(400).json({ success: false, error: 'Test email address is required' });
+                return;
+            }
+
+            const success = await mailjetService.sendEmail({
+                to: testEmail,
+                subject: 'Bracket of Death - Test Email',
+                text: 'This is a test email from Bracket of Death. If you received this, email configuration is working!',
+                html: `
+                    <div style="font-family: Arial, sans-serif; padding: 20px;">
+                        <h2>🎾 Email Configuration Test</h2>
+                        <p>This is a test email from <strong>Bracket of Death</strong>.</p>
+                        <p>If you received this, your email configuration is working correctly!</p>
+                    </div>
+                `
+            });
+
+            if (success) {
+                res.json({ success: true, message: 'Test email sent successfully' });
+            } else {
+                res.status(500).json({ success: false, error: 'Failed to send test email. Check your Mailjet configuration.' });
+            }
+        } catch (error) {
+            console.error('Error sending test email:', error);
+            res.status(500).json({ success: false, error: 'Failed to send test email' });
+        }
+    };
+
+    // Check if email is configured (public endpoint for banner)
+    public isEmailConfigured = async (_req: RequestWithAuth, res: Response) => {
+        try {
+            const settings = await SystemSettings.findOne();
+            const configured = !!(settings?.mailjetApiKey && settings?.mailjetApiSecret);
+            res.json({ success: true, data: { configured } });
+        } catch (error) {
+            res.json({ success: true, data: { configured: false } });
+        }
+    };
 }
 
 export default new SettingsController();
