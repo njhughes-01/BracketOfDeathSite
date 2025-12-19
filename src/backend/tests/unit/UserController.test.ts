@@ -151,4 +151,61 @@ describe('UserController', () => {
             expect(statusMock).toHaveBeenCalledWith(409);
         });
     });
+    describe('linkPlayerToSelf', () => {
+        it('should link player successfully', async () => {
+            mockReq = {
+                user: { id: 'user-1' },
+                body: { playerId: 'player-1' }
+            } as any;
+
+            const mockUser = {
+                id: 'user-1',
+                username: 'user1',
+                email: 'u1@example.com',
+                attributes: { playerId: ['player-1'] }
+            };
+
+            (keycloakAdminService.getUser as jest.Mock).mockResolvedValue(mockUser);
+
+            await userController.linkPlayerToSelf(mockReq as Request, mockRes as Response);
+
+            expect(keycloakAdminService.updateUser).toHaveBeenCalledWith('user-1', {
+                attributes: { playerId: ['player-1'] }
+            });
+            expect(jsonMock).toHaveBeenCalledWith(expect.objectContaining({
+                success: true,
+                data: expect.objectContaining({ playerId: 'player-1' })
+            }));
+        });
+
+        it('should fail if not authenticated', async () => {
+            mockReq = { user: undefined, body: { playerId: 'p1' } } as any;
+            await userController.linkPlayerToSelf(mockReq as Request, mockRes as Response);
+            expect(statusMock).toHaveBeenCalledWith(401);
+        });
+    });
+
+    describe('resetPassword', () => {
+        it('should reset password successfully', async () => {
+            mockReq = {
+                params: { id: 'user-1' },
+                body: { newPassword: 'password123', temporary: false }
+            };
+
+            await userController.resetPassword(mockReq as Request, mockRes as Response);
+
+            expect(keycloakAdminService.resetUserPassword).toHaveBeenCalledWith('user-1', 'password123', false);
+            expect(keycloakAdminService.clearUserRequiredActions).toHaveBeenCalledWith('user-1');
+            expect(jsonMock).toHaveBeenCalledWith(expect.objectContaining({ success: true }));
+        });
+
+        it('should fail with weak password', async () => {
+            mockReq = {
+                params: { id: 'user-1' },
+                body: { newPassword: 'short' }
+            };
+            await userController.resetPassword(mockReq as Request, mockRes as Response);
+            expect(statusMock).toHaveBeenCalledWith(400);
+        });
+    });
 });

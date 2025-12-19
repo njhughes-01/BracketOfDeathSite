@@ -1,5 +1,5 @@
 /// <reference types="vitest" />
-import { defineConfig } from 'vitest/config' // restart trigger v3
+import { defineConfig, configDefaults } from 'vitest/config' // restart trigger v3
 import react from '@vitejs/plugin-react'
 
 const allowedHosts = process.env.VITE_ALLOWED_HOSTS?.split(',') || ['localhost']
@@ -12,6 +12,7 @@ export default defineConfig({
     environment: 'jsdom',
     setupFiles: './src/test/setup.ts',
     css: true,
+    exclude: [...configDefaults.exclude, 'tests/e2e/**'],
   },
   server: {
     host: '0.0.0.0',
