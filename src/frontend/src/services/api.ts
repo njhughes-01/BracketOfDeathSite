@@ -34,10 +34,18 @@ import type {
 } from '../types/user';
 
 export interface SystemSettings {
+  // Mailjet config
   mailjetConfigured: boolean;
   mailjetSenderEmail: string;
   hasApiKey: boolean;
   hasApiSecret: boolean;
+  // Branding config
+  siteLogo: string;
+  siteLogoUrl: string;
+  favicon: string;
+  brandName: string;
+  brandPrimaryColor: string;
+  brandSecondaryColor: string;
 }
 
 // Global token getter function - will be set by AuthContext
@@ -501,6 +509,12 @@ class ApiClient {
     mailjetApiKey?: string;
     mailjetApiSecret?: string;
     mailjetSenderEmail?: string;
+    siteLogo?: string;
+    siteLogoUrl?: string;
+    favicon?: string;
+    brandName?: string;
+    brandPrimaryColor?: string;
+    brandSecondaryColor?: string;
   }): Promise<ApiResponse> {
     return this.put<ApiResponse>('/settings', settings);
   }
