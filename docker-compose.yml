@@ -1,10 +1,29 @@
 services:
+  # Secrets Generation (runs once on first startup)
+  secrets-init:
+    build:
+      context: .
+      dockerfile: scripts/Dockerfile.secrets-init
+    container_name: bod-secrets-init
+    volumes:
+      - secrets-data:/secrets
+    networks:
+      - bod-network
+    restart: "no"
+
   # Keycloak Authentication Server (internal only)
   keycloak:
     image: quay.io/keycloak/keycloak:23.0
     container_name: bod-keycloak
     restart: unless-stopped
     command: [ "start-dev" ]
+    depends_on:
+      secrets-init:
+        condition: service_completed_successfully
+      keycloak-db:
+        condition: service_healthy
+    volumes:
+      - secrets-data:/secrets:ro
     environment:
       KEYCLOAK_ADMIN: admin
       KEYCLOAK_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD:-keycloak123}
@@ -15,9 +34,6 @@ services:
       KC_HOSTNAME_STRICT: false
       KC_HOSTNAME_STRICT_HTTPS: false
       KC_HTTP_ENABLED: true
-    depends_on:
-      keycloak-db:
-        condition: service_healthy
     networks:
       - bod-network
     healthcheck:
@@ -31,12 +47,16 @@ services:
     image: postgres:15
     container_name: bod-keycloak-db
     restart: unless-stopped
+    depends_on:
+      secrets-init:
+        condition: service_completed_successfully
+    volumes:
+      - keycloak-db-data:/var/lib/postgresql/data
+      - secrets-data:/secrets:ro
     environment:
       POSTGRES_DB: keycloak
       POSTGRES_USER: keycloak
       POSTGRES_PASSWORD: ${KEYCLOAK_DB_PASSWORD:-keycloak123}
-    volumes:
-      - keycloak-db-data:/var/lib/postgresql/data
     networks:
       - bod-network
     healthcheck:
@@ -51,14 +71,18 @@ services:
     container_name: bod-mongodb
     restart: unless-stopped
     command: [ "mongod", "--logpath", "/var/log/mongodb/mongod.log", "--logappend", "--quiet" ]
+    depends_on:
+      secrets-init:
+        condition: service_completed_successfully
+    volumes:
+      - mongodb-data:/data/db
+      - mongodb-logs:/var/log/mongodb
+      - secrets-data:/secrets:ro
+      - ./scripts/init-mongo.js:/docker-entrypoint-initdb.d/init-mongo.js:ro
     environment:
       MONGO_INITDB_ROOT_USERNAME: bodadmin
       MONGO_INITDB_ROOT_PASSWORD: ${MONGO_PASSWORD:-bodpassword123}
       MONGO_INITDB_DATABASE: bracket_of_death
-    volumes:
-      - mongodb-data:/data/db
-      - mongodb-logs:/var/log/mongodb
-      - ./scripts/init-mongo.js:/docker-entrypoint-initdb.d/init-mongo.js:ro
     networks:
       - bod-network
     healthcheck:
@@ -76,14 +100,15 @@ services:
     depends_on:
       keycloak:
         condition: service_healthy
+    volumes:
+      - ./scripts:/scripts:ro
+      - secrets-data:/secrets:ro
     environment:
       KEYCLOAK_ADMIN_USER: admin
       KEYCLOAK_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD:-keycloak123}
       KEYCLOAK_CLIENT_SECRET: ${KEYCLOAK_CLIENT_SECRET:-bodclient123}
       KEYCLOAK_REALM: bracketofdeathsite
       KEYCLOAK_CLIENT_ID: bod-app
-    volumes:
-      - ./scripts:/scripts:ro
     networks:
       - bod-network
     restart: "no"
@@ -98,11 +123,12 @@ services:
     depends_on:
       mongodb:
         condition: service_healthy
-    environment:
-      MONGODB_URI: mongodb://bodadmin:${MONGO_PASSWORD:-bodpassword123}@mongodb:27017/bracket_of_death?authSource=admin
     volumes:
       - ./json:/app/data:ro
       - data-init-status:/app/status
+      - secrets-data:/secrets:ro
+    environment:
+      MONGODB_URI: mongodb://bodadmin:${MONGO_PASSWORD:-bodpassword123}@mongodb:27017/bracket_of_death?authSource=admin
     networks:
       - bod-network
     restart: "no"
@@ -121,6 +147,9 @@ services:
         condition: service_completed_successfully
       keycloak-init:
         condition: service_completed_successfully
+    volumes:
+      - ./data/logs/backend:/app/logs
+      - secrets-data:/secrets:ro
     environment:
       NODE_ENV: ${NODE_ENV:-development}
       PORT: 3000
@@ -132,8 +161,6 @@ services:
       KEYCLOAK_CLIENT_ID: bod-app
       KEYCLOAK_CLIENT_SECRET: ${KEYCLOAK_CLIENT_SECRET:-bodclient123}
       KEYCLOAK_ISSUER: http://keycloak:8080/realms/bracketofdeathsite
-    volumes:
-      - ./data/logs/backend:/app/logs
     networks:
       - bod-network
     healthcheck:
@@ -152,6 +179,8 @@ services:
     depends_on:
       backend:
         condition: service_healthy
+    volumes:
+      - secrets-data:/secrets:ro
     environment:
       VITE_API_URL: /api
       VITE_KEYCLOAK_URL: /auth
@@ -181,4 +210,6 @@ volumes:
   keycloak-db-data:
     driver: local
   data-init-status:
+    driver: local
+  secrets-data:
     driver: local
