@@ -161,6 +161,10 @@ services:
       KEYCLOAK_CLIENT_ID: bod-app
       KEYCLOAK_CLIENT_SECRET: ${KEYCLOAK_CLIENT_SECRET:-bodclient123}
       KEYCLOAK_ISSUER: http://keycloak:8080/realms/bracketofdeathsite
+      # Mailjet email configuration (optional - can also configure in admin UI)
+      MAILJET_API_KEY: ${MAILJET_API_KEY:-}
+      MAILJET_API_SECRET: ${MAILJET_API_SECRET:-}
+      MAILJET_SENDER_EMAIL: ${MAILJET_SENDER_EMAIL:-noreply@bracketofdeath.com}
     networks:
       - bod-network
     healthcheck:
