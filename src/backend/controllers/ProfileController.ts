@@ -35,9 +35,9 @@ class ProfileController {
             }
 
             // Determine if user should skip onboarding (isComplete)
-            // Only Super Admin (admin:admin123) is considered complete automatically
-            // to avoid forcing the bootstrap account to create a player profile.
+            // Super Admin (admin:admin123) OR any user with 'admin' role is considered complete automatically
             const isSuperAdmin = kcUser.username === 'admin' || kcUser.username === (process.env.KEYCLOAK_ADMIN_USER || 'admin');
+            const isAdmin = req.user?.isAdmin || false;
             const isPlayerComplete = !!(playerData && playerData.gender);
 
             // Construct the response profile object
@@ -54,7 +54,7 @@ class ProfileController {
                     playerId: playerId,
                 },
                 player: playerData,
-                isComplete: isSuperAdmin || isPlayerComplete
+                isComplete: isSuperAdmin || isAdmin || isPlayerComplete
             };
 
             const response: ApiResponse = {

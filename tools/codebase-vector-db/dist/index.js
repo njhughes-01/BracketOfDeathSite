@@ -230,7 +230,7 @@ class CodebaseVectorServer {
         console.error("Starting codebase indexing...");
         // Find all files
         // Ignore node_modules, dist, .git, artifacts
-        const files = await glob("**/*.{ts,tsx,js,jsx,py,md}", {
+        const files = await glob("**/*.{ts,tsx,js,jsx,py,md,sh,json,yml,yaml,css,sql}", {
             cwd: this.rootDir,
             ignore: [
                 "**/node_modules/**",

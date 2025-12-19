@@ -177,6 +177,8 @@ export const requireAuth = async (
     const response: ApiResponse = {
       success: false,
       error: 'Invalid or expired token',
+      // Include more details in non-production for debugging
+      ...(process.env.NODE_ENV !== 'production' ? { debug: (error as any).message } : {})
     };
     res.status(401).json(response);
   }
