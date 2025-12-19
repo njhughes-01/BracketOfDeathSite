@@ -228,6 +228,99 @@ const SettingsPage: React.FC = () => {
                     </div>
                 )}
             </div>
+
+            {/* Email Templates Preview */}
+            <div className="bg-[#1c2230] border border-white/5 rounded-2xl p-6 shadow-2xl">
+                <div className="flex items-center gap-3 mb-6 border-b border-white/5 pb-4">
+                    <div className="w-10 h-10 rounded-full bg-purple-500/20 flex items-center justify-center text-purple-500">
+                        <span className="material-symbols-outlined">article</span>
+                    </div>
+                    <div>
+                        <h2 className="text-xl font-bold text-white">Email Templates</h2>
+                        <p className="text-sm text-slate-400">Preview of emails sent by the system</p>
+                    </div>
+                </div>
+
+                <div className="space-y-6">
+                    {/* Claim Invitation Template */}
+                    <div className="border border-white/10 rounded-xl overflow-hidden">
+                        <div className="bg-white/5 px-4 py-3 flex items-center gap-2">
+                            <span className="material-symbols-outlined text-green-500">person_add</span>
+                            <span className="font-bold text-white">Profile Claim Invitation</span>
+                            <span className="ml-auto text-xs text-slate-500">Sent when inviting a player to claim their profile</span>
+                        </div>
+                        <div className="p-4 bg-white text-black">
+                            <div style={{ fontFamily: 'Arial, sans-serif', padding: '20px' }}>
+                                <h2 style={{ margin: '0 0 16px 0' }}>Claim your Player Profile</h2>
+                                <p>Hello!</p>
+                                <p>You have been invited to claim your player profile <strong>[Player Name]</strong> on Bracket of Death.</p>
+                                <p>This will link your existing tournament limits and stats to your new account.</p>
+                                <p>
+                                    <span style={{
+                                        backgroundColor: '#4CAF50',
+                                        color: 'white',
+                                        padding: '10px 20px',
+                                        textDecoration: 'none',
+                                        borderRadius: '5px',
+                                        display: 'inline-block',
+                                        marginTop: '10px'
+                                    }}>
+                                        Create Account & Claim Profile
+                                    </span>
+                                </p>
+                                <p style={{ marginTop: '20px', fontSize: '12px', color: '#666' }}>
+                                    Or copy this link: https://yoursite.com/register?claimToken=...
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Password Reset Template */}
+                    <div className="border border-white/10 rounded-xl overflow-hidden">
+                        <div className="bg-white/5 px-4 py-3 flex items-center gap-2">
+                            <span className="material-symbols-outlined text-blue-500">lock_reset</span>
+                            <span className="font-bold text-white">Password Reset</span>
+                            <span className="ml-auto text-xs text-slate-500">Sent when user requests password reset</span>
+                        </div>
+                        <div className="p-4 bg-white text-black">
+                            <div style={{ fontFamily: 'Arial, sans-serif', padding: '20px' }}>
+                                <h2 style={{ margin: '0 0 16px 0' }}>Reset Password</h2>
+                                <p>You requested a password reset for your Bracket of Death account.</p>
+                                <p>
+                                    <span style={{
+                                        backgroundColor: '#008CBA',
+                                        color: 'white',
+                                        padding: '10px 20px',
+                                        textDecoration: 'none',
+                                        borderRadius: '5px',
+                                        display: 'inline-block',
+                                        marginTop: '10px'
+                                    }}>
+                                        Reset Password
+                                    </span>
+                                </p>
+                                <p>If you didn't ask for this, you can ignore this email.</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Test Email Template */}
+                    <div className="border border-white/10 rounded-xl overflow-hidden">
+                        <div className="bg-white/5 px-4 py-3 flex items-center gap-2">
+                            <span className="material-symbols-outlined text-orange-500">send</span>
+                            <span className="font-bold text-white">Test Email</span>
+                            <span className="ml-auto text-xs text-slate-500">Sent when testing email configuration</span>
+                        </div>
+                        <div className="p-4 bg-white text-black">
+                            <div style={{ fontFamily: 'Arial, sans-serif', padding: '20px' }}>
+                                <h2 style={{ margin: '0 0 16px 0' }}>🎾 Email Configuration Test</h2>
+                                <p>This is a test email from <strong>Bracket of Death</strong>.</p>
+                                <p>If you received this, your email configuration is working correctly!</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
     );
 };
