@@ -71,7 +71,10 @@ const Register: React.FC = () => {
             });
 
             // Navigate to login with success message
-            navigate('/login', { state: { message: 'Registration successful! Please log in.' } });
+            const returnUrl = searchParams.get('returnUrl');
+            navigate(returnUrl ? `/login?returnUrl=${encodeURIComponent(returnUrl)}` : '/login', {
+                state: { message: 'Registration successful! Please log in.' }
+            });
         } catch (err: any) {
             console.error('Registration failed:', err);
             setError(err.response?.data?.error || 'Registration failed. Please try again.');

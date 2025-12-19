@@ -14,6 +14,7 @@ router.get('/', validatePagination, tournamentController.getAll);
 router.get('/search', validatePagination, tournamentController.search);
 router.get('/stats', tournamentController.getStats);
 router.get('/upcoming', tournamentController.getUpcoming);
+router.get('/open', tournamentController.listOpen); // New Endpoint
 router.get('/recent', tournamentController.getRecent);
 router.get('/next-bod-number', tournamentController.getNextBodNumber);
 router.get('/year/:year', tournamentController.getByYear);
@@ -39,6 +40,17 @@ router.post(
   ],
   validateRequest,
   tournamentAdminController.registerPlayer
+);
+
+router.post(
+  '/:id/join',
+  requireAuth,
+  [
+    param('id').isMongoId().withMessage('Invalid tournament ID'),
+    body('playerId').isMongoId().withMessage('Invalid player ID'),
+  ],
+  validateRequest,
+  tournamentController.join
 );
 
 router.delete(

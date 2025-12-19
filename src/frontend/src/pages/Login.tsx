@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
-import { useNavigate, useLocation, Link } from 'react-router-dom';
+import { useNavigate, useLocation, Link, useSearchParams } from 'react-router-dom';
 import LoadingSpinner from '../components/ui/LoadingSpinner';
 import ForgotPasswordModal from '../components/auth/ForgotPasswordModal';
 
@@ -18,11 +18,14 @@ const Login: React.FC = () => {
   const [showForgotPassword, setShowForgotPassword] = useState(false);
   const initializationAttempted = useRef(false);
 
-  // Robustly handle 'from' state: could be string, object with pathname, or nested object
+  // Robustly handle 'from' state: check query param first, then state
+  const [searchParams] = useSearchParams();
+  const returnUrl = searchParams.get('returnUrl');
   const stateFrom = (location.state as any)?.from;
-  const from = typeof stateFrom === 'string'
+
+  const from = returnUrl || (typeof stateFrom === 'string'
     ? stateFrom
-    : stateFrom?.pathname || '/';
+    : stateFrom?.pathname || '/');
 
   useEffect(() => {
     const hasLoggedInBefore = localStorage.getItem('hasLoggedInBefore');

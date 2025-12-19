@@ -1,0 +1,154 @@
+import { Request, Response } from 'express';
+import UserController from '../../controllers/UserController';
+import keycloakAdminService from '../../services/keycloakAdminService';
+import jwt from 'jsonwebtoken';
+
+// Mock dependencies with factory
+jest.mock('../../services/keycloakAdminService', () => ({
+    __esModule: true,
+    default: {
+        createUser: jest.fn(),
+        getUser: jest.fn(),
+        updateUser: jest.fn(),
+        deleteUser: jest.fn(),
+        resetUserPassword: jest.fn(),
+        setUserRoles: jest.fn(),
+        assignRolesToUser: jest.fn(),
+        removeRolesFromUser: jest.fn(),
+        getAvailableRoles: jest.fn(),
+        clearUserRequiredActions: jest.fn(),
+        executeActionsEmail: jest.fn(),
+        getUsers: jest.fn(),
+    }
+}));
+
+jest.mock('../../services/MailjetService');
+jest.mock('jsonwebtoken');
+
+// Mock axios
+jest.mock('axios', () => ({
+    __esModule: true,
+    default: {
+        post: jest.fn(),
+        // Keep create just in case, but if service is mocked, it shouldn't be called
+        create: jest.fn(() => ({
+            interceptors: { request: { use: jest.fn() }, response: { use: jest.fn() } },
+            post: jest.fn(),
+            get: jest.fn()
+        }))
+    }
+}));
+import axios from 'axios';
+
+describe('UserController', () => {
+    let userController: UserController;
+    let mockReq: Partial<Request>;
+    let mockRes: Partial<Response>;
+    let jsonMock: jest.Mock;
+    let statusMock: jest.Mock;
+
+    beforeEach(() => {
+        userController = new UserController();
+        jsonMock = jest.fn();
+        statusMock = jest.fn().mockReturnValue({ json: jsonMock });
+        mockRes = {
+            status: statusMock,
+            json: jsonMock,
+        };
+        jest.clearAllMocks();
+    });
+
+    describe('login', () => {
+        it('should return token on successful login', async () => {
+            mockReq = {
+                body: { username: 'testuser', password: 'password123' }
+            };
+
+            (axios.post as jest.Mock).mockResolvedValue({
+                data: {
+                    access_token: 'fake-token',
+                    refresh_token: 'fake-refresh-token',
+                    expires_in: 300
+                }
+            });
+
+            await userController.login(mockReq as Request, mockRes as Response);
+
+            expect(jsonMock).toHaveBeenCalledWith({
+                success: true,
+                token: 'fake-token',
+                refreshToken: 'fake-refresh-token',
+                expiresIn: 300
+            });
+        });
+
+        it('should return 400 if username/password missing', async () => {
+            mockReq = { body: {} };
+            await userController.login(mockReq as Request, mockRes as Response);
+            expect(statusMock).toHaveBeenCalledWith(400);
+        });
+
+        it('should return 401 on invalid credentials', async () => {
+            mockReq = {
+                body: { username: 'testuser', password: 'wrongpassword' }
+            };
+
+            (axios.post as jest.Mock).mockRejectedValue({
+                response: { data: { error: 'invalid_grant' } }
+            });
+
+            await userController.login(mockReq as Request, mockRes as Response);
+            expect(statusMock).toHaveBeenCalledWith(401);
+        });
+    });
+
+    describe('register', () => {
+        const validUser = {
+            username: 'newuser',
+            email: 'new@example.com',
+            password: 'password123',
+            firstName: 'New',
+            lastName: 'User'
+        };
+
+        it('should create user successfully', async () => {
+            mockReq = { body: { userData: validUser } };
+
+            (keycloakAdminService.createUser as jest.Mock).mockResolvedValue({
+                id: 'user-id',
+                username: 'newuser',
+                email: 'new@example.com',
+                enabled: true,
+                emailVerified: false
+            });
+
+            await userController.register(mockReq as Request, mockRes as Response);
+
+            expect(statusMock).toHaveBeenCalledWith(201);
+            expect(jsonMock).toHaveBeenCalledWith(expect.objectContaining({
+                success: true,
+                data: expect.objectContaining({ username: 'newuser' })
+            }));
+        });
+
+        it('should fail with missing fields', async () => {
+            mockReq = { body: { userData: { username: 'user' } } }; // Missing email/pass
+            await userController.register(mockReq as Request, mockRes as Response);
+            expect(statusMock).toHaveBeenCalledWith(400);
+            expect(jsonMock).toHaveBeenCalledWith(expect.objectContaining({
+                error: expect.stringContaining('Missing required fields')
+            }));
+        });
+
+        it('should fail if user already exists (409)', async () => {
+            mockReq = { body: { userData: validUser } };
+
+            (keycloakAdminService.createUser as jest.Mock).mockRejectedValue({
+                response: { status: 409 }
+            });
+
+            await userController.register(mockReq as Request, mockRes as Response);
+            expect(statusMock).toHaveBeenCalledWith(409);
+        });
+    });
+});

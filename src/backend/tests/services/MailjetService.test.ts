@@ -1,8 +1,22 @@
 import axios from "axios";
 import mailjetService from "../../services/MailjetService";
 
-jest.mock("axios");
+jest.mock("axios", () => ({
+  __esModule: true,
+  default: {
+    post: jest.fn()
+  }
+}));
 const mockedAxios = axios as jest.Mocked<typeof axios>;
+
+jest.mock("../../models/SystemSettings", () => ({
+  __esModule: true,
+  default: {
+    findOne: jest.fn().mockReturnValue({
+      select: jest.fn().mockResolvedValue(null)
+    })
+  }
+}));
 
 describe("MailjetService", () => {
   const originalEnv = process.env;

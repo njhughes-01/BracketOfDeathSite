@@ -26,6 +26,7 @@ import NotFound from './pages/NotFound';
 
 import RequireProfile from './components/RequireProfile';
 import Onboarding from './pages/Onboarding';
+import OpenTournaments from './pages/OpenTournaments';
 
 function App() {
   return (
@@ -37,6 +38,7 @@ function App() {
               <Route path="/login" element={<Login />} />
               <Route path="/register" element={<Register />} />
               <Route path="/onboarding" element={<ProtectedRoute><Onboarding /></ProtectedRoute>} />
+              <Route path="/open-tournaments" element={<OpenTournaments />} />
 
               {/* Profile Required Routes */}
               <Route element={<RequireProfile />}>

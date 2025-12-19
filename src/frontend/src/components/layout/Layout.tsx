@@ -29,6 +29,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
   const navItems = [
     { path: '/', icon: 'dashboard', label: 'Home' },
     { path: '/tournaments', icon: 'emoji_events', label: 'Tournaments' },
+    { path: '/open-tournaments', icon: 'public', label: 'Open Events' },
     { path: '/players', icon: 'groups', label: 'Players' },
     { path: '/profile', icon: 'person', label: 'Profile' }
   ];
