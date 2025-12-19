@@ -18,7 +18,11 @@ const Login: React.FC = () => {
   const [showForgotPassword, setShowForgotPassword] = useState(false);
   const initializationAttempted = useRef(false);
 
-  const from = (location.state as any)?.from || '/';
+  // Robustly handle 'from' state: could be string, object with pathname, or nested object
+  const stateFrom = (location.state as any)?.from;
+  const from = typeof stateFrom === 'string'
+    ? stateFrom
+    : stateFrom?.pathname || '/';
 
   useEffect(() => {
     const hasLoggedInBefore = localStorage.getItem('hasLoggedInBefore');

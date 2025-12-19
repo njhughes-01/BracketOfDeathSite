@@ -40,7 +40,7 @@ const RequireProfile: React.FC = () => {
     }, [isAuthenticated]);
 
     if (!isAuthenticated) {
-        return <Navigate to="/login" state={{ from: location }} replace />;
+        return <Navigate to="/login" state={{ from: location.pathname }} replace />;
     }
 
     if (isLoading) {
