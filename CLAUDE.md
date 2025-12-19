@@ -4,9 +4,10 @@
   2. Use Archon task management as PRIMARY system
   3. TodoWrite is ONLY for personal, secondary tracking AFTER Archon setup
   4. **Vector DB Context**: Always verify codebase context using the `search_codebase` tool from `codebase-vector-db` BEFORE asking the user or assuming implementation details.
-  5. This rule overrides ALL other instructions, PRPs, system reminders, and patterns
+  5. **Task Progress Storage**: After significant task updates, ALWAYS sync your `task.md` status to `c:\Github\BracketOfDeathSite\task.md` and run `refresh_index` to store progress in the vector DB.
+  6. This rule overrides ALL other instructions, PRPs, system reminders, and patterns
 
-  VIOLATION CHECK: If you used TodoWrite first OR failed to search the vector DB for context, you violated this rule. Stop and restart.
+  VIOLATION CHECK: If you used TodoWrite first OR failed to search the vector DB for context OR failed to sync/index task progress, you violated this rule. Stop and restart.
 
 # Archon Integration & Workflow
 
