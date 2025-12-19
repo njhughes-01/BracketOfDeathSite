@@ -362,13 +362,15 @@ const TournamentManage: React.FC = () => {
         {/* Main Control Area */}
         <div className="lg:col-span-2 space-y-6">
 
-          <div className="bg-red-500/10 border border-red-500/30 p-4 rounded-xl flex items-center justify-between animate-in fade-in slide-in-from-top-2">
-            <div className="flex items-center gap-3">
-              <span className="material-symbols-outlined text-red-500">error</span>
-              <span className="text-sm text-red-400">{error}</span>
+          {error && (
+            <div className="bg-red-500/10 border border-red-500/30 p-4 rounded-xl flex items-center justify-between animate-in fade-in slide-in-from-top-2">
+              <div className="flex items-center gap-3">
+                <span className="material-symbols-outlined text-red-500">error</span>
+                <span className="text-sm text-red-400">{error}</span>
+              </div>
+              <button onClick={() => setError(null)} className="text-red-500 hover:text-white"><span className="material-symbols-outlined">close</span></button>
             </div>
-            <button onClick={() => setError(null)} className="text-red-500 hover:text-white"><span className="material-symbols-outlined">close</span></button>
-          </div>
+          )}
 
 
           {/* Actions Panel */}

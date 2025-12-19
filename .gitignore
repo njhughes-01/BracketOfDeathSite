@@ -6,10 +6,7 @@ node_modules
 .env.*.local
 docker-compose.prod.yml
 
-<<<<<<< HEAD
 .mcp.json
-
-=======
 
 src/backend/dist/
 *.log
@@ -18,4 +15,3 @@ newUI.md
 CON
 latest_tournament.json
 status.txt
->>>>>>> new-ui

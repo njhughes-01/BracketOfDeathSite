@@ -75,7 +75,7 @@ const Tournaments: React.FC = () => {
           <div className="flex items-center gap-3">
             {/* Admin Add Button in Header or user defaults */}
             {isAdmin && (
-              <Link to="/tournaments/create" className="flex items-center justify-center w-8 h-8 rounded-full hover:bg-gray-200 dark:hover:bg-white/10 transition-colors text-primary">
+              <Link to="/tournaments/setup" className="flex items-center justify-center w-8 h-8 rounded-full hover:bg-gray-200 dark:hover:bg-white/10 transition-colors text-primary">
                 <span className="material-symbols-outlined text-[24px]">add_circle</span>
               </Link>
             )}

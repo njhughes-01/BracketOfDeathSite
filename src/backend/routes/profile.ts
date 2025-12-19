@@ -13,5 +13,6 @@ router.use(requireAuth);
 router.get('/', ProfileController.getProfile.bind(ProfileController));
 router.put('/', ProfileController.updateProfile.bind(ProfileController));
 router.post('/link-player', userController.linkPlayerToSelf.bind(userController));
+router.post('/password', ProfileController.changePassword.bind(ProfileController));
 
 export default router;

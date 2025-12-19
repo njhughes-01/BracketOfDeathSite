@@ -12,7 +12,6 @@ import PlayerCreate from './pages/PlayerCreate';
 import PlayerEdit from './pages/PlayerEdit';
 import PlayerDetail from './pages/PlayerDetail';
 import Tournaments from './pages/Tournaments';
-import TournamentCreate from './pages/TournamentCreate';
 import TournamentSetup from './pages/TournamentSetup';
 import TournamentDetail from './pages/TournamentDetail';
 import TournamentEdit from './pages/TournamentEdit';
@@ -69,14 +68,7 @@ function App() {
                     </ProtectedRoute>
                   }
                 />
-                <Route
-                  path="/tournaments/create"
-                  element={
-                    <ProtectedRoute requirePermission={PERMISSIONS.TOURNAMENT_CREATE}>
-                      <TournamentCreate />
-                    </ProtectedRoute>
-                  }
-                />
+
                 <Route
                   path="/tournaments/setup"
                   element={

@@ -46,6 +46,7 @@ class ProfileController {
                     id: kcUser.id,
                     username: kcUser.username,
                     email: kcUser.email,
+                    emailVerified: kcUser.emailVerified,
                     firstName: kcUser.firstName,
                     lastName: kcUser.lastName,
                     fullName: [kcUser.firstName, kcUser.lastName].filter(Boolean).join(' ') || kcUser.username,
@@ -153,6 +154,65 @@ class ProfileController {
 
         } catch (error) {
             this.handleError(res, error, 'Failed to update profile');
+        }
+    }
+
+    // Change password for the current user
+    async changePassword(req: RequestWithAuth, res: Response): Promise<void> {
+        try {
+            const userId = req.user?.id;
+            const { currentPassword, newPassword } = req.body;
+
+            if (!userId) {
+                res.status(401).json({ success: false, error: 'Not authenticated' });
+                return;
+            }
+
+            if (!currentPassword || !newPassword) {
+                res.status(400).json({ success: false, error: 'Current and new password are required' });
+                return;
+            }
+
+            if (newPassword.length < 8) {
+                res.status(400).json({ success: false, error: 'New password must be at least 8 characters' });
+                return;
+            }
+
+            // 1. Verify current password by attempting a login
+            const kcUser = await keycloakAdminService.getUser(userId);
+            if (!kcUser.username) {
+                res.status(404).json({ success: false, error: 'User not found' });
+                return;
+            }
+
+            const tokenUrl = `${process.env.KEYCLOAK_URL}/realms/${process.env.KEYCLOAK_REALM}/protocol/openid-connect/token`;
+            const params = new URLSearchParams();
+            params.append('username', kcUser.username);
+            params.append('password', currentPassword);
+            params.append('grant_type', 'password');
+            params.append('client_id', process.env.KEYCLOAK_CLIENT_ID || 'bod-app');
+            if (process.env.KEYCLOAK_CLIENT_SECRET) {
+                params.append('client_secret', process.env.KEYCLOAK_CLIENT_SECRET);
+            }
+
+            try {
+                // We use dynamic import for axios as seen in UserController
+                await import('axios').then(a => a.default.post(tokenUrl, params, {
+                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
+                }));
+            } catch (authError) {
+                // If login fails, current password is wrong
+                res.status(401).json({ success: false, error: 'Invalid current password' });
+                return;
+            }
+
+            // 2. If verification successful, update password
+            await keycloakAdminService.resetUserPassword(userId, newPassword, false);
+
+            res.json({ success: true, message: 'Password updated successfully' });
+
+        } catch (error) {
+            this.handleError(res, error, 'Failed to update password');
         }
     }
 }

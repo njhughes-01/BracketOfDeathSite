@@ -651,6 +651,28 @@ class UserController {
     }
   }
 
+  async requestEmailVerification(req: RequestWithAuth, res: Response): Promise<void> {
+    try {
+      const userId = req.user?.id;
+      if (!userId) {
+        res.status(401).json({ success: false, error: 'Not authenticated' });
+        return;
+      }
+
+      const kcUser = await keycloakAdminService.getUser(userId);
+      if (kcUser.emailVerified) {
+        res.status(400).json({ success: false, error: 'Email already verified' });
+        return;
+      }
+
+      await keycloakAdminService.executeActionsEmail(userId, ['VERIFY_EMAIL']);
+
+      res.json({ success: true, message: 'Verification email sent' });
+    } catch (error) {
+      this.handleError(res, error, 'Failed to send verification email');
+    }
+  }
+
   async publicRequestPasswordReset(req: RequestWithAuth, res: Response): Promise<void> {
     try {
       const { email } = req.body;

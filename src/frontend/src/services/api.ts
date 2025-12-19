@@ -522,6 +522,14 @@ class ApiClient {
   async linkPlayerToProfile(playerId: string): Promise<ApiResponse<User>> {
     return this.post<ApiResponse<User>>('/profile/link-player', { playerId });
   }
+
+  async changePassword(data: { currentPassword: string; newPassword: string }): Promise<ApiResponse> {
+    return this.post<ApiResponse>('/profile/password', data);
+  }
+
+  async sendVerificationEmail(): Promise<ApiResponse> {
+    return this.post<ApiResponse>('/auth/verify-email-request', {});
+  }
 }
 
 export const apiClient = new ApiClient();

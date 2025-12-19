@@ -4,6 +4,7 @@ import { Link } from 'react-router-dom';
 import { apiClient } from '../services/api';
 import { useApi } from '../hooks/useApi';
 import type { Player } from '../types/api';
+import ChangePasswordModal from '../components/auth/ChangePasswordModal';
 
 const Profile: React.FC = () => {
     const { user, isAdmin, logout, refreshUser } = useAuth();
@@ -12,6 +13,8 @@ const Profile: React.FC = () => {
     const [searchResults, setSearchResults] = useState<Player[]>([]);
     const [isSearching, setIsSearching] = useState(false);
     const [isLinking, setIsLinking] = useState(false);
+    const [showChangePassword, setShowChangePassword] = useState(false);
+    const [verificationSent, setVerificationSent] = useState(false);
 
     // Fetch player stats if linked
     const { data: playerStats, loading: statsLoading, execute: fetchStats } = useApi<{ matchesWithPoints: number; totalPoints: number }>(
@@ -44,6 +47,15 @@ const Profile: React.FC = () => {
 
         return () => clearTimeout(timer);
     }, [searchQuery]);
+
+    const handleSendVerification = async () => {
+        try {
+            await apiClient.sendVerificationEmail();
+            setVerificationSent(true);
+        } catch (err) {
+            console.error('Failed to send verification email', err);
+        }
+    };
 
     const handleLinkPlayer = async (playerId: string) => {
         setIsLinking(true);
@@ -85,6 +97,32 @@ const Profile: React.FC = () => {
     return (
         <div className="min-h-screen bg-background-dark pb-20">
             <div className="max-w-4xl mx-auto px-4 py-8 space-y-8">
+                {/* Verify Email Banner */}
+                {user && user.emailVerified === false && (
+                    <div className="p-4 rounded-xl bg-yellow-500/10 border border-yellow-500/20 flex flex-col sm:flex-row items-center justify-between gap-4">
+                        <div className="flex items-center gap-3">
+                            <span className="material-symbols-outlined text-yellow-500">warning</span>
+                            <div>
+                                <p className="font-bold text-yellow-500">Verify your email address</p>
+                                <p className="text-xs text-yellow-500/80">Please verify your email to ensure account security.</p>
+                            </div>
+                        </div>
+                        {verificationSent ? (
+                            <span className="text-xs font-bold text-green-500 flex items-center gap-1">
+                                <span className="material-symbols-outlined text-[16px]">check_circle</span>
+                                Sent
+                            </span>
+                        ) : (
+                            <button
+                                onClick={handleSendVerification}
+                                className="text-xs font-bold bg-yellow-500 hover:bg-yellow-400 text-black px-3 py-1.5 rounded-lg transition-colors"
+                            >
+                                Verify Now
+                            </button>
+                        )}
+                    </div>
+                )}
+
                 {/* Profile Header Card */}
                 <div className="relative overflow-hidden rounded-3xl bg-[#1c2230] border border-white/5 shadow-2xl">
                     {/* Background Decorative */}
@@ -194,7 +232,7 @@ const Profile: React.FC = () => {
                             Account Settings
                         </h3>
                         <div className="py-2 space-y-3">
-                            {/* Password Change - Placeholder for now due to complexity */}
+                            {/* Password Change */}
                             <div className="p-4 rounded-xl bg-background-dark border border-white/5 flex items-center justify-between group">
                                 <div className="flex items-center gap-4">
                                     <div className="size-10 rounded-lg bg-white/5 flex items-center justify-center text-slate-400 group-hover:bg-primary/20 group-hover:text-primary transition-colors">
@@ -202,14 +240,18 @@ const Profile: React.FC = () => {
                                     </div>
                                     <div>
                                         <p className="text-sm font-bold text-white">Password</p>
-                                        <p className="text-xs text-slate-500">Last changed recently</p>
+                                        <p className="text-xs text-slate-500">Update your account password</p>
                                     </div>
                                 </div>
-                                <button className="text-xs font-bold text-primary hover:text-white px-3 py-1.5 rounded-lg hover:bg-white/10 transition-colors opacity-50 cursor-not-allowed" title="Not implemented yet">
+                                <button
+                                    onClick={() => setShowChangePassword(true)}
+                                    className="text-xs font-bold text-primary hover:text-white px-3 py-1.5 rounded-lg hover:bg-white/10 transition-colors"
+                                >
                                     Change
                                 </button>
                             </div>
 
+                            {/* Notifications - Hidden for Alpha
                             <div className="p-4 rounded-xl bg-background-dark border border-white/5 flex items-center justify-between opacity-50 cursor-not-allowed">
                                 <div className="flex items-center gap-4">
                                     <div className="size-10 rounded-lg bg-white/5 flex items-center justify-center text-slate-500">
@@ -224,6 +266,7 @@ const Profile: React.FC = () => {
                                     Manage
                                 </button>
                             </div>
+                            */}
                         </div>
                     </div>
                 </div>
@@ -249,6 +292,11 @@ const Profile: React.FC = () => {
                     </div>
                 )}
             </div>
+
+            {/* Change Password Modal */}
+            {showChangePassword && (
+                <ChangePasswordModal onClose={() => setShowChangePassword(false)} />
+            )}
 
             {/* Link Player Modal */}
             {isLinkModalOpen && (
