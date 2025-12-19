@@ -134,7 +134,7 @@ services:
       - .env
     environment:
       NODE_ENV: ${NODE_ENV}
-      PORT: ${BACKEND_PORT}
+      PORT: ${PORT}
       MONGODB_URI: ${MONGODB_URI}
       JWT_SECRET: ${JWT_SECRET}
       CORS_ORIGIN: ${CORS_ORIGIN}
@@ -174,7 +174,7 @@ services:
       PROXY_TARGET: http://backend:3000
       KEYCLOAK_PROXY_TARGET: http://keycloak:8080
     ports:
-      - "${FRONTEND_EXTERNAL_PORT}:${FRONTEND_PORT}"
+      - "${VITE_PORT}:${VITE_PORT}"
     networks:
       - bod-network
     healthcheck:
