@@ -8,11 +8,12 @@ echo "📁 Creating required directories..."
 mkdir -p data/logs/backend
 mkdir -p data/init-status
 
-# Copy .env.example to .env if it doesn't exist
-if [ ! -f .env ]; then
-    echo "📄 Creating .env file from .env.example..."
-    cp .env.example .env
-    echo "⚠️  Please review and update the .env file with your specific configuration!"
+# Run the automated setup script
+echo "⚙️  Running automated configuration..."
+node scripts/setup.js
+if [ $? -ne 0 ]; then
+    echo "❌ Setup failed!"
+    exit 1
 fi
 
 # Build and start the services
