@@ -9,9 +9,19 @@ const RequireProfile: React.FC = () => {
     const [isLoading, setIsLoading] = useState(true);
     const location = useLocation();
 
+    // Admin and superadmin users don't need player profiles - bypass the check
+    const isAdmin = user?.isAdmin === true;
+
     useEffect(() => {
         const checkProfile = async () => {
             if (!isAuthenticated) {
+                setIsLoading(false);
+                return;
+            }
+
+            // Skip profile check for admin users
+            if (isAdmin) {
+                setIsComplete(true);
                 setIsLoading(false);
                 return;
             }
@@ -37,7 +47,7 @@ const RequireProfile: React.FC = () => {
         };
 
         checkProfile();
-    }, [isAuthenticated]);
+    }, [isAuthenticated, isAdmin]);
 
     if (!isAuthenticated) {
         return <Navigate to="/login" state={{ from: location.pathname }} replace />;
