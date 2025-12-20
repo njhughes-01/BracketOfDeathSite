@@ -9,6 +9,7 @@ export interface User {
   emailVerified?: boolean;
   roles: string[];
   isAdmin: boolean;
+  isSuperAdmin: boolean;
   playerId?: string;
   createdAt?: Date;
   lastLogin?: Date;
@@ -82,7 +83,7 @@ export const CreateUserValidation = {
     maxLength: 128,
   },
   roles: {
-    validRoles: ['admin', 'user'],
+    validRoles: ["superadmin", "admin", "user"],
   },
 };
 
@@ -97,6 +98,6 @@ export const UpdateUserValidation = {
     pattern: /^[^\s@]+@[^\s@]+\.[^\s@]+$/,
   },
   roles: {
-    validRoles: ['admin', 'user'],
+    validRoles: ["superadmin", "admin", "user"],
   },
 };

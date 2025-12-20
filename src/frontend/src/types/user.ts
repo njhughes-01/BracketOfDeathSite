@@ -2,7 +2,7 @@ export interface Permission {
   id: string;
   name: string;
   description: string;
-  category: 'tournament' | 'player' | 'user' | 'system';
+  category: "tournament" | "player" | "user" | "system";
 }
 
 export interface Role {
@@ -24,6 +24,7 @@ export interface User {
   emailVerified?: boolean;
   roles: string[];
   isAdmin: boolean;
+  isSuperAdmin: boolean;
   createdAt?: Date;
   lastLogin?: Date;
   playerId?: string;
@@ -113,31 +114,31 @@ export interface UserManagementPermissions {
 // Permission constants
 export const PERMISSIONS = {
   // Tournament permissions
-  TOURNAMENT_CREATE: 'tournament:create',
-  TOURNAMENT_EDIT: 'tournament:edit',
-  TOURNAMENT_DELETE: 'tournament:delete',
-  TOURNAMENT_VIEW: 'tournament:view',
-  TOURNAMENT_MANAGE_BRACKETS: 'tournament:manage-brackets',
-  TOURNAMENT_FINALIZE: 'tournament:finalize',
+  TOURNAMENT_CREATE: "tournament:create",
+  TOURNAMENT_EDIT: "tournament:edit",
+  TOURNAMENT_DELETE: "tournament:delete",
+  TOURNAMENT_VIEW: "tournament:view",
+  TOURNAMENT_MANAGE_BRACKETS: "tournament:manage-brackets",
+  TOURNAMENT_FINALIZE: "tournament:finalize",
 
   // Player permissions
-  PLAYER_CREATE: 'player:create',
-  PLAYER_EDIT: 'player:edit',
-  PLAYER_DELETE: 'player:delete',
-  PLAYER_VIEW: 'player:view',
-  PLAYER_MANAGE_STATS: 'player:manage-stats',
+  PLAYER_CREATE: "player:create",
+  PLAYER_EDIT: "player:edit",
+  PLAYER_DELETE: "player:delete",
+  PLAYER_VIEW: "player:view",
+  PLAYER_MANAGE_STATS: "player:manage-stats",
 
   // User management permissions
-  USER_CREATE: 'user:create',
-  USER_EDIT: 'user:edit',
-  USER_DELETE: 'user:delete',
-  USER_VIEW: 'user:view',
-  USER_MANAGE_ROLES: 'user:manage-roles',
+  USER_CREATE: "user:create",
+  USER_EDIT: "user:edit",
+  USER_DELETE: "user:delete",
+  USER_VIEW: "user:view",
+  USER_MANAGE_ROLES: "user:manage-roles",
 
   // System permissions
-  SYSTEM_ADMIN: 'system:admin',
-  SYSTEM_VIEW_LOGS: 'system:view-logs',
-  SYSTEM_MANAGE_SETTINGS: 'system:manage-settings',
+  SYSTEM_ADMIN: "system:admin",
+  SYSTEM_VIEW_LOGS: "system:view-logs",
+  SYSTEM_MANAGE_SETTINGS: "system:manage-settings",
 } as const;
 
-export type PermissionValue = typeof PERMISSIONS[keyof typeof PERMISSIONS];
+export type PermissionValue = (typeof PERMISSIONS)[keyof typeof PERMISSIONS];
