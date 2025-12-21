@@ -21,6 +21,10 @@ export const sanitizeString = (input: string): string => {
  * @returns Object containing individual years and date ranges
  */
 export const parseYearFilter = (input: string): { years: number[], ranges: { start: number, end: number }[] } => {
+    const MIN_VALID_YEAR = 2000;
+    const MAX_VALID_YEAR = 2100;
+    const MAX_YEARS_TO_EXPLODE = 5;
+
     const sanitized = sanitizeString(input);
     if (!sanitized) return { years: [], ranges: [] };
 
@@ -35,9 +39,9 @@ export const parseYearFilter = (input: string): { years: number[], ranges: { sta
             const start = parseInt(startStr, 10);
             const end = parseInt(endStr, 10);
 
-            if (!isNaN(start) && !isNaN(end) && start <= end && start >= 2000 && end <= 2100) {
+            if (!isNaN(start) && !isNaN(end) && start <= end && start >= MIN_VALID_YEAR && end <= MAX_VALID_YEAR) {
                 // Optimization: For small ranges, just explode into years to keep query simple
-                if (end - start <= 5) {
+                if (end - start <= MAX_YEARS_TO_EXPLODE) {
                     for (let y = start; y <= end; y++) {
                         years.add(y);
                     }
@@ -48,7 +52,7 @@ export const parseYearFilter = (input: string): { years: number[], ranges: { sta
         } else {
             // Single year
             const year = parseInt(part, 10);
-            if (!isNaN(year) && year >= 2000 && year <= 2100) {
+            if (!isNaN(year) && year >= MIN_VALID_YEAR && year <= MAX_VALID_YEAR) {
                 years.add(year);
             }
         }

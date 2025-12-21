@@ -42,7 +42,7 @@ const Rankings: React.FC = () => {
         dependencies: [year, format, sort]
     });
 
-    const rankings = (response as any) || [];
+    const rankings = response || [];
 
     return (
         <div className="flex flex-col min-h-screen bg-background-dark pb-20">
