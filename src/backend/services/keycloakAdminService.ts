@@ -184,6 +184,13 @@ class KeycloakAdminService {
       await this.assignRolesToUser(userId, userData.roles);
     }
 
+    // Explicitly clear required actions to prevent "Account not fully set up" errors
+    try {
+      await this.clearUserRequiredActions(userId);
+    } catch (error) {
+      console.warn(`Failed to clear required actions for new user ${userData.username}:`, error);
+    }
+
     return createdUser;
   }
 
