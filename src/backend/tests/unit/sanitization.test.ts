@@ -1,4 +1,3 @@
-import { describe, it, expect } from 'vitest';
 import { sanitizeString, parseYearFilter } from '../../utils/sanitization';
 
 describe('Sanitization Utils', () => {
