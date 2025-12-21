@@ -51,7 +51,7 @@ describe('LiveTournamentController SSE', () => {
       })
     });
 
-    await controller.streamTournamentEvents(req as Request, res as Response, jest.fn());
+    await controller.streamTournamentEvents(req as any, res as Response, jest.fn());
 
     // Verify headers
     expect(res.setHeader).toHaveBeenCalledWith('Content-Type', 'text/event-stream');
@@ -74,7 +74,7 @@ describe('LiveTournamentController SSE', () => {
     (Match.find as jest.Mock).mockReturnValue({ populate: jest.fn().mockReturnValue({ sort: jest.fn().mockResolvedValue([]) }) });
     (TournamentResult.find as jest.Mock).mockReturnValue({ populate: jest.fn().mockReturnValue({ sort: jest.fn().mockResolvedValue([]) }) });
 
-    await controller.streamTournamentEvents(req as Request, res as Response, jest.fn());
+    await controller.streamTournamentEvents(req as any, res as Response, jest.fn());
 
     // Emit an event
     const testUpdate = { type: 'match:update', data: { id: 'm1' } };
