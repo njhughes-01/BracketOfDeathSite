@@ -35,6 +35,7 @@ describe('Auth Middleware', () => {
     mockResponse = {
       status: jest.fn().mockReturnThis(),
       json: jest.fn(),
+      cookie: jest.fn().mockReturnThis(),
     };
     nextFunction = jest.fn();
     jest.clearAllMocks();
@@ -45,7 +46,7 @@ describe('Auth Middleware', () => {
 
   describe('requireAuth', () => {
     it('should return 401 if no authorization header', async () => {
-      await requireAuth(mockRequest as RequestWithAuth, mockResponse as Response, nextFunction);
+      await requireAuth(mockRequest as RequestWithAuth, mockResponse as unknown as Response, nextFunction);
       expect(mockResponse.status).toHaveBeenCalledWith(401);
       expect(mockResponse.json).toHaveBeenCalledWith(expect.objectContaining({ error: 'Authorization token required' }));
     });
@@ -66,7 +67,7 @@ describe('Auth Middleware', () => {
         cb(null, decodedToken);
       });
 
-      await requireAuth(mockRequest as RequestWithAuth, mockResponse as Response, nextFunction);
+      await requireAuth(mockRequest as RequestWithAuth, mockResponse as unknown as Response, nextFunction);
       
       if ((console.error as jest.Mock).mock.calls.length > 0) {
          process.stdout.write('DEBUG ERROR: ' + JSON.stringify((console.error as jest.Mock).mock.calls, null, 2) + '\n');
@@ -95,7 +96,7 @@ describe('Auth Middleware', () => {
         cb(null, decodedToken);
       });
 
-      await requireSuperAdmin(mockRequest as RequestWithAuth, mockResponse as Response, nextFunction);
+      await requireSuperAdmin(mockRequest as RequestWithAuth, mockResponse as unknown as Response, nextFunction);
 
       expect(nextFunction).toHaveBeenCalled(); 
       expect(mockResponse.status).not.toHaveBeenCalledWith(403);
@@ -117,7 +118,7 @@ describe('Auth Middleware', () => {
         cb(null, decodedToken);
       });
 
-      await requireSuperAdmin(mockRequest as RequestWithAuth, mockResponse as Response, nextFunction);
+      await requireSuperAdmin(mockRequest as RequestWithAuth, mockResponse as unknown as Response, nextFunction);
 
       expect(mockResponse.status).toHaveBeenCalledWith(403);
       expect(mockResponse.json).toHaveBeenCalledWith(expect.objectContaining({ error: 'Super Admin access required' }));
