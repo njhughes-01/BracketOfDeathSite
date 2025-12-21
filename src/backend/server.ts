@@ -32,7 +32,7 @@ const limiter = rateLimit({
   max: 1000, // limit each IP to 1000 requests per windowMs
   message: 'Too many requests from this IP, please try again later.',
 });
-app.use('/api/', limiter);
+app.use('/api/', limiter as unknown as express.RequestHandler);
 
 // Logging
 app.use(morgan('combined'));
