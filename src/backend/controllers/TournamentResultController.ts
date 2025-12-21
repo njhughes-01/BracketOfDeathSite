@@ -713,7 +713,9 @@ export class TournamentResultController extends BaseController<ITournamentResult
    */
   public getAvailableYears = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
-      // Aggregate to find min and max dates
+      const DEFAULT_MIN_YEAR = 2008;
+      const currentYear = new Date().getFullYear();
+
       const result = await Tournament.aggregate([
         {
           $group: {
@@ -724,21 +726,17 @@ export class TournamentResultController extends BaseController<ITournamentResult
         }
       ]);
 
-      if (!result.length) {
-        this.sendSuccess(res, { min: new Date().getFullYear(), max: new Date().getFullYear() });
+      if (result.length === 0 || !result[0].minDate) {
+        this.sendSuccess(res, { min: DEFAULT_MIN_YEAR, max: currentYear });
         return;
       }
 
       const minYear = new Date(result[0].minDate).getFullYear();
       const maxYear = new Date(result[0].maxDate).getFullYear();
 
-      // Ensure reasonable defaults if something is wrong
-      const currentYear = new Date().getFullYear();
-      const DEFAULT_MIN_YEAR = 2008;
-
       this.sendSuccess(res, {
-        min: minYear || DEFAULT_MIN_YEAR,
-        max: maxYear || currentYear
+        min: isNaN(minYear) ? DEFAULT_MIN_YEAR : minYear,
+        max: isNaN(maxYear) ? currentYear : maxYear
       });
     } catch (error) {
       next(error);

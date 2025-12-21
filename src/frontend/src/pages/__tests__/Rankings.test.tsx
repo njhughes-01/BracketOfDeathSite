@@ -91,13 +91,11 @@ describe('Rankings Page', () => {
         setupMock();
         renderPage();
 
-        // Use getAllByRole('combobox') to find selects since they don't have labels
-        const selects = screen.getAllByRole('combobox');
-        const yearSelector = selects[0];
+        const yearInput = screen.getByPlaceholderText(/e.g. 2025/i);
+        expect(yearInput).toBeInTheDocument();
 
-        expect(yearSelector).toBeInTheDocument();
-        fireEvent.change(yearSelector, { target: { value: '2024' } });
-        expect(yearSelector).toHaveValue('2024');
+        fireEvent.change(yearInput, { target: { value: '2024' } });
+        expect(yearInput).toHaveValue('2024');
     });
 
     it('updates sort order', () => {

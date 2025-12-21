@@ -2,8 +2,8 @@ import { sanitizeString, parseYearFilter } from '../../utils/sanitization';
 
 describe('Sanitization Utils', () => {
     describe('sanitizeString', () => {
-        it('removes html tags', () => {
-            expect(sanitizeString('<script>alert(1)</script>hello')).toBe('hello');
+        it('escapes html tags', () => {
+            expect(sanitizeString('<script>alert(1)</script>hello')).toBe('&lt;script&gt;alert(1)&lt;/script&gt;hello');
         });
 
         it('trims whitespace', () => {

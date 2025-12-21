@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import { TournamentResultController } from '../../controllers/TournamentResultController';
 import { TournamentResult } from '../../models/TournamentResult';
+import { Tournament } from '../../models/Tournament';
 import { RequestWithAuth } from '../../controllers/base';
 
 // Mock models
@@ -71,6 +72,63 @@ describe('TournamentResultController', () => {
             await controller.getLeaderboard(mockReq as Request, mockRes as Response, nextMock);
 
             expect(nextMock).toHaveBeenCalledWith(error);
+        });
+
+        describe('getAvailableYears', () => {
+            it('should return min and max years from tournament data', async () => {
+                mockReq = {};
+
+                const mockAggregatedData = [
+                    {
+                        _id: null,
+                        minDate: new Date('2020-06-15'),
+                        maxDate: new Date('2024-06-15')
+                    }
+                ];
+
+                (Tournament.aggregate as jest.Mock).mockResolvedValue(mockAggregatedData);
+
+                await controller.getAvailableYears(mockReq as Request, mockRes as Response, nextMock);
+
+                expect(statusMock).toHaveBeenCalledWith(200);
+                expect(jsonMock).toHaveBeenCalledWith(expect.objectContaining({
+                    success: true,
+                    data: {
+                        min: 2020,
+                        max: 2024
+                    }
+                }));
+                expect(Tournament.aggregate).toHaveBeenCalled();
+            });
+
+            it('should return default range if no tournaments found', async () => {
+                mockReq = {};
+                (Tournament.aggregate as jest.Mock).mockResolvedValue([]);
+
+                const currentYear = new Date().getFullYear();
+                const DEFAULT_MIN_YEAR = 2008;
+
+                await controller.getAvailableYears(mockReq as Request, mockRes as Response, nextMock);
+
+                expect(statusMock).toHaveBeenCalledWith(200);
+                expect(jsonMock).toHaveBeenCalledWith(expect.objectContaining({
+                    success: true,
+                    data: {
+                        min: DEFAULT_MIN_YEAR,
+                        max: currentYear
+                    }
+                }));
+            });
+
+            it('should handle errors', async () => {
+                mockReq = {};
+                const error = new Error('Database failure');
+                (Tournament.aggregate as jest.Mock).mockRejectedValue(error);
+
+                await controller.getAvailableYears(mockReq as Request, mockRes as Response, nextMock);
+
+                expect(nextMock).toHaveBeenCalledWith(error);
+            });
         });
     });
 });
