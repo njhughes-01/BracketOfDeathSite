@@ -418,6 +418,10 @@ class ApiClient {
     return this.get<ApiResponse>(`/tournament-results/leaderboard?${params.toString()}`);
   }
 
+  async getAvailableYears(): Promise<ApiResponse<{ min: number; max: number }>> {
+    return this.get<ApiResponse<{ min: number; max: number }>>('/tournament-results/years');
+  }
+
   // Admin API methods
   async updateTournamentStatus(id: string, status: string): Promise<ApiResponse<Tournament>> {
     return this.put<ApiResponse<Tournament>>(`/admin/tournaments/${id}/status`, { status });

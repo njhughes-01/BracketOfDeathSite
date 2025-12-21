@@ -10,6 +10,21 @@ const Rankings: React.FC = () => {
     const [year, setYear] = useState<string>(new Date().getFullYear().toString());
     const [format, setFormat] = useState<string>('');
     const [sort, setSort] = useState<string>('-points');
+    const [availableRange, setAvailableRange] = useState<{ min: number, max: number }>({ min: 2008, max: new Date().getFullYear() });
+
+    React.useEffect(() => {
+        const fetchYears = async () => {
+            try {
+                const res = await apiClient.getAvailableYears();
+                if (res) {
+                    setAvailableRange(res);
+                }
+            } catch (err) {
+                console.error("Failed to fetch available years", err);
+            }
+        };
+        fetchYears();
+    }, []);
 
     const getLeaderboard = React.useCallback(
         () => apiClient.getLeaderboard({
@@ -57,7 +72,7 @@ const Rankings: React.FC = () => {
                         <YearRangeInput
                             value={year}
                             onChange={setYear}
-                            availableRange={{ min: 2008, max: 2025 }}
+                            availableRange={availableRange}
                         />
 
 
