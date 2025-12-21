@@ -17,8 +17,8 @@ const Rankings: React.FC = () => {
         const fetchYears = async () => {
             try {
                 const res = await apiClient.getAvailableYears();
-                if (res) {
-                    setAvailableRange(res);
+                if (res && res.data) {
+                    setAvailableRange(res.data);
                 }
             } catch (err) {
                 console.error("Failed to fetch available years", err);
