@@ -9,4 +9,4 @@
 - [x] Run `npm audit` and fix vulnerabilities [f4abaa9]
 - [x] Run test suite to ensure stability [a7ad286]
 - [x] Commit changes [3aaa2a0]
-- [~] Merge `npm-cleanup` into `main`
+- [x] Merge `npm-cleanup` into `main` [62f8bb3]
