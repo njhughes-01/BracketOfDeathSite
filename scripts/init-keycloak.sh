@@ -66,7 +66,7 @@ if [ "$REALM_EXISTS" = "200" ]; then
             "credentials": [
               {
                 "type": "password",
-                "value": "admin123",
+                "value": "'"${KEYCLOAK_ADMIN_PASSWORD//\"/\\\"}"'",
                 "temporary": false
               }
             ]
@@ -135,7 +135,7 @@ else
             "credentials": [
               {
                 "type": "password",
-                "value": "admin123",
+                "value": "'"${KEYCLOAK_ADMIN_PASSWORD//\"/\\\"}"'",
                 "temporary": false
               }
             ]

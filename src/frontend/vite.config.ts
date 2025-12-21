@@ -33,7 +33,25 @@ export default defineConfig({
         changeOrigin: true,
         secure: false,
       },
-      '/auth': {
+      '/auth/realms': {
+        target: process.env.KEYCLOAK_PROXY_TARGET || 'http://localhost:8080',
+        changeOrigin: true,
+        secure: false,
+        rewrite: (path) => path.replace(/^\/auth/, ''),
+      },
+      '/auth/resources': {
+        target: process.env.KEYCLOAK_PROXY_TARGET || 'http://localhost:8080',
+        changeOrigin: true,
+        secure: false,
+        rewrite: (path) => path.replace(/^\/auth/, ''),
+      },
+      '/auth/js': {
+        target: process.env.KEYCLOAK_PROXY_TARGET || 'http://localhost:8080',
+        changeOrigin: true,
+        secure: false,
+        rewrite: (path) => path.replace(/^\/auth/, ''),
+      },
+      '/auth/robots.txt': {
         target: process.env.KEYCLOAK_PROXY_TARGET || 'http://localhost:8080',
         changeOrigin: true,
         secure: false,

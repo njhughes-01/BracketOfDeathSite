@@ -3,11 +3,8 @@ import { RequestWithAuth } from '../../../../src/backend/controllers/base';
 
 // Move mocks to top level again
 jest.mock('jsonwebtoken', () => ({
-  __esModule: true,
-  default: {
-    decode: jest.fn(),
-    verify: jest.fn(),
-  },
+  decode: jest.fn(),
+  verify: jest.fn(),
 }));
 
 jest.mock('jwks-rsa', () => {
