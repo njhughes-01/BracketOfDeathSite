@@ -370,6 +370,14 @@ export class TournamentResultController extends BaseController<ITournamentResult
               $or: yearOrConditions
             }
           });
+        } else {
+          // If year was provided but parsed to no valid conditions (e.g. "1990" or "abc"),
+          // return no results instead of All Time.
+          pipeline.push({
+            $match: {
+              _id: null // Impossible match
+            }
+          });
         }
       }
 
