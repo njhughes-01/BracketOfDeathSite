@@ -1,5 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import { Types } from 'mongoose';
+import { parseYearFilter } from '../utils/sanitization';
 import { TournamentResult } from '../models/TournamentResult';
 import { Tournament } from '../models/Tournament';
 import { Player } from '../models/Player';
@@ -27,8 +28,8 @@ export class TournamentResultController extends BaseController<ITournamentResult
       filter.players = { $in: [new Types.ObjectId(filterParams.playerId)] };
     }
     if (filterParams.playerIds) {
-      const playerIds = Array.isArray(filterParams.playerIds) 
-        ? filterParams.playerIds 
+      const playerIds = Array.isArray(filterParams.playerIds)
+        ? filterParams.playerIds
         : filterParams.playerIds.split(',');
       filter.players = { $in: playerIds.map((id: string) => new Types.ObjectId(id)) };
     }
@@ -267,8 +268,8 @@ export class TournamentResultController extends BaseController<ITournamentResult
         return;
       }
 
-      const results = await TournamentResult.find({ 
-        players: { $in: [playerId] } 
+      const results = await TournamentResult.find({
+        players: { $in: [playerId] }
       })
         .populate('tournamentId')
         .populate('players', 'name')
@@ -332,15 +333,52 @@ export class TournamentResultController extends BaseController<ITournamentResult
 
       // Add year filtering if specified
       if (year) {
-        const yearInt = parseInt(year as string);
-        pipeline.push({
-          $match: {
-            'tournament.date': {
-              $gte: new Date(`${yearInt}-01-01`),
-              $lte: new Date(`${yearInt}-12-31`),
-            },
-          },
-        });
+        const { years, ranges } = parseYearFilter(year as string);
+        const yearOrConditions: any[] = [];
+
+        // Condition 1: Specific years
+        if (years.length > 0) {
+          // Optimization: if we just have years, we can check date ranges for each year
+          // Or use $expr with $year if performance allows. 
+          // Given the index on tournament.date, ranges are better.
+          years.forEach(y => {
+            yearOrConditions.push({
+              'tournament.date': {
+                $gte: new Date(`${y}-01-01`),
+                $lte: new Date(`${y}-12-31`)
+              }
+            });
+          });
+        }
+
+        // Condition 2: Ranges
+        if (ranges.length > 0) {
+          ranges.forEach(r => {
+            yearOrConditions.push({
+              'tournament.date': {
+                $gte: new Date(`${r.start}-01-01`),
+                $lte: new Date(`${r.end}-12-31`)
+              }
+            });
+          });
+        }
+
+        // Only add match stage if we have valid filters
+        if (yearOrConditions.length > 0) {
+          pipeline.push({
+            $match: {
+              $or: yearOrConditions
+            }
+          });
+        } else {
+          // If year was provided but parsed to no valid conditions (e.g. "1990" or "abc"),
+          // return no results instead of All Time.
+          pipeline.push({
+            $match: {
+              _id: null // Impossible match
+            }
+          });
+        }
       }
 
       // Unwind players to rank individuals instead of teams
@@ -557,7 +595,7 @@ export class TournamentResultController extends BaseController<ITournamentResult
   private parseSortString(sortStr: string): any {
     const sort: any = {};
     const parts = sortStr.split(',');
-    
+
     parts.forEach(part => {
       const trimmed = part.trim();
       if (trimmed.startsWith('-')) {
@@ -641,7 +679,7 @@ export class TournamentResultController extends BaseController<ITournamentResult
   override async create(req: RequestWithAuth, res: Response, next: NextFunction): Promise<void> {
     try {
       const validationErrors = this.validateTournamentResultData(req.body);
-      
+
       if (validationErrors.length > 0) {
         this.sendError(res, 400, validationErrors.join(', '));
         return;
@@ -658,7 +696,7 @@ export class TournamentResultController extends BaseController<ITournamentResult
   override async update(req: RequestWithAuth, res: Response, next: NextFunction): Promise<void> {
     try {
       const validationErrors = this.validateTournamentResultData(req.body);
-      
+
       if (validationErrors.length > 0) {
         this.sendError(res, 400, validationErrors.join(', '));
         return;
@@ -670,6 +708,42 @@ export class TournamentResultController extends BaseController<ITournamentResult
       next(error);
     }
   }
+  /**
+   * Get the range of available years from tournament data
+   */
+  public getAvailableYears = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      // Aggregate to find min and max dates
+      const result = await Tournament.aggregate([
+        {
+          $group: {
+            _id: null,
+            minDate: { $min: '$date' },
+            maxDate: { $max: '$date' }
+          }
+        }
+      ]);
+
+      if (!result.length) {
+        this.sendSuccess(res, { min: new Date().getFullYear(), max: new Date().getFullYear() });
+        return;
+      }
+
+      const minYear = new Date(result[0].minDate).getFullYear();
+      const maxYear = new Date(result[0].maxDate).getFullYear();
+
+      // Ensure reasonable defaults if something is wrong
+      const currentYear = new Date().getFullYear();
+      const DEFAULT_MIN_YEAR = 2008;
+
+      this.sendSuccess(res, {
+        min: minYear || DEFAULT_MIN_YEAR,
+        max: maxYear || currentYear
+      });
+    } catch (error) {
+      next(error);
+    }
+  };
 }
 
 export const tournamentResultController = new TournamentResultController();
