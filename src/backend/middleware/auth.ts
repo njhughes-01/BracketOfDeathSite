@@ -84,28 +84,33 @@ export const verifyKeycloakToken = async (token: string): Promise<KeycloakToken>
   });
 };
 
-// Check if user has admin role
-export const hasAdminRole = (token: KeycloakToken): boolean => {
+// Helper to check for a specific role
+export const hasRole = (token: KeycloakToken, role: string): boolean => {
   // Check realm roles
   const realmRoles = token.realm_access?.roles || [];
-  if (realmRoles.includes('admin')) {
+  if (realmRoles.includes(role)) {
     return true;
   }
 
   // Check client roles
   const clientId = process.env.KEYCLOAK_CLIENT_ID || 'bod-app';
   const clientRoles = token.resource_access?.[clientId]?.roles || [];
-  return clientRoles.includes('admin');
+  return clientRoles.includes(role);
+};
+
+// Check if user has admin role
+export const hasAdminRole = (token: KeycloakToken): boolean => {
+  return hasRole(token, 'admin');
+};
+
+// Check if user has superadmin role
+export const hasSuperAdminRole = (token: KeycloakToken): boolean => {
+  return hasRole(token, 'superadmin');
 };
 
 // Check if user is authorized (has user or admin role)
 export const isAuthorizedUser = (token: KeycloakToken): boolean => {
-  const realmRoles = token.realm_access?.roles || [];
-  const clientId = process.env.KEYCLOAK_CLIENT_ID || 'bod-app';
-  const clientRoles = token.resource_access?.[clientId]?.roles || [];
-
-  const allRoles = [...realmRoles, ...clientRoles];
-  return allRoles.includes('user') || allRoles.includes('admin');
+  return hasRole(token, 'user') || hasRole(token, 'admin') || hasRole(token, 'superadmin');
 };
 
 // Authentication middleware
@@ -139,8 +144,7 @@ export const requireAuth = async (
 
     // Verify the Keycloak token (quiet in production)
     if (process.env.NODE_ENV !== 'production') {
-      console.log('Attempting to verify token:', token.substring(0, 20) + '...');
-      console.log('JWKS URI:', `${process.env.KEYCLOAK_URL}/realms/${process.env.KEYCLOAK_REALM}/protocol/openid-connect/certs`);
+      // console.log('Attempting to verify token:', token.substring(0, 20) + '...');
     }
     const tokenData = await verifyKeycloakToken(token);
 
@@ -235,8 +239,8 @@ export const requireAdmin = async (
 ): Promise<void> => {
   // First check authentication
   await requireAuth(req, res, () => {
-    // Check if user has admin role
-    if (req.user && req.user.isAdmin) {
+    // Check if user has admin role or superadmin role (superadmin is implicitly admin)
+    if (req.user && (req.user.isAdmin || req.user.roles.includes('superadmin'))) {
       next();
     } else {
       const response: ApiResponse = {
@@ -256,13 +260,8 @@ export const requireSuperAdmin = async (
 ): Promise<void> => {
   // First check authentication
   await requireAuth(req, res, () => {
-    const username = req.user?.username;
-    const isAdmin = req.user?.isAdmin;
-
-    // Check if username matches env-configured admin or simply 'admin'
-    const isSuperUser = username === 'admin' || username === (process.env.KEYCLOAK_ADMIN_USER || 'admin');
-
-    if (isAdmin && isSuperUser) {
+    // Check if user has superadmin role
+    if (req.user && req.user.roles.includes('superadmin')) {
       next();
     } else {
       const response: ApiResponse = {
