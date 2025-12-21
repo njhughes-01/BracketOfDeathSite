@@ -9,6 +9,7 @@ const router = Router();
 router.get('/', tournamentResultController.getAll);
 router.get('/search', tournamentResultController.search);
 router.get('/stats', tournamentResultController.getStats);
+router.get('/years', tournamentResultController.getAvailableYears);
 router.get('/leaderboard', tournamentResultController.getLeaderboard);
 router.get('/tournament/:tournamentId', validateObjectId, tournamentResultController.getByTournament);
 router.get('/player/:playerId', validateObjectId, tournamentResultController.getByPlayer);

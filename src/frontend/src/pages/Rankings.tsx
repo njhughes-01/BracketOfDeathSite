@@ -3,16 +3,34 @@ import { useApi } from '../hooks/useApi';
 import apiClient from '../services/api';
 import { Link } from 'react-router-dom';
 import LoadingSpinner from '../components/ui/LoadingSpinner';
+import YearRangeInput from '../components/YearRangeInput';
 
 const Rankings: React.FC = () => {
-    const [year, setYear] = useState<number>(new Date().getFullYear());
+    // Change default to string "2025" or current year
+    const [year, setYear] = useState<string>(new Date().getFullYear().toString());
     const [format, setFormat] = useState<string>('');
     const [sort, setSort] = useState<string>('-points');
+    const DEFAULT_MIN_YEAR = 2008;
+    const [availableRange, setAvailableRange] = useState<{ min: number, max: number }>({ min: DEFAULT_MIN_YEAR, max: new Date().getFullYear() });
+
+    React.useEffect(() => {
+        const fetchYears = async () => {
+            try {
+                const res = await apiClient.getAvailableYears();
+                if (res) {
+                    setAvailableRange(res);
+                }
+            } catch (err) {
+                console.error("Failed to fetch available years", err);
+            }
+        };
+        fetchYears();
+    }, []);
 
     const getLeaderboard = React.useCallback(
-        () => apiClient.getLeaderboard({ 
-            year: year !== 0 ? year : undefined, 
-            format: format || undefined, 
+        () => apiClient.getLeaderboard({
+            year: year !== '0' && year !== '' ? year : undefined,
+            format: format || undefined,
             limit: 100,
             sort: sort
         }),
@@ -24,7 +42,7 @@ const Rankings: React.FC = () => {
         dependencies: [year, format, sort]
     });
 
-    const rankings = (response as any)?.data || [];
+    const rankings = (response as any) || [];
 
     return (
         <div className="flex flex-col min-h-screen bg-background-dark pb-20">
@@ -52,15 +70,13 @@ const Rankings: React.FC = () => {
             <div className="sticky top-0 z-20 bg-background-dark/80 backdrop-blur-md border-b border-white/5 py-4 px-4 overflow-x-auto">
                 <div className="flex flex-col gap-3">
                     <div className="flex gap-3">
-                        <select
+                        <YearRangeInput
                             value={year}
-                            onChange={(e) => setYear(Number(e.target.value))}
-                            className="bg-[#1c2230] text-white text-sm rounded-xl px-4 py-2 border border-white/10 focus:outline-none focus:border-primary"
-                        >
-                            <option value={2025}>2025 Season</option>
-                            <option value={2024}>2024 Season</option>
-                            <option value={0}>All Time</option>
-                        </select>
+                            onChange={setYear}
+                            availableRange={availableRange}
+                        />
+
+
 
                         <select
                             value={format}
@@ -73,7 +89,7 @@ const Rankings: React.FC = () => {
                             <option value="W">Women's</option>
                         </select>
                     </div>
-                    
+
                     <div className="flex gap-2 overflow-x-auto pb-1 no-scrollbar">
                         {[
                             { label: 'Points', value: '-points' },
@@ -84,11 +100,10 @@ const Rankings: React.FC = () => {
                             <button
                                 key={option.value}
                                 onClick={() => setSort(option.value)}
-                                className={`px-3 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap transition-colors ${
-                                    sort === option.value 
-                                        ? 'bg-primary text-white' 
-                                        : 'bg-white/5 text-slate-400 hover:bg-white/10 hover:text-white'
-                                }`}
+                                className={`px-3 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap transition-colors ${sort === option.value
+                                    ? 'bg-primary text-white'
+                                    : 'bg-white/5 text-slate-400 hover:bg-white/10 hover:text-white'
+                                    }`}
                             >
                                 {option.label}
                             </button>
@@ -120,8 +135,8 @@ const Rankings: React.FC = () => {
                             )}
 
                             <div className={`size-8 flex items-center justify-center font-bold text-lg ${index === 0 ? 'text-yellow-500' :
-                                    index === 1 ? 'text-slate-300' :
-                                        index === 2 ? 'text-amber-600' : 'text-slate-500'
+                                index === 1 ? 'text-slate-300' :
+                                    index === 2 ? 'text-amber-600' : 'text-slate-500'
                                 }`}>
                                 #{index + 1}
                             </div>
