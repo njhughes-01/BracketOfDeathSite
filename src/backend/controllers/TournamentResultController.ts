@@ -27,8 +27,8 @@ export class TournamentResultController extends BaseController<ITournamentResult
       filter.players = { $in: [new Types.ObjectId(filterParams.playerId)] };
     }
     if (filterParams.playerIds) {
-      const playerIds = Array.isArray(filterParams.playerIds) 
-        ? filterParams.playerIds 
+      const playerIds = Array.isArray(filterParams.playerIds)
+        ? filterParams.playerIds
         : filterParams.playerIds.split(',');
       filter.players = { $in: playerIds.map((id: string) => new Types.ObjectId(id)) };
     }
@@ -267,8 +267,8 @@ export class TournamentResultController extends BaseController<ITournamentResult
         return;
       }
 
-      const results = await TournamentResult.find({ 
-        players: { $in: [playerId] } 
+      const results = await TournamentResult.find({
+        players: { $in: [playerId] }
       })
         .populate('tournamentId')
         .populate('players', 'name')
@@ -557,7 +557,7 @@ export class TournamentResultController extends BaseController<ITournamentResult
   private parseSortString(sortStr: string): any {
     const sort: any = {};
     const parts = sortStr.split(',');
-    
+
     parts.forEach(part => {
       const trimmed = part.trim();
       if (trimmed.startsWith('-')) {
@@ -641,7 +641,7 @@ export class TournamentResultController extends BaseController<ITournamentResult
   override async create(req: RequestWithAuth, res: Response, next: NextFunction): Promise<void> {
     try {
       const validationErrors = this.validateTournamentResultData(req.body);
-      
+
       if (validationErrors.length > 0) {
         this.sendError(res, 400, validationErrors.join(', '));
         return;
@@ -658,7 +658,7 @@ export class TournamentResultController extends BaseController<ITournamentResult
   override async update(req: RequestWithAuth, res: Response, next: NextFunction): Promise<void> {
     try {
       const validationErrors = this.validateTournamentResultData(req.body);
-      
+
       if (validationErrors.length > 0) {
         this.sendError(res, 400, validationErrors.join(', '));
         return;

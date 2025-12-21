@@ -10,9 +10,9 @@ const Rankings: React.FC = () => {
     const [sort, setSort] = useState<string>('-points');
 
     const getLeaderboard = React.useCallback(
-        () => apiClient.getLeaderboard({ 
-            year: year !== 0 ? year : undefined, 
-            format: format || undefined, 
+        () => apiClient.getLeaderboard({
+            year: year !== 0 ? year : undefined,
+            format: format || undefined,
             limit: 100,
             sort: sort
         }),
@@ -24,7 +24,16 @@ const Rankings: React.FC = () => {
         dependencies: [year, format, sort]
     });
 
-    const rankings = (response as any)?.data || [];
+    const rankings = (response as any) || [];
+
+    console.log('Rankings Page Debug:', {
+        loading,
+        error,
+        responseType: typeof response,
+        isArray: Array.isArray(response),
+        rankingsLength: rankings?.length,
+        rankingsSample: rankings?.[0]
+    });
 
     return (
         <div className="flex flex-col min-h-screen bg-background-dark pb-20">
@@ -73,7 +82,7 @@ const Rankings: React.FC = () => {
                             <option value="W">Women's</option>
                         </select>
                     </div>
-                    
+
                     <div className="flex gap-2 overflow-x-auto pb-1 no-scrollbar">
                         {[
                             { label: 'Points', value: '-points' },
@@ -84,11 +93,10 @@ const Rankings: React.FC = () => {
                             <button
                                 key={option.value}
                                 onClick={() => setSort(option.value)}
-                                className={`px-3 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap transition-colors ${
-                                    sort === option.value 
-                                        ? 'bg-primary text-white' 
-                                        : 'bg-white/5 text-slate-400 hover:bg-white/10 hover:text-white'
-                                }`}
+                                className={`px-3 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap transition-colors ${sort === option.value
+                                    ? 'bg-primary text-white'
+                                    : 'bg-white/5 text-slate-400 hover:bg-white/10 hover:text-white'
+                                    }`}
                             >
                                 {option.label}
                             </button>
@@ -120,8 +128,8 @@ const Rankings: React.FC = () => {
                             )}
 
                             <div className={`size-8 flex items-center justify-center font-bold text-lg ${index === 0 ? 'text-yellow-500' :
-                                    index === 1 ? 'text-slate-300' :
-                                        index === 2 ? 'text-amber-600' : 'text-slate-500'
+                                index === 1 ? 'text-slate-300' :
+                                    index === 2 ? 'text-amber-600' : 'text-slate-500'
                                 }`}>
                                 #{index + 1}
                             </div>
