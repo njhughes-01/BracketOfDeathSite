@@ -734,9 +734,10 @@ export class TournamentResultController extends BaseController<ITournamentResult
 
       // Ensure reasonable defaults if something is wrong
       const currentYear = new Date().getFullYear();
+      const DEFAULT_MIN_YEAR = 2008;
 
       this.sendSuccess(res, {
-        min: minYear || 2008,
+        min: minYear || DEFAULT_MIN_YEAR,
         max: maxYear || currentYear
       });
     } catch (error) {

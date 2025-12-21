@@ -10,7 +10,8 @@ const Rankings: React.FC = () => {
     const [year, setYear] = useState<string>(new Date().getFullYear().toString());
     const [format, setFormat] = useState<string>('');
     const [sort, setSort] = useState<string>('-points');
-    const [availableRange, setAvailableRange] = useState<{ min: number, max: number }>({ min: 2008, max: new Date().getFullYear() });
+    const DEFAULT_MIN_YEAR = 2008;
+    const [availableRange, setAvailableRange] = useState<{ min: number, max: number }>({ min: DEFAULT_MIN_YEAR, max: new Date().getFullYear() });
 
     React.useEffect(() => {
         const fetchYears = async () => {
