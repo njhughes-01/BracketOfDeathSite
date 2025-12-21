@@ -36,8 +36,10 @@ class ProfileController {
 
             // Determine if user should skip onboarding (isComplete)
             // Super Admin (admin:admin123) OR any user with 'admin' role is considered complete automatically
-            const isSuperAdmin = kcUser.username === 'admin' || kcUser.username === (process.env.KEYCLOAK_ADMIN_USER || 'admin');
-            const isAdmin = req.user?.isAdmin || false;
+            // We check the fresh kcUser roles here, not just the token roles (req.user), to avoid race conditions
+            const userRoles = kcUser.realmRoles || [];
+            const isSuperAdmin = userRoles.includes('superadmin') || kcUser.username === 'admin' || kcUser.username === (process.env.KEYCLOAK_ADMIN_USER || 'admin');
+            const isAdmin = userRoles.includes('admin') || (req.user?.isAdmin || false);
             const isPlayerComplete = !!(playerData && playerData.gender);
 
             // Construct the response profile object
