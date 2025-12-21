@@ -708,6 +708,41 @@ export class TournamentResultController extends BaseController<ITournamentResult
       next(error);
     }
   }
+  /**
+   * Get the range of available years from tournament data
+   */
+  public getAvailableYears = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      // Aggregate to find min and max dates
+      const result = await Tournament.aggregate([
+        {
+          $group: {
+            _id: null,
+            minDate: { $min: '$date' },
+            maxDate: { $max: '$date' }
+          }
+        }
+      ]);
+
+      if (!result.length) {
+        this.sendSuccess(res, { min: new Date().getFullYear(), max: new Date().getFullYear() });
+        return;
+      }
+
+      const minYear = new Date(result[0].minDate).getFullYear();
+      const maxYear = new Date(result[0].maxDate).getFullYear();
+
+      // Ensure reasonable defaults if something is wrong
+      const currentYear = new Date().getFullYear();
+
+      this.sendSuccess(res, {
+        min: minYear || 2008,
+        max: maxYear || currentYear
+      });
+    } catch (error) {
+      next(error);
+    }
+  };
 }
 
 export const tournamentResultController = new TournamentResultController();
