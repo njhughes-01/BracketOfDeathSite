@@ -33,7 +33,7 @@ const Rankings: React.FC = () => {
             format: format || undefined,
             limit: 100,
             sort: sort
-        } as any), // Cast specific filters if type mismatch, or update api.ts type definition
+        }),
         [year, format, sort]
     );
 
