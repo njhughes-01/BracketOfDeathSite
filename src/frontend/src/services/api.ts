@@ -406,7 +406,7 @@ class ApiClient {
     }>>(`/tournament-results/player/${playerId}`);
   }
 
-  async getLeaderboard(filters?: { tournamentId?: string; format?: string; year?: number; limit?: number; sort?: string }): Promise<ApiResponse> {
+  async getLeaderboard(filters?: { tournamentId?: string; format?: string; year?: number | string; limit?: number; sort?: string }): Promise<ApiResponse> {
     const params = new URLSearchParams();
     if (filters) {
       Object.entries(filters).forEach(([key, value]) => {

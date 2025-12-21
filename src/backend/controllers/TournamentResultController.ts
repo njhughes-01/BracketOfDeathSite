@@ -1,5 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import { Types } from 'mongoose';
+import { parseYearFilter } from '../utils/sanitization';
 import { TournamentResult } from '../models/TournamentResult';
 import { Tournament } from '../models/Tournament';
 import { Player } from '../models/Player';
@@ -332,15 +333,44 @@ export class TournamentResultController extends BaseController<ITournamentResult
 
       // Add year filtering if specified
       if (year) {
-        const yearInt = parseInt(year as string);
-        pipeline.push({
-          $match: {
-            'tournament.date': {
-              $gte: new Date(`${yearInt}-01-01`),
-              $lte: new Date(`${yearInt}-12-31`),
-            },
-          },
-        });
+        const { years, ranges } = parseYearFilter(year as string);
+        const yearOrConditions: any[] = [];
+
+        // Condition 1: Specific years
+        if (years.length > 0) {
+          // Optimization: if we just have years, we can check date ranges for each year
+          // Or use $expr with $year if performance allows. 
+          // Given the index on tournament.date, ranges are better.
+          years.forEach(y => {
+            yearOrConditions.push({
+              'tournament.date': {
+                $gte: new Date(`${y}-01-01`),
+                $lte: new Date(`${y}-12-31`)
+              }
+            });
+          });
+        }
+
+        // Condition 2: Ranges
+        if (ranges.length > 0) {
+          ranges.forEach(r => {
+            yearOrConditions.push({
+              'tournament.date': {
+                $gte: new Date(`${r.start}-01-01`),
+                $lte: new Date(`${r.end}-12-31`)
+              }
+            });
+          });
+        }
+
+        // Only add match stage if we have valid filters
+        if (yearOrConditions.length > 0) {
+          pipeline.push({
+            $match: {
+              $or: yearOrConditions
+            }
+          });
+        }
       }
 
       // Unwind players to rank individuals instead of teams

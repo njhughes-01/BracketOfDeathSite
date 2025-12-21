@@ -3,19 +3,21 @@ import { useApi } from '../hooks/useApi';
 import apiClient from '../services/api';
 import { Link } from 'react-router-dom';
 import LoadingSpinner from '../components/ui/LoadingSpinner';
+import YearRangeInput from '../components/YearRangeInput';
 
 const Rankings: React.FC = () => {
-    const [year, setYear] = useState<number>(new Date().getFullYear());
+    // Change default to string "2025" or current year
+    const [year, setYear] = useState<string>(new Date().getFullYear().toString());
     const [format, setFormat] = useState<string>('');
     const [sort, setSort] = useState<string>('-points');
 
     const getLeaderboard = React.useCallback(
         () => apiClient.getLeaderboard({
-            year: year !== 0 ? year : undefined,
+            year: year !== '0' && year !== '' ? year : undefined,
             format: format || undefined,
             limit: 100,
             sort: sort
-        }),
+        } as any), // Cast specific filters if type mismatch, or update api.ts type definition
         [year, format, sort]
     );
 
@@ -25,15 +27,6 @@ const Rankings: React.FC = () => {
     });
 
     const rankings = (response as any) || [];
-
-    console.log('Rankings Page Debug:', {
-        loading,
-        error,
-        responseType: typeof response,
-        isArray: Array.isArray(response),
-        rankingsLength: rankings?.length,
-        rankingsSample: rankings?.[0]
-    });
 
     return (
         <div className="flex flex-col min-h-screen bg-background-dark pb-20">
@@ -61,15 +54,13 @@ const Rankings: React.FC = () => {
             <div className="sticky top-0 z-20 bg-background-dark/80 backdrop-blur-md border-b border-white/5 py-4 px-4 overflow-x-auto">
                 <div className="flex flex-col gap-3">
                     <div className="flex gap-3">
-                        <select
+                        <YearRangeInput
                             value={year}
-                            onChange={(e) => setYear(Number(e.target.value))}
-                            className="bg-[#1c2230] text-white text-sm rounded-xl px-4 py-2 border border-white/10 focus:outline-none focus:border-primary"
-                        >
-                            <option value={2025}>2025 Season</option>
-                            <option value={2024}>2024 Season</option>
-                            <option value={0}>All Time</option>
-                        </select>
+                            onChange={setYear}
+                            availableRange={{ min: 2008, max: 2025 }}
+                        />
+
+
 
                         <select
                             value={format}
