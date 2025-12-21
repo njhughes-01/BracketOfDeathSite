@@ -7,7 +7,11 @@ import xss from 'xss';
  */
 export const sanitizeString = (input: string): string => {
     if (!input) return '';
-    return xss(input.trim());
+    return xss(input.trim(), {
+        whiteList: {},
+        stripIgnoreTag: true,
+        stripIgnoreTagBody: ['script']
+    });
 };
 
 /**

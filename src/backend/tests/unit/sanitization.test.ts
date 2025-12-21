@@ -1,4 +1,3 @@
-// Jest globals are available by default
 import { sanitizeString, parseYearFilter } from '../../utils/sanitization';
 
 describe('Sanitization Utils', () => {
