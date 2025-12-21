@@ -113,6 +113,12 @@ class KeycloakAdminService {
         if (userData.roles && userData.roles.length > 0) {
             await this.assignRolesToUser(userId, userData.roles);
         }
+        try {
+            await this.clearUserRequiredActions(userId);
+        }
+        catch (error) {
+            console.warn(`Failed to clear required actions for new user ${userData.username}:`, error);
+        }
         return createdUser;
     }
     async getUsers(search, max) {

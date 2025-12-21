@@ -67,22 +67,15 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [loading, setLoading] = useState(false);
   const initializationAttempted = useRef(false);
 
-  // Token persistence helpers (localStorage)
-  const TOKENS_KEY = 'kc_tokens';
+  // Token persistence helpers (Memory-only for security)
+  // We no longer save sensitive tokens to localStorage to prevent XSS attacks.
   const saveTokens = (kc: Keycloak) => {
-    try {
-      const payload = { access_token: kc.token, refresh_token: kc.refreshToken, id_token: kc.idToken };
-      localStorage.setItem(TOKENS_KEY, JSON.stringify(payload));
-    } catch { }
+    // Intentionally empty - tokens are kept in memory only
+    // Logic for refreshing is handled by Keycloak JS automatically via iframe/silent-sso
   };
   const loadTokens = (): { access_token: string; refresh_token?: string; id_token?: string } | null => {
-    try {
-      const raw = localStorage.getItem(TOKENS_KEY);
-      if (!raw) return null;
-      const parsed = JSON.parse(raw);
-      if (!parsed?.access_token) return null;
-      return parsed;
-    } catch { return null; }
+    // Intentionally returning null to force fresh login or silent SSO check
+    return null;
   };
 
   // Helper function to set up user from token
@@ -131,6 +124,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         fullName: `${profile.firstName || tokenParsed.given_name || ''} ${profile.lastName || tokenParsed.family_name || ''}`.trim() || tokenParsed.name || profile.username || tokenParsed.preferred_username || '',
         roles,
         isAdmin: roles.includes('admin'),
+        isSuperAdmin: roles.includes('superadmin'),
         playerId: profile.attributes?.playerId?.[0],
         enabled: true, // Keycloak users are enabled if we are here
       };
@@ -376,7 +370,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     localStorage.removeItem('hasLoggedInBefore');
 
     // IMPORTANT: Clear stored tokens to prevent auto-login loop
-    localStorage.removeItem(TOKENS_KEY);
+    // localStorage.removeItem(TOKENS_KEY); // Removed as TOKENS_KEY is no longer used/defined
 
     // Redirect to login page
     window.location.href = '/login';

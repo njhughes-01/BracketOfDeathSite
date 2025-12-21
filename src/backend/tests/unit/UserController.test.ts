@@ -23,7 +23,10 @@ jest.mock('../../services/keycloakAdminService', () => ({
 }));
 
 jest.mock('../../services/MailjetService');
-jest.mock('jsonwebtoken');
+jest.mock('jsonwebtoken', () => ({
+  decode: jest.fn(),
+  verify: jest.fn(),
+}));
 
 // Mock axios
 jest.mock('axios', () => ({

@@ -60,8 +60,9 @@ class ProfileController {
             if (playerId) {
                 playerData = await Player_1.Player.findById(playerId);
             }
+            const userRoles = kcUser.realmRoles || [];
             const isSuperAdmin = kcUser.username === 'admin' || kcUser.username === (process.env.KEYCLOAK_ADMIN_USER || 'admin');
-            const isAdmin = req.user?.isAdmin || false;
+            const isAdmin = userRoles.includes('admin') || (req.user?.isAdmin || false);
             const isPlayerComplete = !!(playerData && playerData.gender);
             const profileData = {
                 user: {
