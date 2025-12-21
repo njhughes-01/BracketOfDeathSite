@@ -7,15 +7,21 @@ import LoadingSpinner from '../components/ui/LoadingSpinner';
 const Rankings: React.FC = () => {
     const [year, setYear] = useState<number>(new Date().getFullYear());
     const [format, setFormat] = useState<string>('');
+    const [sort, setSort] = useState<string>('-points');
 
     const getLeaderboard = React.useCallback(
-        () => apiClient.getLeaderboard({ year: year !== 0 ? year : undefined, format: format || undefined, limit: 100 }),
-        [year, format]
+        () => apiClient.getLeaderboard({ 
+            year: year !== 0 ? year : undefined, 
+            format: format || undefined, 
+            limit: 100,
+            sort: sort
+        }),
+        [year, format, sort]
     );
 
     const { data: response, loading, error } = useApi(getLeaderboard, {
         immediate: true,
-        dependencies: [year, format]
+        dependencies: [year, format, sort]
     });
 
     const rankings = (response as any)?.data || [];
@@ -42,29 +48,52 @@ const Rankings: React.FC = () => {
                 </div>
             </div>
 
-            {/* Filters */}
+            {/* Filters & Sorting */}
             <div className="sticky top-0 z-20 bg-background-dark/80 backdrop-blur-md border-b border-white/5 py-4 px-4 overflow-x-auto">
-                <div className="flex gap-3">
-                    <select
-                        value={year}
-                        onChange={(e) => setYear(Number(e.target.value))}
-                        className="bg-[#1c2230] text-white text-sm rounded-xl px-4 py-2 border border-white/10 focus:outline-none focus:border-primary"
-                    >
-                        <option value={2025}>2025 Season</option>
-                        <option value={2024}>2024 Season</option>
-                        <option value={0}>All Time</option>
-                    </select>
+                <div className="flex flex-col gap-3">
+                    <div className="flex gap-3">
+                        <select
+                            value={year}
+                            onChange={(e) => setYear(Number(e.target.value))}
+                            className="bg-[#1c2230] text-white text-sm rounded-xl px-4 py-2 border border-white/10 focus:outline-none focus:border-primary"
+                        >
+                            <option value={2025}>2025 Season</option>
+                            <option value={2024}>2024 Season</option>
+                            <option value={0}>All Time</option>
+                        </select>
 
-                    <select
-                        value={format}
-                        onChange={(e) => setFormat(e.target.value)}
-                        className="bg-[#1c2230] text-white text-sm rounded-xl px-4 py-2 border border-white/10 focus:outline-none focus:border-primary"
-                    >
-                        <option value="">All Formats</option>
-                        <option value="Mixed">Mixed</option>
-                        <option value="M">Men's</option>
-                        <option value="W">Women's</option>
-                    </select>
+                        <select
+                            value={format}
+                            onChange={(e) => setFormat(e.target.value)}
+                            className="bg-[#1c2230] text-white text-sm rounded-xl px-4 py-2 border border-white/10 focus:outline-none focus:border-primary"
+                        >
+                            <option value="">All Formats</option>
+                            <option value="Mixed">Mixed</option>
+                            <option value="M">Men's</option>
+                            <option value="W">Women's</option>
+                        </select>
+                    </div>
+                    
+                    <div className="flex gap-2 overflow-x-auto pb-1 no-scrollbar">
+                        {[
+                            { label: 'Points', value: '-points' },
+                            { label: 'Titles', value: '-totalChampionships' },
+                            { label: 'Win Rate', value: '-winningPercentage' },
+                            { label: 'Wins', value: '-totalWins' },
+                        ].map((option) => (
+                            <button
+                                key={option.value}
+                                onClick={() => setSort(option.value)}
+                                className={`px-3 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap transition-colors ${
+                                    sort === option.value 
+                                        ? 'bg-primary text-white' 
+                                        : 'bg-white/5 text-slate-400 hover:bg-white/10 hover:text-white'
+                                }`}
+                            >
+                                {option.label}
+                            </button>
+                        ))}
+                    </div>
                 </div>
             </div>
 
@@ -81,8 +110,8 @@ const Rankings: React.FC = () => {
                 ) : rankings.length > 0 ? (
                     rankings.map((player: any, index: number) => (
                         <Link
-                            to={`/players/${player._id || player.id}`}
-                            key={player._id || player.id || index}
+                            to={`/players/${player._id}`}
+                            key={player._id}
                             className="flex items-center gap-4 bg-[#1c2230] p-4 rounded-xl border border-white/5 hover:border-white/10 transition-all group relative overflow-hidden"
                         >
                             {index < 3 && (
@@ -104,14 +133,24 @@ const Rankings: React.FC = () => {
                             <div className="flex-1 min-w-0">
                                 <h3 className="text-white font-bold truncate group-hover:text-primary transition-colors">{player.name}</h3>
                                 <div className="flex items-center gap-3 text-xs text-slate-500">
-                                    <span>{player.totalChampionships || 0} Titles</span>
+                                    <span className={sort === '-totalChampionships' ? 'text-primary font-bold' : ''}>
+                                        {player.totalChampionships || 0} Titles
+                                    </span>
                                     <span className="w-1 h-1 bg-slate-700 rounded-full"></span>
-                                    <span>{((player.winningPercentage || 0) * 100).toFixed(0)}% Win Rate</span>
+                                    <span className={sort === '-winningPercentage' ? 'text-primary font-bold' : ''}>
+                                        {((player.winningPercentage || 0) * 100).toFixed(0)}% Win Rate
+                                    </span>
+                                    <span className="w-1 h-1 bg-slate-700 rounded-full"></span>
+                                    <span className={sort === '-totalWins' ? 'text-primary font-bold' : ''}>
+                                        {player.totalWins}W-{player.totalLosses}L
+                                    </span>
                                 </div>
                             </div>
 
                             <div className="text-right">
-                                <div className="text-xl font-bold text-white">{player.points || 0}</div>
+                                <div className={`text-xl font-bold ${sort === '-points' ? 'text-primary' : 'text-white'}`}>
+                                    {player.points || 0}
+                                </div>
                                 <div className="text-[10px] text-slate-500 uppercase tracking-wider">PTS</div>
                             </div>
                         </Link>

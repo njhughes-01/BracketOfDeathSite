@@ -1,0 +1,39 @@
+import { Request, Response, NextFunction } from 'express';
+import { ITournament, ITournamentFilter } from '../types/tournament';
+import { BaseController, RequestWithAuth } from './base';
+export declare class TournamentController extends BaseController<ITournament> {
+    constructor();
+    protected buildFilter(query: any): ITournamentFilter;
+    protected buildSearchFilter(searchTerm: string): any;
+    getStats: (req: Request | RequestWithAuth, res: Response, next: NextFunction) => Promise<void>;
+    getByYear: (req: Request | RequestWithAuth, res: Response, next: NextFunction) => Promise<void>;
+    getByFormat: (req: Request | RequestWithAuth, res: Response, next: NextFunction) => Promise<void>;
+    getWithResults: (req: Request | RequestWithAuth, res: Response, next: NextFunction) => Promise<void>;
+    getUpcoming: (req: Request | RequestWithAuth, res: Response, next: NextFunction) => Promise<void>;
+    getRecent: (req: Request | RequestWithAuth, res: Response, next: NextFunction) => Promise<void>;
+    listOpen: (req: Request | RequestWithAuth, res: Response, next: NextFunction) => Promise<void>;
+    join: (req: Request | RequestWithAuth, res: Response, next: NextFunction) => Promise<void>;
+    getNextBodNumber: (req: Request | RequestWithAuth, res: Response, next: NextFunction) => Promise<void>;
+    generatePlayerSeeds: (req: Request | RequestWithAuth, res: Response, next: NextFunction) => Promise<void>;
+    generateTeams: (req: Request | RequestWithAuth, res: Response, next: NextFunction) => Promise<void>;
+    setupTournament: (req: Request | RequestWithAuth, res: Response, next: NextFunction) => Promise<void>;
+    bulkImport: (req: Request | RequestWithAuth, res: Response, next: NextFunction) => Promise<void>;
+    private validateTournamentData;
+    private getAllPlayersWithStats;
+    private getPlayersById;
+    private getPlayerStatistics;
+    private calculateHistoricalSeeds;
+    private calculateRecentFormSeeds;
+    private calculateEloSeeds;
+    private formTeams;
+    private handlePreformedTeams;
+    private handleDraftTeams;
+    private handleStatisticalPairing;
+    private handleRandomPairing;
+    private handleManualTeams;
+    create: (req: RequestWithAuth, res: Response, next: NextFunction) => Promise<void>;
+    update: (req: RequestWithAuth, res: Response, next: NextFunction) => Promise<void>;
+    delete: (req: RequestWithAuth, res: Response, next: NextFunction) => Promise<void>;
+}
+export declare const tournamentController: TournamentController;
+//# sourceMappingURL=TournamentController.d.ts.map

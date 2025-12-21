@@ -298,6 +298,7 @@ export class TournamentResultController extends BaseController<ITournamentResult
     try {
       const { tournamentId, format, year } = req.query;
       const limit = parseInt(req.query.limit as string) || 50;
+      const sort = req.query.sort as string || '-points'; // Default sort by points
 
       let matchStage: any = {};
 
@@ -342,7 +343,12 @@ export class TournamentResultController extends BaseController<ITournamentResult
         });
       }
 
-      // Group by players and calculate aggregate stats
+      // Unwind players to rank individuals instead of teams
+      pipeline.push({
+        $unwind: '$players'
+      });
+
+      // Group by individual player and calculate aggregate stats
       pipeline.push(
         {
           $group: {
@@ -354,11 +360,24 @@ export class TournamentResultController extends BaseController<ITournamentResult
             avgWinPercentage: { $avg: '$totalStats.winPercentage' },
             bestFinish: { $min: '$totalStats.finalRank' },
             avgFinish: { $avg: '$totalStats.finalRank' },
-            championships: {
+            // Calculate championships (1st place)
+            totalChampionships: {
               $sum: {
                 $cond: [{ $eq: ['$totalStats.finalRank', 1] }, 1, 0],
               },
             },
+            // Calculate Runner-ups (2nd place)
+            totalRunnerUps: {
+              $sum: {
+                $cond: [{ $eq: ['$totalStats.finalRank', 2] }, 1, 0],
+              },
+            },
+            // Calculate Final Four (Semi-finals)
+            totalFinalFours: {
+              $sum: {
+                $cond: [{ $in: ['$totalStats.finalRank', [3, 4]] }, 1, 0],
+              },
+            }
           },
         },
         {
@@ -371,34 +390,33 @@ export class TournamentResultController extends BaseController<ITournamentResult
         },
         {
           $addFields: {
-            overallWinPercentage: {
+            name: { $arrayElemAt: ['$playerDetails.name', 0] },
+            winningPercentage: {
               $cond: [
                 { $gt: ['$totalGames', 0] },
                 { $divide: ['$totalWins', '$totalGames'] },
                 0,
               ],
             },
-            teamName: {
-              $reduce: {
-                input: '$playerDetails',
-                initialValue: '',
-                in: {
-                  $cond: {
-                    if: { $eq: ['$$value', ''] },
-                    then: '$$this.name',
-                    else: { $concat: ['$$value', ' & ', '$$this.name'] },
-                  },
-                },
-              },
-            },
+            // Calculate arbitrary points: 
+            // Championship = 1000, RunnerUp = 500, FinalFour = 250, Win = 10
+            points: {
+              $add: [
+                { $multiply: ['$totalChampionships', 1000] },
+                { $multiply: ['$totalRunnerUps', 500] },
+                { $multiply: ['$totalFinalFours', 250] },
+                { $multiply: ['$totalWins', 10] }
+              ]
+            }
           },
         },
         {
-          $sort: {
-            championships: -1,
-            overallWinPercentage: -1,
-            avgFinish: 1,
-          },
+          $project: {
+            playerDetails: 0 // Remove raw lookup array
+          }
+        },
+        {
+          $sort: this.parseSortString(sort),
         },
         { $limit: limit }
       );
