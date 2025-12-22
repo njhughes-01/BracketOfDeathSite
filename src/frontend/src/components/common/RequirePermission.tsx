@@ -21,25 +21,12 @@ const RequirePermission: React.FC<RequirePermissionProps> = ({
   allPermissions, 
   fallback = null 
 }) => {
-  const { hasPermission, hasAnyPermission, hasAllPermissions, isAdmin } = usePermissions();
+  const { hasPermission, hasAnyPermission, hasAllPermissions } = usePermissions();
 
-  // Admin bypass - usually admins can do everything, but check your business logic
-  // The usePermissions hook handles logic if admin gets all permissions.
-  // We'll rely on the hook's logic.
-
-  let authorized = true;
-
-  if (permission && !hasPermission(permission)) {
-    authorized = false;
-  }
-
-  if (anyPermission && !hasAnyPermission(anyPermission)) {
-    authorized = false;
-  }
-
-  if (allPermissions && !hasAllPermissions(allPermissions)) {
-    authorized = false;
-  }
+  const authorized =
+    (!permission || hasPermission(permission)) &&
+    (!anyPermission || hasAnyPermission(anyPermission)) &&
+    (!allPermissions || hasAllPermissions(allPermissions));
 
   return authorized ? <>{children}</> : <>{fallback}</>;
 };

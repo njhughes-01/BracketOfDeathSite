@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, within } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { MemoryRouter } from 'react-router-dom';
 import Admin from '../Admin';
@@ -86,7 +86,10 @@ describe('Admin Dashboard', () => {
     // "New Tournament" card exists, but link shouldn't
     expect(screen.getByText('New Tournament')).toBeInTheDocument();
     expect(screen.queryByText('Start Setup')).not.toBeInTheDocument();
-    expect(screen.getByText('Permission Denied')).toBeInTheDocument();
+    
+    // Scope assertion to the card
+    const tournamentCard = screen.getByText('New Tournament').closest('.group') as HTMLElement;
+    expect(within(tournamentCard).getByText('Permission Denied')).toBeInTheDocument();
   });
 
   it('hides "Manage Users" button if cannot manage users', async () => {
@@ -108,7 +111,9 @@ describe('Admin Dashboard', () => {
 
     expect(screen.getByText('User Management')).toBeInTheDocument();
     expect(screen.queryByText('Manage Users')).not.toBeInTheDocument();
-    // Assuming "Permission Denied" text appears
-    expect(screen.getAllByText('Permission Denied').length).toBeGreaterThan(0);
+    
+    // Scope assertion to the card
+    const userManagementCard = screen.getByText('User Management').closest('.group') as HTMLElement;
+    expect(within(userManagementCard).getByText('Permission Denied')).toBeInTheDocument();
   });
 });

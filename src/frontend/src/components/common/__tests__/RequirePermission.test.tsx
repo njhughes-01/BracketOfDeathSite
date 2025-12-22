@@ -76,4 +76,70 @@ describe('RequirePermission Component', () => {
     expect(screen.getByText('Protected Content')).toBeInTheDocument();
     expect(mockHasAllPermissions).toHaveBeenCalledWith([PERMISSIONS.PLAYER_CREATE, PERMISSIONS.PLAYER_EDIT]);
   });
+
+  it('renders fallback when anyPermission condition is not met', () => {
+    mockHasAnyPermission.mockReturnValue(false);
+
+    render(
+      <RequirePermission 
+        anyPermission={[PERMISSIONS.PLAYER_CREATE, PERMISSIONS.PLAYER_EDIT]}
+        fallback={<div>Access Denied</div>}
+      >
+        <div>Protected Content</div>
+      </RequirePermission>
+    );
+
+    expect(screen.queryByText('Protected Content')).not.toBeInTheDocument();
+    expect(screen.getByText('Access Denied')).toBeInTheDocument();
+  });
+
+  it('renders fallback when allPermissions condition is not met', () => {
+    mockHasAllPermissions.mockReturnValue(false);
+
+    render(
+      <RequirePermission 
+        allPermissions={[PERMISSIONS.PLAYER_CREATE, PERMISSIONS.PLAYER_EDIT]}
+        fallback={<div>Access Denied</div>}
+      >
+        <div>Protected Content</div>
+      </RequirePermission>
+    );
+
+    expect(screen.queryByText('Protected Content')).not.toBeInTheDocument();
+    expect(screen.getByText('Access Denied')).toBeInTheDocument();
+  });
+
+  it('renders children only when multiple permission props are all met', () => {
+    mockHasPermission.mockReturnValue(true);
+    mockHasAllPermissions.mockReturnValue(true);
+
+    render(
+      <RequirePermission 
+        permission={PERMISSIONS.PLAYER_CREATE}
+        allPermissions={[PERMISSIONS.PLAYER_EDIT]}
+      >
+        <div>Protected Content</div>
+      </RequirePermission>
+    );
+
+    expect(screen.getByText('Protected Content')).toBeInTheDocument();
+  });
+
+  it('renders fallback when one of multiple permission props is not met', () => {
+    mockHasPermission.mockReturnValue(true);
+    mockHasAllPermissions.mockReturnValue(false);
+
+    render(
+      <RequirePermission 
+        permission={PERMISSIONS.PLAYER_CREATE}
+        allPermissions={[PERMISSIONS.PLAYER_EDIT]}
+        fallback={<div>Access Denied</div>}
+      >
+        <div>Protected Content</div>
+      </RequirePermission>
+    );
+
+    expect(screen.queryByText('Protected Content')).not.toBeInTheDocument();
+    expect(screen.getByText('Access Denied')).toBeInTheDocument();
+  });
 });
