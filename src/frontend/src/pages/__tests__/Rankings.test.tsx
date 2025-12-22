@@ -102,7 +102,7 @@ describe('Rankings Page', () => {
         setupMock();
         renderPage();
 
-        const winRateBtn = screen.getByText(/Win Rate/i);
+        const winRateBtn = screen.getByRole('button', { name: /Win Rate/i });
         fireEvent.click(winRateBtn);
         expect(winRateBtn).toBeInTheDocument();
     });

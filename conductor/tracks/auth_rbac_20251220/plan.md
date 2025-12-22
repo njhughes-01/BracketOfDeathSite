@@ -8,16 +8,16 @@
 - [x] Task: Implement Route Guards for Admin and SuperAdmin [rbac-implementation]
 - [x] Task: Create tests for User Self-Update Endpoint [profile.test.ts]
 - [x] Task: Secure /api/users/me Endpoint [/api/profile]
-- [ ] Task: Conductor - User Manual Verification 'Phase 1: Backend RBAC Implementation' (Protocol in workflow.md)
+- [x] Task: Conductor - User Manual Verification 'Phase 1: Backend RBAC Implementation' (Protocol in workflow.md) [frontend-rbac]
 
 ## Phase 2: Frontend RBAC Integration
-- [ ] Task: Conductor - Analyze Frontend Auth State with codebase_investigator
-- [ ] Task: Create tests for RequireRole Component
-- [ ] Task: Implement RequireRole Component
-- [ ] Task: Create tests for Navigation Bar Role Logic
-- [ ] Task: Update Navigation Bar for Role-Based Links
-- [ ] Task: Create tests for Admin Dashboard Access
-- [ ] Task: Protect Admin Routes in React Router
+- [x] Task: Conductor - Analyze Frontend Auth State with codebase_investigator [frontend-rbac]
+- [x] Task: Create tests for RequireRole Component [frontend-rbac]
+- [x] Task: Implement RequireRole Component (as RequirePermission) [frontend-rbac]
+- [x] Task: Create tests for Navigation Bar Role Logic [frontend-rbac]
+- [x] Task: Update Navigation Bar for Role-Based Links (Verified existing implementation) [frontend-rbac]
+- [x] Task: Create tests for Admin Dashboard Access [frontend-rbac]
+- [x] Task: Protect Admin Routes in React Router (Verified existing implementation in App.tsx) [frontend-rbac]
 - [ ] Task: Conductor - User Manual Verification 'Phase 2: Frontend RBAC Integration' (Protocol in workflow.md)
 
 ## Phase 3: Profile Management & Password Reset
