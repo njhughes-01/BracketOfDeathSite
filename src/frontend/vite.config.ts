@@ -2,7 +2,10 @@
 import { defineConfig, configDefaults } from 'vitest/config' // restart trigger v3
 import react from '@vitejs/plugin-react'
 
-const allowedHosts = process.env.VITE_ALLOWED_HOSTS?.split(',') || ['localhost']
+const allowedHostsEnv = process.env.VITE_ALLOWED_HOSTS;
+const allowedHosts = allowedHostsEnv === 'true' || allowedHostsEnv === 'all'
+  ? true
+  : allowedHostsEnv?.split(',').map(h => h.trim().replace(/^https?:\/\//, '')) || ['localhost'];
 
 // Derive Keycloak config from VITE_ vars or fallback to base vars or defaults
 const keycloakRealm = process.env.VITE_KEYCLOAK_REALM || process.env.KEYCLOAK_REALM || 'bracketofdeathsite';

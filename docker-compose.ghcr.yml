@@ -184,6 +184,7 @@ services:
     environment:
       VITE_API_URL: /api
       VITE_KEYCLOAK_URL: /auth
+      VITE_ALLOWED_HOSTS: ${VITE_ALLOWED_HOSTS:-localhost,bod.lightmedia.club}
       VITE_KEYCLOAK_REALM: bracketofdeathsite
       VITE_KEYCLOAK_CLIENT_ID: bod-app
       PROXY_TARGET: http://backend:3000
