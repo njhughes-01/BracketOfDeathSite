@@ -2,7 +2,7 @@ import { Router } from 'express';
 import { tournamentController } from '../controllers/TournamentController';
 import { TournamentAdminController } from '../controllers/TournamentAdminController';
 import { liveTournamentController } from '../controllers/LiveTournamentController';
-import { requireAuth } from '../middleware/auth';
+import { requireAuth, requireAdmin } from '../middleware/auth';
 import { validateObjectId, validatePagination, validateRequest } from '../middleware/validation';
 import { body, param } from 'express-validator';
 
@@ -23,12 +23,12 @@ router.get('/:id', validateObjectId, tournamentController.getById);
 router.get('/:id/results', validateObjectId, tournamentController.getWithResults);
 router.get('/:id/registration', validateObjectId, tournamentAdminController.getRegistrationInfo);
 
-// Protected routes (require authentication)
-router.post('/', requireAuth, tournamentController.create);
+// Protected routes (require admin)
+router.post('/', requireAdmin, tournamentController.create);
 // Match management routes (specific before generic :id)
-router.put('/matches/:matchId', requireAuth, liveTournamentController.updateMatch);
-router.put('/:id', requireAuth, validateObjectId, tournamentController.update);
-router.delete('/:id', requireAuth, validateObjectId, tournamentController.delete);
+router.put('/matches/:matchId', requireAdmin, liveTournamentController.updateMatch);
+router.put('/:id', requireAdmin, validateObjectId, tournamentController.update);
+router.delete('/:id', requireAdmin, validateObjectId, tournamentController.delete);
 
 // Public registration routes (for self-registration)
 router.post(
@@ -64,26 +64,26 @@ router.delete(
   tournamentAdminController.unregisterPlayer
 );
 
-// Tournament management routes
-router.post('/generate-seeds', tournamentController.generatePlayerSeeds);
-router.post('/generate-teams', tournamentController.generateTeams);
-router.post('/setup', tournamentController.setupTournament);
+// Tournament management routes (Admin only)
+router.post('/generate-seeds', requireAdmin, tournamentController.generatePlayerSeeds);
+router.post('/generate-teams', requireAdmin, tournamentController.generateTeams);
+router.post('/setup', requireAdmin, tournamentController.setupTournament);
 
 // Live tournament management routes
 router.get('/:id/live', validateObjectId, liveTournamentController.getLiveTournament);
 router.get('/:id/live-stats', validateObjectId, liveTournamentController.getLiveStats);
 router.get('/:id/player-stats', validateObjectId, liveTournamentController.getTournamentPlayerStats);
 router.get('/:id/stream', validateObjectId, liveTournamentController.streamTournamentEvents);
-router.post('/:id/action', requireAuth, validateObjectId, liveTournamentController.executeTournamentAction);
+router.post('/:id/action', requireAdmin, validateObjectId, liveTournamentController.executeTournamentAction);
 router.get('/:id/matches', validateObjectId, liveTournamentController.getTournamentMatches);
-router.post('/:id/checkin', requireAuth, validateObjectId, liveTournamentController.checkInTeam);
-router.post('/:id/generate-matches', requireAuth, validateObjectId, liveTournamentController.generateMatches);
-router.post('/:id/matches/confirm-completed', requireAuth, validateObjectId, liveTournamentController.confirmCompletedMatches);
+router.post('/:id/checkin', requireAdmin, validateObjectId, liveTournamentController.checkInTeam);
+router.post('/:id/generate-matches', requireAdmin, validateObjectId, liveTournamentController.generateMatches);
+router.post('/:id/matches/confirm-completed', requireAdmin, validateObjectId, liveTournamentController.confirmCompletedMatches);
 
 // Match management routes (create separate route file later if needed)
 
 
 // Admin routes
-router.post('/bulk-import', requireAuth, tournamentController.bulkImport);
+router.post('/bulk-import', requireAdmin, tournamentController.bulkImport);
 
 export default router;

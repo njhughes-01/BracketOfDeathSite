@@ -2,12 +2,12 @@
 
 ## Phase 1: Backend RBAC Implementation
 - [x] Task: Conductor - Analyze Existing Auth Middleware with codebase_investigator [7d63f16]
-- [~] Task: Create tests for Role-Based Access Control Middleware
-- [x] Task: Update Keycloak Middleware to Extract Roles
-- [ ] Task: Create tests for Admin Route Guards
-- [ ] Task: Implement Route Guards for Admin and SuperAdmin
-- [ ] Task: Create tests for User Self-Update Endpoint
-- [ ] Task: Secure /api/users/me Endpoint
+- [x] Task: Create tests for Role-Based Access Control Middleware [f50419d]
+- [x] Task: Update Keycloak Middleware to Extract Roles [b0df20a]
+- [x] Task: Create tests for Admin Route Guards [rbac-implementation]
+- [x] Task: Implement Route Guards for Admin and SuperAdmin [rbac-implementation]
+- [x] Task: Create tests for User Self-Update Endpoint [profile.test.ts]
+- [x] Task: Secure /api/users/me Endpoint [/api/profile]
 - [ ] Task: Conductor - User Manual Verification 'Phase 1: Backend RBAC Implementation' (Protocol in workflow.md)
 
 ## Phase 2: Frontend RBAC Integration
