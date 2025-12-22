@@ -9,11 +9,11 @@ describe("UserDetailModal", () => {
     email: "test@example.com",
     roles: ["user", "admin"],
     isAdmin: true,
+    isSuperAdmin: false,
     enabled: true,
     emailVerified: true,
     fullName: "Test User",
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
+    createdAt: new Date(),
   };
 
   const mockHandlers = {
