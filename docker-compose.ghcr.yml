@@ -22,7 +22,7 @@ services:
     image: quay.io/keycloak/keycloak:23.0
     container_name: bod-keycloak
     restart: unless-stopped
-    command: ["start-dev"]
+    command: [ "start-dev" ]
     depends_on:
       secrets-init:
         condition: service_completed_successfully
@@ -43,7 +43,7 @@ services:
     networks:
       - bod-network
     healthcheck:
-      test: ["CMD-SHELL", "echo > /dev/tcp/localhost/8080"]
+      test: [ "CMD-SHELL", "echo > /dev/tcp/localhost/8080" ]
       interval: 15s
       timeout: 5s
       retries: 3
@@ -66,7 +66,7 @@ services:
     networks:
       - bod-network
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U keycloak -d keycloak"]
+      test: [ "CMD-SHELL", "pg_isready -U keycloak -d keycloak" ]
       interval: 30s
       timeout: 10s
       retries: 5
@@ -76,14 +76,7 @@ services:
     image: mongo:7.0
     container_name: bod-mongodb
     restart: unless-stopped
-    command:
-      [
-        "mongod",
-        "--logpath",
-        "/var/log/mongodb/mongod.log",
-        "--logappend",
-        "--quiet",
-      ]
+    command: [ "mongod", "--logpath", "/var/log/mongodb/mongod.log", "--logappend", "--quiet" ]
     depends_on:
       secrets-init:
         condition: service_completed_successfully
@@ -98,7 +91,7 @@ services:
     networks:
       - bod-network
     healthcheck:
-      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      test: [ "CMD", "mongosh", "--eval", "db.adminCommand('ping')" ]
       interval: 30s
       timeout: 10s
       retries: 5
@@ -143,6 +136,8 @@ services:
     image: ghcr.io/njhughes-01/bracketofdeath-backend:latest
     container_name: bod-backend
     restart: unless-stopped
+    ports:
+      - "3000:3000"
     depends_on:
       mongodb:
         condition: service_healthy
@@ -173,7 +168,7 @@ services:
     networks:
       - bod-network
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:3000/api/health"]
+      test: [ "CMD", "curl", "-f", "http://localhost:3000/api/health" ]
       interval: 30s
       timeout: 10s
       retries: 5
@@ -200,15 +195,7 @@ services:
     networks:
       - bod-network
     healthcheck:
-      test:
-        [
-          "CMD",
-          "wget",
-          "--no-verbose",
-          "--tries=1",
-          "--spider",
-          "http://0.0.0.0:5173",
-        ]
+      test: [ "CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://0.0.0.0:5173" ]
       interval: 30s
       timeout: 10s
       retries: 3
