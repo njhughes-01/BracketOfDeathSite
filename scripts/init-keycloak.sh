@@ -93,7 +93,7 @@ if [ "$REALM_EXISTS" = "200" ]; then
                 }
               ]' > /dev/null
             
-            echo "Emergency admin user created successfully (password: admin123, no password change required)"
+            echo "Emergency admin user created successfully (password: ${KEYCLOAK_ADMIN_PASSWORD}, no password change required)"
             echo "WARNING: Change the default admin password immediately for security!"
         else
             echo "Failed to create admin user"
