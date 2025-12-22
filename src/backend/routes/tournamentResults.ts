@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { tournamentResultController } from '../controllers/TournamentResultController';
-import { requireAuth } from '../middleware/auth';
+import { requireAuth, requireAdmin } from '../middleware/auth';
 import { validateObjectId } from '../middleware/validation';
 
 const router = Router();
@@ -15,12 +15,12 @@ router.get('/tournament/:tournamentId', validateObjectId, tournamentResultContro
 router.get('/player/:playerId', validateObjectId, tournamentResultController.getByPlayer);
 router.get('/:id', validateObjectId, tournamentResultController.getById);
 
-// Protected routes (require authentication)
-router.post('/', requireAuth, tournamentResultController.create);
-router.put('/:id', requireAuth, validateObjectId, tournamentResultController.update);
-router.delete('/:id', requireAuth, validateObjectId, tournamentResultController.delete);
+// Protected routes (require admin)
+router.post('/', requireAdmin, tournamentResultController.create);
+router.put('/:id', requireAdmin, validateObjectId, tournamentResultController.update);
+router.delete('/:id', requireAdmin, validateObjectId, tournamentResultController.delete);
 
 // Admin routes
-router.post('/bulk-import', requireAuth, tournamentResultController.bulkImport);
+router.post('/bulk-import', requireAdmin, tournamentResultController.bulkImport);
 
 export default router;
