@@ -91,7 +91,9 @@ describe('ClaimUserModal', () => {
             expect(apiClient.claimUser).toHaveBeenCalledWith('test@example.com', '1');
         });
 
-        expect(screen.getByText('Invitation Sent!')).toBeInTheDocument();
+        await waitFor(() => {
+            expect(screen.getByText('Invitation Sent!')).toBeInTheDocument();
+        });
     });
 
     it('handles API errors correctly', async () => {

@@ -9,7 +9,7 @@ RUN apk add --no-cache jq bash
 USER curl_user
 
 WORKDIR /scripts
-COPY init-keycloak.sh .
-COPY keycloak-realm.json .
+COPY scripts/init-keycloak.sh .
+COPY scripts/keycloak-realm.json .
 
 ENTRYPOINT ["/bin/bash", "/scripts/init-keycloak.sh"]
