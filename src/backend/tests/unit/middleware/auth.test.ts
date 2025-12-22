@@ -174,9 +174,11 @@ describe('Auth Middleware', () => {
       mockReq.headers!.authorization = 'Bearer user-token';
       const mockDecodedToken = {
         sub: 'user-123',
+        azp: 'test-client',
         realm_access: { roles: ['user'] }
       };
 
+      (jwt.decode as jest.Mock).mockReturnValue({ payload: mockDecodedToken });
       (jwt.verify as jest.Mock).mockImplementation((token, getKey, options, callback) => {
         callback(null, mockDecodedToken);
       });
@@ -194,9 +196,11 @@ describe('Auth Middleware', () => {
       mockReq.headers!.authorization = 'Bearer admin-token';
       const mockDecodedToken = {
         sub: 'admin-123',
+        azp: 'test-client',
         realm_access: { roles: ['admin'] }
       };
 
+      (jwt.decode as jest.Mock).mockReturnValue({ payload: mockDecodedToken });
       (jwt.verify as jest.Mock).mockImplementation((token, getKey, options, callback) => {
         callback(null, mockDecodedToken);
       });
@@ -210,9 +214,11 @@ describe('Auth Middleware', () => {
         mockReq.headers!.authorization = 'Bearer superadmin-token';
         const mockDecodedToken = {
           sub: 'super-123',
+          azp: 'test-client',
           realm_access: { roles: ['superadmin'] }
         };
   
+        (jwt.decode as jest.Mock).mockReturnValue({ payload: mockDecodedToken });
         (jwt.verify as jest.Mock).mockImplementation((token, getKey, options, callback) => {
           callback(null, mockDecodedToken);
         });
@@ -228,9 +234,11 @@ describe('Auth Middleware', () => {
       mockReq.headers!.authorization = 'Bearer admin-token';
       const mockDecodedToken = {
         sub: 'admin-123',
+        azp: 'test-client',
         realm_access: { roles: ['admin'] }
       };
 
+      (jwt.decode as jest.Mock).mockReturnValue({ payload: mockDecodedToken });
       (jwt.verify as jest.Mock).mockImplementation((token, getKey, options, callback) => {
         callback(null, mockDecodedToken);
       });
@@ -247,9 +255,11 @@ describe('Auth Middleware', () => {
       mockReq.headers!.authorization = 'Bearer super-token';
       const mockDecodedToken = {
         sub: 'super-123',
+        azp: 'test-client',
         realm_access: { roles: ['superadmin'] }
       };
 
+      (jwt.decode as jest.Mock).mockReturnValue({ payload: mockDecodedToken });
       (jwt.verify as jest.Mock).mockImplementation((token, getKey, options, callback) => {
         callback(null, mockDecodedToken);
       });
