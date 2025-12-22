@@ -1,0 +1,232 @@
+# docker-compose.ghcr.yml
+# Use pre-built images from GitHub Container Registry
+# No need to clone the repository - just download this file and run:
+#   docker compose -f docker-compose.ghcr.yml up -d
+#
+# Required: Create a .env file with your configuration (see .env.example)
+# Or set environment variables before running.
+
+services:
+  # Secrets Generation (runs once on first startup)
+  secrets-init:
+    image: ghcr.io/njhughes-01/bracketofdeath-secrets-init:latest
+    container_name: bod-secrets-init
+    volumes:
+      - secrets-data:/secrets
+    networks:
+      - bod-network
+    restart: "no"
+
+  # Keycloak Authentication Server (internal only)
+  keycloak:
+    image: quay.io/keycloak/keycloak:23.0
+    container_name: bod-keycloak
+    restart: unless-stopped
+    command: ["start-dev"]
+    depends_on:
+      secrets-init:
+        condition: service_completed_successfully
+      keycloak-db:
+        condition: service_healthy
+    volumes:
+      - secrets-data:/secrets:ro
+    environment:
+      KEYCLOAK_ADMIN: admin
+      KEYCLOAK_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD:-keycloak123}
+      KC_DB: postgres
+      KC_DB_URL: jdbc:postgresql://keycloak-db:5432/keycloak
+      KC_DB_USERNAME: keycloak
+      KC_DB_PASSWORD: ${KEYCLOAK_DB_PASSWORD:-keycloak123}
+      KC_HOSTNAME_STRICT: false
+      KC_HOSTNAME_STRICT_HTTPS: false
+      KC_HTTP_ENABLED: true
+    networks:
+      - bod-network
+    healthcheck:
+      test: ["CMD-SHELL", "echo > /dev/tcp/localhost/8080"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+
+  # Keycloak Database
+  keycloak-db:
+    image: postgres:15
+    container_name: bod-keycloak-db
+    restart: unless-stopped
+    depends_on:
+      secrets-init:
+        condition: service_completed_successfully
+    volumes:
+      - keycloak-db-data:/var/lib/postgresql/data
+      - secrets-data:/secrets:ro
+    environment:
+      POSTGRES_DB: keycloak
+      POSTGRES_USER: keycloak
+      POSTGRES_PASSWORD: ${KEYCLOAK_DB_PASSWORD:-keycloak123}
+    networks:
+      - bod-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U keycloak -d keycloak"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  # MongoDB Database (internal only)
+  mongodb:
+    image: mongo:7.0
+    container_name: bod-mongodb
+    restart: unless-stopped
+    command:
+      [
+        "mongod",
+        "--logpath",
+        "/var/log/mongodb/mongod.log",
+        "--logappend",
+        "--quiet",
+      ]
+    depends_on:
+      secrets-init:
+        condition: service_completed_successfully
+    volumes:
+      - mongodb-data:/data/db
+      - mongodb-logs:/var/log/mongodb
+      - secrets-data:/secrets:ro
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: bodadmin
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_PASSWORD:-bodpassword123}
+      MONGO_INITDB_DATABASE: bracket_of_death
+    networks:
+      - bod-network
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  # Keycloak Initialization Service (runs once)
+  keycloak-init:
+    image: ghcr.io/njhughes-01/bracketofdeath-keycloak-init:latest
+    container_name: bod-keycloak-init
+    depends_on:
+      keycloak:
+        condition: service_healthy
+    volumes:
+      - secrets-data:/secrets:ro
+    environment:
+      KEYCLOAK_ADMIN_USER: admin
+      KEYCLOAK_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD:-keycloak123}
+      KEYCLOAK_CLIENT_SECRET: ${KEYCLOAK_CLIENT_SECRET:-bodclient123}
+      KEYCLOAK_REALM: bracketofdeathsite
+      KEYCLOAK_CLIENT_ID: bod-app
+    networks:
+      - bod-network
+    restart: "no"
+
+  # Data Initialization Service (runs once)
+  data-init:
+    image: ghcr.io/njhughes-01/bracketofdeath-data-init:latest
+    container_name: bod-data-init
+    depends_on:
+      mongodb:
+        condition: service_healthy
+    volumes:
+      - data-init-status:/app/status
+      - secrets-data:/secrets:ro
+    environment:
+      MONGODB_URI: mongodb://bodadmin:${MONGO_PASSWORD:-bodpassword123}@mongodb:27017/bracket_of_death?authSource=admin
+    networks:
+      - bod-network
+    restart: "no"
+
+  # Backend API (internal only)
+  backend:
+    image: ghcr.io/njhughes-01/bracketofdeath-backend:latest
+    container_name: bod-backend
+    restart: unless-stopped
+    depends_on:
+      mongodb:
+        condition: service_healthy
+      data-init:
+        condition: service_completed_successfully
+      keycloak-init:
+        condition: service_completed_successfully
+    volumes:
+      - backend-logs:/app/logs
+      - secrets-data:/secrets:ro
+    environment:
+      NODE_ENV: ${NODE_ENV:-production}
+      PORT: 3000
+      MONGODB_URI: mongodb://bodadmin:${MONGO_PASSWORD:-bodpassword123}@mongodb:27017/bracket_of_death?authSource=admin
+      JWT_SECRET: ${JWT_SECRET:-bracket-of-death-jwt-secret-key-2024}
+      CORS_ORIGIN: ${CORS_ORIGIN:-http://localhost:5173,http://127.0.0.1:5173}
+      KEYCLOAK_URL: http://keycloak:8080
+      KEYCLOAK_REALM: bracketofdeathsite
+      KEYCLOAK_CLIENT_ID: bod-app
+      KEYCLOAK_CLIENT_SECRET: ${KEYCLOAK_CLIENT_SECRET:-bodclient123}
+      KEYCLOAK_ISSUER: http://keycloak:8080/realms/bracketofdeathsite
+      KEYCLOAK_ADMIN_USER: ${KEYCLOAK_ADMIN_USER:-admin}
+      KEYCLOAK_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD:-keycloak123}
+      # Mailjet email configuration (optional)
+      MAILJET_API_KEY: ${MAILJET_API_KEY:-}
+      MAILJET_API_SECRET: ${MAILJET_API_SECRET:-}
+      MAILJET_SENDER_EMAIL: ${MAILJET_SENDER_EMAIL:-noreply@bracketofdeath.com}
+    networks:
+      - bod-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  # Frontend (exposed to user)
+  frontend:
+    image: ghcr.io/njhughes-01/bracketofdeath-frontend:latest
+    container_name: bod-frontend
+    restart: unless-stopped
+    depends_on:
+      backend:
+        condition: service_healthy
+    volumes:
+      - secrets-data:/secrets:ro
+    environment:
+      VITE_API_URL: /api
+      VITE_KEYCLOAK_URL: /auth
+      VITE_KEYCLOAK_REALM: bracketofdeathsite
+      VITE_KEYCLOAK_CLIENT_ID: bod-app
+      PROXY_TARGET: http://backend:3000
+      KEYCLOAK_PROXY_TARGET: http://keycloak:8080
+    ports:
+      - "${PORT:-5173}:5173"
+    networks:
+      - bod-network
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "wget",
+          "--no-verbose",
+          "--tries=1",
+          "--spider",
+          "http://0.0.0.0:5173",
+        ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+networks:
+  bod-network:
+    driver: bridge
+
+volumes:
+  mongodb-data:
+    driver: local
+  mongodb-logs:
+    driver: local
+  keycloak-db-data:
+    driver: local
+  data-init-status:
+    driver: local
+  secrets-data:
+    driver: local
+  backend-logs:
+    driver: local
