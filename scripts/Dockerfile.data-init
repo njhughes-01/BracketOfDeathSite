@@ -15,6 +15,9 @@ RUN npm install
 # Copy the data initialization script
 COPY scripts/simple-data-import.js /app/simple-data-import.js
 
+# Copy data files for import
+COPY json/ /app/data/
+
 # Make sure the status directory exists
 RUN mkdir -p /app/status
 
