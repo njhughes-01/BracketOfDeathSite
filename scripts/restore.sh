@@ -18,8 +18,8 @@ fi
 BACKUP_FILE="$1"
 CONTAINER_NAME="mongodb"
 DB_NAME="bracket_of_death"
-DB_USER="bodadmin"
-DB_PASS="bodpassword123"
+DB_USER="${MONGO_INITDB_ROOT_USERNAME:-bodadmin}"
+DB_PASS="${MONGO_PASSWORD:-bodpassword123}"
 
 echo "🏆 Bracket of Death - Database Restore"
 echo "======================================"
