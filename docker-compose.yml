@@ -191,6 +191,7 @@ services:
       VITE_API_URL: /api
       VITE_KEYCLOAK_URL: /auth
       VITE_KEYCLOAK_REALM: bracketofdeathsite
+      VITE_ALLOWED_HOSTS: ${CORS_ORIGIN:-localhost,bod.lightmedia.club}
       VITE_KEYCLOAK_CLIENT_ID: bod-app
       PROXY_TARGET: http://backend:3000
       KEYCLOAK_PROXY_TARGET: http://keycloak:8080
