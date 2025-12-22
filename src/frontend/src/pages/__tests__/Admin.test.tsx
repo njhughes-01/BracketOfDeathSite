@@ -1,81 +1,114 @@
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { MemoryRouter, useNavigate } from 'react-router-dom';
+import { MemoryRouter } from 'react-router-dom';
 import Admin from '../Admin';
 import { useAuth } from '../../contexts/AuthContext';
+import { usePermissions } from '../../hooks/usePermissions';
+import apiClient from '../../services/api';
 
 // Mock dependencies
 vi.mock('../../contexts/AuthContext');
-
-// Mock components to simplify query testing
-vi.mock('../../components/admin/AdminStats', () => ({
-    AdminStats: () => <div data-testid="admin-stats">Admin Stats</div>
-}));
-vi.mock('../../components/admin/RecentActivity', () => ({
-    RecentActivity: () => <div data-testid="recent-activity">Recent Activity</div>
-}));
-vi.mock('../../components/admin/SystemHealth', () => ({
-    SystemHealth: () => <div data-testid="system-health">System Health</div>
-}));
-
-// Mock API client
-vi.mock('../../services/api', () => ({
-    default: {
-        getTournaments: vi.fn().mockResolvedValue({ data: [] })
-    }
-}));
-
-const mockNavigate = vi.fn();
-vi.mock('react-router-dom', async () => {
-    const actual = await vi.importActual('react-router-dom');
-    return {
-        ...actual,
-        useNavigate: () => mockNavigate,
-    };
-});
+vi.mock('../../hooks/usePermissions');
+vi.mock('../../services/api');
 
 describe('Admin Dashboard', () => {
-    beforeEach(() => {
-        vi.clearAllMocks();
-        (useAuth as any).mockReturnValue({
-            isAuthenticated: true,
-            user: { roles: ['admin'] } // Authenticated admin
-        });
+  beforeEach(() => {
+    vi.clearAllMocks();
+    
+    // Default: Authenticated Admin
+    (useAuth as any).mockReturnValue({
+      isAuthenticated: true,
+      isAdmin: true,
     });
 
-    it('renders admin dashboard for admin user', async () => {
-        render(
-            <MemoryRouter>
-                <Admin />
-            </MemoryRouter>
-        );
-
-        expect(await screen.findByText('Admin Dashboard')).toBeInTheDocument();
-        expect(screen.getByText('System Overview')).toBeInTheDocument();
-        expect(screen.getByText('Total Tournaments')).toBeInTheDocument();
+    // Default permissions (full access)
+    (usePermissions as any).mockReturnValue({
+      canViewAdmin: true,
+      canCreateTournaments: true,
+      canManageUsers: true,
     });
 
-    it('redirects non-admin users', async () => {
-        (useAuth as any).mockReturnValue({
-            isAuthenticated: true,
-            user: { roles: ['user'] } // Not admin
-        });
-
-        render(
-            <MemoryRouter>
-                <Admin />
-            </MemoryRouter>
-        );
-
-        // Expect navigation to home or 403 (Assuming component handles it)
-        // If the component relies on Layout or Route protection, this unit test might fail 
-        // if checking internal logic. Let's see if the component internally checks permissions.
-        // Looking at Admin.tsx, it might just be the page content. 
-        // Usually Route protection handles redirection. 
-        // If Admin.tsx has no check, we strictly test rendering.
-
-        // Actually, assuming standard pattern:
-        // If checking rendering:
-        expect(await screen.findByText('Admin Dashboard')).toBeInTheDocument();
+    // Mock API
+    (apiClient.getTournaments as any).mockResolvedValue({
+      data: [
+        { id: '1', bodNumber: 100, date: '2025-01-01', location: 'Test', status: 'scheduled' }
+      ]
     });
+  });
+
+  it('renders admin dashboard when permitted', async () => {
+    render(
+      <MemoryRouter>
+        <Admin />
+      </MemoryRouter>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText('Admin Dashboard')).toBeInTheDocument();
+    });
+    expect(screen.getByText('Manage Players')).toBeInTheDocument();
+  });
+
+  it('renders access denied message when permission missing', async () => {
+    (usePermissions as any).mockReturnValue({
+      canViewAdmin: false,
+      canCreateTournaments: false,
+      canManageUsers: false,
+    });
+
+    render(
+      <MemoryRouter>
+        <Admin />
+      </MemoryRouter>
+    );
+
+    expect(screen.getByText('Access Denied')).toBeInTheDocument();
+    expect(screen.queryByText('Admin Dashboard')).not.toBeInTheDocument();
+  });
+
+  it('hides "Start Setup" button if cannot create tournaments', async () => {
+    (usePermissions as any).mockReturnValue({
+      canViewAdmin: true,
+      canCreateTournaments: false, // Denied
+      canManageUsers: true,
+    });
+
+    render(
+      <MemoryRouter>
+        <Admin />
+      </MemoryRouter>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText('Admin Dashboard')).toBeInTheDocument();
+    });
+
+    // "New Tournament" card exists, but link shouldn't
+    expect(screen.getByText('New Tournament')).toBeInTheDocument();
+    expect(screen.queryByText('Start Setup')).not.toBeInTheDocument();
+    expect(screen.getByText('Permission Denied')).toBeInTheDocument();
+  });
+
+  it('hides "Manage Users" button if cannot manage users', async () => {
+    (usePermissions as any).mockReturnValue({
+      canViewAdmin: true,
+      canCreateTournaments: true,
+      canManageUsers: false, // Denied
+    });
+
+    render(
+      <MemoryRouter>
+        <Admin />
+      </MemoryRouter>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText('Admin Dashboard')).toBeInTheDocument();
+    });
+
+    expect(screen.getByText('User Management')).toBeInTheDocument();
+    expect(screen.queryByText('Manage Users')).not.toBeInTheDocument();
+    // Assuming "Permission Denied" text appears
+    expect(screen.getAllByText('Permission Denied').length).toBeGreaterThan(0);
+  });
 });
