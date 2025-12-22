@@ -17,7 +17,9 @@ interface KeycloakToken {
     };
 }
 export declare const verifyKeycloakToken: (token: string) => Promise<KeycloakToken>;
+export declare const hasRole: (token: KeycloakToken, role: string) => boolean;
 export declare const hasAdminRole: (token: KeycloakToken) => boolean;
+export declare const hasSuperAdminRole: (token: KeycloakToken) => boolean;
 export declare const isAuthorizedUser: (token: KeycloakToken) => boolean;
 export declare const requireAuth: (req: RequestWithAuth, res: Response, next: NextFunction) => Promise<void>;
 export declare const optionalAuth: (req: RequestWithAuth, _res: Response, next: NextFunction) => Promise<void>;

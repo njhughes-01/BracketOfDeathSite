@@ -1,5 +1,5 @@
-import { Response } from 'express';
-import { RequestWithAuth } from './base';
+import { Response } from "express";
+import { RequestWithAuth } from "./base";
 declare class UserController {
     protected handleError(res: Response, error: any, message: string): void;
     getUsers(req: RequestWithAuth, res: Response): Promise<void>;
@@ -12,7 +12,9 @@ declare class UserController {
     getAvailableRoles(req: RequestWithAuth, res: Response): Promise<void>;
     linkPlayerToSelf(req: RequestWithAuth, res: Response): Promise<void>;
     claimUser(req: RequestWithAuth, res: Response): Promise<void>;
+    login(req: RequestWithAuth, res: Response): Promise<void>;
     register(req: RequestWithAuth, res: Response): Promise<void>;
+    requestEmailVerification(req: RequestWithAuth, res: Response): Promise<void>;
     publicRequestPasswordReset(req: RequestWithAuth, res: Response): Promise<void>;
     private validateCreateUser;
     private validateUpdateUser;

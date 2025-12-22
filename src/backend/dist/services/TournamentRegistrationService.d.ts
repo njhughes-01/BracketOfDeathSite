@@ -29,12 +29,12 @@ export declare class TournamentRegistrationService {
     } | {
         success: boolean;
         data: {
-            tournament: import("mongoose").Document<unknown, {}, ITournament, {}> & ITournament & Required<{
+            tournament: import("mongoose").Document<unknown, {}, ITournament, {}, {}> & ITournament & Required<{
                 _id: Types.ObjectId;
             }> & {
                 __v: number;
             };
-            registrationStatus: "open" | "pending" | "closed" | "full";
+            registrationStatus: "closed" | "open" | "pending" | "full";
             registeredCount: number;
             waitlistCount: number;
             maxPlayers: number;

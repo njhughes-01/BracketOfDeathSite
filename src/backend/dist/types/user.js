@@ -24,7 +24,7 @@ exports.CreateUserValidation = {
         maxLength: 128,
     },
     roles: {
-        validRoles: ['admin', 'user'],
+        validRoles: ["superadmin", "admin", "user"],
     },
 };
 exports.UpdateUserValidation = {
@@ -38,7 +38,10 @@ exports.UpdateUserValidation = {
         pattern: /^[^\s@]+@[^\s@]+\.[^\s@]+$/,
     },
     roles: {
-        validRoles: ['admin', 'user'],
+        validRoles: ["superadmin", "admin", "user"],
+    },
+    gender: {
+        validOptions: ["male", "female", "other"],
     },
 };
 //# sourceMappingURL=user.js.map

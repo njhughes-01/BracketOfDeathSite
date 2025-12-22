@@ -1,11 +1,19 @@
 import { Response, NextFunction } from 'express';
 import { RequestWithAuth } from '../../../../src/backend/controllers/base';
 
-// Move mocks to top level again
-jest.mock('jsonwebtoken', () => ({
-  decode: jest.fn(),
-  verify: jest.fn(),
-}));
+jest.mock('jsonwebtoken', () => {
+  const mockDecode = jest.fn();
+  const mockVerify = jest.fn();
+  return {
+    __esModule: true,
+    default: {
+      decode: mockDecode,
+      verify: mockVerify,
+    },
+    decode: mockDecode,
+    verify: mockVerify,
+  };
+});
 
 jest.mock('jwks-rsa', () => {
   return jest.fn().mockImplementation(() => ({
@@ -29,6 +37,8 @@ describe('Auth Middleware', () => {
   });
 
   beforeEach(() => {
+
+
     mockRequest = {
       headers: {},
     };
@@ -39,9 +49,9 @@ describe('Auth Middleware', () => {
     };
     nextFunction = jest.fn();
     jest.clearAllMocks();
-    
+
     // Reset spy logs
-    jest.spyOn(console, 'error').mockImplementation(() => {});
+    // jest.spyOn(console, 'error').mockImplementation(() => {});
   });
 
   describe('requireAuth', () => {
@@ -53,7 +63,7 @@ describe('Auth Middleware', () => {
 
     it('should populate req.user if token is valid', async () => {
       mockRequest.headers = { authorization: 'Bearer valid.token.signature' };
-      
+
       const decodedToken = {
         sub: 'user-123',
         email: 'test@example.com',
@@ -68,10 +78,8 @@ describe('Auth Middleware', () => {
       });
 
       await requireAuth(mockRequest as RequestWithAuth, mockResponse as unknown as Response, nextFunction);
-      
-      if ((console.error as jest.Mock).mock.calls.length > 0) {
-         process.stdout.write('DEBUG ERROR: ' + JSON.stringify((console.error as jest.Mock).mock.calls, null, 2) + '\n');
-      }
+
+
 
       expect(nextFunction).toHaveBeenCalled();
       expect(mockRequest.user).toBeDefined();
@@ -82,7 +90,7 @@ describe('Auth Middleware', () => {
   describe('requireSuperAdmin', () => {
     it('should allow access if user has superadmin role', async () => {
       mockRequest.headers = { authorization: 'Bearer valid.token.signature' };
-      
+
       const decodedToken = {
         sub: 'superadmin-123',
         email: 'super@example.com',
@@ -98,13 +106,13 @@ describe('Auth Middleware', () => {
 
       await requireSuperAdmin(mockRequest as RequestWithAuth, mockResponse as unknown as Response, nextFunction);
 
-      expect(nextFunction).toHaveBeenCalled(); 
+      expect(nextFunction).toHaveBeenCalled();
       expect(mockResponse.status).not.toHaveBeenCalledWith(403);
     });
 
     it('should deny access if user is admin but not superadmin', async () => {
-       mockRequest.headers = { authorization: 'Bearer valid.token.signature' };
-      
+      mockRequest.headers = { authorization: 'Bearer valid.token.signature' };
+
       const decodedToken = {
         sub: 'admin-123',
         email: 'admin@example.com',

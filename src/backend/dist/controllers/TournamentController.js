@@ -231,6 +231,125 @@ class TournamentController extends base_1.BaseController {
             next(error);
         }
     });
+    // Get open tournaments for registration
+    listOpen = this.asyncHandler(async (req, res, next) => {
+        try {
+            const now = new Date();
+            const openTournaments = await Tournament_1.Tournament.find({
+                $or: [
+                    { allowSelfRegistration: true },
+                    { registrationType: 'open' }
+                ],
+                status: { $in: ['scheduled', 'open'] }, // Ensure tournament isn't completed or in progress (unless late join allowed?)
+                // Ensure registration window is valid if dates are set
+                $and: [
+                    { $or: [{ registrationOpensAt: { $exists: false } }, { registrationOpensAt: { $lte: now } }] },
+                    { $or: [{ registrationDeadline: { $exists: false } }, { registrationDeadline: { $gte: now } }] }
+                ]
+            }).sort({ date: 1 });
+            const response = {
+                success: true,
+                data: openTournaments,
+            };
+            res.status(200).json(response);
+        }
+        catch (error) {
+            next(error);
+        }
+    });
+    // Join a tournament (Self-registration)
+    join = this.asyncHandler(async (req, res, next) => {
+        try {
+            const { id } = req.params;
+            const { playerId } = req.body;
+            const userId = req.user?.id; // Keycloak user ID
+            // 1. Validate Tournament
+            const tournament = await Tournament_1.Tournament.findById(id);
+            if (!tournament) {
+                this.sendError(res, 404, 'Tournament not found');
+                return;
+            }
+            // 2. Validate Registration Rules
+            if (!tournament.allowSelfRegistration && tournament.registrationType !== 'open') {
+                this.sendError(res, 403, 'Self-registration is not allowed for this tournament');
+                return;
+            }
+            const now = new Date();
+            if (tournament.registrationOpensAt && now < new Date(tournament.registrationOpensAt)) {
+                this.sendError(res, 400, 'Registration is not yet open');
+                return;
+            }
+            if (tournament.registrationDeadline && now > new Date(tournament.registrationDeadline)) {
+                this.sendError(res, 400, 'Registration deadline has passed');
+                return;
+            }
+            // 3. Find Player Profile
+            // If playerId is provided, verify it. If not, try to find linked player for user.
+            let player;
+            if (playerId) {
+                // Explicit playerId provided (verify user owns it or is admin?)
+                // For now, assuming if they provide it, we check if it's valid. 
+                // ideally we should check if this Keycloak user is linked to this player.
+                // But for open simple registration, let's verify existence.
+                player = await Player_1.Player.findById(playerId);
+            }
+            else {
+                // TODO: Look up player by Keycloak ID (userId). 
+                // For now, require playerId in body or fail.
+                // In ideal flow, the frontend passes the linked playerId.
+                this.sendError(res, 400, 'Player ID is required for registration');
+                return;
+            }
+            if (!player) {
+                this.sendError(res, 404, 'Player profile not found');
+                return;
+            }
+            // 4. Check Duplicate Registration
+            const isRegistered = tournament.registeredPlayers.some((p) => p.playerId?.toString() === playerId || p.toString() === playerId);
+            const isWaitlisted = tournament.waitlistPlayers.some((p) => p.playerId?.toString() === playerId || p.toString() === playerId);
+            if (isRegistered) {
+                this.sendError(res, 400, 'Player already registered');
+                return;
+            }
+            if (isWaitlisted) {
+                this.sendError(res, 400, 'Player already on waitlist');
+                return;
+            }
+            // 5. Add to Tournament (Register or Waitlist)
+            const maxPlayers = tournament.maxPlayers || 32; // Default if not set
+            const currentCount = tournament.registeredPlayers.length;
+            let status = 'registered';
+            if (currentCount >= maxPlayers) {
+                // Add to waitlist
+                tournament.waitlistPlayers.push({
+                    playerId: player._id,
+                    registeredAt: now
+                });
+                status = 'waitlisted';
+            }
+            else {
+                // Register
+                tournament.registeredPlayers.push({
+                    playerId: player._id,
+                    registeredAt: now
+                });
+            }
+            await tournament.save();
+            const response = {
+                success: true,
+                data: {
+                    tournamentId: tournament._id,
+                    playerId: player._id,
+                    status,
+                    message: status === 'registered' ? 'Successfully registered for tournament' : 'Tournament full. Added to waitlist.'
+                }
+            };
+            res.status(200).json(response);
+        }
+        catch (error) {
+            next(error);
+        }
+    });
     // Get next BOD number for tournament creation
     getNextBodNumber = this.asyncHandler(async (req, res, next) => {
         try {

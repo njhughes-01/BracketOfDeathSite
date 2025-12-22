@@ -9,7 +9,9 @@ export interface User {
     emailVerified?: boolean;
     roles: string[];
     isAdmin: boolean;
+    isSuperAdmin: boolean;
     playerId?: string;
+    gender?: string;
     createdAt?: Date;
     lastLogin?: Date;
 }
@@ -22,6 +24,7 @@ export interface CreateUserInput {
     temporary?: boolean;
     roles?: string[];
     playerId?: string;
+    gender?: string;
 }
 export interface UpdateUserInput {
     firstName?: string;
@@ -30,6 +33,7 @@ export interface UpdateUserInput {
     enabled?: boolean;
     roles?: string[];
     playerId?: string;
+    gender?: string;
 }
 export interface UserFilters {
     search?: string;
@@ -89,6 +93,9 @@ export declare const UpdateUserValidation: {
     };
     roles: {
         validRoles: string[];
+    };
+    gender: {
+        validOptions: string[];
     };
 };
 //# sourceMappingURL=user.d.ts.map

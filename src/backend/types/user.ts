@@ -11,9 +11,11 @@ export interface User {
   isAdmin: boolean;
   isSuperAdmin: boolean;
   playerId?: string;
+  gender?: string;
   createdAt?: Date;
   lastLogin?: Date;
 }
+
 
 export interface CreateUserInput {
   username: string;
@@ -24,7 +26,9 @@ export interface CreateUserInput {
   temporary?: boolean;
   roles?: string[];
   playerId?: string;
+  gender?: string;
 }
+
 
 export interface UpdateUserInput {
   firstName?: string;
@@ -33,7 +37,9 @@ export interface UpdateUserInput {
   enabled?: boolean;
   roles?: string[];
   playerId?: string;
+  gender?: string;
 }
+
 
 export interface UserFilters {
   search?: string;
@@ -100,4 +106,8 @@ export const UpdateUserValidation = {
   roles: {
     validRoles: ["superadmin", "admin", "user"],
   },
+  gender: {
+    validOptions: ["male", "female", "other"],
+  },
 };
+

@@ -3,7 +3,7 @@ FROM curlimages/curl:8.4.0
 USER root
 
 # Install jq for JSON processing
-RUN apk add --no-cache jq
+RUN apk add --no-cache jq bash
 
 # Switch back to curl user
 USER curl_user

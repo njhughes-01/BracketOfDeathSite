@@ -2,6 +2,7 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.tournamentResultController = exports.TournamentResultController = void 0;
 const mongoose_1 = require("mongoose");
+const sanitization_1 = require("../utils/sanitization");
 const TournamentResult_1 = require("../models/TournamentResult");
 const Tournament_1 = require("../models/Tournament");
 const Player_1 = require("../models/Player");
@@ -264,6 +265,7 @@ class TournamentResultController extends base_1.BaseController {
         try {
             const { tournamentId, format, year } = req.query;
             const limit = parseInt(req.query.limit) || 50;
+            const sort = req.query.sort || '-points'; // Default sort by points
             let matchStage = {};
             // Filter by tournament
             if (tournamentId) {
@@ -292,17 +294,56 @@ class TournamentResultController extends base_1.BaseController {
             }
             // Add year filtering if specified
             if (year) {
-                const yearInt = parseInt(year);
-                pipeline.push({
-                    $match: {
-                        'tournament.date': {
-                            $gte: new Date(`${yearInt}-01-01`),
-                            $lte: new Date(`${yearInt}-12-31`),
-                        },
-                    },
-                });
+                const { years, ranges } = (0, sanitization_1.parseYearFilter)(year);
+                const yearOrConditions = [];
+                // Condition 1: Specific years
+                if (years.length > 0) {
+                    // Optimization: if we just have years, we can check date ranges for each year
+                    // Or use $expr with $year if performance allows. 
+                    // Given the index on tournament.date, ranges are better.
+                    years.forEach(y => {
+                        yearOrConditions.push({
+                            'tournament.date': {
+                                $gte: new Date(`${y}-01-01`),
+                                $lte: new Date(`${y}-12-31`)
+                            }
+                        });
+                    });
+                }
+                // Condition 2: Ranges
+                if (ranges.length > 0) {
+                    ranges.forEach(r => {
+                        yearOrConditions.push({
+                            'tournament.date': {
+                                $gte: new Date(`${r.start}-01-01`),
+                                $lte: new Date(`${r.end}-12-31`)
+                            }
+                        });
+                    });
+                }
+                // Only add match stage if we have valid filters
+                if (yearOrConditions.length > 0) {
+                    pipeline.push({
+                        $match: {
+                            $or: yearOrConditions
+                        }
+                    });
+                }
+                else {
+                    // If year was provided but parsed to no valid conditions (e.g. "1990" or "abc"),
+                    // return no results instead of All Time.
+                    pipeline.push({
+                        $match: {
+                            _id: null // Impossible match
+                        }
+                    });
+                }
             }
-            // Group by players and calculate aggregate stats
+            // Unwind players to rank individuals instead of teams
+            pipeline.push({
+                $unwind: '$players'
+            });
+            // Group by individual player and calculate aggregate stats
             pipeline.push({
                 $group: {
                     _id: '$players',
@@ -313,11 +354,24 @@ class TournamentResultController extends base_1.BaseController {
                     avgWinPercentage: { $avg: '$totalStats.winPercentage' },
                     bestFinish: { $min: '$totalStats.finalRank' },
                     avgFinish: { $avg: '$totalStats.finalRank' },
-                    championships: {
+                    // Calculate championships (1st place)
+                    totalChampionships: {
                         $sum: {
                             $cond: [{ $eq: ['$totalStats.finalRank', 1] }, 1, 0],
                         },
                     },
+                    // Calculate Runner-ups (2nd place)
+                    totalRunnerUps: {
+                        $sum: {
+                            $cond: [{ $eq: ['$totalStats.finalRank', 2] }, 1, 0],
+                        },
+                    },
+                    // Calculate Final Four (Semi-finals)
+                    totalFinalFours: {
+                        $sum: {
+                            $cond: [{ $in: ['$totalStats.finalRank', [3, 4]] }, 1, 0],
+                        },
+                    }
                 },
             }, {
                 $lookup: {
@@ -328,33 +382,31 @@ class TournamentResultController extends base_1.BaseController {
                 },
             }, {
                 $addFields: {
-                    overallWinPercentage: {
+                    name: { $arrayElemAt: ['$playerDetails.name', 0] },
+                    winningPercentage: {
                         $cond: [
                             { $gt: ['$totalGames', 0] },
                             { $divide: ['$totalWins', '$totalGames'] },
                             0,
                         ],
                     },
-                    teamName: {
-                        $reduce: {
-                            input: '$playerDetails',
-                            initialValue: '',
-                            in: {
-                                $cond: {
-                                    if: { $eq: ['$$value', ''] },
-                                    then: '$$this.name',
-                                    else: { $concat: ['$$value', ' & ', '$$this.name'] },
-                                },
-                            },
-                        },
-                    },
+                    // Calculate arbitrary points: 
+                    // Championship = 1000, RunnerUp = 500, FinalFour = 250, Win = 10
+                    points: {
+                        $add: [
+                            { $multiply: ['$totalChampionships', 1000] },
+                            { $multiply: ['$totalRunnerUps', 500] },
+                            { $multiply: ['$totalFinalFours', 250] },
+                            { $multiply: ['$totalWins', 10] }
+                        ]
+                    }
                 },
             }, {
-                $sort: {
-                    championships: -1,
-                    overallWinPercentage: -1,
-                    avgFinish: 1,
-                },
+                $project: {
+                    playerDetails: 0 // Remove raw lookup array
+                }
+            }, {
+                $sort: this.parseSortString(sort),
             }, { $limit: limit });
             const leaderboard = await TournamentResult_1.TournamentResult.aggregate(pipeline);
             const response = {
@@ -579,6 +631,37 @@ class TournamentResultController extends base_1.BaseController {
             next(error);
         }
     }
+    /**
+     * Get the range of available years from tournament data
+     */
+    getAvailableYears = async (req, res, next) => {
+        try {
+            const DEFAULT_MIN_YEAR = 2008;
+            const currentYear = new Date().getFullYear();
+            const result = await Tournament_1.Tournament.aggregate([
+                {
+                    $group: {
+                        _id: null,
+                        minDate: { $min: '$date' },
+                        maxDate: { $max: '$date' }
+                    }
+                }
+            ]);
+            if (result.length === 0 || !result[0].minDate) {
+                this.sendSuccess(res, { min: DEFAULT_MIN_YEAR, max: currentYear });
+                return;
+            }
+            const minYear = new Date(result[0].minDate).getFullYear();
+            const maxYear = new Date(result[0].maxDate).getFullYear();
+            this.sendSuccess(res, {
+                min: isNaN(minYear) ? DEFAULT_MIN_YEAR : minYear,
+                max: isNaN(maxYear) ? currentYear : maxYear
+            });
+        }
+        catch (error) {
+            next(error);
+        }
+    };
 }
 exports.TournamentResultController = TournamentResultController;
 exports.tournamentResultController = new TournamentResultController();

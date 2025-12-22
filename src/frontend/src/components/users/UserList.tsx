@@ -5,23 +5,13 @@ import LoadingSpinner from "../ui/LoadingSpinner";
 interface UserListProps {
   users: User[];
   loading?: boolean;
-  onEditUser?: (user: User) => void;
-  onDeleteUser?: (user: User) => void;
-  onResetPassword?: (user: User) => void;
-  onToggleStatus?: (user: User) => void;
-  onToggleAdminRole?: (user: User) => void;
-  onToggleSuperAdminRole?: (user: User) => void;
+  onSelectUser: (user: User) => void;
 }
 
 const UserList: React.FC<UserListProps> = ({
   users,
   loading = false,
-  onEditUser,
-  onDeleteUser,
-  onResetPassword,
-  onToggleStatus,
-  onToggleAdminRole,
-  onToggleSuperAdminRole,
+  onSelectUser,
 }) => {
   const [searchTerm, setSearchTerm] = useState("");
   const [roleFilter, setRoleFilter] = useState<string>("");
@@ -122,7 +112,8 @@ const UserList: React.FC<UserListProps> = ({
             {filteredUsers.map((user) => (
               <div
                 key={user.id}
-                className="bg-background-dark border border-white/10 rounded-xl p-4"
+                onClick={() => onSelectUser(user)}
+                className="bg-background-dark border border-white/10 rounded-xl p-4 active:scale-[0.98] transition-all cursor-pointer hover:border-white/20"
               >
                 <div className="flex items-start justify-between mb-3">
                   <div className="flex items-center gap-3">
@@ -148,71 +139,21 @@ const UserList: React.FC<UserListProps> = ({
                   </span>
                 </div>
                 <div className="text-xs text-slate-400 mb-3">{user.email}</div>
-                <div className="flex flex-wrap gap-1 mb-3">
-                  {user.roles.map((role) => (
-                    <span
-                      key={role}
-                      className={`inline-flex px-2 py-0.5 text-[10px] font-bold uppercase rounded-full ${getRoleBadgeColor(role)}`}
-                    >
-                      {role}
-                    </span>
-                  ))}
-                </div>
-                <div className="flex flex-wrap gap-2 pt-3 border-t border-white/5">
-                  {onResetPassword && (
-                    <button
-                      onClick={() => onResetPassword(user)}
-                      className="flex-1 min-w-[100px] h-9 rounded-lg bg-yellow-500/10 hover:bg-yellow-500/20 text-yellow-500 text-xs font-bold flex items-center justify-center gap-1 transition-colors"
-                    >
-                      <span className="material-symbols-outlined text-[14px]">
-                        lock_reset
-                      </span>{" "}
-                      Password
-                    </button>
-                  )}
-                  {onToggleAdminRole && (
-                    <button
-                      onClick={() => onToggleAdminRole(user)}
-                      className={`flex-1 min-w-[80px] h-9 rounded-lg text-xs font-bold flex items-center justify-center gap-1 transition-colors ${user.isAdmin ? "bg-purple-500/10 text-purple-400" : "bg-slate-700/50 text-slate-400"}`}
-                    >
-                      <span className="material-symbols-outlined text-[14px]">
-                        shield_person
-                      </span>{" "}
-                      {user.isAdmin ? "Admin" : "User"}
-                    </button>
-                  )}
-                  {onToggleSuperAdminRole && (
-                    <button
-                      onClick={() => onToggleSuperAdminRole(user)}
-                      className={`flex-1 min-w-[100px] h-9 rounded-lg text-xs font-bold flex items-center justify-center gap-1 transition-colors ${user.isSuperAdmin ? "bg-yellow-500/10 text-yellow-400" : "bg-slate-700/50 text-slate-400"}`}
-                    >
-                      <span className="material-symbols-outlined text-[14px]">
-                        verified_user
-                      </span>{" "}
-                      {user.isSuperAdmin ? "Super" : "Normal"}
-                    </button>
-                  )}
-                  {onToggleStatus && (
-                    <button
-                      onClick={() => onToggleStatus(user)}
-                      className={`flex-1 min-w-[80px] h-9 rounded-lg text-xs font-bold flex items-center justify-center gap-1 transition-colors ${user.enabled ? "bg-red-500/10 text-red-400" : "bg-green-500/10 text-green-400"}`}
-                    >
-                      <span className="material-symbols-outlined text-[14px]">
-                        {user.enabled ? "block" : "check_circle"}
-                      </span>{" "}
-                      {user.enabled ? "Disable" : "Enable"}
-                    </button>
-                  )}
-                  {onDeleteUser && (
-                    <button
-                      onClick={() => onDeleteUser(user)}
-                      className="h-9 px-3 rounded-lg bg-red-500/10 hover:bg-red-500/20 text-red-500 flex items-center justify-center transition-colors"
-                    >
-                      <span className="material-symbols-outlined text-[14px]">
-                        delete
+                <div className="flex items-center justify-between">
+                  <div className="flex flex-wrap gap-1">
+                    {user.roles.map((role) => (
+                      <span
+                        key={role}
+                        className={`inline-flex px-2 py-0.5 text-[10px] font-bold uppercase rounded-full ${getRoleBadgeColor(role)}`}
+                      >
+                        {role}
                       </span>
-                    </button>
-                  )}
+                    ))}
+                  </div>
+                  <button className="text-xs font-bold text-primary flex items-center gap-1">
+                    Manage
+                    <span className="material-symbols-outlined text-[16px]">chevron_right</span>
+                  </button>
                 </div>
               </div>
             ))}
@@ -244,17 +185,18 @@ const UserList: React.FC<UserListProps> = ({
                 {filteredUsers.map((user) => (
                   <tr
                     key={user.id}
-                    className="hover:bg-white/[0.02] transition-colors"
+                    onClick={() => onSelectUser(user)}
+                    className="hover:bg-white/[0.02] transition-colors cursor-pointer group"
                   >
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="flex items-center">
-                        <div className="size-10 rounded-full bg-gradient-to-br from-gray-700 to-gray-800 border border-white/10 flex items-center justify-center text-white font-bold text-sm shadow-lg">
+                        <div className="size-10 rounded-full bg-gradient-to-br from-gray-700 to-gray-800 border border-white/10 flex items-center justify-center text-white font-bold text-sm shadow-lg group-hover:scale-105 transition-transform">
                           {(user.fullName || user.username)
                             .charAt(0)
                             .toUpperCase()}
                         </div>
                         <div className="ml-4">
-                          <div className="text-sm font-bold text-white">
+                          <div className="text-sm font-bold text-white group-hover:text-primary transition-colors">
                             {user.fullName || user.username}
                           </div>
                           <div className="text-xs text-slate-500 font-mono">
@@ -295,11 +237,10 @@ const UserList: React.FC<UserListProps> = ({
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <span
-                        className={`inline-flex items-center gap-1 px-2.5 py-0.5 text-[10px] font-bold uppercase rounded-full ${
-                          user.enabled
+                        className={`inline-flex items-center gap-1 px-2.5 py-0.5 text-[10px] font-bold uppercase rounded-full ${user.enabled
                             ? "bg-green-500/20 text-green-400 border border-green-500/30"
                             : "bg-red-500/20 text-red-400 border border-red-500/30"
-                        }`}
+                          }`}
                       >
                         <span
                           className={`size-1.5 rounded-full ${user.enabled ? "bg-green-500" : "bg-red-500"}`}
@@ -308,85 +249,9 @@ const UserList: React.FC<UserListProps> = ({
                       </span>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-right">
-                      <div className="flex justify-end items-center gap-2">
-                        {onEditUser && (
-                          <button
-                            onClick={() => onEditUser(user)}
-                            className="size-8 rounded-lg bg-blue-500/10 hover:bg-blue-500/20 text-blue-400 flex items-center justify-center transition-colors"
-                            title="Edit User"
-                          >
-                            <span className="material-symbols-outlined text-[18px]">
-                              edit
-                            </span>
-                          </button>
-                        )}
-
-                        {onResetPassword && (
-                          <button
-                            onClick={() => onResetPassword(user)}
-                            className="size-8 rounded-lg bg-yellow-500/10 hover:bg-yellow-500/20 text-yellow-500 flex items-center justify-center transition-colors"
-                            title="Reset Password"
-                          >
-                            <span className="material-symbols-outlined text-[18px]">
-                              lock_reset
-                            </span>
-                          </button>
-                        )}
-
-                        {onToggleAdminRole && (
-                          <button
-                            onClick={() => onToggleAdminRole(user)}
-                            className={`size-8 rounded-lg flex items-center justify-center transition-colors ${user.isAdmin ? "bg-purple-500/10 hover:bg-purple-500/20 text-purple-400" : "bg-slate-700/50 hover:bg-slate-700 text-slate-400"}`}
-                            title={user.isAdmin ? "Remove Admin" : "Make Admin"}
-                          >
-                            <span className="material-symbols-outlined text-[18px]">
-                              shield_person
-                            </span>
-                          </button>
-                        )}
-
-                        {onToggleSuperAdminRole && (
-                          <button
-                            onClick={() => onToggleSuperAdminRole(user)}
-                            className={`size-8 rounded-lg flex items-center justify-center transition-colors ${user.isSuperAdmin ? "bg-yellow-500/10 hover:bg-yellow-500/20 text-yellow-400" : "bg-slate-700/50 hover:bg-slate-700 text-slate-400"}`}
-                            title={
-                              user.isSuperAdmin
-                                ? "Remove Super Admin"
-                                : "Make Super Admin"
-                            }
-                          >
-                            <span className="material-symbols-outlined text-[18px]">
-                              verified_user
-                            </span>
-                          </button>
-                        )}
-
-                        {onToggleStatus && (
-                          <button
-                            onClick={() => onToggleStatus(user)}
-                            className={`size-8 rounded-lg flex items-center justify-center transition-colors ${user.enabled ? "bg-red-500/10 hover:bg-red-500/20 text-red-400" : "bg-green-500/10 hover:bg-green-500/20 text-green-400"}`}
-                            title={
-                              user.enabled ? "Disable User" : "Enable User"
-                            }
-                          >
-                            <span className="material-symbols-outlined text-[18px]">
-                              {user.enabled ? "block" : "check_circle"}
-                            </span>
-                          </button>
-                        )}
-
-                        {onDeleteUser && (
-                          <button
-                            onClick={() => onDeleteUser(user)}
-                            className="size-8 rounded-lg bg-red-500/10 hover:bg-red-500/20 text-red-500 flex items-center justify-center transition-colors ml-2"
-                            title="Delete User"
-                          >
-                            <span className="material-symbols-outlined text-[18px]">
-                              delete
-                            </span>
-                          </button>
-                        )}
-                      </div>
+                      <button className="text-xs font-bold text-slate-400 group-hover:text-white bg-white/5 group-hover:bg-white/10 px-3 py-1.5 rounded-lg transition-all">
+                        Manage
+                      </button>
                     </td>
                   </tr>
                 ))}
@@ -404,3 +269,4 @@ const UserList: React.FC<UserListProps> = ({
 };
 
 export default UserList;
+

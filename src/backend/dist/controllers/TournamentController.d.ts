@@ -11,6 +11,8 @@ export declare class TournamentController extends BaseController<ITournament> {
     getWithResults: (req: Request | RequestWithAuth, res: Response, next: NextFunction) => Promise<void>;
     getUpcoming: (req: Request | RequestWithAuth, res: Response, next: NextFunction) => Promise<void>;
     getRecent: (req: Request | RequestWithAuth, res: Response, next: NextFunction) => Promise<void>;
+    listOpen: (req: Request | RequestWithAuth, res: Response, next: NextFunction) => Promise<void>;
+    join: (req: Request | RequestWithAuth, res: Response, next: NextFunction) => Promise<void>;
     getNextBodNumber: (req: Request | RequestWithAuth, res: Response, next: NextFunction) => Promise<void>;
     generatePlayerSeeds: (req: Request | RequestWithAuth, res: Response, next: NextFunction) => Promise<void>;
     generateTeams: (req: Request | RequestWithAuth, res: Response, next: NextFunction) => Promise<void>;

@@ -15,18 +15,30 @@ vi.mock('../../services/api');
 vi.mock('../../components/users/CreateUserForm', () => ({
     default: ({ onCancel }: any) => <div data-testid="create-user-form"><button onClick={onCancel}>Cancel</button></div>
 }));
+
 vi.mock('../../components/users/UserList', () => ({
-    default: ({ users, onDeleteUser }: any) => (
+    default: ({ users, onSelectUser }: any) => (
         <div data-testid="user-list">
             {users.map((u: any) => (
-                <div key={u.id} data-testid={`user-${u.id}`}>
+                <div key={u.id} data-testid={`user-row-${u.id}`}>
                     {u.username}
-                    <button onClick={() => onDeleteUser(u)}>Delete</button>
+                    <button onClick={() => onSelectUser(u)}>Manage</button>
                 </div>
             ))}
         </div>
     )
 }));
+
+vi.mock('../../components/users/UserDetailModal', () => ({
+    default: ({ user, onClose, onDeleteUser }: any) => (
+        <div data-testid="user-detail-modal">
+            <h2>{user.username}</h2>
+            <button onClick={onClose}>Close</button>
+            <button onClick={() => onDeleteUser(user)}>Delete User</button>
+        </div>
+    )
+}));
+
 vi.mock('../../components/ui/LoadingSpinner', () => ({
     default: () => <div data-testid="loading">Loading...</div>
 }));
@@ -84,7 +96,7 @@ describe('UserManagement Page', () => {
         expect(screen.getByTestId('create-user-form')).toBeInTheDocument();
     });
 
-    it('handles delete user', async () => {
+    it('opens detail modal and handles delete user', async () => {
         // Mock confirm
         const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true);
 
@@ -96,8 +108,17 @@ describe('UserManagement Page', () => {
 
         await screen.findByTestId('user-list');
 
-        const deleteBtns = screen.getAllByText('Delete');
-        fireEvent.click(deleteBtns[1]); // Delete user1
+        // Click "Manage" on user1
+        const manageBtns = screen.getAllByText('Manage');
+        fireEvent.click(manageBtns[1]); // 2nd user (user1)
+
+        // Modal should appear
+        expect(screen.getByTestId('user-detail-modal')).toBeInTheDocument();
+        expect(screen.getByText('user1')).toBeInTheDocument();
+
+        // Click Delete inside modal
+        const deleteBtn = screen.getByText('Delete User');
+        fireEvent.click(deleteBtn);
 
         expect(confirmSpy).toHaveBeenCalled();
         await waitFor(() => {

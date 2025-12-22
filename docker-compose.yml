@@ -112,7 +112,7 @@ services:
     networks:
       - bod-network
     restart: "no"
-    entrypoint: [ "/bin/sh", "/scripts/init-keycloak.sh" ]
+    entrypoint: [ "/bin/bash", "/scripts/init-keycloak.sh" ]
 
   # Data Initialization Service (runs once)
   data-init:

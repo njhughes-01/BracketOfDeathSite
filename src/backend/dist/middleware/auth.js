@@ -3,7 +3,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.requireSuperAdmin = exports.requireAdmin = exports.optionalAuth = exports.requireAuth = exports.isAuthorizedUser = exports.hasAdminRole = exports.verifyKeycloakToken = void 0;
+exports.requireSuperAdmin = exports.requireAdmin = exports.optionalAuth = exports.requireAuth = exports.isAuthorizedUser = exports.hasSuperAdminRole = exports.hasAdminRole = exports.hasRole = exports.verifyKeycloakToken = void 0;
 const jsonwebtoken_1 = __importDefault(require("jsonwebtoken"));
 const jwks_rsa_1 = __importDefault(require("jwks-rsa"));
 // JWKS client for validating Keycloak tokens
@@ -57,26 +57,32 @@ const verifyKeycloakToken = async (token) => {
     });
 };
 exports.verifyKeycloakToken = verifyKeycloakToken;
-// Check if user has admin role
-const hasAdminRole = (token) => {
+// Helper to check for a specific role
+const hasRole = (token, role) => {
     // Check realm roles
     const realmRoles = token.realm_access?.roles || [];
-    if (realmRoles.includes('admin')) {
+    if (realmRoles.includes(role)) {
         return true;
     }
     // Check client roles
     const clientId = process.env.KEYCLOAK_CLIENT_ID || 'bod-app';
     const clientRoles = token.resource_access?.[clientId]?.roles || [];
-    return clientRoles.includes('admin');
+    return clientRoles.includes(role);
+};
+exports.hasRole = hasRole;
+// Check if user has admin role
+const hasAdminRole = (token) => {
+    return (0, exports.hasRole)(token, 'admin');
 };
 exports.hasAdminRole = hasAdminRole;
+// Check if user has superadmin role
+const hasSuperAdminRole = (token) => {
+    return (0, exports.hasRole)(token, 'superadmin');
+};
+exports.hasSuperAdminRole = hasSuperAdminRole;
 // Check if user is authorized (has user or admin role)
 const isAuthorizedUser = (token) => {
-    const realmRoles = token.realm_access?.roles || [];
-    const clientId = process.env.KEYCLOAK_CLIENT_ID || 'bod-app';
-    const clientRoles = token.resource_access?.[clientId]?.roles || [];
-    const allRoles = [...realmRoles, ...clientRoles];
-    return allRoles.includes('user') || allRoles.includes('admin');
+    return (0, exports.hasRole)(token, 'user') || (0, exports.hasRole)(token, 'admin') || (0, exports.hasRole)(token, 'superadmin');
 };
 exports.isAuthorizedUser = isAuthorizedUser;
 // Authentication middleware
@@ -102,8 +108,7 @@ const requireAuth = async (req, res, next) => {
         }
         // Verify the Keycloak token (quiet in production)
         if (process.env.NODE_ENV !== 'production') {
-            console.log('Attempting to verify token:', token.substring(0, 20) + '...');
-            console.log('JWKS URI:', `${process.env.KEYCLOAK_URL}/realms/${process.env.KEYCLOAK_REALM}/protocol/openid-connect/certs`);
+            // console.log('Attempting to verify token:', token.substring(0, 20) + '...');
         }
         const tokenData = await (0, exports.verifyKeycloakToken)(token);
         // Check if user is authorized
@@ -138,6 +143,8 @@ const requireAuth = async (req, res, next) => {
         const response = {
             success: false,
             error: 'Invalid or expired token',
+            // Include more details in non-production for debugging
+            ...(process.env.NODE_ENV !== 'production' ? { debug: error.message } : {})
         };
         res.status(401).json(response);
     }
@@ -184,8 +191,8 @@ exports.optionalAuth = optionalAuth;
 const requireAdmin = async (req, res, next) => {
     // First check authentication
     await (0, exports.requireAuth)(req, res, () => {
-        // Check if user has admin role
-        if (req.user && req.user.isAdmin) {
+        // Check if user has admin role or superadmin role (superadmin is implicitly admin)
+        if (req.user && (req.user.isAdmin || req.user.roles.includes('superadmin'))) {
             next();
         }
         else {
@@ -202,11 +209,8 @@ exports.requireAdmin = requireAdmin;
 const requireSuperAdmin = async (req, res, next) => {
     // First check authentication
     await (0, exports.requireAuth)(req, res, () => {
-        const username = req.user?.username;
-        const isAdmin = req.user?.isAdmin;
-        // Check if username matches env-configured admin or simply 'admin'
-        const isSuperUser = username === 'admin' || username === (process.env.KEYCLOAK_ADMIN_USER || 'admin');
-        if (isAdmin && isSuperUser) {
+        // Check if user has superadmin role
+        if (req.user && req.user.roles.includes('superadmin')) {
             next();
         }
         else {

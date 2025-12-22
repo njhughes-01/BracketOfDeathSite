@@ -28,7 +28,9 @@ export interface User {
   createdAt?: Date;
   lastLogin?: Date;
   playerId?: string;
+  gender?: string;
 }
+
 
 export interface UserProfile {
   id: string;
@@ -63,7 +65,9 @@ export interface UpdateUserInput {
   enabled?: boolean;
   roles?: string[];
   playerId?: string;
+  gender?: string;
 }
+
 
 export interface CreateUserRequest {
   username: string;

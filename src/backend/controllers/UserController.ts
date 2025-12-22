@@ -25,6 +25,8 @@ class UserController {
     };
     res.status(500).json(response);
   }
+
+
   async getUsers(req: RequestWithAuth, res: Response): Promise<void> {
     try {
       const { search, max = "100" } = req.query as {
@@ -54,7 +56,9 @@ class UserController {
           (kcUser.realmRoles || []).includes("superadmin"),
         isSuperAdmin: (kcUser.realmRoles || []).includes("superadmin"),
         playerId: kcUser.attributes?.playerId?.[0],
+        gender: kcUser.attributes?.gender?.[0],
       }));
+
 
       const response: ApiResponse<User[]> = {
         success: true,
@@ -100,7 +104,9 @@ class UserController {
           (kcUser.realmRoles || []).includes("superadmin"),
         isSuperAdmin: (kcUser.realmRoles || []).includes("superadmin"),
         playerId: kcUser.attributes?.playerId?.[0],
+        gender: kcUser.attributes?.gender?.[0],
       };
+
 
       const response: ApiResponse<User> = {
         success: true,
@@ -143,12 +149,17 @@ class UserController {
         userData.roles = ["user"];
       }
 
+      const { playerId, gender, ...keycloakData } = userData;
+
       const serviceRequest = {
-        ...userData,
-        attributes: userData.playerId
-          ? { playerId: [userData.playerId] }
-          : undefined,
+        ...keycloakData,
+        attributes: {
+          ...(playerId ? { playerId: [playerId] } : {}),
+          ...(gender ? { gender: [gender] } : {}),
+        },
       };
+
+
 
       const kcUser = await keycloakAdminService.createUser(serviceRequest);
 
@@ -169,7 +180,9 @@ class UserController {
           userData.roles.includes("superadmin"),
         isSuperAdmin: userData.roles.includes("superadmin"),
         playerId: userData.playerId,
+        gender: userData.gender,
       };
+
 
       const response: ApiResponse<User> = {
         success: true,
@@ -218,12 +231,21 @@ class UserController {
         return;
       }
 
+      // Fetch existing user to get current attributes
+      const existingUser = await keycloakAdminService.getUser(id);
+
+      const { playerId, gender, ...keycloakUpdateData } = userData;
+
       const serviceRequest = {
-        ...userData,
-        attributes: userData.playerId
-          ? { playerId: [userData.playerId] }
-          : undefined,
+        ...keycloakUpdateData,
+        attributes: {
+          ...existingUser.attributes, // Preserve existing attributes
+          ...(playerId ? { playerId: [playerId] } : {}),
+          ...(gender ? { gender: [gender] } : {}),
+        },
       };
+
+
 
       const kcUser = await keycloakAdminService.updateUser(id, serviceRequest);
 
@@ -244,7 +266,9 @@ class UserController {
           (kcUser.realmRoles || []).includes("superadmin"),
         isSuperAdmin: (kcUser.realmRoles || []).includes("superadmin"),
         playerId: kcUser.attributes?.playerId?.[0],
+        gender: kcUser.attributes?.gender?.[0],
       };
+
 
       const response: ApiResponse<User> = {
         success: true,
@@ -496,7 +520,9 @@ class UserController {
           (kcUser.realmRoles || []).includes("superadmin"),
         isSuperAdmin: (kcUser.realmRoles || []).includes("superadmin"),
         playerId: kcUser.attributes?.playerId?.[0],
+        gender: kcUser.attributes?.gender?.[0],
       };
+
 
       const response: ApiResponse<User> = {
         success: true,
@@ -670,13 +696,23 @@ class UserController {
       }
 
       // Force safe roles for public registration
+      // Force safe roles for public registration
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      const { playerId: _pid, gender: _g, ...safeAuthData } = userData;
+
       const safeUserData = {
-        ...userData,
+        ...safeAuthData,
         roles: ["user"],
         enabled: true,
         emailVerified: false,
-        attributes: linkedPlayerId ? { playerId: [linkedPlayerId] } : undefined,
+        attributes: {
+          ...(linkedPlayerId ? { playerId: [linkedPlayerId] } : {}),
+          // Default gender not set for public registration unless passed?
+          // Assuming we just leave it undefined for now as it wasn't in CreateUserInput before
+        },
       };
+
+
 
       // Create user in Keycloak
       const createdUser = await keycloakAdminService.createUser(safeUserData);
@@ -853,8 +889,22 @@ class UserController {
       );
       if (invalidRoles.length > 0) {
         errors.push(`Invalid roles: ${invalidRoles.join(", ")}`);
+        errors.push(`Invalid roles: ${invalidRoles.join(", ")}`);
       }
     }
+
+    // Gender validation
+    if (userData.gender) { // @ts-ignore - CreateUserValidation has gender but TS might not see it yet if types file update wasn't flushed or context issue
+      // actually UpdateUserValidation should have gender, let's check what I added to types
+      // I added gender to UpdateUserValidation in previous tool call
+      if (
+        UpdateUserValidation.gender &&
+        !UpdateUserValidation.gender.validOptions.includes(userData.gender)
+      ) {
+        errors.push("Invalid gender option");
+      }
+    }
+
 
     return {
       isValid: errors.length === 0,

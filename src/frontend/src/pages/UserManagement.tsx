@@ -5,6 +5,7 @@ import type { User, CreateUserInput } from "../types/user";
 import apiClient from "../services/api";
 import CreateUserForm from "../components/users/CreateUserForm";
 import UserList from "../components/users/UserList";
+import UserDetailModal from "../components/users/UserDetailModal";
 import LoadingSpinner from "../components/ui/LoadingSpinner";
 import ClaimUserModal from "../components/users/ClaimUserModal";
 
@@ -16,6 +17,7 @@ const UserManagement: React.FC = () => {
   const [error, setError] = useState<string>("");
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [showClaimModal, setShowClaimModal] = useState(false);
+  const [selectedUser, setSelectedUser] = useState<User | null>(null);
 
   useEffect(() => {
     if (canManageUsers) {
@@ -78,6 +80,7 @@ const UserManagement: React.FC = () => {
 
       if (response.success) {
         setUsers((prev) => prev.filter((u) => u.id !== userToDelete.id));
+        setSelectedUser(null);
         setError("");
       } else {
         setError(response.error || "Failed to delete user");
@@ -138,9 +141,14 @@ const UserManagement: React.FC = () => {
       });
 
       if (response.success && response.data) {
+        const updatedUser = response.data!;
         setUsers((prev) =>
-          prev.map((u) => (u.id === userToToggle.id ? response.data! : u)),
+          prev.map((u) => (u.id === userToToggle.id ? updatedUser : u)),
         );
+        // Update selected user if it's the same one
+        if (selectedUser?.id === userToToggle.id) {
+          setSelectedUser(updatedUser);
+        }
         setError("");
       } else {
         setError(response.error || `Failed to ${action} user`);
@@ -195,6 +203,15 @@ const UserManagement: React.FC = () => {
       if (response.success) {
         // Refresh the user list to get updated roles
         await loadUsers();
+        // Close modal or update it - we'll re-fetch which updates 'users'
+        // But we need to update 'selectedUser' too from the new list
+        // Since loadUsers is async state update, we might just clear selection or rely on effect?
+        // Simpler: just clear selection or re-find in new list.
+        // For smoother UX, let's keep modal open if possible, but loadUsers sets users async.
+        // Let's just create a quick updated object for the modal
+        const updatedUser = { ...userToToggle, roles: newRoles, isAdmin: willBeAdmin };
+        setSelectedUser(updatedUser);
+
         setError("");
       } else {
         setError(response.error || `Failed to ${action} user`);
@@ -255,6 +272,8 @@ const UserManagement: React.FC = () => {
       if (response.success) {
         // Refresh the user list to get updated roles
         await loadUsers();
+        const updatedUser = { ...userToToggle, roles: newRoles, isSuperAdmin: willBeSuperAdmin };
+        setSelectedUser(updatedUser);
         setError("");
       } else {
         setError(response.error || `Failed to ${action} user`);
@@ -266,6 +285,31 @@ const UserManagement: React.FC = () => {
       setLoading(false);
     }
   };
+
+  const handleUpdateUser = async (userToUpdate: User, data: { firstName: string; lastName: string; email: string; gender: string }) => {
+    try {
+      setLoading(true);
+      const response = await apiClient.updateUser(userToUpdate.id, data);
+
+      if (response.success && response.data) {
+        const updatedUser = response.data!;
+        setUsers((prev) =>
+          prev.map((u) => (u.id === userToUpdate.id ? updatedUser : u)),
+        );
+        setSelectedUser(updatedUser);
+        setError("");
+      } else {
+        setError(response.error || "Failed to update user");
+      }
+    } catch (err: any) {
+      console.error("Failed to update user:", err);
+      setError("Failed to update user. Please try again.");
+      throw err; // Re-throw so modal knows it failed
+    } finally {
+      setLoading(false);
+    }
+  };
+
 
   if (!canManageUsers) {
     return (
@@ -295,11 +339,10 @@ const UserManagement: React.FC = () => {
           </div>
           <button
             onClick={() => setShowCreateForm(!showCreateForm)}
-            className={`flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold transition-all ${
-              showCreateForm
-                ? "bg-red-500/10 text-red-500 hover:bg-red-500/20 border border-red-500/20"
-                : "bg-primary text-black hover:bg-white hover:scale-105 shadow-lg shadow-primary/20"
-            }`}
+            className={`flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold transition-all ${showCreateForm
+              ? "bg-red-500/10 text-red-500 hover:bg-red-500/20 border border-red-500/20"
+              : "bg-primary text-black hover:bg-white hover:scale-105 shadow-lg shadow-primary/20"
+              }`}
           >
             {showCreateForm ? (
               <>
@@ -344,13 +387,23 @@ const UserManagement: React.FC = () => {
         <UserList
           users={users}
           loading={loading}
+          onSelectUser={setSelectedUser}
+        />
+      </div>
+
+      {selectedUser && (
+        <UserDetailModal
+          user={selectedUser}
+          onClose={() => setSelectedUser(null)}
           onDeleteUser={handleDeleteUser}
           onResetPassword={handleResetPassword}
           onToggleStatus={handleToggleStatus}
           onToggleAdminRole={handleToggleAdminRole}
           onToggleSuperAdminRole={handleToggleSuperAdminRole}
+          onUpdateUser={handleUpdateUser}
         />
-      </div>
+
+      )}
 
       {showClaimModal && (
         <ClaimUserModal
@@ -366,3 +419,4 @@ const UserManagement: React.FC = () => {
 };
 
 export default UserManagement;
+

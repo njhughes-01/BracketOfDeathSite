@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import type { CreateUserInput } from '../../types/user';
+import { useAuth } from '../../contexts/AuthContext';
 import LoadingSpinner from '../ui/LoadingSpinner';
 
 interface CreateUserFormProps {
@@ -13,6 +14,8 @@ const CreateUserForm: React.FC<CreateUserFormProps> = ({
   loading = false,
   onCancel,
 }) => {
+  const { user } = useAuth();
+  const isSuperAdmin = user?.isSuperAdmin || false;
   const [formData, setFormData] = useState<CreateUserInput>({
     username: '',
     email: '',
@@ -235,6 +238,24 @@ const CreateUserForm: React.FC<CreateUserFormProps> = ({
                 <span className="block text-xs text-slate-500 mt-0.5">Full access to manage system configuration and users.</span>
               </div>
             </label>
+
+            {/* Super Admin Role - Only visible to super admins */}
+            {isSuperAdmin && (
+              <label className={`flex items-start p-3 rounded-xl border cursor-pointer transition-all ${(formData.roles || []).includes('superadmin') ? 'bg-yellow-500/10 border-yellow-500' : 'bg-background-dark border-white/5 hover:bg-white/5'
+                }`}>
+                <input
+                  type="checkbox"
+                  checked={(formData.roles || []).includes('superadmin')}
+                  onChange={(e) => handleRoleChange('superadmin', e.target.checked)}
+                  className="mt-1 size-4 rounded border-slate-600 bg-transparent text-yellow-500 focus:ring-yellow-500"
+                  disabled={loading}
+                />
+                <div className="ml-3">
+                  <span className="block text-sm font-bold text-white">Super Admin</span>
+                  <span className="block text-xs text-slate-500 mt-0.5">Complete control including managing other admins.</span>
+                </div>
+              </label>
+            )}
           </div>
           {errors.roles && (
             <p className="mt-2 text-xs text-red-500 font-bold">{errors.roles}</p>

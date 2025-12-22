@@ -15,6 +15,10 @@ export declare class TournamentResultController extends BaseController<ITourname
     private validateTournamentResultData;
     create(req: RequestWithAuth, res: Response, next: NextFunction): Promise<void>;
     update(req: RequestWithAuth, res: Response, next: NextFunction): Promise<void>;
+    /**
+     * Get the range of available years from tournament data
+     */
+    getAvailableYears: (req: Request, res: Response, next: NextFunction) => Promise<void>;
 }
 export declare const tournamentResultController: TournamentResultController;
 //# sourceMappingURL=TournamentResultController.d.ts.map
