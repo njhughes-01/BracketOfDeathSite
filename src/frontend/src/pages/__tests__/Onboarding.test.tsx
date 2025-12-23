@@ -20,21 +20,27 @@ describe('Onboarding Component', () => {
         vi.clearAllMocks();
         (useAuth as any).mockReturnValue({
             user: { username: 'testuser', firstName: 'Test' },
+            refreshUser: vi.fn(),
+        });
+        // Default to initialized system so we see the profile form
+        (apiClient.getSystemStatus as any).mockResolvedValue({
+            data: { initialized: true }
         });
     });
 
-    it('should render the onboarding form', () => {
+    it('should render the onboarding form', async () => {
         renderWithRouter(<Onboarding />);
-        expect(screen.getByText(/Complete Your Profile/i)).toBeInTheDocument();
+
+        // Wait for loading to finish
+        expect(await screen.findByText(/Complete Profile/i)).toBeInTheDocument();
         expect(screen.getByLabelText(/Gender/i)).toBeInTheDocument();
-        expect(screen.getByLabelText(/Gender/i)).toBeInTheDocument();
-        expect(screen.getByRole('button', { name: /Complete Profile/i })).toBeInTheDocument();
+        expect(screen.getByRole('button', { name: /Complete Setup/i })).toBeInTheDocument();
     });
 
-    it('should have required fields', () => {
+    it('should have required fields', async () => {
         renderWithRouter(<Onboarding />);
-        expect(screen.getByLabelText(/Gender/i)).toBeRequired();
-        expect(screen.getByLabelText(/Gender/i)).toBeRequired();
+        const genderSelect = await screen.findByLabelText(/Gender/i);
+        expect(genderSelect).toBeRequired();
     });
 
     it('should call updateProfile and navigate on success', async () => {
@@ -42,30 +48,27 @@ describe('Onboarding Component', () => {
         renderWithRouter(<Onboarding />);
 
         // Select Gender
-        const genderSelect = screen.getByLabelText(/Gender/i);
+        const genderSelect = await screen.findByLabelText(/Gender/i);
         await user.selectOptions(genderSelect, 'male');
-
-
 
         // Mock API success
         (apiClient.updateProfile as any).mockResolvedValue({ success: true });
 
         // Submit
-        const submitButton = screen.getByRole('button', { name: /Complete Profile/i });
+        const submitButton = screen.getByRole('button', { name: /Complete Setup/i });
         await user.click(submitButton);
 
         expect(apiClient.updateProfile).toHaveBeenCalledWith({
             gender: 'male',
         });
-        // Navigation check is implicit via no errors, mocking useNavigate is harder in integration test
     });
 
     it('should display error if API fails', async () => {
         const user = userEvent.setup();
         renderWithRouter(<Onboarding />);
 
-        await user.selectOptions(screen.getByLabelText(/Gender/i), 'female');
-
+        const genderSelect = await screen.findByLabelText(/Gender/i);
+        await user.selectOptions(genderSelect, 'female');
 
         // Mock API failure with response error
         const error = {
@@ -75,7 +78,7 @@ describe('Onboarding Component', () => {
         };
         (apiClient.updateProfile as any).mockRejectedValue(error);
 
-        await user.click(screen.getByRole('button', { name: /Complete Profile/i }));
+        await user.click(screen.getByRole('button', { name: /Complete Setup/i }));
 
         await waitFor(() => {
             expect(screen.getByText(/Backend validation failed/i)).toBeInTheDocument();
