@@ -58,6 +58,11 @@ describe('TournamentSetup Page', () => {
             expect(apiClient.getPlayers).toHaveBeenCalled();
         });
 
+        // Wait for loading to finish
+        await waitFor(() => {
+            expect(screen.queryByText(/Initializing Setup/i)).not.toBeInTheDocument();
+        });
+
         // Check if BOD number is set (looking inside the input)
         // placeholder says "e.g. 42", but value should be 42
         const bodInput = screen.getByDisplayValue('42');
@@ -67,6 +72,11 @@ describe('TournamentSetup Page', () => {
     it('validates basic info step', async () => {
         renderPage();
         await waitFor(() => expect(apiClient.getNextBodNumber).toHaveBeenCalled());
+
+        // Wait for loading to finish
+        await waitFor(() => {
+            expect(screen.queryByText(/Initializing Setup/i)).not.toBeInTheDocument();
+        });
 
         const nextBtn = screen.getByText('Next Step');
 
@@ -96,10 +106,16 @@ describe('TournamentSetup Page', () => {
         renderPage();
         await waitFor(() => expect(apiClient.getNextBodNumber).toHaveBeenCalled());
 
+        // Wait for loading to finish
+        await waitFor(() => {
+            expect(screen.queryByText(/Initializing Setup/i)).not.toBeInTheDocument();
+        });
+
         const nextBtn = screen.getByText('Next Step');
 
         // Step 1: Basic Info
-        fireEvent.change(screen.getByTestId('date-input'), { target: { value: '2025-12-25' } });
+        const dateInput = screen.getByTestId('date-input');
+        fireEvent.change(dateInput, { target: { value: '2025-12-25' } });
         fireEvent.change(screen.getByPlaceholderText('Tournament location'), { target: { value: 'Test Arena' } });
         fireEvent.click(nextBtn);
 
