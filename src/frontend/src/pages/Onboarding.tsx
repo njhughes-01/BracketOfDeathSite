@@ -131,38 +131,55 @@ const Onboarding: React.FC = () => {
 
                     {step === 'claim-admin' ? (
                         <div className="flex flex-col gap-6">
-                            <div className="bg-[#1c2230] border border-white/5 rounded-xl p-6 shadow-lg">
-                                <h3 className="text-lg font-bold text-white mb-2 flex items-center gap-2">
-                                    <span className="material-symbols-outlined text-primary">verified_user</span>
-                                    Initialize System & Claim Admin
-                                </h3>
-                                <p className="text-slate-400 text-sm leading-relaxed mb-4">
-                                    No Super Admin has been detected. As the first registered user, you have the opportunity to claim this role.
-                                </p>
-                                <ul className="text-slate-400 text-sm space-y-2 list-disc list-inside bg-black/20 p-4 rounded-lg">
-                                    <li>Full control over system settings</li>
-                                    <li>Manage users and roles</li>
-                                    <li>Create and edit tournaments</li>
-                                </ul>
-                            </div>
+                            {/* Special System Init Card */}
+                            <div className="relative overflow-hidden bg-[#0f1115] border border-amber-500/30 rounded-xl p-8 shadow-[0_0_50px_rgba(245,158,11,0.1)]">
+                                {/* Decorative "Terminal" Header */}
+                                <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-amber-600 to-amber-300 opacity-50"></div>
+                                <div className="absolute top-4 right-4 flex gap-2">
+                                    <div className="size-2 rounded-full bg-red-500/20"></div>
+                                    <div className="size-2 rounded-full bg-amber-500/50 animate-pulse"></div>
+                                    <div className="size-2 rounded-full bg-green-500/20"></div>
+                                </div>
 
-                            <button
-                                onClick={handleClaimAdmin}
-                                disabled={isLoading}
-                                className="w-full h-14 bg-primary hover:bg-primary-dark active:scale-[0.98] text-black text-base font-bold rounded-xl shadow-[0_0_20px_rgba(34,197,94,0.3)] hover:shadow-[0_0_30px_rgba(34,197,94,0.5)] transition-all flex items-center justify-center gap-2 group disabled:opacity-70 disabled:cursor-not-allowed"
-                            >
-                                {isLoading ? (
-                                    <>
-                                        <div className="size-5 border-2 border-black/30 border-t-black rounded-full animate-spin"></div>
-                                        <span>Initializing System...</span>
-                                    </>
-                                ) : (
-                                    <>
-                                        <span>Initialize & Claim Admin</span>
-                                        <span className="material-symbols-outlined !text-[20px] group-hover:translate-x-1 transition-transform">arrow_forward</span>
-                                    </>
-                                )}
-                            </button>
+                                <div className="flex flex-col items-center text-center mb-8">
+                                    <div className="size-20 rounded-2xl bg-amber-500/10 flex items-center justify-center mb-4 border border-amber-500/20 shadow-[0_0_20px_rgba(245,158,11,0.2)]">
+                                        <span className="material-symbols-outlined text-amber-500 !text-[40px]">shield_person</span>
+                                    </div>
+                                    <h3 className="text-2xl font-bold text-white mb-2">
+                                        System Initialization
+                                    </h3>
+                                    <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-amber-500/10 border border-amber-500/20 text-amber-500 text-xs font-mono font-bold tracking-wider uppercase">
+                                        <span className="size-1.5 rounded-full bg-amber-500 animate-pulse"></span>
+                                        Root Access Detected
+                                    </div>
+                                </div>
+
+                                <p className="text-slate-400 text-sm leading-relaxed text-center mb-8 max-w-sm mx-auto">
+                                    The system has detected that no Super Administrator exists. As the first user, you can claim this role to verify your identity and gain full control.
+                                </p>
+
+                                <button
+                                    onClick={handleClaimAdmin}
+                                    disabled={isLoading}
+                                    className="w-full h-14 bg-gradient-to-r from-amber-600 to-amber-500 hover:from-amber-500 hover:to-amber-400 text-black text-base font-bold rounded-xl shadow-[0_0_20px_rgba(245,158,11,0.3)] hover:shadow-[0_0_30px_rgba(245,158,11,0.5)] transition-all flex items-center justify-center gap-2 group disabled:opacity-70 disabled:cursor-not-allowed transform active:scale-[0.99]"
+                                >
+                                    {isLoading ? (
+                                        <>
+                                            <div className="size-5 border-2 border-black/30 border-t-black rounded-full animate-spin"></div>
+                                            <span>Initializing Core...</span>
+                                        </>
+                                    ) : (
+                                        <>
+                                            <span className="material-symbols-outlined">terminal</span>
+                                            <span>Initialize System</span>
+                                        </>
+                                    )}
+                                </button>
+
+                                <p className="text-center mt-4 text-xs text-slate-600 font-mono">
+                                    SECURE_BOOT_SEQUENCE_INITIATED
+                                </p>
+                            </div>
                         </div>
                     ) : (
                         <form onSubmit={handleProfileSubmit} className="flex flex-col gap-6">
