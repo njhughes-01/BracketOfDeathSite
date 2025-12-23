@@ -40,6 +40,9 @@ services:
       KC_HOSTNAME_STRICT: false
       KC_HOSTNAME_STRICT_HTTPS: false
       KC_HTTP_ENABLED: true
+      KC_HOSTNAME_URL: ${APP_URL}/auth
+    ports:
+      - "8080:8080"
     networks:
       - bod-network
     healthcheck:
@@ -102,6 +105,7 @@ services:
       keycloak:
         condition: service_healthy
     volumes:
+      - ./scripts:/scripts:ro
       - secrets-data:/secrets:ro
     environment:
       KEYCLOAK_ADMIN_USER: admin
@@ -121,6 +125,7 @@ services:
       mongodb:
         condition: service_healthy
     volumes:
+      - ./json:/app/data:ro
       - data-init-status:/app/status
       - secrets-data:/secrets:ro
     environment:
@@ -182,9 +187,13 @@ services:
     volumes:
       - secrets-data:/secrets:ro
     environment:
-      VITE_API_URL: /api
-      VITE_KEYCLOAK_URL: /auth
-      VITE_ALLOWED_HOSTS: ${CORS_ORIGIN:-localhost,bod.lightmedia.club}
+      VITE_API_URL: ${VITE_API_URL}
+      VITE_KEYCLOAK_URL: ${VITE_KEYCLOAK_URL}
+      APP_URL: ${APP_URL}
+      CORS_ORIGIN: ${CORS_ORIGIN}
+
+      # Derived within the container
+      # VITE_ALLOWED_HOSTS: derived from APP_URL and CORS_ORIGIN
       VITE_KEYCLOAK_REALM: bracketofdeathsite
       VITE_KEYCLOAK_CLIENT_ID: bod-app
       PROXY_TARGET: http://backend:3000

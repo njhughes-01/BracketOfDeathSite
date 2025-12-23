@@ -3,9 +3,44 @@ import { defineConfig, configDefaults } from 'vitest/config' // restart trigger 
 import react from '@vitejs/plugin-react'
 
 const allowedHostsEnv = process.env.VITE_ALLOWED_HOSTS;
-const allowedHosts = allowedHostsEnv === 'true' || allowedHostsEnv === 'all'
-  ? true
-  : allowedHostsEnv?.split(',').map(h => h.trim().replace(/^https?:\/\//, '')) || ['localhost'];
+const appUrlEnv = process.env.APP_URL;
+const corsOriginEnv = process.env.CORS_ORIGIN;
+
+const deriveAllowedHosts = () => {
+  const hosts = new Set<string>();
+  hosts.add('localhost'); // Always allow localhost
+
+  if (appUrlEnv) {
+    try {
+      const url = new URL(appUrlEnv);
+      hosts.add(url.hostname);
+    } catch (e) {
+      console.warn('Invalid APP_URL:', appUrlEnv);
+    }
+  }
+
+  if (corsOriginEnv) {
+    corsOriginEnv.split(',').forEach(origin => {
+      try {
+        const url = new URL(origin.trim());
+        hosts.add(url.hostname);
+      } catch (e) {
+        // handle case where origin might be just a host (though standard is URI)
+        // or if it's invalid
+        if (origin.trim()) hosts.add(origin.trim().replace(/^https?:\/\//, ''));
+      }
+    });
+  }
+
+  if (allowedHostsEnv) {
+    if (allowedHostsEnv === 'true' || allowedHostsEnv === 'all') return true;
+    allowedHostsEnv.split(',').forEach(h => hosts.add(h.trim().replace(/^https?:\/\//, '')));
+  }
+
+  return Array.from(hosts);
+};
+
+const allowedHosts = deriveAllowedHosts();
 
 // Derive Keycloak config from VITE_ vars or fallback to base vars or defaults
 const keycloakRealm = process.env.VITE_KEYCLOAK_REALM || process.env.KEYCLOAK_REALM || 'bracketofdeathsite';
