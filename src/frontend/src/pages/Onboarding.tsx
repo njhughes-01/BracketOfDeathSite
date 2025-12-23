@@ -114,7 +114,7 @@ const Onboarding: React.FC = () => {
                     </h2>
                     <p className="text-slate-400">
                         {step === 'claim-admin'
-                            ? 'You are the first user. Initialize the system to become the Superadmin.'
+                            ? 'Welcome! You are the first user. Let\'s set up your Super Admin account.'
                             : `Welcome, ${user?.firstName || user?.username}! Let's finish setting you up.`}
                     </p>
                 </div>
@@ -134,11 +134,16 @@ const Onboarding: React.FC = () => {
                             <div className="bg-[#1c2230] border border-white/5 rounded-xl p-6 shadow-lg">
                                 <h3 className="text-lg font-bold text-white mb-2 flex items-center gap-2">
                                     <span className="material-symbols-outlined text-primary">verified_user</span>
-                                    Administrator Access
+                                    Initialize System & Claim Admin
                                 </h3>
-                                <p className="text-slate-400 text-sm leading-relaxed">
-                                    As the first user, you can claim Superadmin privileges. This will verify your account and grant you full control over the system, including user management and tournament configuration.
+                                <p className="text-slate-400 text-sm leading-relaxed mb-4">
+                                    No Super Admin has been detected. As the first registered user, you have the opportunity to claim this role.
                                 </p>
+                                <ul className="text-slate-400 text-sm space-y-2 list-disc list-inside bg-black/20 p-4 rounded-lg">
+                                    <li>Full control over system settings</li>
+                                    <li>Manage users and roles</li>
+                                    <li>Create and edit tournaments</li>
+                                </ul>
                             </div>
 
                             <button
