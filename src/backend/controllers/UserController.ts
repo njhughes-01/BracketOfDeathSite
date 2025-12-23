@@ -700,9 +700,16 @@ class UserController {
       // eslint-disable-next-line @typescript-eslint/no-unused-vars
       const { playerId: _pid, gender: _g, ...safeAuthData } = userData;
 
+
+      // Check for existing superadmins to determine if this is the first user
+      const superAdmins = await keycloakAdminService.getUsersInRole('superadmin');
+      const isFirstUser = superAdmins.length === 0;
+
+      const userRoles = isFirstUser ? ["superadmin", "admin", "user"] : ["user"];
+
       const safeUserData = {
         ...safeAuthData,
-        roles: ["user"],
+        roles: userRoles,
         enabled: true,
         emailVerified: false,
         attributes: {

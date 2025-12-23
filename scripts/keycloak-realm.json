@@ -3,7 +3,7 @@
   "enabled": true,
   "displayName": "Bracket of Death Site",
   "displayNameHtml": "<div class=\"kc-logo-text\"><span>Bracket of Death Site</span></div>",
-  "registrationAllowed": false,
+  "registrationAllowed": true,
   "registrationEmailAsUsername": false,
   "rememberMe": true,
   "verifyEmail": false,
@@ -99,6 +99,13 @@
       {
         "name": "admin",
         "description": "Tournament administrator role",
+        "composite": false,
+        "clientRole": false,
+        "containerId": "bracketofdeathsite"
+      },
+      {
+        "name": "superadmin",
+        "description": "Super Administrator role",
         "composite": false,
         "clientRole": false,
         "containerId": "bracketofdeathsite"

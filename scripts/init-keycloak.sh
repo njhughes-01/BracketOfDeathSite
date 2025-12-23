@@ -40,67 +40,7 @@ REALM_EXISTS=$(curl -s -H "Authorization: Bearer $ADMIN_TOKEN" \
 
 if [ "$REALM_EXISTS" = "200" ]; then
     echo "Realm 'bracketofdeathsite' already exists"
-    
-    # Check if ANY admin users exist (not just the default "admin" user)
-    echo "Checking if any admin users exist..."
-    
-    # Get all users with admin role
-    ADMIN_USERS=$(curl -s -H "Authorization: Bearer $ADMIN_TOKEN" \
-      "http://keycloak:8080/admin/realms/bracketofdeathsite/roles/admin/users" | jq '. | length')
-    
-    if [ "$ADMIN_USERS" = "0" ]; then
-        echo "No admin users found. Creating default admin user to prevent lockout..."
-        
-        # Create default admin user only if no admins exist
-        curl -s -X POST \
-          "http://keycloak:8080/admin/realms/bracketofdeathsite/users" \
-          -H "Authorization: Bearer $ADMIN_TOKEN" \
-          -H "Content-Type: application/json" \
-          -d '{
-            "username": "admin",
-            "enabled": true,
-            "emailVerified": true,
-            "firstName": "Tournament",
-            "lastName": "Administrator",
-            "email": "admin@bracketofdeathsite.com",
-            "credentials": [
-              {
-                "type": "password",
-                "value": "'"${KEYCLOAK_ADMIN_PASSWORD//\"/\\\"}"'",
-                "temporary": false
-              }
-            ]
-          }' > /dev/null
-        
-        # Get the created user ID
-        USER_ID=$(curl -s -H "Authorization: Bearer $ADMIN_TOKEN" \
-          "http://keycloak:8080/admin/realms/bracketofdeathsite/users?username=admin" | jq -r '.[0].id')
-        
-        if [ "$USER_ID" != "null" ] && [ -n "$USER_ID" ]; then
-            # Assign admin role to the user
-            curl -s -X POST \
-              "http://keycloak:8080/admin/realms/bracketofdeathsite/users/$USER_ID/role-mappings/realm" \
-              -H "Authorization: Bearer $ADMIN_TOKEN" \
-              -H "Content-Type: application/json" \
-              -d '[
-                {
-                  "id": "'$(curl -s -H "Authorization: Bearer $ADMIN_TOKEN" "http://keycloak:8080/admin/realms/bracketofdeathsite/roles/admin" | jq -r '.id')'",
-                  "name": "admin"
-                },
-                {
-                  "id": "'$(curl -s -H "Authorization: Bearer $ADMIN_TOKEN" "http://keycloak:8080/admin/realms/bracketofdeathsite/roles/user" | jq -r '.id')'",
-                  "name": "user"
-                }
-              ]' > /dev/null
-            
-            echo "Emergency admin user created successfully (password: ${KEYCLOAK_ADMIN_PASSWORD}, no password change required)"
-            echo "WARNING: Change the default admin password immediately for security!"
-        else
-            echo "Failed to create admin user"
-        fi
-    else
-        echo "Admin users already exist ($ADMIN_USERS found). Skipping default admin creation for security."
-    fi
+    # Logic to create default admin removed for security (Secure Onboarding)
 else
     echo "Creating realm 'bracketofdeathsite'..."
     
@@ -116,57 +56,7 @@ else
     
     if [ $? -eq 0 ]; then
         echo "Realm created successfully"
-        
-        # Since this is a new realm, create the initial admin user
-        echo "Creating initial admin user for new realm..."
-        
-        # Create default admin user
-        curl -s -X POST \
-          "http://keycloak:8080/admin/realms/bracketofdeathsite/users" \
-          -H "Authorization: Bearer $ADMIN_TOKEN" \
-          -H "Content-Type: application/json" \
-          -d '{
-            "username": "admin",
-            "enabled": true,
-            "emailVerified": true,
-            "firstName": "Tournament",
-            "lastName": "Administrator",
-            "email": "admin@bracketofdeathsite.com",
-            "credentials": [
-              {
-                "type": "password",
-                "value": "'"${KEYCLOAK_ADMIN_PASSWORD//\"/\\\"}"'",
-                "temporary": false
-              }
-            ]
-          }' > /dev/null
-        
-        # Get the created user ID
-        USER_ID=$(curl -s -H "Authorization: Bearer $ADMIN_TOKEN" \
-          "http://keycloak:8080/admin/realms/bracketofdeathsite/users?username=admin" | jq -r '.[0].id')
-        
-        if [ "$USER_ID" != "null" ] && [ -n "$USER_ID" ]; then
-            # Assign admin role to the user
-            curl -s -X POST \
-              "http://keycloak:8080/admin/realms/bracketofdeathsite/users/$USER_ID/role-mappings/realm" \
-              -H "Authorization: Bearer $ADMIN_TOKEN" \
-              -H "Content-Type: application/json" \
-              -d '[
-                {
-                  "id": "'$(curl -s -H "Authorization: Bearer $ADMIN_TOKEN" "http://keycloak:8080/admin/realms/bracketofdeathsite/roles/admin" | jq -r '.id')'",
-                  "name": "admin"
-                },
-                {
-                  "id": "'$(curl -s -H "Authorization: Bearer $ADMIN_TOKEN" "http://keycloak:8080/admin/realms/bracketofdeathsite/roles/user" | jq -r '.id')'",
-                  "name": "user"
-                }
-              ]' > /dev/null
-            
-            echo "Initial admin user created successfully (password: admin123, no password change required)"
-            echo "WARNING: Change the default admin password immediately for security!"
-        else
-            echo "Failed to create admin user"
-        fi
+        echo "Skipping default admin user creation (Secure Onboarding Flow)"
     else
         echo "Failed to create realm"
         exit 1

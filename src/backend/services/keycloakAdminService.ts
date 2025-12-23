@@ -1,6 +1,6 @@
 import axios, { AxiosInstance } from 'axios';
 
-interface KeycloakUser {
+export interface KeycloakUser {
   id?: string;
   username: string;
   email: string;
@@ -346,6 +346,13 @@ class KeycloakAdminService {
       'PUT',
       `/users/${userId}/execute-actions-email`,
       actions
+    );
+  }
+
+  async getUsersInRole(roleName: string): Promise<KeycloakUser[]> {
+    return this.makeAuthenticatedRequest<KeycloakUser[]>(
+      'GET',
+      `/roles/${roleName}/users`
     );
   }
 }
