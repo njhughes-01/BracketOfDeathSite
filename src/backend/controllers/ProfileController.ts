@@ -37,10 +37,7 @@ class ProfileController {
       // Super Admin (admin:admin123) OR any user with 'admin' role is considered complete automatically
       // Check fresh Keycloak roles to avoid race conditions with token claims
       const userRoles = kcUser.realmRoles || [];
-      const isSuperAdmin =
-        userRoles.includes("superadmin") ||
-        kcUser.username === "admin" ||
-        kcUser.username === (process.env.KEYCLOAK_ADMIN_USER || "admin");
+      const isSuperAdmin = userRoles.includes("superadmin");
       const isAdmin = userRoles.includes("admin") || req.user?.isAdmin || false;
       const isPlayerComplete = !!(playerData && playerData.gender);
 

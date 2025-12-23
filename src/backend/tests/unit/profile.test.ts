@@ -130,6 +130,31 @@ describe("ProfileController", () => {
       });
     });
 
+    it("should return isComplete: false for user 'admin' without superadmin/admin role", async () => {
+      // Mock Keycloak user response WITHOUT admin role, but with username "admin"
+      const mockKcUser = {
+        id: "user-admin",
+        username: "admin",
+        email: "admin@example.com",
+        realmRoles: ["user"], // Regular user role
+        attributes: {},
+      };
+      (keycloakAdminService.getUser as jest.Mock).mockResolvedValue(mockKcUser);
+
+      req.user = { id: "user-admin", roles: ["user"], isAdmin: false } as any;
+
+      await ProfileController.getProfile(req as any, res as Response);
+
+      expect(keycloakAdminService.getUser).toHaveBeenCalledWith("user-admin");
+      expect(res.json).toHaveBeenCalledWith({
+        success: true,
+        data: expect.objectContaining({
+          user: expect.objectContaining({ username: "admin" }),
+          isComplete: false, // Must be false now
+        }),
+      });
+    });
+
     it("should return 401 if user is not authenticated", async () => {
       req.user = undefined;
       await ProfileController.getProfile(req as any, res as Response);
