@@ -314,7 +314,22 @@ class UserController {
         return;
       }
 
+      // 1. Get user to find linked player
+      const kcUser = await keycloakAdminService.getUser(id);
+      const playerId = kcUser.attributes?.playerId?.[0];
+
+      // 2. Delete Keycloak User
       await keycloakAdminService.deleteUser(id);
+
+      // 3. Delete Linked Player if exists
+      if (playerId) {
+        try {
+          await Player.findByIdAndDelete(playerId);
+          console.log(`Deleted linked player ${playerId} for user ${id}`);
+        } catch (err) {
+          console.error(`Failed to delete linked player ${playerId}:`, err);
+        }
+      }
 
       const response: ApiResponse = {
         success: true,

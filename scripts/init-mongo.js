@@ -63,17 +63,17 @@ db.createCollection('players', {
           description: 'must be a string if provided'
         },
         gamesPlayed: {
-          bsonType: 'int',
+          bsonType: 'number',
           minimum: 0,
-          description: 'must be a non-negative integer'
+          description: 'must be a non-negative number'
         },
         gamesWon: {
-          bsonType: 'int',
+          bsonType: 'number',
           minimum: 0,
-          description: 'must be a non-negative integer'
+          description: 'must be a non-negative number'
         },
         winningPercentage: {
-          bsonType: 'double',
+          bsonType: 'number',
           minimum: 0,
           maximum: 1,
           description: 'must be a number between 0 and 1'

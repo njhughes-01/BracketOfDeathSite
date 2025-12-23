@@ -24,8 +24,8 @@ jest.mock('../../services/keycloakAdminService', () => ({
 
 jest.mock('../../services/MailjetService');
 jest.mock('jsonwebtoken', () => ({
-  decode: jest.fn(),
-  verify: jest.fn(),
+    decode: jest.fn(),
+    verify: jest.fn(),
 }));
 
 // Mock axios
@@ -41,6 +41,15 @@ jest.mock('axios', () => ({
         }))
     }
 }));
+
+// Mock Player model
+jest.mock('../../models/Player', () => ({
+    Player: {
+        findByIdAndDelete: jest.fn()
+    }
+}));
+import { Player } from '../../models/Player';
+
 import axios from 'axios';
 
 describe('UserController', () => {
@@ -53,10 +62,12 @@ describe('UserController', () => {
     beforeEach(() => {
         userController = new UserController();
         jsonMock = jest.fn();
-        statusMock = jest.fn().mockReturnValue({ json: jsonMock });
+        const sendMock = jest.fn();
+        statusMock = jest.fn().mockReturnValue({ json: jsonMock, send: sendMock });
         mockRes = {
             status: statusMock,
             json: jsonMock,
+            send: sendMock,
         };
         jest.clearAllMocks();
     });
@@ -209,6 +220,50 @@ describe('UserController', () => {
             };
             await userController.resetPassword(mockReq as Request, mockRes as Response);
             expect(statusMock).toHaveBeenCalledWith(400);
+        });
+    });
+
+    describe('deleteUser', () => {
+        it('should delete user and linked player successfully', async () => {
+            mockReq = {
+                params: { id: 'user-1' }
+            };
+
+            // Mock getUser to return player link
+            (keycloakAdminService.getUser as jest.Mock).mockResolvedValue({
+                id: 'user-1',
+                attributes: { playerId: ['player-123'] }
+            });
+
+            await userController.deleteUser(mockReq as Request, mockRes as Response);
+
+            expect(keycloakAdminService.deleteUser).toHaveBeenCalledWith('user-1');
+            expect(Player.findByIdAndDelete).toHaveBeenCalledWith('player-123');
+            expect(jsonMock).toHaveBeenCalledWith(expect.objectContaining({
+                success: true,
+                message: "User deleted successfully",
+            }));
+        });
+
+        it('should delete user even if no linked player', async () => {
+            mockReq = {
+                params: { id: 'user-1' }
+            };
+
+            // Mock getUser to return NO player link
+            (keycloakAdminService.getUser as jest.Mock).mockResolvedValue({
+                id: 'user-1',
+                attributes: {}
+            });
+
+            await userController.deleteUser(mockReq as Request, mockRes as Response);
+
+            expect(keycloakAdminService.deleteUser).toHaveBeenCalledWith('user-1');
+            expect(Player.findByIdAndDelete).not.toHaveBeenCalled();
+            expect(jsonMock).toHaveBeenCalledWith(expect.objectContaining({
+                success: true,
+                message: "User deleted successfully",
+            }));
         });
     });
 });
