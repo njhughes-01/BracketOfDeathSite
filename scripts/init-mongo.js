@@ -23,20 +23,32 @@ db.createCollection('players', {
   validator: {
     $jsonSchema: {
       bsonType: 'object',
-      required: ['firstName', 'lastName'],
+      required: ['name'],
       properties: {
-        firstName: {
+        name: {
           bsonType: 'string',
           description: 'must be a string and is required'
         },
+        firstName: {
+          bsonType: 'string',
+          description: 'must be a string'
+        },
         lastName: {
           bsonType: 'string',
-          description: 'must be a string and is required'
+          description: 'must be a string'
         },
         email: {
           bsonType: 'string',
           pattern: '^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$',
           description: 'must be a valid email address if provided'
+        },
+        gender: {
+          enum: ['male', 'female', 'other'],
+          description: 'must be a valid gender enum'
+        },
+        bracketPreference: {
+          enum: ['mens', 'womens', 'mixed'],
+          description: 'must be a valid bracket preference'
         },
         phone: {
           bsonType: 'string',

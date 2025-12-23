@@ -624,7 +624,16 @@ class UserController {
   // Public Registration endpoint (moved logic from routes/auth.ts to controller for better organization)
   async register(req: RequestWithAuth, res: Response): Promise<void> {
     try {
-      const { userData, claimToken } = req.body;
+      let { userData, claimToken } = req.body;
+
+      // Handle flat request body (frontend sends flat data)
+      if (!userData) {
+        userData = { ...req.body };
+        if (userData.claimToken) {
+          claimToken = userData.claimToken;
+          delete userData.claimToken;
+        }
+      }
 
       // If claim token exists, decode and override/verify specific fields
       let linkedPlayerId: string | undefined;

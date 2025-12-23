@@ -11,6 +11,7 @@ import { errorHandler } from './middleware/errorHandler';
 import { notFoundHandler } from './middleware/notFoundHandler';
 import { sanitizeInput, validatePagination } from './middleware/validation';
 import apiRoutes from './routes';
+import systemRoutes from './routes/system';
 
 // Load environment variables
 config();
@@ -66,14 +67,7 @@ app.get('/health', (_req, res) => {
   res.status(200).json({ status: 'OK', timestamp: new Date().toISOString() });
 });
 
-// Backward-compatible health endpoint for tests/tools
-app.get('/health', (_req, res) => {
-  res.status(200).json({ status: 'OK', timestamp: new Date().toISOString() });
-});
 
-// API routes
-import apiRoutes from './routes';
-import systemRoutes from './routes/system'; // Import new routes
 
 // ... (existing imports)
 

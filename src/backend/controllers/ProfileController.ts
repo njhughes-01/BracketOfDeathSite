@@ -8,11 +8,10 @@ import keycloakAdminService from "../services/keycloakAdminService";
 class ProfileController {
   private handleError(res: Response, error: any, message: string): void {
     console.error(message, error);
-    const response: ApiResponse = {
+    res.status(500).json({
       success: false,
-      error: error.message || message,
-    };
-    res.status(500).json(response);
+      error: message,
+    });
   }
 
   // Get current user's profile which includes user data and linked player data
