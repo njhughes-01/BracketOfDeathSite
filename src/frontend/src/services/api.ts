@@ -505,6 +505,15 @@ class ApiClient {
   }
 
   // System Settings API methods
+  async getSystemStatus(): Promise<ApiResponse<{ initialized: boolean }>> {
+    return this.get<ApiResponse<{ initialized: boolean }>>('/system/status');
+  }
+
+  async claimSuperAdmin(): Promise<ApiResponse> {
+    await ensureFreshToken();
+    return this.post<ApiResponse>('/system/claim-admin', {});
+  }
+
   async getSystemSettings(): Promise<SystemSettings> {
     return this.get<SystemSettings>('/settings');
   }

@@ -72,6 +72,13 @@ app.get('/health', (_req, res) => {
 });
 
 // API routes
+import apiRoutes from './routes';
+import systemRoutes from './routes/system'; // Import new routes
+
+// ... (existing imports)
+
+// API routes
+app.use('/api/system', systemRoutes); // Mount system routes
 app.use('/api', apiRoutes);
 
 // Error handling middleware
@@ -82,7 +89,7 @@ app.use(errorHandler);
 export const startServer = async (): Promise<void> => {
   try {
     await connectToDatabase();
-    
+
     const server = app.listen(PORT, () => {
       console.log(`Server running on port ${PORT}`);
       console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);

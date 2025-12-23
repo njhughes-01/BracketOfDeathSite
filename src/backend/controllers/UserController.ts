@@ -696,16 +696,13 @@ class UserController {
       }
 
       // Force safe roles for public registration
-      // Force safe roles for public registration
       // eslint-disable-next-line @typescript-eslint/no-unused-vars
       const { playerId: _pid, gender: _g, ...safeAuthData } = userData;
 
 
-      // Check for existing superadmins to determine if this is the first user
-      const superAdmins = await keycloakAdminService.getUsersInRole('superadmin');
-      const isFirstUser = superAdmins.length === 0;
-
-      const userRoles = isFirstUser ? ["superadmin", "admin", "user"] : ["user"];
+      // Default role for public registration is always 'user'
+      // Admin claim is now handled via explicit onboarding flow
+      const userRoles = ["user"];
 
       const safeUserData = {
         ...safeAuthData,
