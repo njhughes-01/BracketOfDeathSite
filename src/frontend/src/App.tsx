@@ -23,6 +23,7 @@ import Admin from './pages/Admin';
 import SettingsPage from './pages/admin/Settings';
 import UserManagement from './pages/UserManagement';
 import NotFound from './pages/NotFound';
+import Setup from './pages/Setup';
 
 import RequireProfile from './components/RequireProfile';
 import Onboarding from './pages/Onboarding';
@@ -37,6 +38,7 @@ function App() {
             <Routes>
               <Route path="/login" element={<Login />} />
               <Route path="/register" element={<Register />} />
+              <Route path="/setup" element={<Setup />} />
               <Route path="/onboarding" element={<ProtectedRoute><Onboarding /></ProtectedRoute>} />
               <Route path="/open-tournaments" element={<OpenTournaments />} />
 

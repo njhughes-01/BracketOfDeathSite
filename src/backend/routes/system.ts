@@ -6,7 +6,7 @@ const router = Router();
 
 // Public route to check status (e.g., for login screen or onboarding check)
 // Can be authenticated if strictly required, but public is easier for "Is system setup?" checks
-router.get('/status', authenticate, systemController.getStatus.bind(systemController));
+router.get('/status', systemController.getStatus.bind(systemController));
 
 // Protected route to claim admin
 router.post('/claim-admin', authenticate, systemController.claimSuperadmin.bind(systemController));

@@ -3,6 +3,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { useNavigate, useLocation, Link, useSearchParams } from 'react-router-dom';
 import LoadingSpinner from '../components/ui/LoadingSpinner';
 import ForgotPasswordModal from '../components/auth/ForgotPasswordModal';
+import { apiClient } from '../services/api';
 
 const Login: React.FC = () => {
   const { isAuthenticated, initializeAuth, login, keycloak, loading, setDirectAuthTokens } = useAuth();
@@ -28,6 +29,20 @@ const Login: React.FC = () => {
     : stateFrom?.pathname || '/');
 
   useEffect(() => {
+    // Check for initialization status first
+    const checkInit = async () => {
+      try {
+        const status = await apiClient.getSystemStatus();
+        if (!status.data?.initialized) {
+          navigate('/setup', { replace: true });
+          return;
+        }
+      } catch (e) {
+        console.error('Failed to check system status', e);
+      }
+    };
+    checkInit();
+
     const hasLoggedInBefore = localStorage.getItem('hasLoggedInBefore');
     if (hasLoggedInBefore) {
       setShowAdminInfo(false);
@@ -46,7 +61,7 @@ const Login: React.FC = () => {
     };
 
     initAuth();
-  }, []);
+  }, [initializeAuth, navigate]);
 
   useEffect(() => {
     if (isAuthenticated) {
