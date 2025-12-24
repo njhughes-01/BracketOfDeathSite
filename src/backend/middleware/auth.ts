@@ -113,8 +113,11 @@ export const hasSuperAdminRole = (token: KeycloakToken): boolean => {
 };
 
 // Check if user is authorized (has user or admin role)
+// Check if user is authorized (has any valid token)
 export const isAuthorizedUser = (token: KeycloakToken): boolean => {
-  return hasRole(token, 'user') || hasRole(token, 'admin') || hasRole(token, 'superadmin');
+  // We allow any authenticated user to access the API
+  // Specific routes (like admin) are protected by requireAdmin
+  return true;
 };
 
 // Authentication middleware
