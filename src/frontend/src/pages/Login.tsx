@@ -14,7 +14,6 @@ const Login: React.FC = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loginError, setLoginError] = useState('');
-  const [showAdminInfo, setShowAdminInfo] = useState(true);
   const [showPassword, setShowPassword] = useState(false);
   const [showForgotPassword, setShowForgotPassword] = useState(false);
   const initializationAttempted = useRef(false);
@@ -42,11 +41,6 @@ const Login: React.FC = () => {
       }
     };
     checkInit();
-
-    const hasLoggedInBefore = localStorage.getItem('hasLoggedInBefore');
-    if (hasLoggedInBefore) {
-      setShowAdminInfo(false);
-    }
 
     const initAuth = async () => {
       if (!initializationAttempted.current) {
@@ -281,27 +275,6 @@ const Login: React.FC = () => {
           </button>
         </form>
 
-        {/* Admin Info (Optional/Dev helper) */}
-        {showAdminInfo && (
-          <div className="mt-8 p-4 bg-white/5 border border-white/10 rounded-xl relative">
-            <button
-              onClick={() => setShowAdminInfo(false)}
-              className="absolute top-2 right-2 text-slate-500 hover:text-white"
-            >
-              <span className="material-symbols-outlined text-sm">close</span>
-            </button>
-            <div className="flex gap-3">
-              <span className="material-symbols-outlined text-primary mt-1">info</span>
-              <div>
-                <p className="text-sm font-bold text-white mb-1">Standard Login</p>
-                <div className="text-xs text-slate-400 space-y-0.5 font-mono">
-                  <p>User: admin</p>
-                  <p>Pass: admin123</p>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
 
         {/* Divider */}
         <div className="relative py-8">
