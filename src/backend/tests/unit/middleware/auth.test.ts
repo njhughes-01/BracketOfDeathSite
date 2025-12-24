@@ -121,14 +121,15 @@ describe('Auth Middleware', () => {
       expect(nextFunction).not.toHaveBeenCalled();
     });
 
-    it('should return 403 if user has no authorized roles', async () => {
+    it('should allow any authenticated user (including guest role)', async () => {
       mockReq.headers!.authorization = 'Bearer valid-token';
       const mockDecodedToken = {
         sub: 'user-123',
         email: 'test@example.com',
         preferred_username: 'testuser',
+        name: 'Test User',
         azp: 'test-client',
-        realm_access: { roles: ['guest'] } // No 'user' or 'admin' role
+        realm_access: { roles: ['guest'] } // Any authenticated user is allowed
       };
 
       (jwt.decode as jest.Mock).mockReturnValue({ payload: mockDecodedToken });
@@ -138,10 +139,16 @@ describe('Auth Middleware', () => {
 
       await requireAuth(mockReq as RequestWithAuth, mockRes as Response, nextFunction);
 
-      expect(mockRes.status).toHaveBeenCalledWith(403);
-      expect(mockRes.json).toHaveBeenCalledWith(expect.objectContaining({
-        error: 'Access denied. User not authorized.'
-      }));
+      expect(nextFunction).toHaveBeenCalled();
+      expect(mockReq.user).toEqual({
+        id: 'user-123',
+        email: 'test@example.com',
+        username: 'testuser',
+        name: 'Test User',
+        isAuthorized: true,
+        isAdmin: false,
+        roles: ['guest']
+      });
     });
 
     it('should populate req.user and call next if token is valid', async () => {
