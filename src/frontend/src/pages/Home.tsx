@@ -1,11 +1,28 @@
-import React, { useCallback, useMemo } from 'react';
-import { Link } from 'react-router-dom';
+import React, { useCallback, useMemo, useEffect } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 import { useApi } from '../hooks/useApi';
 import apiClient from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
 
 const Home: React.FC = () => {
   const { user } = useAuth();
+  const navigate = useNavigate();
+
+  // Check if system is initialized on mount
+  useEffect(() => {
+    const checkSystemStatus = async () => {
+      try {
+        const status = await apiClient.getSystemStatus();
+        if (!status.data?.initialized) {
+          // System not initialized - redirect to setup
+          navigate('/setup', { replace: true });
+        }
+      } catch (error) {
+        console.error('Failed to check system status:', error);
+      }
+    };
+    checkSystemStatus();
+  }, [navigate]);
 
   // Data Fetching
   const getRecentTournaments = useCallback(() => apiClient.getRecentTournaments(5), []);

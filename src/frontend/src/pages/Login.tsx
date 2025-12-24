@@ -33,8 +33,9 @@ const Login: React.FC = () => {
       try {
         const status = await apiClient.getSystemStatus();
         if (!status.data?.initialized) {
-          // System uninitialized. We allow login so users can claim admin.
-          // Ideally, we show a banner here.
+          // System uninitialized - redirect to setup page
+          navigate('/setup', { replace: true });
+          return;
         }
       } catch (e) {
         console.error('Failed to check system status', e);
