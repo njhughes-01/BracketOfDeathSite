@@ -219,7 +219,15 @@ export class SettingsController {
   // Test email configuration
   public testEmail = async (req: RequestWithAuth, res: Response) => {
     try {
-      const { testEmail } = req.body;
+      const {
+        testEmail,
+        activeProvider,
+        mailgunApiKey,
+        mailgunDomain,
+        mailjetApiKey,
+        mailjetApiSecret,
+        senderEmail
+      } = req.body;
 
       if (!testEmail) {
         res
@@ -237,7 +245,17 @@ export class SettingsController {
         return;
       }
 
-      const success = await emailService.sendTestEmail(testEmail);
+      // Use provided config for test, or fall back to database settings
+      const config = {
+        activeProvider,
+        mailgunApiKey,
+        mailgunDomain,
+        mailjetApiKey,
+        mailjetApiSecret,
+        senderEmail
+      };
+
+      const success = await emailService.sendTestEmail(testEmail, config);
 
       if (success) {
         res.json({ success: true, message: "Test email sent successfully" });

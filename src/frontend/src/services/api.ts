@@ -745,8 +745,21 @@ class ApiClient {
     return this.put<ApiResponse>("/settings", settings);
   }
 
-  async testEmail(email: string): Promise<ApiResponse> {
-    return this.post<ApiResponse>("/settings/email/test", { testEmail: email });
+  async testEmail(
+    email: string,
+    config?: {
+      activeProvider?: string;
+      mailgunApiKey?: string;
+      mailgunDomain?: string;
+      mailjetApiKey?: string;
+      mailjetApiSecret?: string;
+      senderEmail?: string;
+    }
+  ): Promise<ApiResponse> {
+    return this.post<ApiResponse>("/settings/email/test", {
+      testEmail: email,
+      ...config
+    });
   }
 
   async isEmailConfigured(): Promise<{ configured: boolean }> {

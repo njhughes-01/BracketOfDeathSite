@@ -231,7 +231,17 @@ const SettingsPage: React.FC = () => {
       setTesting(true);
       setError("");
       setSuccess("");
-      await apiClient.testEmail(testEmailAddress);
+
+      // Send current form state as test configuration
+      await apiClient.testEmail(testEmailAddress, {
+        activeProvider,
+        mailgunApiKey: mailgunApiKey || undefined,
+        mailgunDomain: mailgunDomain || undefined,
+        mailjetApiKey: apiKey || undefined,
+        mailjetApiSecret: apiSecret || undefined,
+        senderEmail: senderEmail || undefined,
+      });
+
       setTestEmailSuccess(true);
       setSuccess("✅ Test email sent successfully! You can now save your settings.");
     } catch (err: any) {

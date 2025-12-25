@@ -210,8 +210,38 @@ export class EmailService {
         });
     }
 
-    async sendTestEmail(email: string): Promise<boolean> {
-        const config = await this.getConfig();
+    async sendTestEmail(email: string, testConfig?: Partial<ISystemSettings>): Promise<boolean> {
+        // If test config provided, use it; otherwise load from database
+        let config: EmailConfig & { provider: IEmailProvider };
+
+        if (testConfig?.activeProvider) {
+            // Use provided test configuration
+            const provider = testConfig.activeProvider === 'mailgun'
+                ? new MailgunProvider(
+                    testConfig.mailgunApiKey || this.defaultMailgunKey,
+                    testConfig.mailgunDomain || this.defaultMailgunDomain
+                  )
+                : new MailjetProvider(
+                    testConfig.mailjetApiKey || this.defaultMailjetKey,
+                    testConfig.mailjetApiSecret || this.defaultMailjetSecret
+                  );
+
+            config = {
+                activeProvider: testConfig.activeProvider,
+                provider,
+                senderEmail: testConfig.senderEmail ||
+                    (testConfig.activeProvider === 'mailgun'
+                        ? `noreply@${testConfig.mailgunDomain || this.defaultMailgunDomain}`
+                        : this.defaultSenderEmail),
+                brandName: testConfig.brandName || "Bracket of Death",
+                brandPrimaryColor: testConfig.brandPrimaryColor || "#4CAF50",
+                brandSecondaryColor: testConfig.brandSecondaryColor || "#008CBA",
+            };
+        } else {
+            // Load from database
+            config = await this.getConfig();
+        }
+
         const providerName = config.provider.getName();
 
         const content = `
