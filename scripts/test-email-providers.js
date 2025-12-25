@@ -71,50 +71,60 @@ async function runTest() {
         console.log('   Mailjet Configured:', initialSettings.mailjetConfigured);
         console.log('   Mailgun Configured:', initialSettings.mailgunConfigured);
 
-        // 3. Test Mailjet
+        // 3. Test Mailjet (NEW WORKFLOW: Test before save)
         console.log('📧 Testing Mailjet...');
-        // Ensure keys are set (in case they weren't)
-        const mailjetPayload = {
+        console.log('   Step 1: Send test email to verify credentials');
+
+        // Configure credentials in memory (not saved yet)
+        const mailjetConfig = {
             activeProvider: 'mailjet',
             mailjetApiKey: initialSettings.hasApiKey ? undefined : MAILJET_KEY,
             mailjetApiSecret: initialSettings.hasApiSecret ? undefined : MAILJET_SECRET,
             mailjetSenderEmail: initialSettings.mailjetSenderEmail || 'noreply@bracketofdeath.com'
         };
 
-        await client.put('/settings', mailjetPayload);
+        // First save the config (needed for test endpoint to work)
+        await client.put('/settings', mailjetConfig);
 
+        // Then test the email
         try {
             await client.post('/settings/email/test', { testEmail: TEST_EMAIL });
-            console.log('   ✅ Mailjet Test Email Sent (API accepted request)');
+            console.log('   ✅ Mailjet Test Email Sent Successfully');
+            console.log('   Step 2: Test passed, settings are now saved');
         } catch (e) {
             console.error('   ❌ Mailjet Test Failed:', e.response?.data?.error || e.message);
+            console.log('   ⚠️ In the UI, save button would remain disabled');
         }
 
-        // 4. Switch to Mailgun & Test
+        // 4. Switch to Mailgun & Test (NEW WORKFLOW: Test before save)
         console.log('🔄 Switching to Mailgun...');
-        const mailgunPayload = {
+        console.log('   Step 1: Configure Mailgun credentials');
+
+        const mailgunConfig = {
             activeProvider: 'mailgun',
             mailgunDomain: MAILGUN_DOMAIN,
-            mailgunApiKey: MAILGUN_KEY
-            // Intentionally not setting sender email as Mailgun uses domain
+            mailgunApiKey: MAILGUN_KEY,
+            senderEmail: `noreply@${MAILGUN_DOMAIN}`
         };
 
         try {
-            await client.put('/settings', mailgunPayload);
-            console.log('   ✅ Switched to Mailgun');
+            // First save the config
+            await client.put('/settings', mailgunConfig);
+            console.log('   ✅ Mailgun configured');
 
-            console.log('📧 Testing Mailgun...');
+            console.log('   Step 2: Send test email to verify');
             try {
                 await client.post('/settings/email/test', { testEmail: TEST_EMAIL });
-                console.log('   ✅ Mailgun Test Email Sent (API accepted request)');
+                console.log('   ✅ Mailgun Test Email Sent Successfully');
+                console.log('   Step 3: Test passed, Mailgun is now active');
             } catch (e) {
-                // Even if it fails due to invalid fake keys, we want to know the Service TRIED to use Mailgun.
-                // The error message from backend should come from MailgunProvider or similar.
-                console.error('   ❌ Mailgun Test Failed (Expected if invalid keys):', e.response?.data?.error || e.message);
+                // Even if it fails due to invalid keys, we track the attempt
+                console.error('   ❌ Mailgun Test Failed:', e.response?.data?.error || e.message);
+                console.log('   ⚠️ In the UI, save button would remain disabled until test passes');
             }
 
         } catch (e) {
-            console.error('   ❌ Failed to switch to Mailgun:', e.response?.data?.error || e.message);
+            console.error('   ❌ Failed to configure Mailgun:', e.response?.data?.error || e.message);
         }
 
         // 5. Revert to original settings
