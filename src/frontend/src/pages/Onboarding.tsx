@@ -15,7 +15,7 @@ const Onboarding: React.FC = () => {
   const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
-  const { user, refreshUser } = useAuth();
+  const { user, refreshUser, forceTokenRefresh } = useAuth();
 
   // Get redirect path from location state or default to dashboard
   const from = (location.state as any)?.from?.pathname || "/";
@@ -57,7 +57,7 @@ const Onboarding: React.FC = () => {
     setError(null);
     try {
       await apiClient.claimSuperAdmin();
-      await refreshUser(); // Refresh token to get new roles
+      await forceTokenRefresh(); // Force refresh to get new roles from server
       setStep("profile"); // Move to profile step
     } catch (err: any) {
       console.error("Failed to claim admin:", err);
@@ -87,7 +87,7 @@ const Onboarding: React.FC = () => {
       console.error("Onboarding update failed", err);
       setError(
         err.response?.data?.error ||
-          "Failed to update profile. Please try again.",
+        "Failed to update profile. Please try again.",
       );
     } finally {
       setIsLoading(false);

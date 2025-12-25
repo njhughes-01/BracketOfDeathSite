@@ -46,6 +46,7 @@ interface AuthContextType {
     id_token?: string;
   }) => Promise<void>;
   refreshUser: () => Promise<void>;
+  forceTokenRefresh: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -271,11 +272,11 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           try {
             const parsed = JSON.parse(atob(saved.access_token.split(".")[1]));
             kc.tokenParsed = parsed;
-          } catch {}
+          } catch { }
           // Set timeSkew so Keycloak knows expiry baseline
           try {
             // Removed manual timeSkew calculation as it was causing issues with token validation
-          } catch {}
+          } catch { }
           kc.authenticated = true;
           setTokenGetter(() => kc.token);
           await setupUserFromToken(kc);
@@ -430,7 +431,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       try {
         // Removed manual timeSkew calculation as it was causing issues with token validation
         // The token is already validated by the backend
-      } catch {}
+      } catch { }
       kc.authenticated = true;
 
       console.log("Direct tokens set on Keycloak, setting up user...");
@@ -468,6 +469,21 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     loading,
     setDirectAuthTokens,
     refreshUser,
+    forceTokenRefresh: async () => {
+      try {
+        if (keycloak) {
+          // Force refresh by passing -1 (min validity)
+          console.log("Forcing token refresh...");
+          await keycloak.updateToken(-1);
+          await setupUserFromToken(keycloak);
+          saveTokens(keycloak);
+          console.log("Token forced refresh successful");
+        }
+      } catch (e) {
+        console.error("Force token refresh failed:", e);
+        throw e;
+      }
+    },
   };
 
   // Auto-initialize auth on mount to survive page refresh (silent SSO)
