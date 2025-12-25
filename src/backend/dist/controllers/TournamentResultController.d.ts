@@ -1,6 +1,6 @@
-import { Request, Response, NextFunction } from 'express';
-import { ITournamentResult, ITournamentResultFilter } from '../types/tournamentResult';
-import { BaseController, RequestWithAuth } from './base';
+import { Request, Response, NextFunction } from "express";
+import { ITournamentResult, ITournamentResultFilter } from "../types/tournamentResult";
+import { BaseController, RequestWithAuth } from "./base";
 export declare class TournamentResultController extends BaseController<ITournamentResult> {
     constructor();
     protected buildFilter(query: any): ITournamentResultFilter;

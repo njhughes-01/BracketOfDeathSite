@@ -1,4 +1,4 @@
-import { BaseDocument } from './common';
+import { BaseDocument } from "./common";
 export interface IPlayer extends BaseDocument {
     name: string;
     bodsPlayed: number;
@@ -13,8 +13,8 @@ export interface IPlayer extends BaseDocument {
     drawingSequence?: number;
     pairing?: string;
     isActive: boolean;
-    gender?: 'male' | 'female' | 'other';
-    bracketPreference?: 'mens' | 'womens' | 'mixed';
+    gender?: "male" | "female" | "other";
+    bracketPreference?: "mens" | "womens" | "mixed";
 }
 export interface IPlayerInput {
     name: string;
@@ -30,8 +30,8 @@ export interface IPlayerInput {
     drawingSequence?: number;
     pairing?: string;
     isActive?: boolean;
-    gender?: 'male' | 'female' | 'other';
-    bracketPreference?: 'mens' | 'womens' | 'mixed';
+    gender?: "male" | "female" | "other";
+    bracketPreference?: "mens" | "womens" | "mixed";
 }
 export interface IPlayerUpdate extends Partial<IPlayerInput> {
     _id?: never;

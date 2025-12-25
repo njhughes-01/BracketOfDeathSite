@@ -1,5 +1,5 @@
-import { Request, Response, NextFunction } from 'express';
-import { Model, Document } from 'mongoose';
+import { Request, Response, NextFunction } from "express";
+import { Model, Document } from "mongoose";
 export interface RequestWithAuth extends Request {
     user?: {
         id: string;

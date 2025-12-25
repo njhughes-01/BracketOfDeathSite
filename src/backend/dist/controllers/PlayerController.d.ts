@@ -1,6 +1,6 @@
-import { Request, Response, NextFunction } from 'express';
-import { IPlayer, IPlayerFilter } from '../types/player';
-import { BaseController, RequestWithAuth } from './base';
+import { Request, Response, NextFunction } from "express";
+import { IPlayer, IPlayerFilter } from "../types/player";
+import { BaseController, RequestWithAuth } from "./base";
 export declare class PlayerController extends BaseController<IPlayer> {
     constructor();
     protected buildFilter(query: any): IPlayerFilter;

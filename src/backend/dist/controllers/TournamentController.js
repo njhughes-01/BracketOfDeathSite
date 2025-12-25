@@ -8,7 +8,7 @@ const tournament_1 = require("../types/tournament");
 const base_1 = require("./base");
 class TournamentController extends base_1.BaseController {
     constructor() {
-        super(Tournament_1.Tournament, 'Tournament');
+        super(Tournament_1.Tournament, "Tournament");
     }
     // Override buildFilter for tournament-specific filtering
     buildFilter(query) {
@@ -54,11 +54,11 @@ class TournamentController extends base_1.BaseController {
         }
         // Location search (case insensitive)
         if (filterParams.location) {
-            filter.location = new RegExp(filterParams.location, 'i');
+            filter.location = new RegExp(filterParams.location, "i");
         }
         // Advancement criteria search
         if (filterParams.advancementCriteria) {
-            filter.advancementCriteria = new RegExp(filterParams.advancementCriteria, 'i');
+            filter.advancementCriteria = new RegExp(filterParams.advancementCriteria, "i");
         }
         return filter;
     }
@@ -66,9 +66,9 @@ class TournamentController extends base_1.BaseController {
     buildSearchFilter(searchTerm) {
         return {
             $or: [
-                { location: new RegExp(searchTerm, 'i') },
-                { notes: new RegExp(searchTerm, 'i') },
-                { advancementCriteria: new RegExp(searchTerm, 'i') },
+                { location: new RegExp(searchTerm, "i") },
+                { notes: new RegExp(searchTerm, "i") },
+                { advancementCriteria: new RegExp(searchTerm, "i") },
             ],
         };
     }
@@ -80,17 +80,17 @@ class TournamentController extends base_1.BaseController {
                     $group: {
                         _id: null,
                         totalTournaments: { $sum: 1 },
-                        formats: { $addToSet: '$format' },
-                        locations: { $addToSet: '$location' },
-                        earliestDate: { $min: '$date' },
-                        latestDate: { $max: '$date' },
+                        formats: { $addToSet: "$format" },
+                        locations: { $addToSet: "$location" },
+                        earliestDate: { $min: "$date" },
+                        latestDate: { $max: "$date" },
                     },
                 },
             ]);
             const formatStats = await Tournament_1.Tournament.aggregate([
                 {
                     $group: {
-                        _id: '$format',
+                        _id: "$format",
                         count: { $sum: 1 },
                     },
                 },
@@ -101,9 +101,9 @@ class TournamentController extends base_1.BaseController {
             const yearlyStats = await Tournament_1.Tournament.aggregate([
                 {
                     $group: {
-                        _id: { $year: '$date' },
+                        _id: { $year: "$date" },
                         count: { $sum: 1 },
-                        formats: { $addToSet: '$format' },
+                        formats: { $addToSet: "$format" },
                     },
                 },
                 {
@@ -129,8 +129,10 @@ class TournamentController extends base_1.BaseController {
         try {
             const { year } = req.params;
             const yearInt = parseInt(year);
-            if (isNaN(yearInt) || yearInt < 2009 || yearInt > new Date().getFullYear() + 10) {
-                this.sendError(res, 400, 'Invalid year provided');
+            if (isNaN(yearInt) ||
+                yearInt < 2009 ||
+                yearInt > new Date().getFullYear() + 10) {
+                this.sendError(res, 400, "Invalid year provided");
                 return;
             }
             const tournaments = await Tournament_1.Tournament.find({
@@ -154,10 +156,12 @@ class TournamentController extends base_1.BaseController {
         try {
             const { format } = req.params;
             if (!tournament_1.TournamentFormats.includes(format)) {
-                this.sendError(res, 400, `Invalid format. Must be one of: ${tournament_1.TournamentFormats.join(', ')}`);
+                this.sendError(res, 400, `Invalid format. Must be one of: ${tournament_1.TournamentFormats.join(", ")}`);
                 return;
             }
-            const tournaments = await Tournament_1.Tournament.find({ format }).sort({ date: -1 });
+            const tournaments = await Tournament_1.Tournament.find({ format }).sort({
+                date: -1,
+            });
             const response = {
                 success: true,
                 data: tournaments,
@@ -174,12 +178,12 @@ class TournamentController extends base_1.BaseController {
             const { id } = req.params;
             const tournament = await Tournament_1.Tournament.findById(id);
             if (!tournament) {
-                this.sendError(res, 404, 'Tournament not found');
+                this.sendError(res, 404, "Tournament not found");
                 return;
             }
             const results = await TournamentResult_1.TournamentResult.find({ tournamentId: id })
-                .populate('players', 'name')
-                .sort({ 'totalStats.finalRank': 1, 'totalStats.winPercentage': -1 });
+                .populate("players", "name")
+                .sort({ "totalStats.finalRank": 1, "totalStats.winPercentage": -1 });
             const response = {
                 success: true,
                 data: {
@@ -236,16 +240,23 @@ class TournamentController extends base_1.BaseController {
         try {
             const now = new Date();
             const openTournaments = await Tournament_1.Tournament.find({
-                $or: [
-                    { allowSelfRegistration: true },
-                    { registrationType: 'open' }
-                ],
-                status: { $in: ['scheduled', 'open'] }, // Ensure tournament isn't completed or in progress (unless late join allowed?)
+                $or: [{ allowSelfRegistration: true }, { registrationType: "open" }],
+                status: { $in: ["scheduled", "open"] }, // Ensure tournament isn't completed or in progress (unless late join allowed?)
                 // Ensure registration window is valid if dates are set
                 $and: [
-                    { $or: [{ registrationOpensAt: { $exists: false } }, { registrationOpensAt: { $lte: now } }] },
-                    { $or: [{ registrationDeadline: { $exists: false } }, { registrationDeadline: { $gte: now } }] }
-                ]
+                    {
+                        $or: [
+                            { registrationOpensAt: { $exists: false } },
+                            { registrationOpensAt: { $lte: now } },
+                        ],
+                    },
+                    {
+                        $or: [
+                            { registrationDeadline: { $exists: false } },
+                            { registrationDeadline: { $gte: now } },
+                        ],
+                    },
+                ],
             }).sort({ date: 1 });
             const response = {
                 success: true,
@@ -266,21 +277,24 @@ class TournamentController extends base_1.BaseController {
             // 1. Validate Tournament
             const tournament = await Tournament_1.Tournament.findById(id);
             if (!tournament) {
-                this.sendError(res, 404, 'Tournament not found');
+                this.sendError(res, 404, "Tournament not found");
                 return;
             }
             // 2. Validate Registration Rules
-            if (!tournament.allowSelfRegistration && tournament.registrationType !== 'open') {
-                this.sendError(res, 403, 'Self-registration is not allowed for this tournament');
+            if (!tournament.allowSelfRegistration &&
+                tournament.registrationType !== "open") {
+                this.sendError(res, 403, "Self-registration is not allowed for this tournament");
                 return;
             }
             const now = new Date();
-            if (tournament.registrationOpensAt && now < new Date(tournament.registrationOpensAt)) {
-                this.sendError(res, 400, 'Registration is not yet open');
+            if (tournament.registrationOpensAt &&
+                now < new Date(tournament.registrationOpensAt)) {
+                this.sendError(res, 400, "Registration is not yet open");
                 return;
             }
-            if (tournament.registrationDeadline && now > new Date(tournament.registrationDeadline)) {
-                this.sendError(res, 400, 'Registration deadline has passed');
+            if (tournament.registrationDeadline &&
+                now > new Date(tournament.registrationDeadline)) {
+                this.sendError(res, 400, "Registration deadline has passed");
                 return;
             }
             // 3. Find Player Profile
@@ -288,50 +302,50 @@ class TournamentController extends base_1.BaseController {
             let player;
             if (playerId) {
                 // Explicit playerId provided (verify user owns it or is admin?)
-                // For now, assuming if they provide it, we check if it's valid. 
+                // For now, assuming if they provide it, we check if it's valid.
                 // ideally we should check if this Keycloak user is linked to this player.
                 // But for open simple registration, let's verify existence.
                 player = await Player_1.Player.findById(playerId);
             }
             else {
-                // TODO: Look up player by Keycloak ID (userId). 
+                // TODO: Look up player by Keycloak ID (userId).
                 // For now, require playerId in body or fail.
                 // In ideal flow, the frontend passes the linked playerId.
-                this.sendError(res, 400, 'Player ID is required for registration');
+                this.sendError(res, 400, "Player ID is required for registration");
                 return;
             }
             if (!player) {
-                this.sendError(res, 404, 'Player profile not found');
+                this.sendError(res, 404, "Player profile not found");
                 return;
             }
             // 4. Check Duplicate Registration
             const isRegistered = tournament.registeredPlayers.some((p) => p.playerId?.toString() === playerId || p.toString() === playerId);
             const isWaitlisted = tournament.waitlistPlayers.some((p) => p.playerId?.toString() === playerId || p.toString() === playerId);
             if (isRegistered) {
-                this.sendError(res, 400, 'Player already registered');
+                this.sendError(res, 400, "Player already registered");
                 return;
             }
             if (isWaitlisted) {
-                this.sendError(res, 400, 'Player already on waitlist');
+                this.sendError(res, 400, "Player already on waitlist");
                 return;
             }
             // 5. Add to Tournament (Register or Waitlist)
             const maxPlayers = tournament.maxPlayers || 32; // Default if not set
             const currentCount = tournament.registeredPlayers.length;
-            let status = 'registered';
+            let status = "registered";
             if (currentCount >= maxPlayers) {
                 // Add to waitlist
                 tournament.waitlistPlayers.push({
                     playerId: player._id,
-                    registeredAt: now
+                    registeredAt: now,
                 });
-                status = 'waitlisted';
+                status = "waitlisted";
             }
             else {
                 // Register
                 tournament.registeredPlayers.push({
                     playerId: player._id,
-                    registeredAt: now
+                    registeredAt: now,
                 });
             }
             await tournament.save();
@@ -341,8 +355,10 @@ class TournamentController extends base_1.BaseController {
                     tournamentId: tournament._id,
                     playerId: player._id,
                     status,
-                    message: status === 'registered' ? 'Successfully registered for tournament' : 'Tournament full. Added to waitlist.'
-                }
+                    message: status === "registered"
+                        ? "Successfully registered for tournament"
+                        : "Tournament full. Added to waitlist.",
+                },
             };
             res.status(200).json(response);
         }
@@ -356,8 +372,10 @@ class TournamentController extends base_1.BaseController {
             // Find the highest BOD number currently in use
             const latestTournament = await Tournament_1.Tournament.findOne({})
                 .sort({ bodNumber: -1 })
-                .select('bodNumber');
-            const nextBodNumber = latestTournament ? latestTournament.bodNumber + 1 : 1;
+                .select("bodNumber");
+            const nextBodNumber = latestTournament
+                ? latestTournament.bodNumber + 1
+                : 1;
             const response = {
                 success: true,
                 data: { nextBodNumber },
@@ -371,34 +389,34 @@ class TournamentController extends base_1.BaseController {
     // Generate player seeds based on historical data
     generatePlayerSeeds = this.asyncHandler(async (req, res, next) => {
         try {
-            console.log('generatePlayerSeeds called with:', req.body);
-            const { method = 'historical', parameters = {} } = req.body;
+            console.log("generatePlayerSeeds called with:", req.body);
+            const { method = "historical", parameters = {} } = req.body;
             // Get all players with their career statistics
             const players = await this.getAllPlayersWithStats();
             console.log(`Found ${players.length} players for seeding`);
             if (players.length === 0) {
-                this.sendError(res, 404, 'No players found for seeding');
+                this.sendError(res, 404, "No players found for seeding");
                 return;
             }
             // Calculate seeds based on the selected method
             let playerSeeds = [];
             switch (method) {
-                case 'historical':
+                case "historical":
                     playerSeeds = this.calculateHistoricalSeeds(players, parameters);
                     break;
-                case 'recent_form':
+                case "recent_form":
                     playerSeeds = this.calculateRecentFormSeeds(players, parameters);
                     break;
-                case 'elo':
+                case "elo":
                     playerSeeds = this.calculateEloSeeds(players, parameters);
                     break;
-                case 'manual':
+                case "manual":
                     // Return players without automatic seeding
                     playerSeeds = players.map((player, index) => ({
                         playerId: player._id,
                         playerName: player.name,
                         seed: index + 1,
-                        statistics: this.getPlayerStatistics(player)
+                        statistics: this.getPlayerStatistics(player),
                     }));
                     break;
                 default:
@@ -412,7 +430,7 @@ class TournamentController extends base_1.BaseController {
             res.status(200).json(response);
         }
         catch (error) {
-            console.error('Error in generatePlayerSeeds:', error);
+            console.error("Error in generatePlayerSeeds:", error);
             next(error);
         }
     });
@@ -421,13 +439,13 @@ class TournamentController extends base_1.BaseController {
         try {
             const { playerIds, config } = req.body;
             if (!Array.isArray(playerIds) || playerIds.length === 0) {
-                this.sendError(res, 400, 'Player IDs array is required');
+                this.sendError(res, 400, "Player IDs array is required");
                 return;
             }
             // Get player data for team formation
             const players = await this.getPlayersById(playerIds);
             if (players.length !== playerIds.length) {
-                this.sendError(res, 400, 'Some players not found');
+                this.sendError(res, 400, "Some players not found");
                 return;
             }
             // Generate teams based on configuration
@@ -445,57 +463,65 @@ class TournamentController extends base_1.BaseController {
     // Setup complete tournament with all configurations
     setupTournament = this.asyncHandler(async (req, res, next) => {
         try {
-            console.log('setupTournament called with body:', JSON.stringify(req.body, null, 2));
-            let { basicInfo, seedingConfig, teamFormationConfig, bracketType, maxPlayers, selectedPlayers, generatedSeeds, generatedTeams } = req.body;
+            console.log("setupTournament called with body:", JSON.stringify(req.body, null, 2));
+            let { basicInfo, seedingConfig, teamFormationConfig, bracketType, maxPlayers, selectedPlayers, generatedSeeds, generatedTeams, } = req.body;
             // Ensure bracketType has a default if not provided
             if (!bracketType) {
-                bracketType = 'round_robin_playoff'; // Default to standard format
+                bracketType = "round_robin_playoff"; // Default to standard format
             }
             // Validate basicInfo exists and has required fields
             if (!basicInfo) {
-                this.sendError(res, 400, 'basicInfo is required');
+                this.sendError(res, 400, "basicInfo is required");
                 return;
             }
-            const requiredFields = ['date', 'bodNumber', 'format', 'location', 'advancementCriteria'];
-            const missingFields = requiredFields.filter(field => !basicInfo[field]);
+            const requiredFields = [
+                "date",
+                "bodNumber",
+                "format",
+                "location",
+                "advancementCriteria",
+            ];
+            const missingFields = requiredFields.filter((field) => !basicInfo[field]);
             if (missingFields.length > 0) {
-                this.sendError(res, 400, `Missing required fields in basicInfo: ${missingFields.join(', ')}`);
+                this.sendError(res, 400, `Missing required fields in basicInfo: ${missingFields.join(", ")}`);
                 return;
             }
-            console.log('Creating tournament with data:', {
+            console.log("Creating tournament with data:", {
                 ...basicInfo,
                 maxPlayers,
-                status: basicInfo.status || 'scheduled',
+                status: basicInfo.status || "scheduled",
                 players: selectedPlayers || [],
                 seedingConfig,
                 teamFormationConfig,
                 bracketType,
                 generatedSeeds: generatedSeeds || [],
-                generatedTeams: generatedTeams || []
+                generatedTeams: generatedTeams || [],
             });
             // Create the tournament record
             const tournament = await Tournament_1.Tournament.create({
                 ...basicInfo,
                 maxPlayers,
-                status: basicInfo.status || 'scheduled',
+                status: basicInfo.status || "scheduled",
                 players: selectedPlayers || [],
                 seedingConfig,
                 teamFormationConfig,
                 bracketType,
                 generatedSeeds: generatedSeeds || [],
-                generatedTeams: generatedTeams || []
+                generatedTeams: generatedTeams || [],
             });
             const response = {
                 success: true,
                 data: tournament,
-                message: 'Tournament setup completed successfully'
+                message: "Tournament setup completed successfully",
             };
             res.status(201).json(response);
         }
         catch (error) {
-            console.error('Error in setupTournament:', error);
-            if (error.name === 'ValidationError') {
-                const validationErrors = Object.values(error.errors).map((err) => err.message).join(', ');
+            console.error("Error in setupTournament:", error);
+            if (error.name === "ValidationError") {
+                const validationErrors = Object.values(error.errors)
+                    .map((err) => err.message)
+                    .join(", ");
                 this.sendError(res, 400, `Validation error: ${validationErrors}`);
             }
             else {
@@ -508,7 +534,7 @@ class TournamentController extends base_1.BaseController {
         try {
             const { tournaments } = req.body;
             if (!Array.isArray(tournaments) || tournaments.length === 0) {
-                this.sendError(res, 400, 'Tournaments array is required');
+                this.sendError(res, 400, "Tournaments array is required");
                 return;
             }
             const results = {
@@ -519,7 +545,7 @@ class TournamentController extends base_1.BaseController {
             for (const tournamentData of tournaments) {
                 try {
                     const existingTournament = await Tournament_1.Tournament.findOne({
-                        bodNumber: tournamentData.bodNumber
+                        bodNumber: tournamentData.bodNumber,
                     });
                     if (existingTournament) {
                         await Tournament_1.Tournament.findByIdAndUpdateSafe(existingTournament._id.toString(), tournamentData);
@@ -554,30 +580,30 @@ class TournamentController extends base_1.BaseController {
         // Validate date
         if (data.date) {
             const date = new Date(data.date);
-            const minDate = new Date('2009-01-01');
+            const minDate = new Date("2009-01-01");
             const maxDate = new Date();
             maxDate.setFullYear(maxDate.getFullYear() + 10);
             if (date < minDate || date > maxDate) {
-                errors.push('Date must be between 2009 and 10 years in the future');
+                errors.push("Date must be between 2009 and 10 years in the future");
             }
         }
         // Validate BOD number format
         if (data.bodNumber) {
             const bodStr = data.bodNumber.toString();
             if (bodStr.length !== 6) {
-                errors.push('BOD number must be 6 digits (YYYYMM)');
+                errors.push("BOD number must be 6 digits (YYYYMM)");
             }
             else {
                 const year = parseInt(bodStr.substring(0, 4));
                 const month = parseInt(bodStr.substring(4, 6));
                 if (year < 2009 || month < 1 || month > 12) {
-                    errors.push('BOD number must be valid (YYYYMM format)');
+                    errors.push("BOD number must be valid (YYYYMM format)");
                 }
             }
         }
         // Validate format
         if (data.format && !tournament_1.TournamentFormats.includes(data.format)) {
-            errors.push(`Format must be one of: ${tournament_1.TournamentFormats.join(', ')}`);
+            errors.push(`Format must be one of: ${tournament_1.TournamentFormats.join(", ")}`);
         }
         // Validate date and BOD number consistency
         if (data.date && data.bodNumber) {
@@ -585,8 +611,8 @@ class TournamentController extends base_1.BaseController {
             const bodStr = data.bodNumber.toString();
             const bodYear = parseInt(bodStr.substring(0, 4));
             const bodMonth = parseInt(bodStr.substring(4, 6));
-            if (date.getFullYear() !== bodYear || (date.getMonth() + 1) !== bodMonth) {
-                errors.push('Date must match BOD number year and month');
+            if (date.getFullYear() !== bodYear || date.getMonth() + 1 !== bodMonth) {
+                errors.push("Date must match BOD number year and month");
             }
         }
         return errors;
@@ -606,28 +632,28 @@ class TournamentController extends base_1.BaseController {
             winningPercentage: player.winningPercentage || 0,
             totalChampionships: player.totalChampionships || 0,
             bodsPlayed: player.bodsPlayed || 0,
-            recentForm: player.recentForm || 0
+            recentForm: player.recentForm || 0,
         };
     }
     // Calculate seeds based on historical performance
     calculateHistoricalSeeds(players, parameters) {
-        const { championshipWeight = 0.3, winPercentageWeight = 0.4, avgFinishWeight = 0.3 } = parameters;
+        const { championshipWeight = 0.3, winPercentageWeight = 0.4, avgFinishWeight = 0.3, } = parameters;
         // Calculate composite score for each player
-        const playersWithScores = players.map(player => {
+        const playersWithScores = players.map((player) => {
             const stats = this.getPlayerStatistics(player);
             // Normalize championship count (higher = better)
             const champScore = stats.totalChampionships;
             // Win percentage is already normalized (0-1)
             const winPctScore = stats.winningPercentage;
             // Average finish (lower = better, so we invert it)
-            const avgFinishScore = stats.bodsPlayed > 0 ? (1 / (stats.avgFinish || 1)) : 0;
-            const compositeScore = (champScore * championshipWeight) +
-                (winPctScore * winPercentageWeight) +
-                (avgFinishScore * avgFinishWeight);
+            const avgFinishScore = stats.bodsPlayed > 0 ? 1 / (stats.avgFinish || 1) : 0;
+            const compositeScore = champScore * championshipWeight +
+                winPctScore * winPercentageWeight +
+                avgFinishScore * avgFinishWeight;
             return {
                 ...player,
                 compositeScore,
-                statistics: stats
+                statistics: stats,
             };
         });
         // Sort by composite score (descending) and assign seeds
@@ -636,7 +662,7 @@ class TournamentController extends base_1.BaseController {
             playerId: player._id,
             playerName: player.name,
             seed: index + 1,
-            statistics: player.statistics
+            statistics: player.statistics,
         }));
     }
     // Calculate seeds based on recent form (last N tournaments)
@@ -652,17 +678,17 @@ class TournamentController extends base_1.BaseController {
     }
     // Form teams based on configuration
     async formTeams(players, config) {
-        const { method = 'manual', parameters = {} } = config;
+        const { method = "manual", parameters = {} } = config;
         switch (method) {
-            case 'preformed':
+            case "preformed":
                 return this.handlePreformedTeams(players, parameters);
-            case 'draft':
+            case "draft":
                 return this.handleDraftTeams(players, parameters);
-            case 'statistical_pairing':
+            case "statistical_pairing":
                 return this.handleStatisticalPairing(players, parameters);
-            case 'random':
+            case "random":
                 return this.handleRandomPairing(players);
-            case 'manual':
+            case "manual":
             default:
                 return this.handleManualTeams(players);
         }
@@ -684,10 +710,13 @@ class TournamentController extends base_1.BaseController {
             return this.handleRandomPairing(players);
         }
         // Sort players by skill level (composite score)
-        const sortedPlayers = players.map(player => ({
+        const sortedPlayers = players
+            .map((player) => ({
             ...player,
-            skillScore: (player.winningPercentage || 0) * 100 + (player.totalChampionships || 0) * 10
-        })).sort((a, b) => b.skillScore - a.skillScore);
+            skillScore: (player.winningPercentage || 0) * 100 +
+                (player.totalChampionships || 0) * 10,
+        }))
+            .sort((a, b) => b.skillScore - a.skillScore);
         // Pair high with low skill players for balance
         const teams = [];
         const teamCount = Math.floor(sortedPlayers.length / 2);
@@ -702,23 +731,29 @@ class TournamentController extends base_1.BaseController {
                         playerId: highSkillPlayer._id,
                         playerName: highSkillPlayer.name,
                         seed: i + 1,
-                        statistics: this.getPlayerStatistics(highSkillPlayer)
+                        statistics: this.getPlayerStatistics(highSkillPlayer),
                     },
                     {
                         playerId: lowSkillPlayer._id,
                         playerName: lowSkillPlayer.name,
                         seed: sortedPlayers.length - i,
-                        statistics: this.getPlayerStatistics(lowSkillPlayer)
-                    }
+                        statistics: this.getPlayerStatistics(lowSkillPlayer),
+                    },
                 ],
                 combinedSeed,
                 teamName: `${highSkillPlayer.name} & ${lowSkillPlayer.name}`,
                 combinedStatistics: {
-                    avgFinish: ((highSkillPlayer.avgFinish || 0) + (lowSkillPlayer.avgFinish || 0)) / 2,
-                    combinedWinPercentage: ((highSkillPlayer.winningPercentage || 0) + (lowSkillPlayer.winningPercentage || 0)) / 2,
-                    totalChampionships: (highSkillPlayer.totalChampionships || 0) + (lowSkillPlayer.totalChampionships || 0),
-                    combinedBodsPlayed: (highSkillPlayer.bodsPlayed || 0) + (lowSkillPlayer.bodsPlayed || 0)
-                }
+                    avgFinish: ((highSkillPlayer.avgFinish || 0) +
+                        (lowSkillPlayer.avgFinish || 0)) /
+                        2,
+                    combinedWinPercentage: ((highSkillPlayer.winningPercentage || 0) +
+                        (lowSkillPlayer.winningPercentage || 0)) /
+                        2,
+                    totalChampionships: (highSkillPlayer.totalChampionships || 0) +
+                        (lowSkillPlayer.totalChampionships || 0),
+                    combinedBodsPlayed: (highSkillPlayer.bodsPlayed || 0) +
+                        (lowSkillPlayer.bodsPlayed || 0),
+                },
             });
         }
         return teams;
@@ -738,23 +773,26 @@ class TournamentController extends base_1.BaseController {
                             playerId: player1._id,
                             playerName: player1.name,
                             seed: i + 1,
-                            statistics: this.getPlayerStatistics(player1)
+                            statistics: this.getPlayerStatistics(player1),
                         },
                         {
                             playerId: player2._id,
                             playerName: player2.name,
                             seed: i + 2,
-                            statistics: this.getPlayerStatistics(player2)
-                        }
+                            statistics: this.getPlayerStatistics(player2),
+                        },
                     ],
                     combinedSeed: Math.floor(i / 2) + 1,
                     teamName: `${player1.name} & ${player2.name}`,
                     combinedStatistics: {
                         avgFinish: ((player1.avgFinish || 0) + (player2.avgFinish || 0)) / 2,
-                        combinedWinPercentage: ((player1.winningPercentage || 0) + (player2.winningPercentage || 0)) / 2,
-                        totalChampionships: (player1.totalChampionships || 0) + (player2.totalChampionships || 0),
-                        combinedBodsPlayed: (player1.bodsPlayed || 0) + (player2.bodsPlayed || 0)
-                    }
+                        combinedWinPercentage: ((player1.winningPercentage || 0) +
+                            (player2.winningPercentage || 0)) /
+                            2,
+                        totalChampionships: (player1.totalChampionships || 0) +
+                            (player2.totalChampionships || 0),
+                        combinedBodsPlayed: (player1.bodsPlayed || 0) + (player2.bodsPlayed || 0),
+                    },
                 });
             }
         }
@@ -765,15 +803,17 @@ class TournamentController extends base_1.BaseController {
         // Return individual players as "teams" for manual assignment
         return players.map((player, index) => ({
             teamId: `player_${player._id}`,
-            players: [{
+            players: [
+                {
                     playerId: player._id,
                     playerName: player.name,
                     seed: index + 1,
-                    statistics: this.getPlayerStatistics(player)
-                }],
+                    statistics: this.getPlayerStatistics(player),
+                },
+            ],
             combinedSeed: index + 1,
             teamName: player.name,
-            combinedStatistics: this.getPlayerStatistics(player)
+            combinedStatistics: this.getPlayerStatistics(player),
         }));
     }
     // Override create method to add custom validation
@@ -781,7 +821,7 @@ class TournamentController extends base_1.BaseController {
         try {
             const validationErrors = this.validateTournamentData(req.body);
             if (validationErrors.length > 0) {
-                this.sendError(res, 400, validationErrors.join(', '));
+                this.sendError(res, 400, validationErrors.join(", "));
                 return;
             }
             // Call parent create method
@@ -796,7 +836,7 @@ class TournamentController extends base_1.BaseController {
         try {
             const validationErrors = this.validateTournamentData(req.body);
             if (validationErrors.length > 0) {
-                this.sendError(res, 400, validationErrors.join(', '));
+                this.sendError(res, 400, validationErrors.join(", "));
                 return;
             }
             // Call parent update method
@@ -813,26 +853,28 @@ class TournamentController extends base_1.BaseController {
             const { cascade } = req.query;
             const tournament = await Tournament_1.Tournament.findById(id);
             if (!tournament) {
-                this.sendError(res, 404, 'Tournament not found');
+                this.sendError(res, 404, "Tournament not found");
                 return;
             }
             // Check if tournament has results
-            const resultsCount = await TournamentResult_1.TournamentResult.countDocuments({ tournamentId: id });
-            if (resultsCount > 0 && cascade !== 'true') {
+            const resultsCount = await TournamentResult_1.TournamentResult.countDocuments({
+                tournamentId: id,
+            });
+            if (resultsCount > 0 && cascade !== "true") {
                 this.sendError(res, 400, `Tournament has ${resultsCount} results. Use ?cascade=true to delete tournament and all results.`);
                 return;
             }
             // Delete results first if cascade is true
-            if (cascade === 'true' && resultsCount > 0) {
+            if (cascade === "true" && resultsCount > 0) {
                 await TournamentResult_1.TournamentResult.deleteMany({ tournamentId: id });
             }
             // Delete the tournament
             await Tournament_1.Tournament.findByIdAndDelete(id);
             const response = {
                 success: true,
-                message: cascade === 'true' && resultsCount > 0
+                message: cascade === "true" && resultsCount > 0
                     ? `Tournament and ${resultsCount} results deleted successfully`
-                    : 'Tournament deleted successfully',
+                    : "Tournament deleted successfully",
             };
             res.status(200).json(response);
         }

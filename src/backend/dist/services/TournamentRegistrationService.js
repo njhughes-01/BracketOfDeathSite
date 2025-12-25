@@ -12,34 +12,37 @@ class TournamentRegistrationService {
         try {
             const tournament = await Tournament_1.Tournament.findById(tournamentId);
             if (!tournament) {
-                return { success: false, message: 'Tournament not found' };
+                return { success: false, message: "Tournament not found" };
             }
             // Check if registration is allowed
             if (!tournament.allowSelfRegistration) {
-                return { success: false, message: 'Self-registration not allowed for this tournament' };
+                return {
+                    success: false,
+                    message: "Self-registration not allowed for this tournament",
+                };
             }
             // Check registration status
             const registrationStatus = tournament.registrationStatus;
-            if (registrationStatus === 'pending') {
-                return { success: false, message: 'Registration has not opened yet' };
+            if (registrationStatus === "pending") {
+                return { success: false, message: "Registration has not opened yet" };
             }
-            if (registrationStatus === 'closed') {
-                return { success: false, message: 'Registration deadline has passed' };
+            if (registrationStatus === "closed") {
+                return { success: false, message: "Registration deadline has passed" };
             }
             // Check if player exists
             const player = await Player_1.Player.findById(playerId);
             if (!player) {
-                return { success: false, message: 'Player not found' };
+                return { success: false, message: "Player not found" };
             }
             // Check if already registered
             const playerObjectId = new mongoose_1.Types.ObjectId(playerId);
-            const isAlreadyRegistered = tournament.registeredPlayers?.some(p => p.toString() === playerId);
-            const isOnWaitlist = tournament.waitlistPlayers?.some(p => p.toString() === playerId);
+            const isAlreadyRegistered = tournament.registeredPlayers?.some((p) => p.toString() === playerId);
+            const isOnWaitlist = tournament.waitlistPlayers?.some((p) => p.toString() === playerId);
             if (isAlreadyRegistered) {
-                return { success: false, message: 'Player already registered' };
+                return { success: false, message: "Player already registered" };
             }
             if (isOnWaitlist) {
-                return { success: false, message: 'Player already on waitlist' };
+                return { success: false, message: "Player already on waitlist" };
             }
             // Check capacity
             const currentRegistered = tournament.registeredPlayers?.length || 0;
@@ -51,8 +54,8 @@ class TournamentRegistrationService {
                 await tournament.save();
                 return {
                     success: true,
-                    message: 'Successfully registered for tournament',
-                    position: 'registered',
+                    message: "Successfully registered for tournament",
+                    position: "registered",
                     tournament,
                 };
             }
@@ -63,15 +66,15 @@ class TournamentRegistrationService {
                 await tournament.save();
                 return {
                     success: true,
-                    message: 'Tournament is full, added to waitlist',
-                    position: 'waitlist',
+                    message: "Tournament is full, added to waitlist",
+                    position: "waitlist",
                     tournament,
                 };
             }
         }
         catch (error) {
-            console.error('Registration error:', error);
-            return { success: false, message: 'Registration failed' };
+            console.error("Registration error:", error);
+            return { success: false, message: "Registration failed" };
         }
     }
     /**
@@ -81,17 +84,20 @@ class TournamentRegistrationService {
         try {
             const tournament = await Tournament_1.Tournament.findById(tournamentId);
             if (!tournament) {
-                return { success: false, message: 'Tournament not found' };
+                return { success: false, message: "Tournament not found" };
             }
             // Check if tournament allows unregistration
-            if (tournament.status === 'active' || tournament.status === 'completed') {
-                return { success: false, message: 'Cannot unregister from active or completed tournament' };
+            if (tournament.status === "active" || tournament.status === "completed") {
+                return {
+                    success: false,
+                    message: "Cannot unregister from active or completed tournament",
+                };
             }
             let wasRegistered = false;
             let wasOnWaitlist = false;
             // Remove from registered players
             if (tournament.registeredPlayers) {
-                const registeredIndex = tournament.registeredPlayers.findIndex(p => p.toString() === playerId);
+                const registeredIndex = tournament.registeredPlayers.findIndex((p) => p.toString() === playerId);
                 if (registeredIndex !== -1) {
                     tournament.registeredPlayers.splice(registeredIndex, 1);
                     wasRegistered = true;
@@ -99,17 +105,22 @@ class TournamentRegistrationService {
             }
             // Remove from waitlist
             if (tournament.waitlistPlayers) {
-                const waitlistIndex = tournament.waitlistPlayers.findIndex(p => p.toString() === playerId);
+                const waitlistIndex = tournament.waitlistPlayers.findIndex((p) => p.toString() === playerId);
                 if (waitlistIndex !== -1) {
                     tournament.waitlistPlayers.splice(waitlistIndex, 1);
                     wasOnWaitlist = true;
                 }
             }
             if (!wasRegistered && !wasOnWaitlist) {
-                return { success: false, message: 'Player was not registered for this tournament' };
+                return {
+                    success: false,
+                    message: "Player was not registered for this tournament",
+                };
             }
             // If a registered player left and there's a waitlist, promote first waitlisted player
-            if (wasRegistered && tournament.waitlistPlayers && tournament.waitlistPlayers.length > 0) {
+            if (wasRegistered &&
+                tournament.waitlistPlayers &&
+                tournament.waitlistPlayers.length > 0) {
                 const firstWaitlisted = tournament.waitlistPlayers.shift();
                 tournament.registeredPlayers = tournament.registeredPlayers || [];
                 tournament.registeredPlayers.push(firstWaitlisted);
@@ -118,14 +129,14 @@ class TournamentRegistrationService {
             return {
                 success: true,
                 message: wasRegistered
-                    ? 'Successfully unregistered from tournament'
-                    : 'Removed from tournament waitlist',
+                    ? "Successfully unregistered from tournament"
+                    : "Removed from tournament waitlist",
                 tournament,
             };
         }
         catch (error) {
-            console.error('Unregistration error:', error);
-            return { success: false, message: 'Unregistration failed' };
+            console.error("Unregistration error:", error);
+            return { success: false, message: "Unregistration failed" };
         }
     }
     /**
@@ -133,16 +144,22 @@ class TournamentRegistrationService {
      */
     static async finalizeRegistration(tournamentId) {
         try {
-            const tournament = await Tournament_1.Tournament.findById(tournamentId).populate('registeredPlayers', 'name');
+            const tournament = await Tournament_1.Tournament.findById(tournamentId).populate("registeredPlayers", "name");
             if (!tournament) {
-                return { success: false, message: 'Tournament not found' };
+                return { success: false, message: "Tournament not found" };
             }
-            if (tournament.status !== 'open') {
-                return { success: false, message: 'Tournament must be open to finalize registration' };
+            if (tournament.status !== "open") {
+                return {
+                    success: false,
+                    message: "Tournament must be open to finalize registration",
+                };
             }
             const registeredCount = tournament.registeredPlayers?.length || 0;
             if (registeredCount < 2) {
-                return { success: false, message: 'Need at least 2 players to finalize tournament' };
+                return {
+                    success: false,
+                    message: "Need at least 2 players to finalize tournament",
+                };
             }
             // Move registered players to main players array
             tournament.players = [...(tournament.registeredPlayers || [])];
@@ -156,8 +173,8 @@ class TournamentRegistrationService {
             };
         }
         catch (error) {
-            console.error('Finalization error:', error);
-            return { success: false, message: 'Registration finalization failed' };
+            console.error("Finalization error:", error);
+            return { success: false, message: "Registration finalization failed" };
         }
     }
     /**
@@ -166,10 +183,10 @@ class TournamentRegistrationService {
     static async getRegistrationInfo(tournamentId) {
         try {
             const tournament = await Tournament_1.Tournament.findById(tournamentId)
-                .populate('registeredPlayers', 'name firstName lastName')
-                .populate('waitlistPlayers', 'name firstName lastName');
+                .populate("registeredPlayers", "name firstName lastName")
+                .populate("waitlistPlayers", "name firstName lastName");
             if (!tournament) {
-                return { success: false, message: 'Tournament not found' };
+                return { success: false, message: "Tournament not found" };
             }
             return {
                 success: true,
@@ -185,8 +202,8 @@ class TournamentRegistrationService {
             };
         }
         catch (error) {
-            console.error('Get registration info error:', error);
-            return { success: false, message: 'Failed to get registration info' };
+            console.error("Get registration info error:", error);
+            return { success: false, message: "Failed to get registration info" };
         }
     }
 }

@@ -9,13 +9,13 @@ exports.ValidationPatterns = {
 };
 // Common error messages
 exports.ErrorMessages = {
-    REQUIRED: 'This field is required',
-    INVALID_FORMAT: 'Invalid format',
-    INVALID_EMAIL: 'Invalid email format',
-    INVALID_NAME: 'Name must be 2-50 characters and contain only letters, spaces, hyphens, and apostrophes',
-    INVALID_PHONE: 'Invalid phone number format',
-    NOT_FOUND: 'Resource not found',
-    DUPLICATE_ENTRY: 'Duplicate entry',
-    VALIDATION_ERROR: 'Validation error',
+    REQUIRED: "This field is required",
+    INVALID_FORMAT: "Invalid format",
+    INVALID_EMAIL: "Invalid email format",
+    INVALID_NAME: "Name must be 2-50 characters and contain only letters, spaces, hyphens, and apostrophes",
+    INVALID_PHONE: "Invalid phone number format",
+    NOT_FOUND: "Resource not found",
+    DUPLICATE_ENTRY: "Duplicate entry",
+    VALIDATION_ERROR: "Validation error",
 };
 //# sourceMappingURL=common.js.map

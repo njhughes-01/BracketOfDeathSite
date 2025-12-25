@@ -1,5 +1,5 @@
-import { BaseDocument } from './common';
-import { Types } from 'mongoose';
+import { BaseDocument } from "./common";
+import { Types } from "mongoose";
 export interface ITournament extends BaseDocument {
     date: Date;
     bodNumber: number;
@@ -29,12 +29,12 @@ export interface ITournament extends BaseDocument {
     currentPlayerCount?: number;
     isFull?: boolean;
     canStart?: boolean;
-    registrationStatus?: 'pending' | 'open' | 'closed' | 'full';
+    registrationStatus?: "pending" | "open" | "closed" | "full";
     registeredPlayerCount?: number;
     waitlistCount?: number;
     isRegistrationOpen?: boolean;
     seedingConfig?: {
-        method: 'historical' | 'recent_form' | 'elo' | 'manual';
+        method: "historical" | "recent_form" | "elo" | "manual";
         parameters?: {
             recentTournamentCount?: number;
             championshipWeight?: number;
@@ -43,14 +43,14 @@ export interface ITournament extends BaseDocument {
         };
     };
     teamFormationConfig?: {
-        method: 'preformed' | 'draft' | 'statistical_pairing' | 'random' | 'manual';
+        method: "preformed" | "draft" | "statistical_pairing" | "random" | "manual";
         parameters?: {
             skillBalancing?: boolean;
             avoidRecentPartners?: boolean;
             maxTimesPartnered?: number;
         };
     };
-    bracketType?: 'single_elimination' | 'double_elimination' | 'round_robin_playoff';
+    bracketType?: "single_elimination" | "double_elimination" | "round_robin_playoff";
     generatedSeeds?: Array<{
         playerId: Types.ObjectId;
         playerName: string;
@@ -141,12 +141,12 @@ export interface ITournamentFilter {
         $lte?: Date;
     };
     allowSelfRegistration?: boolean;
-    'champion.playerId'?: Types.ObjectId;
+    "champion.playerId"?: Types.ObjectId;
 }
 export declare const TournamentFormats: readonly ["M", "W", "Mixed", "Men's Singles", "Men's Doubles", "Women's Doubles", "Mixed Doubles"];
-export type TournamentFormat = typeof TournamentFormats[number];
+export type TournamentFormat = (typeof TournamentFormats)[number];
 export declare const TournamentStatuses: readonly ["scheduled", "open", "active", "completed", "cancelled"];
-export type TournamentStatus = typeof TournamentStatuses[number];
+export type TournamentStatus = (typeof TournamentStatuses)[number];
 export declare const RegistrationTypes: readonly ["open", "preselected"];
-export type RegistrationType = typeof RegistrationTypes[number];
+export type RegistrationType = (typeof RegistrationTypes)[number];
 //# sourceMappingURL=tournament.d.ts.map

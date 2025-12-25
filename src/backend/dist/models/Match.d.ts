@@ -1,5 +1,5 @@
-import { IMatch } from '../types/match';
-import { BaseModelStatics } from './base';
+import { IMatch } from "../types/match";
+import { BaseModelStatics } from "./base";
 export interface IMatchModel extends BaseModelStatics<IMatch> {
 }
 export declare const Match: IMatchModel;

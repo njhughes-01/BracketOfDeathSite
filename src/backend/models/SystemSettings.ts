@@ -1,10 +1,21 @@
 import mongoose, { Schema, Document } from "mongoose";
+import { EmailProviderType, SUPPORTED_EMAIL_PROVIDERS } from "../services/email/IEmailProvider";
 
 export interface ISystemSettings extends Document {
   // Mailjet settings
   mailjetApiKey?: string;
   mailjetApiSecret?: string;
   mailjetSenderEmail?: string;
+
+  // Mailgun settings
+  mailgunApiKey?: string;
+  mailgunDomain?: string;
+
+  // Shared settings
+  senderEmail?: string;
+
+  // Provider config
+  activeProvider: EmailProviderType;
   // Branding settings
   siteLogo?: string; // Base64 or URL
   siteLogoUrl?: string; // External URL fallback
@@ -23,6 +34,20 @@ const SystemSettingsSchema: Schema = new Schema(
     mailjetApiKey: { type: String, select: false }, // Hide by default
     mailjetApiSecret: { type: String, select: false }, // Hide by default
     mailjetSenderEmail: { type: String },
+
+    // Mailgun settings
+    mailgunApiKey: { type: String, select: false },
+    mailgunDomain: { type: String },
+
+    // Shared settings
+    senderEmail: { type: String },
+
+    // Provider config
+    activeProvider: {
+      type: String,
+      enum: SUPPORTED_EMAIL_PROVIDERS,
+      default: "mailjet"
+    },
     // Branding settings
     siteLogo: { type: String }, // Base64 encoded image
     siteLogoUrl: { type: String }, // External URL fallback

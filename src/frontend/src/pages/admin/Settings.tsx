@@ -11,11 +11,32 @@ const SettingsPage: React.FC = () => {
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
 
+  // Form state - Email Provider
+  const [activeProvider, setActiveProvider] = useState<"mailjet" | "mailgun">("mailjet");
+
   // Form state - Mailjet
   const [apiKey, setApiKey] = useState("");
   const [apiSecret, setApiSecret] = useState("");
+  // Generic sender email (mapped from settings.senderEmail or mailjetSenderEmail)
   const [senderEmail, setSenderEmail] = useState("");
+
+  // Form state - Mailgun
+  const [mailgunApiKey, setMailgunApiKey] = useState("");
+  const [mailgunDomain, setMailgunDomain] = useState("");
+
   const [testEmailAddress, setTestEmailAddress] = useState("");
+
+  // New state for test-before-save workflow
+  const [testEmailSuccess, setTestEmailSuccess] = useState(false);
+  const [hasChanges, setHasChanges] = useState(false);
+  const [initialProvider, setInitialProvider] = useState<"mailjet" | "mailgun">("mailjet");
+  const [initialValues, setInitialValues] = useState({
+    apiKey: "",
+    apiSecret: "",
+    senderEmail: "",
+    mailgunApiKey: "",
+    mailgunDomain: "",
+  });
 
   // Form state - Branding
   const [brandName, setBrandName] = useState("Bracket of Death");
@@ -31,18 +52,74 @@ const SettingsPage: React.FC = () => {
     loadSettings();
   }, []);
 
+  // Detect changes to provider - reset test status
+  useEffect(() => {
+    if (activeProvider !== initialProvider) {
+      setTestEmailSuccess(false);
+      setHasChanges(true);
+    }
+  }, [activeProvider, initialProvider]);
+
+  // Detect changes to credentials - reset test status
+  useEffect(() => {
+    const emailCredentialsChanged =
+      (activeProvider === "mailjet" && (
+        apiKey !== initialValues.apiKey ||
+        apiSecret !== initialValues.apiSecret ||
+        senderEmail !== initialValues.senderEmail
+      )) ||
+      (activeProvider === "mailgun" && (
+        mailgunApiKey !== initialValues.mailgunApiKey ||
+        mailgunDomain !== initialValues.mailgunDomain ||
+        senderEmail !== initialValues.senderEmail
+      ));
+
+    if (emailCredentialsChanged) {
+      setTestEmailSuccess(false);
+      setHasChanges(true);
+    }
+  }, [activeProvider, apiKey, apiSecret, senderEmail, mailgunApiKey, mailgunDomain, initialValues]);
+
   const loadSettings = async () => {
     try {
       setLoading(true);
       const data = await apiClient.getSystemSettings();
       setSettings(data);
-      setSenderEmail(data.mailjetSenderEmail);
+
+      const provider = data.activeProvider || "mailjet";
+      setActiveProvider(provider);
+      setInitialProvider(provider);
+
+      // Mailjet defaults
+      // Prefer generic senderEmail, fallback to mailjetSenderEmail
+      const email = data.senderEmail || data.mailjetSenderEmail || "";
+      setSenderEmail(email);
+
+      // Mailgun defaults
+      const domain = data.mailgunDomain || "";
+      setMailgunDomain(domain);
+
+      // Store initial values for change detection
+      // Use empty strings for keys (they're secret)
+      setInitialValues({
+        apiKey: "",
+        apiSecret: "",
+        senderEmail: email,
+        mailgunApiKey: "",
+        mailgunDomain: domain,
+      });
+
       // Load branding settings
       setBrandName(data.brandName || "Bracket of Death");
       setBrandPrimaryColor(data.brandPrimaryColor || "#4CAF50");
       setBrandSecondaryColor(data.brandSecondaryColor || "#008CBA");
       setSiteLogo(data.siteLogo || "");
       setFavicon(data.favicon || "");
+
+      // Reset workflow state
+      setTestEmailSuccess(false);
+      setHasChanges(false);
+
       // Don't set keys, they are hidden
     } catch (err: any) {
       console.error(err);
@@ -54,30 +131,89 @@ const SettingsPage: React.FC = () => {
     }
   };
 
+
+
+  const verifyCredentials = async (): Promise<boolean> => {
+    try {
+      setSaving(true); // Re-use saving spinner or add new one
+      setError("");
+
+      const config: any = { provider: activeProvider };
+      if (activeProvider === 'mailjet') {
+        config.mailjetApiKey = apiKey;
+        config.mailjetApiSecret = apiSecret;
+      } else {
+        config.mailgunApiKey = mailgunApiKey;
+        config.mailgunDomain = mailgunDomain;
+      }
+
+      await apiClient.verifyEmailCredentials(config);
+      return true;
+    } catch (err: any) {
+      setError(err.response?.data?.error || "Credential verification failed");
+      return false;
+    } finally {
+      setSaving(false);
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    // Check if email credentials have changed
+    const emailCredentialsChanged =
+      activeProvider !== initialProvider ||
+      (activeProvider === "mailjet" && (
+        apiKey !== initialValues.apiKey ||
+        apiSecret !== initialValues.apiSecret ||
+        senderEmail !== initialValues.senderEmail
+      )) ||
+      (activeProvider === "mailgun" && (
+        mailgunApiKey !== initialValues.mailgunApiKey ||
+        mailgunDomain !== initialValues.mailgunDomain ||
+        senderEmail !== initialValues.senderEmail
+      ));
+
+    // Enforce test-before-save workflow only if email credentials changed
+    if (emailCredentialsChanged && !testEmailSuccess) {
+      setError("⚠️ Please send a test email before saving your email settings.");
+      return;
+    }
+
     try {
       setSaving(true);
       setError("");
       setSuccess("");
 
       await apiClient.updateSystemSettings({
+        activeProvider,
+        senderEmail,
         mailjetApiKey: apiKey || undefined,
         mailjetApiSecret: apiSecret || undefined,
-        mailjetSenderEmail: senderEmail,
+        mailjetSenderEmail: senderEmail, // Sync legacy field for now
+        mailgunApiKey: mailgunApiKey || undefined,
+        mailgunDomain: mailgunDomain,
         siteLogo,
+        siteLogoUrl: siteLogo,
         favicon,
         brandName,
         brandPrimaryColor,
         brandSecondaryColor,
       });
 
-      setSuccess("Settings saved successfully!");
-      // Reload to update "hasApiKey" indicators
+      // Reload to update "hasApiKey" indicators FIRST
       await loadSettings();
-      // Clear inputs for security
+
+      // Clear inputs for security (after reload completes)
       setApiKey("");
       setApiSecret("");
+      setMailgunApiKey("");
+
+      // Reset workflow state after successful save
+      setHasChanges(false);
+      setTestEmailSuccess(false);
+
+      setSuccess("Settings verified and saved successfully!");
     } catch (err: any) {
       console.error(err);
       setError(err.response?.data?.error || "Failed to save settings");
@@ -96,8 +232,10 @@ const SettingsPage: React.FC = () => {
       setError("");
       setSuccess("");
       await apiClient.testEmail(testEmailAddress);
-      setSuccess("Test email sent successfully! Check your inbox.");
+      setTestEmailSuccess(true);
+      setSuccess("✅ Test email sent successfully! You can now save your settings.");
     } catch (err: any) {
+      setTestEmailSuccess(false);
       setError(err.response?.data?.error || "Failed to send test email");
     } finally {
       setTesting(false);
@@ -142,19 +280,51 @@ const SettingsPage: React.FC = () => {
       )}
 
       <div className="bg-[#1c2230] border border-white/5 rounded-2xl p-6 shadow-2xl">
+        {settings && (
+          <div className="mb-6 flex space-x-4">
+            <label className={`flex items-center space-x-2 cursor-pointer p-3 rounded-lg border ${activeProvider === 'mailjet' ? 'border-primary bg-primary/10' : 'border-white/10 hover:bg-white/5'}`}>
+              <input
+                type="radio"
+                name="provider"
+                value="mailjet"
+                checked={activeProvider === "mailjet"}
+                onChange={() => setActiveProvider("mailjet")}
+                className="hidden"
+              />
+              <span className="material-symbols-outlined">mail</span>
+              <span className="font-bold">Mailjet</span>
+              {settings.mailjetConfigured && <span className="material-symbols-outlined text-green-500 text-sm">check_circle</span>}
+            </label>
+
+            <label className={`flex items-center space-x-2 cursor-pointer p-3 rounded-lg border ${activeProvider === 'mailgun' ? 'border-primary bg-primary/10' : 'border-white/10 hover:bg-white/5'}`}>
+              <input
+                type="radio"
+                name="provider"
+                value="mailgun"
+                checked={activeProvider === "mailgun"}
+                onChange={() => setActiveProvider("mailgun")}
+                className="hidden"
+              />
+              <span className="material-symbols-outlined">send</span>
+              <span className="font-bold">Mailgun</span>
+              {settings.mailgunConfigured && <span className="material-symbols-outlined text-green-500 text-sm">check_circle</span>}
+            </label>
+          </div>
+        )}
+
         <div className="flex items-center gap-3 mb-6 border-b border-white/5 pb-4">
-          <div className="w-10 h-10 rounded-full bg-orange-500/20 flex items-center justify-center text-orange-500">
-            <span className="material-symbols-outlined">mail</span>
+          <div className={`w-10 h-10 rounded-full flex items-center justify-center ${activeProvider === 'mailjet' ? 'bg-orange-500/20 text-orange-500' : 'bg-red-500/20 text-red-500'}`}>
+            <span className="material-symbols-outlined">{activeProvider === 'mailjet' ? 'mail' : 'send'}</span>
           </div>
           <div>
             <h2 className="text-xl font-bold text-white">
-              Mailjet Configuration
+              {activeProvider === 'mailjet' ? 'Mailjet Configuration' : 'Mailgun Configuration'}
             </h2>
             <p className="text-sm text-slate-400">
-              Configure email delivery settings for invitations and alerts
+              Configure {activeProvider === 'mailjet' ? 'Mailjet' : 'Mailgun'} settings for invitations and alerts
             </p>
           </div>
-          {settings?.mailjetConfigured ? (
+          {((activeProvider === 'mailjet' && settings?.mailjetConfigured) || (activeProvider === 'mailgun' && settings?.mailgunConfigured)) ? (
             <span className="ml-auto px-3 py-1 bg-green-500/20 text-green-500 text-xs font-bold rounded-full border border-green-500/20">
               Active
             </span>
@@ -166,66 +336,113 @@ const SettingsPage: React.FC = () => {
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="space-y-2">
-              <label className="text-sm font-bold text-slate-400 uppercase tracking-wider">
-                API Key
-              </label>
-              <input
-                type="password"
-                value={apiKey}
-                onChange={(e) => setApiKey(e.target.value)}
-                placeholder={
-                  settings?.hasApiKey
-                    ? "•••••••••••••••• (Unchanged)"
-                    : "Enter Mailjet API Key"
-                }
-                className="w-full h-12 bg-black/20 border border-white/10 rounded-xl px-4 text-white focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-all placeholder:text-slate-600 font-mono"
-              />
-            </div>
-
-            <div className="space-y-2">
-              <label className="text-sm font-bold text-slate-400 uppercase tracking-wider">
-                API Secret
-              </label>
-              <input
-                type="password"
-                value={apiSecret}
-                onChange={(e) => setApiSecret(e.target.value)}
-                placeholder={
-                  settings?.hasApiSecret
-                    ? "•••••••••••••••• (Unchanged)"
-                    : "Enter Mailjet API Secret"
-                }
-                className="w-full h-12 bg-black/20 border border-white/10 rounded-xl px-4 text-white focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-all placeholder:text-slate-600 font-mono"
-              />
-            </div>
-
-            <div className="space-y-2 md:col-span-2">
-              <label className="text-sm font-bold text-slate-400 uppercase tracking-wider">
-                Sender Email Address
-              </label>
-              <input
-                type="email"
-                value={senderEmail}
-                onChange={(e) => setSenderEmail(e.target.value)}
-                placeholder="noreply@yourdomain.com"
-                className="w-full h-12 bg-black/20 border border-white/10 rounded-xl px-4 text-white focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-all placeholder:text-slate-600"
-              />
-              <p className="text-xs text-slate-500">
-                This email must be verified in your Mailjet account.
-              </p>
-            </div>
+          {/* General Settings */}
+          <div className="space-y-2">
+            <label className="text-sm font-bold text-slate-400 uppercase tracking-wider">
+              Default Sender Email
+            </label>
+            <input
+              type="email"
+              value={senderEmail}
+              onChange={(e) => setSenderEmail(e.target.value)}
+              placeholder="noreply@yourdomain.com"
+              className="w-full h-12 bg-black/20 border border-white/10 rounded-xl px-4 text-white focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-all placeholder:text-slate-600"
+            />
+            <p className="text-xs text-slate-500">
+              The email address that system emails will come from.
+              {activeProvider === "mailjet" && " Must be verified in Mailjet."}
+              {activeProvider === "mailgun" && " Should match your verified Mailgun domain."}
+            </p>
           </div>
+
+          {activeProvider === "mailjet" ? (
+            // Mailjet Fields
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="space-y-2">
+                <label className="text-sm font-bold text-slate-400 uppercase tracking-wider">
+                  API Key
+                </label>
+                <input
+                  type="password"
+                  value={apiKey}
+                  onChange={(e) => setApiKey(e.target.value)}
+                  placeholder={
+                    settings?.hasApiKey
+                      ? "•••••••••••••••• (Unchanged)"
+                      : "Enter Mailjet API Key"
+                  }
+                  className="w-full h-12 bg-black/20 border border-white/10 rounded-xl px-4 text-white focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-all placeholder:text-slate-600 font-mono"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-sm font-bold text-slate-400 uppercase tracking-wider">
+                  API Secret
+                </label>
+                <input
+                  type="password"
+                  value={apiSecret}
+                  onChange={(e) => setApiSecret(e.target.value)}
+                  placeholder={
+                    settings?.hasApiSecret
+                      ? "•••••••••••••••• (Unchanged)"
+                      : "Enter Mailjet API Secret"
+                  }
+                  className="w-full h-12 bg-black/20 border border-white/10 rounded-xl px-4 text-white focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-all placeholder:text-slate-600 font-mono"
+                />
+              </div>
+
+            </div>
+
+          ) : (
+            // Mailgun Fields
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="space-y-2 md:col-span-2">
+                <label className="text-sm font-bold text-slate-400 uppercase tracking-wider">
+                  Mailgun Domain
+                </label>
+                <input
+                  type="text"
+                  value={mailgunDomain}
+                  onChange={(e) => setMailgunDomain(e.target.value)}
+                  placeholder="mg.yourdomain.com"
+                  className="w-full h-12 bg-black/20 border border-white/10 rounded-xl px-4 text-white focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-all placeholder:text-slate-600"
+                />
+              </div>
+
+              <div className="space-y-2 md:col-span-2">
+                <label className="text-sm font-bold text-slate-400 uppercase tracking-wider">
+                  Mailgun API Key
+                </label>
+                <input
+                  type="password"
+                  value={mailgunApiKey}
+                  onChange={(e) => setMailgunApiKey(e.target.value)}
+                  placeholder={
+                    settings?.hasMailgunApiKey
+                      ? "•••••••••••••••• (Unchanged)"
+                      : "Enter Mailgun Private API Key"
+                  }
+                  className="w-full h-12 bg-black/20 border border-white/10 rounded-xl px-4 text-white focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-all placeholder:text-slate-600 font-mono"
+                />
+              </div>
+            </div>
+          )}
 
           <div className="pt-4 border-t border-white/5 flex justify-end">
             <button
               type="submit"
-              disabled={saving}
+              disabled={saving || (hasChanges && !testEmailSuccess)}
               className="h-12 px-8 bg-primary hover:bg-primary-dark text-black font-bold rounded-xl shadow-lg shadow-primary/20 flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+              title={(hasChanges && !testEmailSuccess) ? "Please send a test email first" : "Save settings"}
             >
               {saving ? (
                 <LoadingSpinner size="sm" color="black" />
+              ) : (hasChanges && !testEmailSuccess) ? (
+                <>
+                  <span className="material-symbols-outlined">lock</span>
+                  Test Email First
+                </>
               ) : (
                 <>
                   <span className="material-symbols-outlined">save</span>
@@ -236,42 +453,58 @@ const SettingsPage: React.FC = () => {
           </div>
         </form>
 
-        {/* Test Email Section */}
-        {settings?.mailjetConfigured && (
-          <div className="mt-6 pt-6 border-t border-white/5">
-            <h3 className="text-lg font-bold text-white mb-4">
+        {/* Test Email Section - Always visible when a provider is selected */}
+        <div className="mt-6 pt-6 border-t border-white/5">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-lg font-bold text-white">
               Test Email Configuration
             </h3>
-            <div className="flex gap-4">
-              <input
-                type="email"
-                value={testEmailAddress}
-                onChange={(e) => setTestEmailAddress(e.target.value)}
-                placeholder="Enter email address to test"
-                className="flex-1 h-12 bg-black/20 border border-white/10 rounded-xl px-4 text-white focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-all placeholder:text-slate-600"
-              />
-              <button
-                type="button"
-                onClick={handleTestEmail}
-                disabled={testing || !testEmailAddress}
-                className="h-12 px-6 bg-blue-500 hover:bg-blue-600 text-white font-bold rounded-xl flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
-              >
-                {testing ? (
-                  <LoadingSpinner size="sm" color="white" />
-                ) : (
-                  <>
-                    <span className="material-symbols-outlined">send</span>
-                    Send Test
-                  </>
-                )}
-              </button>
-            </div>
+            {!testEmailSuccess && hasChanges && (
+              <span className="text-xs text-yellow-500 flex items-center gap-1 px-3 py-1 bg-yellow-500/10 rounded-full border border-yellow-500/20">
+                <span className="material-symbols-outlined text-sm">warning</span>
+                Test required before saving
+              </span>
+            )}
+            {testEmailSuccess && (
+              <span className="text-xs text-green-500 flex items-center gap-1 px-3 py-1 bg-green-500/10 rounded-full border border-green-500/20">
+                <span className="material-symbols-outlined text-sm">check_circle</span>
+                Test passed
+              </span>
+            )}
           </div>
-        )}
-      </div>
+          <p className="text-sm text-slate-400 mb-4">
+            Send a test email to verify your configuration is working correctly.
+            {!testEmailSuccess && hasChanges && " You must test before saving."}
+          </p>
+          <div className="flex gap-4">
+            <input
+              type="email"
+              value={testEmailAddress}
+              onChange={(e) => setTestEmailAddress(e.target.value)}
+              placeholder="Enter email address to test"
+              className="flex-1 h-12 bg-black/20 border border-white/10 rounded-xl px-4 text-white focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-all placeholder:text-slate-600"
+            />
+            <button
+              type="button"
+              onClick={handleTestEmail}
+              disabled={testing || !testEmailAddress}
+              className={`h-12 px-6 ${!testEmailSuccess && hasChanges ? 'bg-primary hover:bg-primary-dark text-black' : 'bg-blue-500 hover:bg-blue-600 text-white'} font-bold rounded-xl flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed transition-all`}
+            >
+              {testing ? (
+                <LoadingSpinner size="sm" color={!testEmailSuccess && hasChanges ? "black" : "white"} />
+              ) : (
+                <>
+                  <span className="material-symbols-outlined">send</span>
+                  Send Test
+                </>
+              )}
+            </button>
+          </div>
+        </div>
+      </div >
 
       {/* Branding Configuration */}
-      <div className="bg-[#1c2230] border border-white/5 rounded-2xl p-6 shadow-2xl">
+      < div className="bg-[#1c2230] border border-white/5 rounded-2xl p-6 shadow-2xl" >
         <div className="flex items-center gap-3 mb-6 border-b border-white/5 pb-4">
           <div className="w-10 h-10 rounded-full bg-pink-500/20 flex items-center justify-center text-pink-500">
             <span className="material-symbols-outlined">palette</span>
@@ -459,10 +692,10 @@ const SettingsPage: React.FC = () => {
             )}
           </button>
         </div>
-      </div>
+      </div >
 
       {/* Template Preview Variables */}
-      <div className="bg-[#1c2230] border border-white/5 rounded-2xl p-6 shadow-2xl">
+      < div className="bg-[#1c2230] border border-white/5 rounded-2xl p-6 shadow-2xl" >
         <div className="flex items-center gap-3 mb-6 border-b border-white/5 pb-4">
           <div className="w-10 h-10 rounded-full bg-cyan-500/20 flex items-center justify-center text-cyan-500">
             <span className="material-symbols-outlined">tune</span>
@@ -489,10 +722,10 @@ const SettingsPage: React.FC = () => {
             />
           </div>
         </div>
-      </div>
+      </div >
 
       {/* Email Templates Preview */}
-      <div className="bg-[#1c2230] border border-white/5 rounded-2xl p-6 shadow-2xl">
+      < div className="bg-[#1c2230] border border-white/5 rounded-2xl p-6 shadow-2xl" >
         <div className="flex items-center gap-3 mb-6 border-b border-white/5 pb-4">
           <div className="w-10 h-10 rounded-full bg-purple-500/20 flex items-center justify-center text-purple-500">
             <span className="material-symbols-outlined">article</span>
@@ -764,8 +997,8 @@ const SettingsPage: React.FC = () => {
             </div>
           </div>
         </div>
-      </div>
-    </div>
+      </div >
+    </div >
   );
 };
 

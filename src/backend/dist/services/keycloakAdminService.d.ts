@@ -1,4 +1,4 @@
-interface KeycloakUser {
+export interface KeycloakUser {
     id?: string;
     username: string;
     email: string;
@@ -57,6 +57,7 @@ declare class KeycloakAdminService {
     }>>;
     clearUserRequiredActions(userId: string): Promise<void>;
     executeActionsEmail(userId: string, actions: string[]): Promise<void>;
+    getUsersInRole(roleName: string): Promise<KeycloakUser[]>;
 }
 export declare const keycloakAdminService: KeycloakAdminService;
 export default keycloakAdminService;

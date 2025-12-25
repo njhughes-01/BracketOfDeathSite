@@ -26,20 +26,20 @@ class KeycloakAdminService {
             const response = await axios_1.default.post(`${process.env.KEYCLOAK_URL}/realms/master/protocol/openid-connect/token`, new URLSearchParams({
                 username: process.env.KEYCLOAK_ADMIN_USER,
                 password: process.env.KEYCLOAK_ADMIN_PASSWORD,
-                grant_type: 'password',
-                client_id: 'admin-cli',
+                grant_type: "password",
+                client_id: "admin-cli",
             }), {
                 headers: {
-                    'Content-Type': 'application/x-www-form-urlencoded',
+                    "Content-Type": "application/x-www-form-urlencoded",
                 },
             });
             this.adminToken = response.data.access_token;
-            this.tokenExpiry = now + (response.data.expires_in * 1000);
+            this.tokenExpiry = now + response.data.expires_in * 1000;
             return this.adminToken;
         }
         catch (error) {
-            console.error('Failed to get Keycloak admin token:', error);
-            throw new Error('Failed to authenticate with Keycloak admin API');
+            console.error("Failed to get Keycloak admin token:", error);
+            throw new Error("Failed to authenticate with Keycloak admin API");
         }
     }
     async makeAuthenticatedRequest(method, url, data) {
@@ -49,7 +49,7 @@ class KeycloakAdminService {
             url,
             headers: {
                 Authorization: `Bearer ${token}`,
-                'Content-Type': 'application/json',
+                "Content-Type": "application/json",
             },
             ...(data && { data }),
         };
@@ -69,7 +69,7 @@ class KeycloakAdminService {
             url,
             headers: {
                 Authorization: `Bearer ${token}`,
-                'Content-Type': 'application/json',
+                "Content-Type": "application/json",
             },
             ...(data && { data }),
         };
@@ -97,22 +97,22 @@ class KeycloakAdminService {
         if (userData.password) {
             keycloakUser.credentials = [
                 {
-                    type: 'password',
+                    type: "password",
                     value: userData.password,
                     temporary: userData.temporary ?? false,
                 },
             ];
         }
         // Create the user and get the Location header with the user ID
-        const response = await this.makeAuthenticatedRequestWithResponse('POST', '/users', keycloakUser);
+        const response = await this.makeAuthenticatedRequestWithResponse("POST", "/users", keycloakUser);
         // Extract user ID from Location header (e.g., .../users/12345-abcd-6789)
         const locationHeader = response.headers?.location;
         if (!locationHeader) {
-            throw new Error('User creation failed: No location header returned');
+            throw new Error("User creation failed: No location header returned");
         }
-        const userId = locationHeader.split('/').pop();
+        const userId = locationHeader.split("/").pop();
         if (!userId) {
-            throw new Error('User creation failed: Could not extract user ID from location header');
+            throw new Error("User creation failed: Could not extract user ID from location header");
         }
         // Get the created user by ID
         const createdUser = await this.getUser(userId);
@@ -132,16 +132,16 @@ class KeycloakAdminService {
     async getUsers(search, max) {
         const params = new URLSearchParams();
         if (search)
-            params.append('search', search);
+            params.append("search", search);
         if (max)
-            params.append('max', max.toString());
-        return this.makeAuthenticatedRequest('GET', `/users?${params.toString()}`);
+            params.append("max", max.toString());
+        return this.makeAuthenticatedRequest("GET", `/users?${params.toString()}`);
     }
     async getUser(userId) {
-        const user = await this.makeAuthenticatedRequest('GET', `/users/${userId}`);
+        const user = await this.makeAuthenticatedRequest("GET", `/users/${userId}`);
         // Get user's roles
-        const realmRoles = await this.makeAuthenticatedRequest('GET', `/users/${userId}/role-mappings/realm`);
-        user.realmRoles = realmRoles.map(role => role.name);
+        const realmRoles = await this.makeAuthenticatedRequest("GET", `/users/${userId}/role-mappings/realm`);
+        user.realmRoles = realmRoles.map((role) => role.name);
         return user;
     }
     async updateUser(userId, userData) {
@@ -156,7 +156,7 @@ class KeycloakAdminService {
             updateData.enabled = userData.enabled;
         if (userData.attributes !== undefined)
             updateData.attributes = userData.attributes;
-        await this.makeAuthenticatedRequest('PUT', `/users/${userId}`, updateData);
+        await this.makeAuthenticatedRequest("PUT", `/users/${userId}`, updateData);
         // Update roles if provided
         if (userData.roles) {
             await this.setUserRoles(userId, userData.roles);
@@ -164,52 +164,52 @@ class KeycloakAdminService {
         return this.getUser(userId);
     }
     async deleteUser(userId) {
-        await this.makeAuthenticatedRequest('DELETE', `/users/${userId}`);
+        await this.makeAuthenticatedRequest("DELETE", `/users/${userId}`);
     }
     async resetUserPassword(userId, newPassword, temporary = false) {
         const credentialData = {
-            type: 'password',
+            type: "password",
             value: newPassword,
             temporary,
         };
-        await this.makeAuthenticatedRequest('PUT', `/users/${userId}/reset-password`, credentialData);
+        await this.makeAuthenticatedRequest("PUT", `/users/${userId}/reset-password`, credentialData);
         // Clear any required actions that might prevent login
         if (!temporary) {
             try {
-                await this.makeAuthenticatedRequest('PUT', `/users/${userId}`, {
-                    requiredActions: []
+                await this.makeAuthenticatedRequest("PUT", `/users/${userId}`, {
+                    requiredActions: [],
                 });
             }
             catch (error) {
-                console.warn('Could not clear required actions for user:', error);
+                console.warn("Could not clear required actions for user:", error);
             }
         }
     }
     async assignRolesToUser(userId, roleNames) {
         // Get all realm roles
-        const allRoles = await this.makeAuthenticatedRequest('GET', '/roles');
+        const allRoles = await this.makeAuthenticatedRequest("GET", "/roles");
         // Filter to only the roles we want to assign
-        const rolesToAssign = allRoles.filter(role => roleNames.includes(role.name));
+        const rolesToAssign = allRoles.filter((role) => roleNames.includes(role.name));
         if (rolesToAssign.length > 0) {
-            await this.makeAuthenticatedRequest('POST', `/users/${userId}/role-mappings/realm`, rolesToAssign);
+            await this.makeAuthenticatedRequest("POST", `/users/${userId}/role-mappings/realm`, rolesToAssign);
         }
     }
     async removeRolesFromUser(userId, roleNames) {
         // Get all realm roles
-        const allRoles = await this.makeAuthenticatedRequest('GET', '/roles');
+        const allRoles = await this.makeAuthenticatedRequest("GET", "/roles");
         // Filter to only the roles we want to remove
-        const rolesToRemove = allRoles.filter(role => roleNames.includes(role.name));
+        const rolesToRemove = allRoles.filter((role) => roleNames.includes(role.name));
         if (rolesToRemove.length > 0) {
-            await this.makeAuthenticatedRequest('DELETE', `/users/${userId}/role-mappings/realm`, rolesToRemove);
+            await this.makeAuthenticatedRequest("DELETE", `/users/${userId}/role-mappings/realm`, rolesToRemove);
         }
     }
     async setUserRoles(userId, roleNames) {
         // Get current user roles
-        const currentRoles = await this.makeAuthenticatedRequest('GET', `/users/${userId}/role-mappings/realm`);
-        const currentRoleNames = currentRoles.map(role => role.name);
+        const currentRoles = await this.makeAuthenticatedRequest("GET", `/users/${userId}/role-mappings/realm`);
+        const currentRoleNames = currentRoles.map((role) => role.name);
         // Determine roles to add and remove
-        const rolesToAdd = roleNames.filter(role => !currentRoleNames.includes(role));
-        const rolesToRemove = currentRoleNames.filter(role => !roleNames.includes(role));
+        const rolesToAdd = roleNames.filter((role) => !currentRoleNames.includes(role));
+        const rolesToRemove = currentRoleNames.filter((role) => !roleNames.includes(role));
         // Add new roles
         if (rolesToAdd.length > 0) {
             await this.assignRolesToUser(userId, rolesToAdd);
@@ -220,15 +220,18 @@ class KeycloakAdminService {
         }
     }
     async getAvailableRoles() {
-        return this.makeAuthenticatedRequest('GET', '/roles');
+        return this.makeAuthenticatedRequest("GET", "/roles");
     }
     async clearUserRequiredActions(userId) {
-        await this.makeAuthenticatedRequest('PUT', `/users/${userId}`, {
-            requiredActions: []
+        await this.makeAuthenticatedRequest("PUT", `/users/${userId}`, {
+            requiredActions: [],
         });
     }
     async executeActionsEmail(userId, actions) {
-        await this.makeAuthenticatedRequest('PUT', `/users/${userId}/execute-actions-email`, actions);
+        await this.makeAuthenticatedRequest("PUT", `/users/${userId}/execute-actions-email`, actions);
+    }
+    async getUsersInRole(roleName) {
+        return this.makeAuthenticatedRequest("GET", `/roles/${roleName}/users`);
     }
 }
 exports.keycloakAdminService = new KeycloakAdminService();

@@ -34,11 +34,21 @@ import type {
 } from "../types/user";
 
 export interface SystemSettings {
+  // Email Provider
+  activeProvider: "mailjet" | "mailgun";
+  senderEmail: string;
+
   // Mailjet config
   mailjetConfigured: boolean;
   mailjetSenderEmail: string;
   hasApiKey: boolean;
   hasApiSecret: boolean;
+
+  // Mailgun config
+  mailgunConfigured: boolean;
+  mailgunDomain: string;
+  hasMailgunApiKey: boolean;
+
   // Branding config
   siteLogo: string;
   siteLogoUrl: string;
@@ -47,6 +57,10 @@ export interface SystemSettings {
   brandPrimaryColor: string;
   brandSecondaryColor: string;
 }
+
+// ... existing code ...
+
+
 
 // Global token getter function - will be set by AuthContext
 let getKeycloakToken: (() => string | undefined) | null = null;
@@ -714,9 +728,13 @@ class ApiClient {
   }
 
   async updateSystemSettings(settings: {
+    activeProvider?: "mailjet" | "mailgun";
+    senderEmail?: string;
     mailjetApiKey?: string;
     mailjetApiSecret?: string;
     mailjetSenderEmail?: string;
+    mailgunApiKey?: string;
+    mailgunDomain?: string;
     siteLogo?: string;
     siteLogoUrl?: string;
     favicon?: string;
@@ -736,6 +754,10 @@ class ApiClient {
       "/settings/email/status",
     );
     return response.data || { configured: false };
+  }
+
+  async verifyEmailCredentials(config: any): Promise<ApiResponse> {
+    return this.post<ApiResponse>("/settings/email/verify", config);
   }
 
   // Health check

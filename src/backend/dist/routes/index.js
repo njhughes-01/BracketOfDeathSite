@@ -15,31 +15,31 @@ const router = (0, express_1.Router)();
 const auth_1 = __importDefault(require("./auth"));
 const settings_1 = __importDefault(require("./settings"));
 // Mount all route modules
-router.use('/auth', auth_1.default);
-router.use('/players', players_1.default);
-router.use('/tournaments', tournaments_1.default);
-router.use('/tournament-results', tournamentResults_1.default);
-router.use('/data', data_1.default);
-router.use('/admin', admin_1.default);
-router.use('/admin/users', users_1.default);
-router.use('/profile', profile_1.default);
-router.use('/settings', settings_1.default);
+router.use("/auth", auth_1.default);
+router.use("/players", players_1.default);
+router.use("/tournaments", tournaments_1.default);
+router.use("/tournament-results", tournamentResults_1.default);
+router.use("/data", data_1.default);
+router.use("/admin", admin_1.default);
+router.use("/admin/users", users_1.default);
+router.use("/profile", profile_1.default);
+router.use("/settings", settings_1.default);
 // API info endpoint
-router.get('/', (_req, res) => {
+router.get("/", (_req, res) => {
     res.json({
         success: true,
-        message: 'Bracket of Death API',
-        version: '1.0.0',
+        message: "Bracket of Death API",
+        version: "1.0.0",
         endpoints: {
-            players: '/api/players',
-            tournaments: '/api/tournaments',
-            tournamentResults: '/api/tournament-results',
-            data: '/api/data',
-            admin: '/api/admin',
-            users: '/api/admin/users',
-            profile: '/api/profile',
+            players: "/api/players",
+            tournaments: "/api/tournaments",
+            tournamentResults: "/api/tournament-results",
+            data: "/api/data",
+            admin: "/api/admin",
+            users: "/api/admin/users",
+            profile: "/api/profile",
         },
-        documentation: 'See CLAUDE.md for API documentation',
+        documentation: "See CLAUDE.md for API documentation",
     });
 });
 exports.default = router;

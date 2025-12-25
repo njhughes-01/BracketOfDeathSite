@@ -5,7 +5,7 @@ const Player_1 = require("../models/Player");
 const base_1 = require("./base");
 class PlayerController extends base_1.BaseController {
     constructor() {
-        super(Player_1.Player, 'Player');
+        super(Player_1.Player, "Player");
     }
     // Override buildFilter for player-specific filtering
     buildFilter(query) {
@@ -13,11 +13,19 @@ class PlayerController extends base_1.BaseController {
         const { page, limit, sort, select, populate, q, ...filterParams } = query;
         // Name search (case insensitive)
         if (filterParams.name) {
-            filter.name = new RegExp(filterParams.name, 'i');
+            filter.name = new RegExp(filterParams.name, "i");
         }
         // Numeric range filters
-        const numericFields = ['bodsPlayed', 'bestResult', 'avgFinish', 'winningPercentage', 'totalChampionships', 'gamesPlayed', 'gamesWon'];
-        numericFields.forEach(field => {
+        const numericFields = [
+            "bodsPlayed",
+            "bestResult",
+            "avgFinish",
+            "winningPercentage",
+            "totalChampionships",
+            "gamesPlayed",
+            "gamesWon",
+        ];
+        numericFields.forEach((field) => {
             const value = filterParams[field];
             const minValue = filterParams[`${field}_min`];
             const maxValue = filterParams[`${field}_max`];
@@ -36,14 +44,14 @@ class PlayerController extends base_1.BaseController {
         });
         // Division filtering
         if (filterParams.division) {
-            filter.division = new RegExp(filterParams.division, 'i');
+            filter.division = new RegExp(filterParams.division, "i");
         }
         // City/State filtering
         if (filterParams.city) {
-            filter.city = new RegExp(filterParams.city, 'i');
+            filter.city = new RegExp(filterParams.city, "i");
         }
         if (filterParams.state) {
-            filter.state = new RegExp(filterParams.state, 'i');
+            filter.state = new RegExp(filterParams.state, "i");
         }
         return filter;
     }
@@ -51,8 +59,8 @@ class PlayerController extends base_1.BaseController {
     buildSearchFilter(searchTerm) {
         return {
             $or: [
-                { name: new RegExp(searchTerm, 'i') },
-                { pairing: new RegExp(searchTerm, 'i') },
+                { name: new RegExp(searchTerm, "i") },
+                { pairing: new RegExp(searchTerm, "i") },
             ],
         };
     }
@@ -64,18 +72,18 @@ class PlayerController extends base_1.BaseController {
                     $group: {
                         _id: null,
                         totalPlayers: { $sum: 1 },
-                        avgWinningPercentage: { $avg: '$winningPercentage' },
-                        avgBodsPlayed: { $avg: '$bodsPlayed' },
-                        totalChampionships: { $sum: '$totalChampionships' },
-                        maxWinningPercentage: { $max: '$winningPercentage' },
-                        minWinningPercentage: { $min: '$winningPercentage' },
+                        avgWinningPercentage: { $avg: "$winningPercentage" },
+                        avgBodsPlayed: { $avg: "$bodsPlayed" },
+                        totalChampionships: { $sum: "$totalChampionships" },
+                        maxWinningPercentage: { $max: "$winningPercentage" },
+                        minWinningPercentage: { $min: "$winningPercentage" },
                     },
                 },
             ]);
             const topPlayers = await Player_1.Player.find({})
                 .sort({ winningPercentage: -1, totalChampionships: -1 })
                 .limit(10)
-                .select('name winningPercentage totalChampionships bodsPlayed');
+                .select("name winningPercentage totalChampionships bodsPlayed");
             const response = {
                 success: true,
                 data: {
@@ -94,14 +102,18 @@ class PlayerController extends base_1.BaseController {
         try {
             const { id } = req.params;
             // Aggregate from Match collection team1.playerScores / team2.playerScores
-            const summary = await this.model.db.model('Match').aggregate([
+            const summary = await this.model.db.model("Match").aggregate([
                 {
                     $match: {
                         $or: [
-                            { 'team1.playerScores.playerId': new (require('mongoose').Types.ObjectId)(id) },
-                            { 'team2.playerScores.playerId': new (require('mongoose').Types.ObjectId)(id) }
-                        ]
-                    }
+                            {
+                                "team1.playerScores.playerId": new (require("mongoose").Types.ObjectId)(id),
+                            },
+                            {
+                                "team2.playerScores.playerId": new (require("mongoose").Types.ObjectId)(id),
+                            },
+                        ],
+                    },
                 },
                 {
                     $project: {
@@ -113,21 +125,25 @@ class PlayerController extends base_1.BaseController {
                         team2: 1,
                         scores: {
                             $concatArrays: [
-                                { $ifNull: ['$team1.playerScores', []] },
-                                { $ifNull: ['$team2.playerScores', []] }
-                            ]
-                        }
-                    }
+                                { $ifNull: ["$team1.playerScores", []] },
+                                { $ifNull: ["$team2.playerScores", []] },
+                            ],
+                        },
+                    },
                 },
-                { $unwind: '$scores' },
-                { $match: { 'scores.playerId': new (require('mongoose').Types.ObjectId)(id) } },
+                { $unwind: "$scores" },
+                {
+                    $match: {
+                        "scores.playerId": new (require("mongoose").Types.ObjectId)(id),
+                    },
+                },
                 {
                     $group: {
-                        _id: '$scores.playerId',
+                        _id: "$scores.playerId",
                         matchesWithPoints: { $sum: 1 },
-                        totalPoints: { $sum: { $ifNull: ['$scores.score', 0] } },
-                    }
-                }
+                        totalPoints: { $sum: { $ifNull: ["$scores.score", 0] } },
+                    },
+                },
             ]);
             const data = summary[0] || { matchesWithPoints: 0, totalPoints: 0 };
             const response = {
@@ -145,10 +161,10 @@ class PlayerController extends base_1.BaseController {
         try {
             const minChampionships = parseInt(req.query.min) || 1;
             const champions = await Player_1.Player.find({
-                totalChampionships: { $gte: minChampionships }
+                totalChampionships: { $gte: minChampionships },
             })
                 .sort({ totalChampionships: -1, winningPercentage: -1 })
-                .select('name totalChampionships individualChampionships divisionChampionships winningPercentage bodsPlayed');
+                .select("name totalChampionships individualChampionships divisionChampionships winningPercentage bodsPlayed");
             const response = {
                 success: true,
                 data: champions,
@@ -165,14 +181,16 @@ class PlayerController extends base_1.BaseController {
             const { id } = req.params;
             const player = await Player_1.Player.findById(id);
             if (!player) {
-                this.sendError(res, 404, 'Player not found');
+                this.sendError(res, 404, "Player not found");
                 return;
             }
             // This would ideally query tournament results for trend analysis
             // For now, we'll return basic performance metrics
             const performanceData = {
                 currentWinningPercentage: player.winningPercentage,
-                championshipRatio: player.bodsPlayed > 0 ? player.totalChampionships / player.bodsPlayed : 0,
+                championshipRatio: player.bodsPlayed > 0
+                    ? player.totalChampionships / player.bodsPlayed
+                    : 0,
                 gamesPerBod: player.bodsPlayed > 0 ? player.gamesPlayed / player.bodsPlayed : 0,
                 consistencyScore: this.calculateConsistencyScore(player),
             };
@@ -192,23 +210,23 @@ class PlayerController extends base_1.BaseController {
             const { id } = req.params;
             const statsUpdate = req.body;
             // Validate that required stats are provided
-            const requiredStats = ['gamesPlayed', 'gamesWon'];
+            const requiredStats = ["gamesPlayed", "gamesWon"];
             const missing = this.validateRequired(requiredStats, statsUpdate);
             if (missing.length > 0) {
-                this.sendError(res, 400, `Missing required fields: ${missing.join(', ')}`);
+                this.sendError(res, 400, `Missing required fields: ${missing.join(", ")}`);
                 return;
             }
             // Ensure games won doesn't exceed games played
             if (statsUpdate.gamesWon > statsUpdate.gamesPlayed) {
-                this.sendError(res, 400, 'Games won cannot exceed games played');
+                this.sendError(res, 400, "Games won cannot exceed games played");
                 return;
             }
             const updatedPlayer = await Player_1.Player.findByIdAndUpdateSafe(id, statsUpdate);
             if (!updatedPlayer) {
-                this.sendError(res, 404, 'Player not found');
+                this.sendError(res, 404, "Player not found");
                 return;
             }
-            this.sendSuccess(res, updatedPlayer, 'Player statistics updated successfully');
+            this.sendSuccess(res, updatedPlayer, "Player statistics updated successfully");
         }
         catch (error) {
             next(error);
@@ -219,7 +237,7 @@ class PlayerController extends base_1.BaseController {
         try {
             const { players } = req.body;
             if (!Array.isArray(players) || players.length === 0) {
-                this.sendError(res, 400, 'Players array is required');
+                this.sendError(res, 400, "Players array is required");
                 return;
             }
             const results = {
@@ -229,7 +247,9 @@ class PlayerController extends base_1.BaseController {
             };
             for (const playerData of players) {
                 try {
-                    const existingPlayer = await Player_1.Player.findOne({ name: playerData.name });
+                    const existingPlayer = await Player_1.Player.findOne({
+                        name: playerData.name,
+                    });
                     if (existingPlayer) {
                         await Player_1.Player.findByIdAndUpdateSafe(existingPlayer._id.toString(), playerData);
                         results.updated++;
@@ -241,7 +261,7 @@ class PlayerController extends base_1.BaseController {
                 }
                 catch (error) {
                     results.errors.push({
-                        name: playerData.name || 'Unknown',
+                        name: playerData.name || "Unknown",
                         error: error.message,
                     });
                 }
@@ -272,13 +292,14 @@ class PlayerController extends base_1.BaseController {
     validatePlayerData(data) {
         const errors = [];
         if (data.gamesWon && data.gamesPlayed && data.gamesWon > data.gamesPlayed) {
-            errors.push('Games won cannot exceed games played');
+            errors.push("Games won cannot exceed games played");
         }
-        if (data.winningPercentage && (data.winningPercentage < 0 || data.winningPercentage > 1)) {
-            errors.push('Winning percentage must be between 0 and 1');
+        if (data.winningPercentage &&
+            (data.winningPercentage < 0 || data.winningPercentage > 1)) {
+            errors.push("Winning percentage must be between 0 and 1");
         }
         if (data.bestResult && data.avgFinish && data.bestResult > data.avgFinish) {
-            errors.push('Best result cannot be worse than average finish');
+            errors.push("Best result cannot be worse than average finish");
         }
         // Active status is boolean, so no validation needed other than type check handled by mongoose
         return errors;
@@ -288,7 +309,7 @@ class PlayerController extends base_1.BaseController {
         try {
             const validationErrors = this.validatePlayerData(req.body);
             if (validationErrors.length > 0) {
-                this.sendError(res, 400, validationErrors.join(', '));
+                this.sendError(res, 400, validationErrors.join(", "));
                 return;
             }
             // Call parent create method
@@ -303,7 +324,7 @@ class PlayerController extends base_1.BaseController {
         try {
             const validationErrors = this.validatePlayerData(req.body);
             if (validationErrors.length > 0) {
-                this.sendError(res, 400, validationErrors.join(', '));
+                this.sendError(res, 400, validationErrors.join(", "));
                 return;
             }
             // Call parent update method

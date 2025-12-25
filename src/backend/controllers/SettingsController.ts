@@ -2,17 +2,24 @@ import { Response } from "express";
 import { RequestWithAuth } from "./base";
 import SystemSettings from "../models/SystemSettings";
 import { ApiResponse } from "../types/common";
-import mailjetService from "../services/MailjetService"; // We'll update this service to reload config
+import emailService from "../services/EmailService";
+import { SUPPORTED_EMAIL_PROVIDERS } from "../services/email/IEmailProvider";
 
 export class SettingsController {
   // Get current settings (masked)
   public getSettings = async (req: RequestWithAuth, res: Response) => {
     try {
-      const settings = await SystemSettings.findOne();
+      const settings = await SystemSettings.findOne().select(
+        "+mailjetApiKey +mailjetApiSecret +mailgunApiKey",
+      );
 
       const response: ApiResponse = {
         success: true,
         data: {
+          // Email Provider config
+          activeProvider: settings?.activeProvider || "mailjet",
+          senderEmail: settings?.senderEmail || "",
+
           // Mailjet config
           mailjetConfigured: !!(
             settings?.mailjetApiKey && settings?.mailjetApiSecret
@@ -20,6 +27,14 @@ export class SettingsController {
           mailjetSenderEmail: settings?.mailjetSenderEmail || "",
           hasApiKey: !!settings?.mailjetApiKey,
           hasApiSecret: !!settings?.mailjetApiSecret,
+
+          // Mailgun config
+          mailgunConfigured: !!(
+            settings?.mailgunApiKey && settings?.mailgunDomain
+          ),
+          mailgunDomain: settings?.mailgunDomain || "",
+          hasMailgunApiKey: !!settings?.mailgunApiKey,
+
           // Branding config
           siteLogo: settings?.siteLogo || "",
           siteLogoUrl: settings?.siteLogoUrl || "",
@@ -43,9 +58,13 @@ export class SettingsController {
   public updateSettings = async (req: RequestWithAuth, res: Response) => {
     try {
       const {
+        activeProvider,
+        senderEmail,
         mailjetApiKey,
         mailjetApiSecret,
-        mailjetSenderEmail,
+        mailjetSenderEmail, // Legacy support
+        mailgunApiKey,
+        mailgunDomain,
         siteLogo,
         siteLogoUrl,
         favicon,
@@ -133,6 +152,10 @@ export class SettingsController {
         }
       }
 
+      // Validate provider availability if switching
+      // Note: Validation is deferred to the service layer or handled by "configured" checks
+      // Removed unnecessary DB query per review feedback
+
       if (errors.length > 0) {
         res.status(400).json({ success: false, error: errors.join(". ") });
         return;
@@ -149,11 +172,27 @@ export class SettingsController {
         return input.replace(/<[^>]*>/g, "").trim();
       };
 
+      // General Email Settings
+      if (senderEmail !== undefined) settings.senderEmail = senderEmail;
+
+      // Active Provider
+      if (activeProvider !== undefined) {
+        if (SUPPORTED_EMAIL_PROVIDERS.includes(activeProvider as any)) {
+          settings.activeProvider = activeProvider;
+        } else {
+          errors.push(`Invalid email provider specified: ${activeProvider}`);
+        }
+      }
+
       // Mailjet settings
       if (mailjetApiKey) settings.mailjetApiKey = mailjetApiKey;
       if (mailjetApiSecret) settings.mailjetApiSecret = mailjetApiSecret;
       if (mailjetSenderEmail !== undefined)
         settings.mailjetSenderEmail = mailjetSenderEmail;
+
+      // Mailgun settings
+      if (mailgunApiKey) settings.mailgunApiKey = mailgunApiKey;
+      if (mailgunDomain) settings.mailgunDomain = mailgunDomain;
 
       // Branding settings (sanitized)
       if (siteLogo !== undefined) settings.siteLogo = siteLogo;
@@ -198,7 +237,7 @@ export class SettingsController {
         return;
       }
 
-      const success = await mailjetService.sendTestEmail(testEmail);
+      const success = await emailService.sendTestEmail(testEmail);
 
       if (success) {
         res.json({ success: true, message: "Test email sent successfully" });
@@ -208,7 +247,7 @@ export class SettingsController {
           .json({
             success: false,
             error:
-              "Failed to send test email. Check your Mailjet configuration.",
+              "Failed to send test email. Check your provider configuration.",
           });
       }
     } catch (error) {
@@ -223,12 +262,39 @@ export class SettingsController {
   public isEmailConfigured = async (_req: RequestWithAuth, res: Response) => {
     try {
       const settings = await SystemSettings.findOne();
-      const configured = !!(
-        settings?.mailjetApiKey && settings?.mailjetApiSecret
-      );
+      const provider = settings?.activeProvider || 'mailjet';
+      const isMailgunConfigured = provider === 'mailgun' && !!(settings?.mailgunApiKey && settings?.mailgunDomain);
+      const isMailjetConfigured = provider === 'mailjet' && !!(settings?.mailjetApiKey && settings?.mailjetApiSecret);
+      const configured = isMailgunConfigured || isMailjetConfigured;
       res.json({ success: true, data: { configured } });
     } catch (error) {
       res.json({ success: true, data: { configured: false } });
+    }
+  };
+
+  // Verify provider credentials
+  public verifyCredentials = async (req: RequestWithAuth, res: Response) => {
+    try {
+      const { provider, ...config } = req.body;
+
+      if (!provider || !SUPPORTED_EMAIL_PROVIDERS.includes(provider)) {
+        res.status(400).json({ success: false, error: "Invalid provider" });
+        return;
+      }
+
+      const verified = await emailService.verifyProvider(provider, config);
+
+      if (verified) {
+        res.json({ success: true, message: "Credentials verified successfully" });
+      } else {
+        res.status(400).json({
+          success: false,
+          error: "Verification failed. Please check your credentials.",
+        });
+      }
+    } catch (error) {
+      console.error("Error verifying credentials:", error);
+      res.status(500).json({ success: false, error: "Internal server error during verification" });
     }
   };
 }

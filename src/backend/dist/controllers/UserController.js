@@ -283,7 +283,21 @@ class UserController {
                 res.status(403).json(response);
                 return;
             }
+            // 1. Get user to find linked player
+            const kcUser = await keycloakAdminService_1.default.getUser(id);
+            const playerId = kcUser.attributes?.playerId?.[0];
+            // 2. Delete Keycloak User
             await keycloakAdminService_1.default.deleteUser(id);
+            // 3. Delete Linked Player if exists
+            if (playerId) {
+                try {
+                    await Player_1.Player.findByIdAndDelete(playerId);
+                    console.log(`Deleted linked player ${playerId} for user ${id}`);
+                }
+                catch (err) {
+                    console.error(`Failed to delete linked player ${playerId}:`, err);
+                }
+            }
             const response = {
                 success: true,
                 message: "User deleted successfully",
@@ -503,9 +517,7 @@ class UserController {
         try {
             const { username, password } = req.body;
             if (!username || !password) {
-                res
-                    .status(400)
-                    .json({
+                res.status(400).json({
                     success: false,
                     error: "Username and password are required",
                 });
@@ -543,7 +555,15 @@ class UserController {
     // Public Registration endpoint (moved logic from routes/auth.ts to controller for better organization)
     async register(req, res) {
         try {
-            const { userData, claimToken } = req.body;
+            let { userData, claimToken } = req.body;
+            // Handle flat request body (frontend sends flat data)
+            if (!userData) {
+                userData = { ...req.body };
+                if (userData.claimToken) {
+                    claimToken = userData.claimToken;
+                    delete userData.claimToken;
+                }
+            }
             // If claim token exists, decode and override/verify specific fields
             let linkedPlayerId;
             if (claimToken) {
@@ -604,12 +624,14 @@ class UserController {
                 return;
             }
             // Force safe roles for public registration
-            // Force safe roles for public registration
             // eslint-disable-next-line @typescript-eslint/no-unused-vars
             const { playerId: _pid, gender: _g, ...safeAuthData } = userData;
+            // Default role for public registration is always 'user'
+            // Admin claim is now handled via explicit onboarding flow
+            const userRoles = ["user"];
             const safeUserData = {
                 ...safeAuthData,
-                roles: ["user"],
+                roles: userRoles,
                 enabled: true,
                 emailVerified: false,
                 attributes: {
@@ -751,7 +773,8 @@ class UserController {
             }
         }
         // Gender validation
-        if (userData.gender) { // @ts-ignore - CreateUserValidation has gender but TS might not see it yet if types file update wasn't flushed or context issue
+        if (userData.gender) {
+            // @ts-ignore - CreateUserValidation has gender but TS might not see it yet if types file update wasn't flushed or context issue
             // actually UpdateUserValidation should have gender, let's check what I added to types
             // I added gender to UpdateUserValidation in previous tool call
             if (user_1.UpdateUserValidation.gender &&

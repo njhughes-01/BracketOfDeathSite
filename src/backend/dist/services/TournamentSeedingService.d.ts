@@ -1,5 +1,5 @@
-import { Types } from 'mongoose';
-import { IPlayer } from '../types/player';
+import { Types } from "mongoose";
+import { IPlayer } from "../types/player";
 export interface PlayerSeed {
     playerId: Types.ObjectId;
     player: IPlayer;
