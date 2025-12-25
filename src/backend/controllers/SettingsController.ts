@@ -3,6 +3,7 @@ import { RequestWithAuth } from "./base";
 import SystemSettings from "../models/SystemSettings";
 import { ApiResponse } from "../types/common";
 import emailService from "../services/EmailService";
+import { SUPPORTED_EMAIL_PROVIDERS } from "../services/email/IEmailProvider";
 
 export class SettingsController {
   // Get current settings (masked)
@@ -174,7 +175,7 @@ export class SettingsController {
 
       // Active Provider
       if (activeProvider !== undefined) {
-        if (["mailjet", "mailgun"].includes(activeProvider)) {
+        if (SUPPORTED_EMAIL_PROVIDERS.includes(activeProvider as any)) {
           settings.activeProvider = activeProvider;
         } else {
           errors.push(`Invalid email provider specified: ${activeProvider}`);

@@ -5,6 +5,9 @@ export interface EmailParams {
     html: string;
 }
 
+export const SUPPORTED_EMAIL_PROVIDERS = ["mailjet", "mailgun"] as const;
+export type EmailProviderType = typeof SUPPORTED_EMAIL_PROVIDERS[number];
+
 export interface BrandingConfig {
     siteLogo?: string;
     siteLogoUrl?: string;

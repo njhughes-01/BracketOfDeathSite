@@ -1,10 +1,10 @@
-import { IEmailProvider, EmailParams, BrandingConfig } from "./email/IEmailProvider";
+import { IEmailProvider, EmailParams, BrandingConfig, EmailProviderType } from "./email/IEmailProvider";
 import { MailjetProvider } from "./email/MailjetProvider";
 import { MailgunProvider } from "./email/MailgunProvider";
 import SystemSettings from "../models/SystemSettings";
 
 export interface EmailConfig extends BrandingConfig {
-    activeProvider: "mailjet" | "mailgun";
+    activeProvider: EmailProviderType;
 }
 
 export class EmailService {

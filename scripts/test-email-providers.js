@@ -15,7 +15,7 @@ const MAILJET_SECRET = process.env.MAILJET_API_SECRET || 'secret-placeholder';
 
 // Auth Credentials (assuming verify_full_lifecycle set these up or defaults)
 const ADMIN_EMAIL = 'admin@test.com';
-const ADMIN_PASSWORD = 'password123';
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'password123';
 
 async function getAuthToken() {
     console.log('🔑 Authenticating...');

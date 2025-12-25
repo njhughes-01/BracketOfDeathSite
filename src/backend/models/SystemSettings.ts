@@ -1,4 +1,5 @@
 import mongoose, { Schema, Document } from "mongoose";
+import { EmailProviderType, SUPPORTED_EMAIL_PROVIDERS } from "../services/email/IEmailProvider";
 
 export interface ISystemSettings extends Document {
   // Mailjet settings
@@ -14,7 +15,7 @@ export interface ISystemSettings extends Document {
   senderEmail?: string;
 
   // Provider config
-  activeProvider: "mailjet" | "mailgun";
+  activeProvider: EmailProviderType;
   // Branding settings
   siteLogo?: string; // Base64 or URL
   siteLogoUrl?: string; // External URL fallback
@@ -44,7 +45,7 @@ const SystemSettingsSchema: Schema = new Schema(
     // Provider config
     activeProvider: {
       type: String,
-      enum: ["mailjet", "mailgun"],
+      enum: SUPPORTED_EMAIL_PROVIDERS,
       default: "mailjet"
     },
     // Branding settings
