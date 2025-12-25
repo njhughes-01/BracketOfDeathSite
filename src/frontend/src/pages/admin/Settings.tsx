@@ -12,7 +12,9 @@ const SettingsPage: React.FC = () => {
   const [success, setSuccess] = useState("");
 
   // Form state - Email Provider
-  const [activeProvider, setActiveProvider] = useState<"mailjet" | "mailgun">("mailjet");
+  const [activeProvider, setActiveProvider] = useState<"mailjet" | "mailgun">(
+    "mailjet",
+  );
 
   // Configuration status (from backend)
   const [mailjetConfigured, setMailjetConfigured] = useState(false);
@@ -33,7 +35,9 @@ const SettingsPage: React.FC = () => {
   // New state for test-before-save workflow
   const [testEmailSuccess, setTestEmailSuccess] = useState(false);
   const [hasChanges, setHasChanges] = useState(false);
-  const [initialProvider, setInitialProvider] = useState<"mailjet" | "mailgun">("mailjet");
+  const [initialProvider, setInitialProvider] = useState<"mailjet" | "mailgun">(
+    "mailjet",
+  );
   const [initialValues, setInitialValues] = useState({
     apiKey: "",
     apiSecret: "",
@@ -67,22 +71,28 @@ const SettingsPage: React.FC = () => {
   // Detect changes to credentials - reset test status
   useEffect(() => {
     const emailCredentialsChanged =
-      (activeProvider === "mailjet" && (
-        apiKey !== initialValues.apiKey ||
-        apiSecret !== initialValues.apiSecret ||
-        senderEmail !== initialValues.senderEmail
-      )) ||
-      (activeProvider === "mailgun" && (
-        mailgunApiKey !== initialValues.mailgunApiKey ||
-        mailgunDomain !== initialValues.mailgunDomain ||
-        senderEmail !== initialValues.senderEmail
-      ));
+      (activeProvider === "mailjet" &&
+        (apiKey !== initialValues.apiKey ||
+          apiSecret !== initialValues.apiSecret ||
+          senderEmail !== initialValues.senderEmail)) ||
+      (activeProvider === "mailgun" &&
+        (mailgunApiKey !== initialValues.mailgunApiKey ||
+          mailgunDomain !== initialValues.mailgunDomain ||
+          senderEmail !== initialValues.senderEmail));
 
     if (emailCredentialsChanged) {
       setTestEmailSuccess(false);
       setHasChanges(true);
     }
-  }, [activeProvider, apiKey, apiSecret, senderEmail, mailgunApiKey, mailgunDomain, initialValues]);
+  }, [
+    activeProvider,
+    apiKey,
+    apiSecret,
+    senderEmail,
+    mailgunApiKey,
+    mailgunDomain,
+    initialValues,
+  ]);
 
   const loadSettings = async () => {
     try {
@@ -139,15 +149,13 @@ const SettingsPage: React.FC = () => {
     }
   };
 
-
-
   const verifyCredentials = async (): Promise<boolean> => {
     try {
       setSaving(true); // Re-use saving spinner or add new one
       setError("");
 
       const config: any = { provider: activeProvider };
-      if (activeProvider === 'mailjet') {
+      if (activeProvider === "mailjet") {
         config.mailjetApiKey = apiKey;
         config.mailjetApiSecret = apiSecret;
       } else {
@@ -171,20 +179,20 @@ const SettingsPage: React.FC = () => {
     // Check if email credentials have changed
     const emailCredentialsChanged =
       activeProvider !== initialProvider ||
-      (activeProvider === "mailjet" && (
-        apiKey !== initialValues.apiKey ||
-        apiSecret !== initialValues.apiSecret ||
-        senderEmail !== initialValues.senderEmail
-      )) ||
-      (activeProvider === "mailgun" && (
-        mailgunApiKey !== initialValues.mailgunApiKey ||
-        mailgunDomain !== initialValues.mailgunDomain ||
-        senderEmail !== initialValues.senderEmail
-      ));
+      (activeProvider === "mailjet" &&
+        (apiKey !== initialValues.apiKey ||
+          apiSecret !== initialValues.apiSecret ||
+          senderEmail !== initialValues.senderEmail)) ||
+      (activeProvider === "mailgun" &&
+        (mailgunApiKey !== initialValues.mailgunApiKey ||
+          mailgunDomain !== initialValues.mailgunDomain ||
+          senderEmail !== initialValues.senderEmail));
 
     // Optional: Warn if email credentials changed without testing (but allow save)
     if (emailCredentialsChanged && !testEmailSuccess) {
-      console.warn("Saving email settings without testing. Consider testing first.");
+      console.warn(
+        "Saving email settings without testing. Consider testing first.",
+      );
     }
 
     try {
@@ -220,7 +228,7 @@ const SettingsPage: React.FC = () => {
       setHasChanges(false);
       setTestEmailSuccess(false);
 
-      const providerName = activeProvider === 'mailjet' ? 'Mailjet' : 'Mailgun';
+      const providerName = activeProvider === "mailjet" ? "Mailjet" : "Mailgun";
       setSuccess(`✅ ${providerName} configuration saved successfully!`);
     } catch (err: any) {
       console.error(err);
@@ -230,10 +238,14 @@ const SettingsPage: React.FC = () => {
     }
   };
 
-  const handleRemoveConfiguration = async (provider: 'mailjet' | 'mailgun') => {
-    const providerName = provider === 'mailjet' ? 'Mailjet' : 'Mailgun';
+  const handleRemoveConfiguration = async (provider: "mailjet" | "mailgun") => {
+    const providerName = provider === "mailjet" ? "Mailjet" : "Mailgun";
 
-    if (!window.confirm(`Are you sure you want to remove ${providerName} configuration?\n\nThis will delete your saved credentials. You'll need to re-enter them to use ${providerName} again.`)) {
+    if (
+      !window.confirm(
+        `Are you sure you want to remove ${providerName} configuration?\n\nThis will delete your saved credentials. You'll need to re-enter them to use ${providerName} again.`,
+      )
+    ) {
       return;
     }
 
@@ -243,9 +255,10 @@ const SettingsPage: React.FC = () => {
       setSuccess("");
 
       // Send empty credentials to clear the configuration
-      const updates = provider === 'mailgun'
-        ? { mailgunApiKey: '', mailgunDomain: '' }
-        : { mailjetApiKey: '', mailjetApiSecret: '' };
+      const updates =
+        provider === "mailgun"
+          ? { mailgunApiKey: "", mailgunDomain: "" }
+          : { mailjetApiKey: "", mailjetApiSecret: "" };
 
       await apiClient.updateSystemSettings(updates);
 
@@ -254,7 +267,10 @@ const SettingsPage: React.FC = () => {
 
       setSuccess(`${providerName} configuration removed successfully`);
     } catch (err: any) {
-      setError(err.response?.data?.error || `Failed to remove ${providerName} configuration`);
+      setError(
+        err.response?.data?.error ||
+          `Failed to remove ${providerName} configuration`,
+      );
     } finally {
       setSaving(false);
     }
@@ -266,18 +282,21 @@ const SettingsPage: React.FC = () => {
       return;
     }
 
-    const isConfigured = activeProvider === 'mailgun' ? mailgunConfigured : mailjetConfigured;
+    const isConfigured =
+      activeProvider === "mailgun" ? mailgunConfigured : mailjetConfigured;
 
     // If not configured, validate credentials are entered
     if (!isConfigured) {
-      if (activeProvider === 'mailgun') {
+      if (activeProvider === "mailgun") {
         if (!mailgunApiKey || !mailgunDomain) {
           setError("Please enter Mailgun API Key and Domain before testing");
           return;
         }
-      } else if (activeProvider === 'mailjet') {
+      } else if (activeProvider === "mailjet") {
         if (!apiKey || !apiSecret) {
-          setError("Please enter Mailjet API Key and API Secret before testing");
+          setError(
+            "Please enter Mailjet API Key and API Secret before testing",
+          );
           return;
         }
       }
@@ -304,7 +323,9 @@ const SettingsPage: React.FC = () => {
       }
 
       setTestEmailSuccess(true);
-      setSuccess("✅ Test email sent successfully! You can now save your settings.");
+      setSuccess(
+        "✅ Test email sent successfully! You can now save your settings.",
+      );
     } catch (err: any) {
       setTestEmailSuccess(false);
       setError(err.response?.data?.error || "Failed to send test email");
@@ -351,9 +372,12 @@ const SettingsPage: React.FC = () => {
       )}
 
       <div className="bg-[#1c2230] border border-white/5 rounded-2xl p-6 shadow-2xl">
-        {settings && (
+        {/* Only show provider selector when no provider is configured */}
+        {settings && !mailjetConfigured && !mailgunConfigured && (
           <div className="mb-6 flex space-x-4">
-            <label className={`flex items-center space-x-2 cursor-pointer p-3 rounded-lg border ${activeProvider === 'mailjet' ? 'border-primary bg-primary/10' : 'border-white/10 hover:bg-white/5'}`}>
+            <label
+              className={`flex items-center space-x-2 cursor-pointer p-3 rounded-lg border ${activeProvider === "mailjet" ? "border-primary bg-primary/10" : "border-white/10 hover:bg-white/5"}`}
+            >
               <input
                 type="radio"
                 name="provider"
@@ -364,10 +388,11 @@ const SettingsPage: React.FC = () => {
               />
               <span className="material-symbols-outlined">mail</span>
               <span className="font-bold">Mailjet</span>
-              {settings.mailjetConfigured && <span className="material-symbols-outlined text-green-500 text-sm">check_circle</span>}
             </label>
 
-            <label className={`flex items-center space-x-2 cursor-pointer p-3 rounded-lg border ${activeProvider === 'mailgun' ? 'border-primary bg-primary/10' : 'border-white/10 hover:bg-white/5'}`}>
+            <label
+              className={`flex items-center space-x-2 cursor-pointer p-3 rounded-lg border ${activeProvider === "mailgun" ? "border-primary bg-primary/10" : "border-white/10 hover:bg-white/5"}`}
+            >
               <input
                 type="radio"
                 name="provider"
@@ -378,24 +403,31 @@ const SettingsPage: React.FC = () => {
               />
               <span className="material-symbols-outlined">send</span>
               <span className="font-bold">Mailgun</span>
-              {settings.mailgunConfigured && <span className="material-symbols-outlined text-green-500 text-sm">check_circle</span>}
             </label>
           </div>
         )}
 
         <div className="flex items-center gap-3 mb-6 border-b border-white/5 pb-4">
-          <div className={`w-10 h-10 rounded-full flex items-center justify-center ${activeProvider === 'mailjet' ? 'bg-orange-500/20 text-orange-500' : 'bg-red-500/20 text-red-500'}`}>
-            <span className="material-symbols-outlined">{activeProvider === 'mailjet' ? 'mail' : 'send'}</span>
+          <div
+            className={`w-10 h-10 rounded-full flex items-center justify-center ${activeProvider === "mailjet" ? "bg-orange-500/20 text-orange-500" : "bg-red-500/20 text-red-500"}`}
+          >
+            <span className="material-symbols-outlined">
+              {activeProvider === "mailjet" ? "mail" : "send"}
+            </span>
           </div>
           <div>
             <h2 className="text-xl font-bold text-white">
-              {activeProvider === 'mailjet' ? 'Mailjet Configuration' : 'Mailgun Configuration'}
+              {activeProvider === "mailjet"
+                ? "Mailjet Configuration"
+                : "Mailgun Configuration"}
             </h2>
             <p className="text-sm text-slate-400">
-              Configure {activeProvider === 'mailjet' ? 'Mailjet' : 'Mailgun'} settings for invitations and alerts
+              Configure {activeProvider === "mailjet" ? "Mailjet" : "Mailgun"}{" "}
+              settings for invitations and alerts
             </p>
           </div>
-          {((activeProvider === 'mailjet' && settings?.mailjetConfigured) || (activeProvider === 'mailgun' && settings?.mailgunConfigured)) ? (
+          {(activeProvider === "mailjet" && settings?.mailjetConfigured) ||
+          (activeProvider === "mailgun" && settings?.mailgunConfigured) ? (
             <span className="ml-auto px-3 py-1 bg-green-500/20 text-green-500 text-xs font-bold rounded-full border border-green-500/20">
               Active
             </span>
@@ -406,51 +438,80 @@ const SettingsPage: React.FC = () => {
           )}
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-6">
-          {/* General Settings */}
-          <div className="space-y-2">
-            <label className="text-sm font-bold text-slate-400 uppercase tracking-wider">
-              Default Sender Email
-            </label>
-            <input
-              type="email"
-              value={senderEmail}
-              onChange={(e) => setSenderEmail(e.target.value)}
-              placeholder="noreply@yourdomain.com"
-              className="w-full h-12 bg-black/20 border border-white/10 rounded-xl px-4 text-white focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-all placeholder:text-slate-600"
-            />
-            <p className="text-xs text-slate-500">
-              The email address that system emails will come from.
-              {activeProvider === "mailjet" && " Must be verified in Mailjet."}
-              {activeProvider === "mailgun" && " Should match your verified Mailgun domain."}
-            </p>
-          </div>
-
-          {activeProvider === "mailjet" ? (
-            // Mailjet Fields
-            mailjetConfigured ? (
-              // Configured State - Show status and remove button
-              <div className="p-6 bg-green-500/10 border border-green-500/20 rounded-xl">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <span className="material-symbols-outlined text-green-500 text-3xl">check_circle</span>
-                    <div>
-                      <p className="font-bold text-white">Mailjet Configured</p>
-                      <p className="text-sm text-slate-400">Credentials are saved and ready to use</p>
-                    </div>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => handleRemoveConfiguration('mailjet')}
-                    className="px-4 py-2 bg-red-500/20 hover:bg-red-500/30 text-red-400 rounded-lg border border-red-500/20 flex items-center gap-2 transition-all"
-                  >
-                    <span className="material-symbols-outlined text-sm">delete</span>
-                    Remove Configuration
-                  </button>
+        {/* Show configured state OR configuration form, not both */}
+        {mailjetConfigured || mailgunConfigured ? (
+          /* Configured State - Show status and clear button only */
+          <div className="p-6 bg-green-500/10 border border-green-500/20 rounded-xl">
+            <div className="flex items-center justify-between flex-wrap gap-4">
+              <div className="flex items-center gap-3">
+                <span className="material-symbols-outlined text-green-500 text-3xl">
+                  check_circle
+                </span>
+                <div>
+                  <p className="font-bold text-white">
+                    {mailjetConfigured ? "Mailjet" : "Mailgun"} Configured
+                  </p>
+                  <p className="text-sm text-slate-400">
+                    {mailjetConfigured
+                      ? "Credentials are saved and ready to use"
+                      : `Domain: ${settings?.mailgunDomain}`}
+                  </p>
+                  {senderEmail && (
+                    <p className="text-sm text-slate-400">
+                      Sender: {senderEmail}
+                    </p>
+                  )}
                 </div>
               </div>
-            ) : (
-              // Unconfigured State - Show input fields
+              <button
+                type="button"
+                onClick={() =>
+                  handleRemoveConfiguration(
+                    mailjetConfigured ? "mailjet" : "mailgun",
+                  )
+                }
+                disabled={saving}
+                className="px-4 py-2 bg-red-500/20 hover:bg-red-500/30 text-red-400 rounded-lg border border-red-500/20 flex items-center gap-2 transition-all disabled:opacity-50"
+              >
+                {saving ? (
+                  <LoadingSpinner size="sm" color="white" />
+                ) : (
+                  <>
+                    <span className="material-symbols-outlined text-sm">
+                      delete
+                    </span>
+                    Clear Configuration
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        ) : (
+          /* Unconfigured State - Show full configuration form */
+          <form onSubmit={handleSubmit} className="space-y-6">
+            {/* General Settings */}
+            <div className="space-y-2">
+              <label className="text-sm font-bold text-slate-400 uppercase tracking-wider">
+                Default Sender Email
+              </label>
+              <input
+                type="email"
+                value={senderEmail}
+                onChange={(e) => setSenderEmail(e.target.value)}
+                placeholder="noreply@yourdomain.com"
+                className="w-full h-12 bg-black/20 border border-white/10 rounded-xl px-4 text-white focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-all placeholder:text-slate-600"
+              />
+              <p className="text-xs text-slate-500">
+                The email address that system emails will come from.
+                {activeProvider === "mailjet" &&
+                  " Must be verified in Mailjet."}
+                {activeProvider === "mailgun" &&
+                  " Should match your verified Mailgun domain."}
+              </p>
+            </div>
+
+            {activeProvider === "mailjet" ? (
+              /* Mailjet Fields */
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="space-y-2">
                   <label className="text-sm font-bold text-slate-400 uppercase tracking-wider">
@@ -478,33 +539,8 @@ const SettingsPage: React.FC = () => {
                   />
                 </div>
               </div>
-            )
-
-          ) : (
-            // Mailgun Fields
-            mailgunConfigured ? (
-              // Configured State - Show status and remove button
-              <div className="p-6 bg-green-500/10 border border-green-500/20 rounded-xl">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <span className="material-symbols-outlined text-green-500 text-3xl">check_circle</span>
-                    <div>
-                      <p className="font-bold text-white">Mailgun Configured</p>
-                      <p className="text-sm text-slate-400">Domain: {settings?.mailgunDomain}</p>
-                    </div>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => handleRemoveConfiguration('mailgun')}
-                    className="px-4 py-2 bg-red-500/20 hover:bg-red-500/30 text-red-400 rounded-lg border border-red-500/20 flex items-center gap-2 transition-all"
-                  >
-                    <span className="material-symbols-outlined text-sm">delete</span>
-                    Remove Configuration
-                  </button>
-                </div>
-              </div>
             ) : (
-              // Unconfigured State - Show input fields
+              /* Mailgun Fields */
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="space-y-2 md:col-span-2">
                   <label className="text-sm font-bold text-slate-400 uppercase tracking-wider">
@@ -532,11 +568,8 @@ const SettingsPage: React.FC = () => {
                   />
                 </div>
               </div>
-            )
-          )}
+            )}
 
-          {/* Only show Save button if not configured */}
-          {!((activeProvider === 'mailjet' && mailjetConfigured) || (activeProvider === 'mailgun' && mailgunConfigured)) && (
             <div className="pt-4 border-t border-white/5 flex justify-end">
               <button
                 type="submit"
@@ -554,8 +587,8 @@ const SettingsPage: React.FC = () => {
                 )}
               </button>
             </div>
-          )}
-        </form>
+          </form>
+        )}
 
         {/* Test Email Section - Always visible when a provider is selected */}
         <div className="mt-6 pt-6 border-t border-white/5">
@@ -571,14 +604,18 @@ const SettingsPage: React.FC = () => {
             )}
             {testEmailSuccess && (
               <span className="text-xs text-green-500 flex items-center gap-1 px-3 py-1 bg-green-500/10 rounded-full border border-green-500/20">
-                <span className="material-symbols-outlined text-sm">check_circle</span>
+                <span className="material-symbols-outlined text-sm">
+                  check_circle
+                </span>
                 Test passed
               </span>
             )}
           </div>
           <p className="text-sm text-slate-400 mb-4">
             Send a test email to verify your configuration is working correctly.
-            {!testEmailSuccess && hasChanges && " Testing is recommended but optional."}
+            {!testEmailSuccess &&
+              hasChanges &&
+              " Testing is recommended but optional."}
           </p>
           <div className="flex gap-4">
             <input
@@ -605,10 +642,10 @@ const SettingsPage: React.FC = () => {
             </button>
           </div>
         </div>
-      </div >
+      </div>
 
       {/* Branding Configuration */}
-      < div className="bg-[#1c2230] border border-white/5 rounded-2xl p-6 shadow-2xl" >
+      <div className="bg-[#1c2230] border border-white/5 rounded-2xl p-6 shadow-2xl">
         <div className="flex items-center gap-3 mb-6 border-b border-white/5 pb-4">
           <div className="w-10 h-10 rounded-full bg-pink-500/20 flex items-center justify-center text-pink-500">
             <span className="material-symbols-outlined">palette</span>
@@ -796,10 +833,10 @@ const SettingsPage: React.FC = () => {
             )}
           </button>
         </div>
-      </div >
+      </div>
 
       {/* Template Preview Variables */}
-      < div className="bg-[#1c2230] border border-white/5 rounded-2xl p-6 shadow-2xl" >
+      <div className="bg-[#1c2230] border border-white/5 rounded-2xl p-6 shadow-2xl">
         <div className="flex items-center gap-3 mb-6 border-b border-white/5 pb-4">
           <div className="w-10 h-10 rounded-full bg-cyan-500/20 flex items-center justify-center text-cyan-500">
             <span className="material-symbols-outlined">tune</span>
@@ -826,10 +863,10 @@ const SettingsPage: React.FC = () => {
             />
           </div>
         </div>
-      </div >
+      </div>
 
       {/* Email Templates Preview */}
-      < div className="bg-[#1c2230] border border-white/5 rounded-2xl p-6 shadow-2xl" >
+      <div className="bg-[#1c2230] border border-white/5 rounded-2xl p-6 shadow-2xl">
         <div className="flex items-center gap-3 mb-6 border-b border-white/5 pb-4">
           <div className="w-10 h-10 rounded-full bg-purple-500/20 flex items-center justify-center text-purple-500">
             <span className="material-symbols-outlined">article</span>
@@ -1101,8 +1138,8 @@ const SettingsPage: React.FC = () => {
             </div>
           </div>
         </div>
-      </div >
-    </div >
+      </div>
+    </div>
   );
 };
 
