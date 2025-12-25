@@ -183,6 +183,8 @@ export class SettingsController {
       if (activeProvider !== undefined) {
         if (["mailjet", "mailgun"].includes(activeProvider)) {
           settings.activeProvider = activeProvider;
+        } else {
+          errors.push(`Invalid email provider specified: ${activeProvider}`);
         }
       }
 
