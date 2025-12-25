@@ -756,6 +756,10 @@ class ApiClient {
     return response.data || { configured: false };
   }
 
+  async verifyEmailCredentials(config: any): Promise<ApiResponse> {
+    return this.post<ApiResponse>("/settings/email/verify", config);
+  }
+
   // Health check
   async healthCheck(): Promise<ApiResponse> {
     return this.get<ApiResponse>("/health");

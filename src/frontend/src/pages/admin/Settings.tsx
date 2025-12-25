@@ -26,6 +26,18 @@ const SettingsPage: React.FC = () => {
 
   const [testEmailAddress, setTestEmailAddress] = useState("");
 
+  // New state for test-before-save workflow
+  const [testEmailSuccess, setTestEmailSuccess] = useState(false);
+  const [hasChanges, setHasChanges] = useState(false);
+  const [initialProvider, setInitialProvider] = useState<"mailjet" | "mailgun">("mailjet");
+  const [initialValues, setInitialValues] = useState({
+    apiKey: "",
+    apiSecret: "",
+    senderEmail: "",
+    mailgunApiKey: "",
+    mailgunDomain: "",
+  });
+
   // Form state - Branding
   const [brandName, setBrandName] = useState("Bracket of Death");
   const [brandPrimaryColor, setBrandPrimaryColor] = useState("#4CAF50");
@@ -40,19 +52,62 @@ const SettingsPage: React.FC = () => {
     loadSettings();
   }, []);
 
+  // Detect changes to provider - reset test status
+  useEffect(() => {
+    if (activeProvider !== initialProvider) {
+      setTestEmailSuccess(false);
+      setHasChanges(true);
+    }
+  }, [activeProvider, initialProvider]);
+
+  // Detect changes to credentials - reset test status
+  useEffect(() => {
+    const emailCredentialsChanged =
+      (activeProvider === "mailjet" && (
+        apiKey !== initialValues.apiKey ||
+        apiSecret !== initialValues.apiSecret ||
+        senderEmail !== initialValues.senderEmail
+      )) ||
+      (activeProvider === "mailgun" && (
+        mailgunApiKey !== initialValues.mailgunApiKey ||
+        mailgunDomain !== initialValues.mailgunDomain ||
+        senderEmail !== initialValues.senderEmail
+      ));
+
+    if (emailCredentialsChanged) {
+      setTestEmailSuccess(false);
+      setHasChanges(true);
+    }
+  }, [activeProvider, apiKey, apiSecret, senderEmail, mailgunApiKey, mailgunDomain, initialValues]);
+
   const loadSettings = async () => {
     try {
       setLoading(true);
       const data = await apiClient.getSystemSettings();
       setSettings(data);
-      setActiveProvider(data.activeProvider || "mailjet");
+
+      const provider = data.activeProvider || "mailjet";
+      setActiveProvider(provider);
+      setInitialProvider(provider);
 
       // Mailjet defaults
       // Prefer generic senderEmail, fallback to mailjetSenderEmail
-      setSenderEmail(data.senderEmail || data.mailjetSenderEmail || "");
+      const email = data.senderEmail || data.mailjetSenderEmail || "";
+      setSenderEmail(email);
 
       // Mailgun defaults
-      setMailgunDomain(data.mailgunDomain || "");
+      const domain = data.mailgunDomain || "";
+      setMailgunDomain(domain);
+
+      // Store initial values for change detection
+      // Use empty strings for keys (they're secret)
+      setInitialValues({
+        apiKey: "",
+        apiSecret: "",
+        senderEmail: email,
+        mailgunApiKey: "",
+        mailgunDomain: domain,
+      });
 
       // Load branding settings
       setBrandName(data.brandName || "Bracket of Death");
@@ -60,6 +115,11 @@ const SettingsPage: React.FC = () => {
       setBrandSecondaryColor(data.brandSecondaryColor || "#008CBA");
       setSiteLogo(data.siteLogo || "");
       setFavicon(data.favicon || "");
+
+      // Reset workflow state
+      setTestEmailSuccess(false);
+      setHasChanges(false);
+
       // Don't set keys, they are hidden
     } catch (err: any) {
       console.error(err);
@@ -71,8 +131,55 @@ const SettingsPage: React.FC = () => {
     }
   };
 
+
+
+  const verifyCredentials = async (): Promise<boolean> => {
+    try {
+      setSaving(true); // Re-use saving spinner or add new one
+      setError("");
+
+      const config: any = { provider: activeProvider };
+      if (activeProvider === 'mailjet') {
+        config.mailjetApiKey = apiKey;
+        config.mailjetApiSecret = apiSecret;
+      } else {
+        config.mailgunApiKey = mailgunApiKey;
+        config.mailgunDomain = mailgunDomain;
+      }
+
+      await apiClient.verifyEmailCredentials(config);
+      return true;
+    } catch (err: any) {
+      setError(err.response?.data?.error || "Credential verification failed");
+      return false;
+    } finally {
+      setSaving(false);
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    // Check if email credentials have changed
+    const emailCredentialsChanged =
+      activeProvider !== initialProvider ||
+      (activeProvider === "mailjet" && (
+        apiKey !== initialValues.apiKey ||
+        apiSecret !== initialValues.apiSecret ||
+        senderEmail !== initialValues.senderEmail
+      )) ||
+      (activeProvider === "mailgun" && (
+        mailgunApiKey !== initialValues.mailgunApiKey ||
+        mailgunDomain !== initialValues.mailgunDomain ||
+        senderEmail !== initialValues.senderEmail
+      ));
+
+    // Enforce test-before-save workflow only if email credentials changed
+    if (emailCredentialsChanged && !testEmailSuccess) {
+      setError("⚠️ Please send a test email before saving your email settings.");
+      return;
+    }
+
     try {
       setSaving(true);
       setError("");
@@ -94,13 +201,19 @@ const SettingsPage: React.FC = () => {
         brandSecondaryColor,
       });
 
-      setSuccess("Settings saved successfully!");
-      // Reload to update "hasApiKey" indicators
+      // Reload to update "hasApiKey" indicators FIRST
       await loadSettings();
-      // Clear inputs for security
+
+      // Clear inputs for security (after reload completes)
       setApiKey("");
       setApiSecret("");
       setMailgunApiKey("");
+
+      // Reset workflow state after successful save
+      setHasChanges(false);
+      setTestEmailSuccess(false);
+
+      setSuccess("Settings verified and saved successfully!");
     } catch (err: any) {
       console.error(err);
       setError(err.response?.data?.error || "Failed to save settings");
@@ -119,8 +232,10 @@ const SettingsPage: React.FC = () => {
       setError("");
       setSuccess("");
       await apiClient.testEmail(testEmailAddress);
-      setSuccess("Test email sent successfully! Check your inbox.");
+      setTestEmailSuccess(true);
+      setSuccess("✅ Test email sent successfully! You can now save your settings.");
     } catch (err: any) {
+      setTestEmailSuccess(false);
       setError(err.response?.data?.error || "Failed to send test email");
     } finally {
       setTesting(false);
@@ -317,11 +432,17 @@ const SettingsPage: React.FC = () => {
           <div className="pt-4 border-t border-white/5 flex justify-end">
             <button
               type="submit"
-              disabled={saving}
+              disabled={saving || (hasChanges && !testEmailSuccess)}
               className="h-12 px-8 bg-primary hover:bg-primary-dark text-black font-bold rounded-xl shadow-lg shadow-primary/20 flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+              title={(hasChanges && !testEmailSuccess) ? "Please send a test email first" : "Save settings"}
             >
               {saving ? (
                 <LoadingSpinner size="sm" color="black" />
+              ) : (hasChanges && !testEmailSuccess) ? (
+                <>
+                  <span className="material-symbols-outlined">lock</span>
+                  Test Email First
+                </>
               ) : (
                 <>
                   <span className="material-symbols-outlined">save</span>
@@ -332,40 +453,54 @@ const SettingsPage: React.FC = () => {
           </div>
         </form>
 
-        {/* Test Email Section */}
-        {
-          ((activeProvider === 'mailjet' && settings?.mailjetConfigured) || (activeProvider === 'mailgun' && settings?.mailgunConfigured)) && (
-            <div className="mt-6 pt-6 border-t border-white/5">
-              <h3 className="text-lg font-bold text-white mb-4">
-                Test Email Configuration
-              </h3>
-              <div className="flex gap-4">
-                <input
-                  type="email"
-                  value={testEmailAddress}
-                  onChange={(e) => setTestEmailAddress(e.target.value)}
-                  placeholder="Enter email address to test"
-                  className="flex-1 h-12 bg-black/20 border border-white/10 rounded-xl px-4 text-white focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-all placeholder:text-slate-600"
-                />
-                <button
-                  type="button"
-                  onClick={handleTestEmail}
-                  disabled={testing || !testEmailAddress}
-                  className="h-12 px-6 bg-blue-500 hover:bg-blue-600 text-white font-bold rounded-xl flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
-                >
-                  {testing ? (
-                    <LoadingSpinner size="sm" color="white" />
-                  ) : (
-                    <>
-                      <span className="material-symbols-outlined">send</span>
-                      Send Test
-                    </>
-                  )}
-                </button>
-              </div>
-            </div>
-          )
-        }
+        {/* Test Email Section - Always visible when a provider is selected */}
+        <div className="mt-6 pt-6 border-t border-white/5">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-lg font-bold text-white">
+              Test Email Configuration
+            </h3>
+            {!testEmailSuccess && hasChanges && (
+              <span className="text-xs text-yellow-500 flex items-center gap-1 px-3 py-1 bg-yellow-500/10 rounded-full border border-yellow-500/20">
+                <span className="material-symbols-outlined text-sm">warning</span>
+                Test required before saving
+              </span>
+            )}
+            {testEmailSuccess && (
+              <span className="text-xs text-green-500 flex items-center gap-1 px-3 py-1 bg-green-500/10 rounded-full border border-green-500/20">
+                <span className="material-symbols-outlined text-sm">check_circle</span>
+                Test passed
+              </span>
+            )}
+          </div>
+          <p className="text-sm text-slate-400 mb-4">
+            Send a test email to verify your configuration is working correctly.
+            {!testEmailSuccess && hasChanges && " You must test before saving."}
+          </p>
+          <div className="flex gap-4">
+            <input
+              type="email"
+              value={testEmailAddress}
+              onChange={(e) => setTestEmailAddress(e.target.value)}
+              placeholder="Enter email address to test"
+              className="flex-1 h-12 bg-black/20 border border-white/10 rounded-xl px-4 text-white focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-all placeholder:text-slate-600"
+            />
+            <button
+              type="button"
+              onClick={handleTestEmail}
+              disabled={testing || !testEmailAddress}
+              className={`h-12 px-6 ${!testEmailSuccess && hasChanges ? 'bg-primary hover:bg-primary-dark text-black' : 'bg-blue-500 hover:bg-blue-600 text-white'} font-bold rounded-xl flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed transition-all`}
+            >
+              {testing ? (
+                <LoadingSpinner size="sm" color={!testEmailSuccess && hasChanges ? "black" : "white"} />
+              ) : (
+                <>
+                  <span className="material-symbols-outlined">send</span>
+                  Send Test
+                </>
+              )}
+            </button>
+          </div>
+        </div>
       </div >
 
       {/* Branding Configuration */}
