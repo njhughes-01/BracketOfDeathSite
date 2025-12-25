@@ -1,9 +1,9 @@
-import { Types } from 'mongoose';
-import { ITournament } from '../types/tournament';
+import { Types } from "mongoose";
+import { ITournament } from "../types/tournament";
 export interface RegistrationResult {
     success: boolean;
     message: string;
-    position?: 'registered' | 'waitlist';
+    position?: "registered" | "waitlist";
     tournament?: ITournament;
 }
 export declare class TournamentRegistrationService {

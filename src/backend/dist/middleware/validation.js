@@ -9,8 +9,11 @@ const validateRequest = (req, res, next) => {
     if (!errors.isEmpty()) {
         const response = {
             success: false,
-            message: 'Validation failed',
-            error: errors.array().map(err => err.msg).join(', '),
+            message: "Validation failed",
+            error: errors
+                .array()
+                .map((err) => err.msg)
+                .join(", "),
         };
         res.status(400).json(response);
         return;
@@ -22,13 +25,13 @@ exports.validateRequest = validateRequest;
 const validateObjectId = (req, res, next) => {
     const { id, tournamentId, playerId, matchId } = req.params;
     const idsToValidate = [
-        { name: 'id', value: id },
-        { name: 'tournamentId', value: tournamentId },
-        { name: 'playerId', value: playerId },
-        { name: 'matchId', value: matchId },
-    ].filter(item => item.value);
+        { name: "id", value: id },
+        { name: "tournamentId", value: tournamentId },
+        { name: "playerId", value: playerId },
+        { name: "matchId", value: matchId },
+    ].filter((item) => item.value);
     for (const { name, value } of idsToValidate) {
-        if (value && value !== 'undefined' && !mongoose_1.Types.ObjectId.isValid(value)) {
+        if (value && value !== "undefined" && !mongoose_1.Types.ObjectId.isValid(value)) {
             const response = {
                 success: false,
                 error: `Invalid ${name} format`,
@@ -37,7 +40,7 @@ const validateObjectId = (req, res, next) => {
             return;
         }
         // Check for the specific case of 'undefined' string
-        if (value === 'undefined') {
+        if (value === "undefined") {
             const response = {
                 success: false,
                 error: `${name} is required`,
@@ -53,17 +56,18 @@ exports.validateObjectId = validateObjectId;
 const validateRequired = (fields) => {
     return (req, res, next) => {
         const missing = [];
-        fields.forEach(field => {
+        fields.forEach((field) => {
             const value = req.body[field];
-            if (value === undefined || value === null ||
-                (typeof value === 'string' && value.trim() === '')) {
+            if (value === undefined ||
+                value === null ||
+                (typeof value === "string" && value.trim() === "")) {
                 missing.push(field);
             }
         });
         if (missing.length > 0) {
             const response = {
                 success: false,
-                error: `Missing required fields: ${missing.join(', ')}`,
+                error: `Missing required fields: ${missing.join(", ")}`,
             };
             res.status(400).json(response);
             return;
@@ -80,7 +84,7 @@ const validateEmail = (req, res, next) => {
         if (!emailRegex.test(email)) {
             const response = {
                 success: false,
-                error: 'Invalid email format',
+                error: "Invalid email format",
             };
             res.status(400).json(response);
             return;
@@ -151,7 +155,7 @@ const validatePagination = (req, res, next) => {
         if (isNaN(pageNum) || pageNum < 1) {
             const response = {
                 success: false,
-                error: 'Page must be a positive integer',
+                error: "Page must be a positive integer",
             };
             res.status(400).json(response);
             return;
@@ -160,7 +164,7 @@ const validatePagination = (req, res, next) => {
     if (limit) {
         const limitNum = Number(limit);
         // Allow higher limits for admin requests (up to 1000), regular requests limited to 100
-        const maxLimit = req.path.includes('/admin/') || req.headers.authorization ? 1000 : 100;
+        const maxLimit = req.path.includes("/admin/") || req.headers.authorization ? 1000 : 100;
         if (isNaN(limitNum) || limitNum < 1 || limitNum > maxLimit) {
             const response = {
                 success: false,
@@ -176,9 +180,9 @@ exports.validatePagination = validatePagination;
 // Sanitize input
 const sanitizeInput = (req, _res, next) => {
     // Remove potentially dangerous fields
-    const dangerousFields = ['__proto__', 'constructor', 'prototype'];
+    const dangerousFields = ["__proto__", "constructor", "prototype"];
     const sanitizeObject = (obj) => {
-        if (typeof obj !== 'object' || obj === null) {
+        if (typeof obj !== "object" || obj === null) {
             return obj;
         }
         if (Array.isArray(obj)) {

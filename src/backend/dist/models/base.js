@@ -44,7 +44,7 @@ exports.baseMethods = {
 exports.baseStatics = {
     // Pagination helper
     async paginate(filter = {}, options = {}) {
-        const { page = 1, limit = 10, sort = '-createdAt', select = '', } = options;
+        const { page = 1, limit = 10, sort = "-createdAt", select = "" } = options;
         const skip = (page - 1) * limit;
         const query = this.find(filter);
         if (select) {
@@ -71,7 +71,7 @@ exports.baseStatics = {
         const defaultOptions = {
             new: true,
             runValidators: true,
-            context: 'query',
+            context: "query",
         };
         return this.findByIdAndUpdate(id, update, {
             ...defaultOptions,
@@ -82,7 +82,7 @@ exports.baseStatics = {
         const defaultOptions = {
             new: true,
             runValidators: true,
-            context: 'query',
+            context: "query",
         };
         return this.findOneAndUpdate(filter, update, {
             ...defaultOptions,
@@ -99,12 +99,12 @@ const createNumericValidator = (min = 0, max) => ({
             return false;
         return true;
     },
-    message: `Value must be between ${min}${max ? ` and ${max}` : ' and above'}`,
+    message: `Value must be between ${min}${max ? ` and ${max}` : " and above"}`,
 });
 exports.createNumericValidator = createNumericValidator;
 const createPercentageValidator = () => ({
     validator: (value) => value >= 0 && value <= 1,
-    message: 'Percentage must be between 0 and 1',
+    message: "Percentage must be between 0 and 1",
 });
 exports.createPercentageValidator = createPercentageValidator;
 const createStringValidator = (minLength = 1, maxLength = 100) => ({

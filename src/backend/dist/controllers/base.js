@@ -14,13 +14,13 @@ class BaseController {
             const options = {
                 page: parseInt(req.query.page) || 1,
                 limit: parseInt(req.query.limit) || 10,
-                sort: req.query.sort || '-createdAt',
+                sort: req.query.sort || "-createdAt",
                 select: req.query.select,
             };
             // Build filter from query parameters
             const filter = this.buildFilter(req.query);
             // Check if the model has paginate method, otherwise use regular find
-            if (typeof this.model.paginate === 'function') {
+            if (typeof this.model.paginate === "function") {
                 const result = await this.model.paginate(filter, options);
                 res.status(200).json(result);
             }
@@ -36,7 +36,7 @@ class BaseController {
                 }
                 const [docs, totalDocs] = await Promise.all([
                     query.skip(skip).limit(options.limit).exec(),
-                    this.model.countDocuments(filter)
+                    this.model.countDocuments(filter),
                 ]);
                 const totalPages = Math.ceil(totalDocs / options.limit);
                 const result = {
@@ -65,8 +65,8 @@ class BaseController {
             const populate = req.query.populate;
             let query = this.model.findById(id);
             if (populate) {
-                const populateFields = populate.split(',').map(field => field.trim());
-                populateFields.forEach(field => {
+                const populateFields = populate.split(",").map((field) => field.trim());
+                populateFields.forEach((field) => {
                     query = query.populate(field);
                 });
             }
@@ -156,10 +156,10 @@ class BaseController {
     search = async (req, res, next) => {
         try {
             const { q } = req.query;
-            if (!q || typeof q !== 'string') {
+            if (!q || typeof q !== "string") {
                 const response = {
                     success: false,
-                    error: 'Search query is required',
+                    error: "Search query is required",
                 };
                 res.status(400).json(response);
                 return;
@@ -168,7 +168,7 @@ class BaseController {
             const options = {
                 page: parseInt(req.query.page) || 1,
                 limit: parseInt(req.query.limit) || 10,
-                sort: req.query.sort || '-createdAt',
+                sort: req.query.sort || "-createdAt",
             };
             const result = await this.model.paginate(searchFilter, options);
             res.status(200).json(result);
@@ -184,8 +184,8 @@ class BaseController {
         // Remove pagination and other non-filter parameters
         const { page, limit, sort, select, populate, q, ...filterParams } = query;
         // Add simple equality filters
-        Object.keys(filterParams).forEach(key => {
-            if (filterParams[key] !== undefined && filterParams[key] !== '') {
+        Object.keys(filterParams).forEach((key) => {
+            if (filterParams[key] !== undefined && filterParams[key] !== "") {
                 filter[key] = filterParams[key];
             }
         });
@@ -199,8 +199,9 @@ class BaseController {
     // Validation helper
     validateRequired(fields, body) {
         const missing = [];
-        fields.forEach(field => {
-            if (!body[field] || (typeof body[field] === 'string' && body[field].trim() === '')) {
+        fields.forEach((field) => {
+            if (!body[field] ||
+                (typeof body[field] === "string" && body[field].trim() === "")) {
                 missing.push(field);
             }
         });

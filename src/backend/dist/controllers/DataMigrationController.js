@@ -8,7 +8,7 @@ class DataMigrationController {
             // TODO: Implement full migration from JSON files
             const response = {
                 success: false,
-                error: 'Migration not yet implemented',
+                error: "Migration not yet implemented",
             };
             res.status(501).json(response);
         }
@@ -22,7 +22,7 @@ class DataMigrationController {
             // TODO: Implement player migration
             const response = {
                 success: false,
-                error: 'Player migration not yet implemented',
+                error: "Player migration not yet implemented",
             };
             res.status(501).json(response);
         }
@@ -36,7 +36,7 @@ class DataMigrationController {
             // TODO: Implement tournament migration
             const response = {
                 success: false,
-                error: 'Tournament migration not yet implemented',
+                error: "Tournament migration not yet implemented",
             };
             res.status(501).json(response);
         }
@@ -50,7 +50,7 @@ class DataMigrationController {
             // TODO: Implement results migration
             const response = {
                 success: false,
-                error: 'Results migration not yet implemented',
+                error: "Results migration not yet implemented",
             };
             res.status(501).json(response);
         }
@@ -65,8 +65,8 @@ class DataMigrationController {
             const response = {
                 success: true,
                 data: {
-                    status: 'not_started',
-                    message: 'Migration system not yet implemented',
+                    status: "not_started",
+                    message: "Migration system not yet implemented",
                 },
             };
             res.status(200).json(response);
@@ -81,7 +81,7 @@ class DataMigrationController {
             // TODO: Implement migration preview
             const response = {
                 success: false,
-                error: 'Migration preview not yet implemented',
+                error: "Migration preview not yet implemented",
             };
             res.status(501).json(response);
         }
@@ -95,7 +95,7 @@ class DataMigrationController {
             // TODO: Implement backup creation
             const response = {
                 success: false,
-                error: 'Backup system not yet implemented',
+                error: "Backup system not yet implemented",
             };
             res.status(501).json(response);
         }
@@ -109,7 +109,7 @@ class DataMigrationController {
             // TODO: Implement backup restoration
             const response = {
                 success: false,
-                error: 'Restore system not yet implemented',
+                error: "Restore system not yet implemented",
             };
             res.status(501).json(response);
         }
@@ -123,7 +123,7 @@ class DataMigrationController {
             // TODO: Implement data validation
             const response = {
                 success: false,
-                error: 'Data validation not yet implemented',
+                error: "Data validation not yet implemented",
             };
             res.status(501).json(response);
         }

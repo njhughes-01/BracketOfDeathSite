@@ -1,6 +1,6 @@
-import { Request, Response, NextFunction } from 'express';
-import { ITournament } from '../types/tournament';
-import { BaseController, RequestWithAuth } from './base';
+import { Request, Response, NextFunction } from "express";
+import { ITournament } from "../types/tournament";
+import { BaseController, RequestWithAuth } from "./base";
 export declare class TournamentAdminController extends BaseController<ITournament> {
     constructor();
     /**

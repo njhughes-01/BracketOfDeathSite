@@ -9,11 +9,11 @@ class TournamentSeedingService {
      */
     static async calculateSeeding(playerIds, tournamentFormat) {
         try {
-            const objectIds = playerIds.map(id => new mongoose_1.Types.ObjectId(id));
+            const objectIds = playerIds.map((id) => new mongoose_1.Types.ObjectId(id));
             // Get players with their statistics
             const players = await Player_1.Player.find({ _id: { $in: objectIds } });
             if (players.length !== playerIds.length) {
-                return { success: false, message: 'Some players not found' };
+                return { success: false, message: "Some players not found" };
             }
             // Calculate seeds for each player
             const playerSeeds = [];
@@ -39,8 +39,8 @@ class TournamentSeedingService {
             };
         }
         catch (error) {
-            console.error('Seeding calculation error:', error);
-            return { success: false, message: 'Failed to calculate seeding' };
+            console.error("Seeding calculation error:", error);
+            return { success: false, message: "Failed to calculate seeding" };
         }
     }
     /**
@@ -78,16 +78,16 @@ class TournamentSeedingService {
         // For now, we'll use the general statistics
         // In the future, we could track format-specific performance
         switch (format) {
-            case 'M':
+            case "M":
             case "Men's Singles":
                 // Men's format adjustments
                 break;
-            case 'W':
+            case "W":
             case "Women's Doubles":
                 // Women's format adjustments
                 break;
-            case 'Mixed':
-            case 'Mixed Doubles':
+            case "Mixed":
+            case "Mixed Doubles":
                 // Mixed format adjustments - maybe favor players with good partnership history
                 break;
             default:
@@ -106,35 +106,35 @@ class TournamentSeedingService {
         const avgFinish = player.avgFinish || 99;
         const tournamentsPlayed = player.bodsPlayed || 0;
         if (tournamentsPlayed < 2) {
-            return 'New player - neutral seeding';
+            return "New player - neutral seeding";
         }
         if (winPct > 70) {
-            parts.push('excellent win rate');
+            parts.push("excellent win rate");
         }
         else if (winPct > 50) {
-            parts.push('good win rate');
+            parts.push("good win rate");
         }
         else if (winPct > 30) {
-            parts.push('moderate win rate');
+            parts.push("moderate win rate");
         }
         if (championships > 0) {
-            parts.push(`${championships} championship${championships > 1 ? 's' : ''}`);
+            parts.push(`${championships} championship${championships > 1 ? "s" : ""}`);
         }
         if (avgFinish <= 3) {
-            parts.push('consistently high finishes');
+            parts.push("consistently high finishes");
         }
         else if (avgFinish <= 6) {
-            parts.push('solid tournament finishes');
+            parts.push("solid tournament finishes");
         }
         if (tournamentsPlayed >= 10) {
-            parts.push('extensive experience');
+            parts.push("extensive experience");
         }
         else if (tournamentsPlayed >= 5) {
-            parts.push('good experience');
+            parts.push("good experience");
         }
         return parts.length > 0
-            ? parts.join(', ')
-            : 'based on available statistics';
+            ? parts.join(", ")
+            : "based on available statistics";
     }
     /**
      * Create balanced bracket pairing suggestions
@@ -142,7 +142,10 @@ class TournamentSeedingService {
     static async generateBracketPairings(seeds) {
         try {
             if (seeds.length < 2) {
-                return { success: false, message: 'Need at least 2 players for bracket' };
+                return {
+                    success: false,
+                    message: "Need at least 2 players for bracket",
+                };
             }
             // Ensure we have a power of 2 number of players
             const bracketSize = Math.pow(2, Math.ceil(Math.log2(seeds.length)));
@@ -157,7 +160,7 @@ class TournamentSeedingService {
                     pairings.push({
                         team1: highSeed,
                         team2: lowSeed,
-                        round: 'first',
+                        round: "first",
                     });
                 }
             }
@@ -172,8 +175,8 @@ class TournamentSeedingService {
             };
         }
         catch (error) {
-            console.error('Bracket pairing error:', error);
-            return { success: false, message: 'Failed to generate bracket pairings' };
+            console.error("Bracket pairing error:", error);
+            return { success: false, message: "Failed to generate bracket pairings" };
         }
     }
     /**
@@ -190,7 +193,7 @@ class TournamentSeedingService {
             const byeCount = bracketSize - totalPlayers;
             return {
                 success: true,
-                message: 'Seeding preview generated',
+                message: "Seeding preview generated",
                 preview: {
                     totalPlayers,
                     bracketSize,
@@ -201,8 +204,8 @@ class TournamentSeedingService {
             };
         }
         catch (error) {
-            console.error('Seeding preview error:', error);
-            return { success: false, message: 'Failed to generate seeding preview' };
+            console.error("Seeding preview error:", error);
+            return { success: false, message: "Failed to generate seeding preview" };
         }
     }
 }

@@ -5,38 +5,40 @@ const errorHandler = (err, _req, res, _next) => {
     let error = { ...err };
     error.message = err.message;
     // Log error
-    console.error('Error:', err);
+    console.error("Error:", err);
     // Default error
     let statusCode = error.statusCode || 500;
-    let message = error.message || 'Internal Server Error';
+    let message = error.message || "Internal Server Error";
     // Mongoose bad ObjectId
-    if (err.name === 'CastError') {
+    if (err.name === "CastError") {
         statusCode = 400;
-        message = 'Invalid ID format';
+        message = "Invalid ID format";
     }
     // Mongoose duplicate key
-    if (err.name === 'MongoServerError' && err.code === 11000) {
+    if (err.name === "MongoServerError" && err.code === 11000) {
         statusCode = 400;
-        message = 'Duplicate field value';
+        message = "Duplicate field value";
     }
     // Mongoose validation error
-    if (err.name === 'ValidationError') {
+    if (err.name === "ValidationError") {
         statusCode = 400;
-        message = Object.values(err.errors).map((val) => val.message).join(', ');
+        message = Object.values(err.errors)
+            .map((val) => val.message)
+            .join(", ");
     }
     // JWT errors
-    if (err.name === 'JsonWebTokenError') {
+    if (err.name === "JsonWebTokenError") {
         statusCode = 401;
-        message = 'Invalid token';
+        message = "Invalid token";
     }
-    if (err.name === 'TokenExpiredError') {
+    if (err.name === "TokenExpiredError") {
         statusCode = 401;
-        message = 'Token expired';
+        message = "Token expired";
     }
     res.status(statusCode).json({
         success: false,
         error: message,
-        ...(process.env.NODE_ENV === 'development' && { stack: err.stack }),
+        ...(process.env.NODE_ENV === "development" && { stack: err.stack }),
     });
 };
 exports.errorHandler = errorHandler;

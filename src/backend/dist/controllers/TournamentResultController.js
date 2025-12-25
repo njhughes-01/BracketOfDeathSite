@@ -9,7 +9,7 @@ const Player_1 = require("../models/Player");
 const base_1 = require("./base");
 class TournamentResultController extends base_1.BaseController {
     constructor() {
-        super(TournamentResult_1.TournamentResult, 'TournamentResult');
+        super(TournamentResult_1.TournamentResult, "TournamentResult");
     }
     // Override buildFilter for tournament result-specific filtering
     buildFilter(query) {
@@ -26,12 +26,14 @@ class TournamentResultController extends base_1.BaseController {
         if (filterParams.playerIds) {
             const playerIds = Array.isArray(filterParams.playerIds)
                 ? filterParams.playerIds
-                : filterParams.playerIds.split(',');
-            filter.players = { $in: playerIds.map((id) => new mongoose_1.Types.ObjectId(id)) };
+                : filterParams.playerIds.split(",");
+            filter.players = {
+                $in: playerIds.map((id) => new mongoose_1.Types.ObjectId(id)),
+            };
         }
         // Division filtering
         if (filterParams.division) {
-            filter.division = new RegExp(filterParams.division, 'i');
+            filter.division = new RegExp(filterParams.division, "i");
         }
         // Seed filtering
         if (filterParams.seed) {
@@ -48,38 +50,38 @@ class TournamentResultController extends base_1.BaseController {
         }
         // Final rank filtering
         if (filterParams.finalRank) {
-            filter['totalStats.finalRank'] = parseInt(filterParams.finalRank);
+            filter["totalStats.finalRank"] = parseInt(filterParams.finalRank);
         }
         else if (filterParams.finalRank_min || filterParams.finalRank_max) {
-            filter['totalStats.finalRank'] = {};
+            filter["totalStats.finalRank"] = {};
             if (filterParams.finalRank_min) {
-                filter['totalStats.finalRank'].$gte = parseInt(filterParams.finalRank_min);
+                filter["totalStats.finalRank"].$gte = parseInt(filterParams.finalRank_min);
             }
             if (filterParams.finalRank_max) {
-                filter['totalStats.finalRank'].$lte = parseInt(filterParams.finalRank_max);
+                filter["totalStats.finalRank"].$lte = parseInt(filterParams.finalRank_max);
             }
         }
         // BOD finish filtering
         if (filterParams.bodFinish) {
-            filter['totalStats.bodFinish'] = parseInt(filterParams.bodFinish);
+            filter["totalStats.bodFinish"] = parseInt(filterParams.bodFinish);
         }
         else if (filterParams.bodFinish_min || filterParams.bodFinish_max) {
-            filter['totalStats.bodFinish'] = {};
+            filter["totalStats.bodFinish"] = {};
             if (filterParams.bodFinish_min) {
-                filter['totalStats.bodFinish'].$gte = parseInt(filterParams.bodFinish_min);
+                filter["totalStats.bodFinish"].$gte = parseInt(filterParams.bodFinish_min);
             }
             if (filterParams.bodFinish_max) {
-                filter['totalStats.bodFinish'].$lte = parseInt(filterParams.bodFinish_max);
+                filter["totalStats.bodFinish"].$lte = parseInt(filterParams.bodFinish_max);
             }
         }
         // Win percentage filtering
         if (filterParams.winPercentage_min || filterParams.winPercentage_max) {
-            filter['totalStats.winPercentage'] = {};
+            filter["totalStats.winPercentage"] = {};
             if (filterParams.winPercentage_min) {
-                filter['totalStats.winPercentage'].$gte = parseFloat(filterParams.winPercentage_min);
+                filter["totalStats.winPercentage"].$gte = parseFloat(filterParams.winPercentage_min);
             }
             if (filterParams.winPercentage_max) {
-                filter['totalStats.winPercentage'].$lte = parseFloat(filterParams.winPercentage_max);
+                filter["totalStats.winPercentage"].$lte = parseFloat(filterParams.winPercentage_max);
             }
         }
         return filter;
@@ -90,7 +92,7 @@ class TournamentResultController extends base_1.BaseController {
             const options = {
                 page: parseInt(req.query.page) || 1,
                 limit: parseInt(req.query.limit) || 10,
-                sort: req.query.sort || '-tournament.date',
+                sort: req.query.sort || "-tournament.date",
                 select: req.query.select,
             };
             const filter = this.buildFilter(req.query);
@@ -100,32 +102,32 @@ class TournamentResultController extends base_1.BaseController {
                 { $match: filter },
                 {
                     $lookup: {
-                        from: 'players',
-                        localField: 'players',
-                        foreignField: '_id',
-                        as: 'playerDetails',
+                        from: "players",
+                        localField: "players",
+                        foreignField: "_id",
+                        as: "playerDetails",
                     },
                 },
                 {
                     $lookup: {
-                        from: 'tournaments',
-                        localField: 'tournamentId',
-                        foreignField: '_id',
-                        as: 'tournamentDetails',
+                        from: "tournaments",
+                        localField: "tournamentId",
+                        foreignField: "_id",
+                        as: "tournamentDetails",
                     },
                 },
                 {
                     $addFields: {
-                        tournament: { $arrayElemAt: ['$tournamentDetails', 0] },
+                        tournament: { $arrayElemAt: ["$tournamentDetails", 0] },
                         teamName: {
                             $reduce: {
-                                input: '$playerDetails',
-                                initialValue: '',
+                                input: "$playerDetails",
+                                initialValue: "",
                                 in: {
                                     $cond: {
-                                        if: { $eq: ['$$value', ''] },
-                                        then: '$$this.name',
-                                        else: { $concat: ['$$value', ' & ', '$$this.name'] },
+                                        if: { $eq: ["$$value", ""] },
+                                        then: "$$this.name",
+                                        else: { $concat: ["$$value", " & ", "$$this.name"] },
                                     },
                                 },
                             },
@@ -138,7 +140,7 @@ class TournamentResultController extends base_1.BaseController {
                 const yearInt = parseInt(year);
                 pipeline.push({
                     $match: {
-                        'tournament.date': {
+                        "tournament.date": {
                             $gte: new Date(`${yearInt}-01-01`),
                             $lte: new Date(`${yearInt}-12-31`),
                         },
@@ -156,15 +158,15 @@ class TournamentResultController extends base_1.BaseController {
                 { $match: filter },
                 {
                     $lookup: {
-                        from: 'tournaments',
-                        localField: 'tournamentId',
-                        foreignField: '_id',
-                        as: 'tournament',
+                        from: "tournaments",
+                        localField: "tournamentId",
+                        foreignField: "_id",
+                        as: "tournament",
                     },
                 },
                 {
                     $addFields: {
-                        tournament: { $arrayElemAt: ['$tournament', 0] },
+                        tournament: { $arrayElemAt: ["$tournament", 0] },
                     },
                 },
             ];
@@ -172,14 +174,14 @@ class TournamentResultController extends base_1.BaseController {
                 const yearInt = parseInt(year);
                 countPipeline.push({
                     $match: {
-                        'tournament.date': {
+                        "tournament.date": {
                             $gte: new Date(`${yearInt}-01-01`),
                             $lte: new Date(`${yearInt}-12-31`),
                         },
                     },
                 });
             }
-            countPipeline.push({ $count: 'total' });
+            countPipeline.push({ $count: "total" });
             const [results, totalResult] = await Promise.all([
                 TournamentResult_1.TournamentResult.aggregate(pipeline),
                 TournamentResult_1.TournamentResult.aggregate(countPipeline),
@@ -208,12 +210,12 @@ class TournamentResultController extends base_1.BaseController {
             const { tournamentId } = req.params;
             const tournament = await Tournament_1.Tournament.findById(tournamentId);
             if (!tournament) {
-                this.sendError(res, 404, 'Tournament not found');
+                this.sendError(res, 404, "Tournament not found");
                 return;
             }
             const results = await TournamentResult_1.TournamentResult.find({ tournamentId })
-                .populate('players', 'name')
-                .sort({ 'totalStats.finalRank': 1, 'totalStats.winPercentage': -1 });
+                .populate("players", "name")
+                .sort({ "totalStats.finalRank": 1, "totalStats.winPercentage": -1 });
             const response = {
                 success: true,
                 data: {
@@ -234,15 +236,15 @@ class TournamentResultController extends base_1.BaseController {
             const { playerId } = req.params;
             const player = await Player_1.Player.findById(playerId);
             if (!player) {
-                this.sendError(res, 404, 'Player not found');
+                this.sendError(res, 404, "Player not found");
                 return;
             }
             const results = await TournamentResult_1.TournamentResult.find({
-                players: { $in: [playerId] }
+                players: { $in: [playerId] },
             })
-                .populate('tournamentId')
-                .populate('players', 'name')
-                .sort({ 'tournament.date': -1 });
+                .populate("tournamentId")
+                .populate("players", "name")
+                .sort({ "tournament.date": -1 });
             // Calculate player statistics across all tournaments
             const stats = this.calculatePlayerStats(results);
             const response = {
@@ -265,7 +267,7 @@ class TournamentResultController extends base_1.BaseController {
         try {
             const { tournamentId, format, year } = req.query;
             const limit = parseInt(req.query.limit) || 50;
-            const sort = req.query.sort || '-points'; // Default sort by points
+            const sort = req.query.sort || "-points"; // Default sort by points
             let matchStage = {};
             // Filter by tournament
             if (tournamentId) {
@@ -276,20 +278,20 @@ class TournamentResultController extends base_1.BaseController {
                 { $match: matchStage },
                 {
                     $lookup: {
-                        from: 'tournaments',
-                        localField: 'tournamentId',
-                        foreignField: '_id',
-                        as: 'tournament',
+                        from: "tournaments",
+                        localField: "tournamentId",
+                        foreignField: "_id",
+                        as: "tournament",
                     },
                 },
                 {
-                    $unwind: '$tournament',
+                    $unwind: "$tournament",
                 },
             ];
             // Add format filtering if specified
             if (format) {
                 pipeline.push({
-                    $match: { 'tournament.format': format },
+                    $match: { "tournament.format": format },
                 });
             }
             // Add year filtering if specified
@@ -299,25 +301,25 @@ class TournamentResultController extends base_1.BaseController {
                 // Condition 1: Specific years
                 if (years.length > 0) {
                     // Optimization: if we just have years, we can check date ranges for each year
-                    // Or use $expr with $year if performance allows. 
+                    // Or use $expr with $year if performance allows.
                     // Given the index on tournament.date, ranges are better.
-                    years.forEach(y => {
+                    years.forEach((y) => {
                         yearOrConditions.push({
-                            'tournament.date': {
+                            "tournament.date": {
                                 $gte: new Date(`${y}-01-01`),
-                                $lte: new Date(`${y}-12-31`)
-                            }
+                                $lte: new Date(`${y}-12-31`),
+                            },
                         });
                     });
                 }
                 // Condition 2: Ranges
                 if (ranges.length > 0) {
-                    ranges.forEach(r => {
+                    ranges.forEach((r) => {
                         yearOrConditions.push({
-                            'tournament.date': {
+                            "tournament.date": {
                                 $gte: new Date(`${r.start}-01-01`),
-                                $lte: new Date(`${r.end}-12-31`)
-                            }
+                                $lte: new Date(`${r.end}-12-31`),
+                            },
                         });
                     });
                 }
@@ -325,8 +327,8 @@ class TournamentResultController extends base_1.BaseController {
                 if (yearOrConditions.length > 0) {
                     pipeline.push({
                         $match: {
-                            $or: yearOrConditions
-                        }
+                            $or: yearOrConditions,
+                        },
                     });
                 }
                 else {
@@ -334,77 +336,77 @@ class TournamentResultController extends base_1.BaseController {
                     // return no results instead of All Time.
                     pipeline.push({
                         $match: {
-                            _id: null // Impossible match
-                        }
+                            _id: null, // Impossible match
+                        },
                     });
                 }
             }
             // Unwind players to rank individuals instead of teams
             pipeline.push({
-                $unwind: '$players'
+                $unwind: "$players",
             });
             // Group by individual player and calculate aggregate stats
             pipeline.push({
                 $group: {
-                    _id: '$players',
+                    _id: "$players",
                     totalTournaments: { $sum: 1 },
-                    totalWins: { $sum: '$totalStats.totalWon' },
-                    totalLosses: { $sum: '$totalStats.totalLost' },
-                    totalGames: { $sum: '$totalStats.totalPlayed' },
-                    avgWinPercentage: { $avg: '$totalStats.winPercentage' },
-                    bestFinish: { $min: '$totalStats.finalRank' },
-                    avgFinish: { $avg: '$totalStats.finalRank' },
+                    totalWins: { $sum: "$totalStats.totalWon" },
+                    totalLosses: { $sum: "$totalStats.totalLost" },
+                    totalGames: { $sum: "$totalStats.totalPlayed" },
+                    avgWinPercentage: { $avg: "$totalStats.winPercentage" },
+                    bestFinish: { $min: "$totalStats.finalRank" },
+                    avgFinish: { $avg: "$totalStats.finalRank" },
                     // Calculate championships (1st place)
                     totalChampionships: {
                         $sum: {
-                            $cond: [{ $eq: ['$totalStats.finalRank', 1] }, 1, 0],
+                            $cond: [{ $eq: ["$totalStats.finalRank", 1] }, 1, 0],
                         },
                     },
                     // Calculate Runner-ups (2nd place)
                     totalRunnerUps: {
                         $sum: {
-                            $cond: [{ $eq: ['$totalStats.finalRank', 2] }, 1, 0],
+                            $cond: [{ $eq: ["$totalStats.finalRank", 2] }, 1, 0],
                         },
                     },
                     // Calculate Final Four (Semi-finals)
                     totalFinalFours: {
                         $sum: {
-                            $cond: [{ $in: ['$totalStats.finalRank', [3, 4]] }, 1, 0],
+                            $cond: [{ $in: ["$totalStats.finalRank", [3, 4]] }, 1, 0],
                         },
-                    }
+                    },
                 },
             }, {
                 $lookup: {
-                    from: 'players',
-                    localField: '_id',
-                    foreignField: '_id',
-                    as: 'playerDetails',
+                    from: "players",
+                    localField: "_id",
+                    foreignField: "_id",
+                    as: "playerDetails",
                 },
             }, {
                 $addFields: {
-                    name: { $arrayElemAt: ['$playerDetails.name', 0] },
+                    name: { $arrayElemAt: ["$playerDetails.name", 0] },
                     winningPercentage: {
                         $cond: [
-                            { $gt: ['$totalGames', 0] },
-                            { $divide: ['$totalWins', '$totalGames'] },
+                            { $gt: ["$totalGames", 0] },
+                            { $divide: ["$totalWins", "$totalGames"] },
                             0,
                         ],
                     },
-                    // Calculate arbitrary points: 
+                    // Calculate arbitrary points:
                     // Championship = 1000, RunnerUp = 500, FinalFour = 250, Win = 10
                     points: {
                         $add: [
-                            { $multiply: ['$totalChampionships', 1000] },
-                            { $multiply: ['$totalRunnerUps', 500] },
-                            { $multiply: ['$totalFinalFours', 250] },
-                            { $multiply: ['$totalWins', 10] }
-                        ]
-                    }
+                            { $multiply: ["$totalChampionships", 1000] },
+                            { $multiply: ["$totalRunnerUps", 500] },
+                            { $multiply: ["$totalFinalFours", 250] },
+                            { $multiply: ["$totalWins", 10] },
+                        ],
+                    },
                 },
             }, {
                 $project: {
-                    playerDetails: 0 // Remove raw lookup array
-                }
+                    playerDetails: 0, // Remove raw lookup array
+                },
             }, {
                 $sort: this.parseSortString(sort),
             }, { $limit: limit });
@@ -427,22 +429,22 @@ class TournamentResultController extends base_1.BaseController {
                     $group: {
                         _id: null,
                         totalResults: { $sum: 1 },
-                        avgWinPercentage: { $avg: '$totalStats.winPercentage' },
-                        avgGamesPlayed: { $avg: '$totalStats.totalPlayed' },
-                        highestWinPercentage: { $max: '$totalStats.winPercentage' },
-                        lowestWinPercentage: { $min: '$totalStats.winPercentage' },
+                        avgWinPercentage: { $avg: "$totalStats.winPercentage" },
+                        avgGamesPlayed: { $avg: "$totalStats.totalPlayed" },
+                        highestWinPercentage: { $max: "$totalStats.winPercentage" },
+                        lowestWinPercentage: { $min: "$totalStats.winPercentage" },
                     },
                 },
             ]);
             const performanceDistribution = await TournamentResult_1.TournamentResult.aggregate([
                 {
                     $bucket: {
-                        groupBy: '$totalStats.winPercentage',
+                        groupBy: "$totalStats.winPercentage",
                         boundaries: [0, 0.2, 0.4, 0.6, 0.8, 1.0],
-                        default: 'Other',
+                        default: "Other",
                         output: {
                             count: { $sum: 1 },
-                            avgRank: { $avg: '$totalStats.finalRank' },
+                            avgRank: { $avg: "$totalStats.finalRank" },
                         },
                     },
                 },
@@ -465,7 +467,7 @@ class TournamentResultController extends base_1.BaseController {
         try {
             const { results } = req.body;
             if (!Array.isArray(results) || results.length === 0) {
-                this.sendError(res, 400, 'Results array is required');
+                this.sendError(res, 400, "Results array is required");
                 return;
             }
             const importResults = {
@@ -481,18 +483,20 @@ class TournamentResultController extends base_1.BaseController {
                         importResults.errors.push({
                             tournament: resultData.tournamentId,
                             players: resultData.players || [],
-                            error: 'Tournament not found',
+                            error: "Tournament not found",
                         });
                         continue;
                     }
                     // Validate players exist
-                    const playerIds = Array.isArray(resultData.players) ? resultData.players : [resultData.players];
+                    const playerIds = Array.isArray(resultData.players)
+                        ? resultData.players
+                        : [resultData.players];
                     const players = await Player_1.Player.find({ _id: { $in: playerIds } });
                     if (players.length !== playerIds.length) {
                         importResults.errors.push({
                             tournament: resultData.tournamentId,
                             players: playerIds,
-                            error: 'One or more players not found',
+                            error: "One or more players not found",
                         });
                         continue;
                     }
@@ -512,7 +516,7 @@ class TournamentResultController extends base_1.BaseController {
                 }
                 catch (error) {
                     importResults.errors.push({
-                        tournament: resultData.tournamentId || 'Unknown',
+                        tournament: resultData.tournamentId || "Unknown",
                         players: resultData.players || [],
                         error: error.message,
                     });
@@ -532,10 +536,10 @@ class TournamentResultController extends base_1.BaseController {
     // Helper method to parse sort string
     parseSortString(sortStr) {
         const sort = {};
-        const parts = sortStr.split(',');
-        parts.forEach(part => {
+        const parts = sortStr.split(",");
+        parts.forEach((part) => {
             const trimmed = part.trim();
-            if (trimmed.startsWith('-')) {
+            if (trimmed.startsWith("-")) {
                 const field = trimmed.substring(1);
                 // Handle nested field references
                 sort[field] = -1;
@@ -563,15 +567,19 @@ class TournamentResultController extends base_1.BaseController {
         const totalWins = results.reduce((sum, result) => sum + result.totalStats.totalWon, 0);
         const totalLosses = results.reduce((sum, result) => sum + result.totalStats.totalLost, 0);
         const totalGames = results.reduce((sum, result) => sum + result.totalStats.totalPlayed, 0);
-        const validRanks = results.filter(r => r.totalStats.finalRank).map(r => r.totalStats.finalRank);
-        const championships = results.filter(r => r.totalStats.finalRank === 1).length;
+        const validRanks = results
+            .filter((r) => r.totalStats.finalRank)
+            .map((r) => r.totalStats.finalRank);
+        const championships = results.filter((r) => r.totalStats.finalRank === 1).length;
         return {
             totalTournaments: results.length,
             totalWins,
             totalLosses,
             totalGames,
             overallWinPercentage: totalGames > 0 ? totalWins / totalGames : 0,
-            avgFinish: validRanks.length > 0 ? validRanks.reduce((a, b) => a + b, 0) / validRanks.length : 0,
+            avgFinish: validRanks.length > 0
+                ? validRanks.reduce((a, b) => a + b, 0) / validRanks.length
+                : 0,
             bestFinish: validRanks.length > 0 ? Math.min(...validRanks) : null,
             championships,
         };
@@ -583,21 +591,21 @@ class TournamentResultController extends base_1.BaseController {
         const stats = data.totalStats;
         if (stats) {
             if (stats.totalWon + stats.totalLost !== stats.totalPlayed) {
-                errors.push('Total games played must equal total won plus total lost');
+                errors.push("Total games played must equal total won plus total lost");
             }
             if (stats.totalWon > stats.totalPlayed) {
-                errors.push('Total games won cannot exceed total games played');
+                errors.push("Total games won cannot exceed total games played");
             }
             if (stats.totalLost > stats.totalPlayed) {
-                errors.push('Total games lost cannot exceed total games played');
+                errors.push("Total games lost cannot exceed total games played");
             }
             if (stats.winPercentage < 0 || stats.winPercentage > 1) {
-                errors.push('Win percentage must be between 0 and 1');
+                errors.push("Win percentage must be between 0 and 1");
             }
         }
         // Validate player count
         if (data.players && (data.players.length < 1 || data.players.length > 2)) {
-            errors.push('A team must have 1 or 2 players');
+            errors.push("A team must have 1 or 2 players");
         }
         return errors;
     }
@@ -606,7 +614,7 @@ class TournamentResultController extends base_1.BaseController {
         try {
             const validationErrors = this.validateTournamentResultData(req.body);
             if (validationErrors.length > 0) {
-                this.sendError(res, 400, validationErrors.join(', '));
+                this.sendError(res, 400, validationErrors.join(", "));
                 return;
             }
             // Call parent create method
@@ -621,7 +629,7 @@ class TournamentResultController extends base_1.BaseController {
         try {
             const validationErrors = this.validateTournamentResultData(req.body);
             if (validationErrors.length > 0) {
-                this.sendError(res, 400, validationErrors.join(', '));
+                this.sendError(res, 400, validationErrors.join(", "));
                 return;
             }
             // Call parent update method
@@ -642,10 +650,10 @@ class TournamentResultController extends base_1.BaseController {
                 {
                     $group: {
                         _id: null,
-                        minDate: { $min: '$date' },
-                        maxDate: { $max: '$date' }
-                    }
-                }
+                        minDate: { $min: "$date" },
+                        maxDate: { $max: "$date" },
+                    },
+                },
             ]);
             if (result.length === 0 || !result[0].minDate) {
                 this.sendSuccess(res, { min: DEFAULT_MIN_YEAR, max: currentYear });
@@ -655,7 +663,7 @@ class TournamentResultController extends base_1.BaseController {
             const maxYear = new Date(result[0].maxDate).getFullYear();
             this.sendSuccess(res, {
                 min: isNaN(minYear) ? DEFAULT_MIN_YEAR : minYear,
-                max: isNaN(maxYear) ? currentYear : maxYear
+                max: isNaN(maxYear) ? currentYear : maxYear,
             });
         }
         catch (error) {

@@ -2,39 +2,36 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.calculateBracketMatches = exports.getNextRound = exports.getRoundNumber = exports.getNextRoundRobinRound = exports.isRoundRobinRound = exports.RoundRobinRounds = exports.MatchStatuses = exports.LegacyMatchRounds = exports.MatchRounds = void 0;
 exports.MatchRounds = [
-    'RR_R1',
-    'RR_R2',
-    'RR_R3',
-    'round-of-64',
-    'round-of-32',
-    'round-of-16',
-    'quarterfinal',
-    'semifinal',
-    'final',
-    'third-place',
+    "RR_R1",
+    "RR_R2",
+    "RR_R3",
+    "round-of-64",
+    "round-of-32",
+    "round-of-16",
+    "quarterfinal",
+    "semifinal",
+    "final",
+    "third-place",
     // Losers bracket rounds (double elimination)
-    'lbr-round-1',
-    'lbr-round-2',
-    'lbr-quarterfinal',
-    'lbr-semifinal',
-    'lbr-final',
+    "lbr-round-1",
+    "lbr-round-2",
+    "lbr-quarterfinal",
+    "lbr-semifinal",
+    "lbr-final",
     // Grand final between WB winner and LBR winner
-    'grand-final',
+    "grand-final",
 ];
 // Backward compatibility - deprecated
-exports.LegacyMatchRounds = [
-    'round-robin',
-    ...exports.MatchRounds
-];
+exports.LegacyMatchRounds = ["round-robin", ...exports.MatchRounds];
 exports.MatchStatuses = [
-    'scheduled',
-    'in-progress',
-    'completed',
-    'cancelled',
-    'postponed',
+    "scheduled",
+    "in-progress",
+    "completed",
+    "cancelled",
+    "postponed",
 ];
 // Round Robin helper functions
-exports.RoundRobinRounds = ['RR_R1', 'RR_R2', 'RR_R3'];
+exports.RoundRobinRounds = ["RR_R1", "RR_R2", "RR_R3"];
 const isRoundRobinRound = (round) => {
     return exports.RoundRobinRounds.includes(round);
 };
@@ -42,37 +39,37 @@ exports.isRoundRobinRound = isRoundRobinRound;
 const getNextRoundRobinRound = (currentRound) => {
     const currentIndex = exports.RoundRobinRounds.indexOf(currentRound);
     if (currentIndex === -1)
-        return 'RR_R1';
+        return "RR_R1";
     if (currentIndex >= exports.RoundRobinRounds.length - 1)
-        return 'bracket';
+        return "bracket";
     return exports.RoundRobinRounds[currentIndex + 1];
 };
 exports.getNextRoundRobinRound = getNextRoundRobinRound;
 const getRoundNumber = (round) => {
-    if (round === 'RR_R1')
+    if (round === "RR_R1")
         return 1;
-    if (round === 'RR_R2')
+    if (round === "RR_R2")
         return 2;
-    if (round === 'RR_R3')
+    if (round === "RR_R3")
         return 3;
-    if (round === 'quarterfinal')
+    if (round === "quarterfinal")
         return 4;
-    if (round === 'semifinal')
+    if (round === "semifinal")
         return 5;
-    if (round === 'final')
+    if (round === "final")
         return 6;
-    if (round === 'grand-final')
+    if (round === "grand-final")
         return 7;
     // Losers bracket ordering (after winners rounds for sorting)
-    if (round === 'lbr-round-1')
+    if (round === "lbr-round-1")
         return 41;
-    if (round === 'lbr-round-2')
+    if (round === "lbr-round-2")
         return 42;
-    if (round === 'lbr-quarterfinal')
+    if (round === "lbr-quarterfinal")
         return 43;
-    if (round === 'lbr-semifinal')
+    if (round === "lbr-semifinal")
         return 44;
-    if (round === 'lbr-final')
+    if (round === "lbr-final")
         return 45;
     return 1; // default
 };
@@ -80,15 +77,15 @@ exports.getRoundNumber = getRoundNumber;
 // Helper function to determine the next round
 const getNextRound = (currentRound) => {
     const roundOrder = [
-        'RR_R1',
-        'RR_R2',
-        'RR_R3',
-        'round-of-64',
-        'round-of-32',
-        'round-of-16',
-        'quarterfinal',
-        'semifinal',
-        'final'
+        "RR_R1",
+        "RR_R2",
+        "RR_R3",
+        "round-of-64",
+        "round-of-32",
+        "round-of-16",
+        "quarterfinal",
+        "semifinal",
+        "final",
     ];
     const currentIndex = roundOrder.indexOf(currentRound);
     if (currentIndex === -1 || currentIndex === roundOrder.length - 1) {

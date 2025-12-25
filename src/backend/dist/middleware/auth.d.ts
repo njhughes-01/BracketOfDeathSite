@@ -1,5 +1,5 @@
-import { Response, NextFunction } from 'express';
-import { RequestWithAuth } from '../controllers/base';
+import { Response, NextFunction } from "express";
+import { RequestWithAuth } from "../controllers/base";
 interface KeycloakToken {
     sub: string;
     email: string;

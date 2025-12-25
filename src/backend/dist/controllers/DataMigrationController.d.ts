@@ -1,5 +1,5 @@
-import { Response, NextFunction } from 'express';
-import { RequestWithAuth } from './base';
+import { Response, NextFunction } from "express";
+import { RequestWithAuth } from "./base";
 export declare class DataMigrationController {
     migrateAll: (_req: RequestWithAuth, res: Response, next: NextFunction) => Promise<void>;
     migratePlayers: (_req: RequestWithAuth, res: Response, next: NextFunction) => Promise<void>;

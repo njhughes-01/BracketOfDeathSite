@@ -51,7 +51,11 @@ export class EmailService {
             return {
                 activeProvider,
                 provider,
-                senderEmail: settings?.mailjetSenderEmail || this.defaultSenderEmail, // We might want a generic sender email field later
+                // Use configured sender or fallback to provider-specific default
+                senderEmail: settings?.mailjetSenderEmail ||
+                    (activeProvider === "mailgun"
+                        ? `noreply@${settings?.mailgunDomain || this.defaultMailgunDomain}`
+                        : this.defaultSenderEmail),
                 siteLogo: settings?.siteLogo,
                 siteLogoUrl: settings?.siteLogoUrl,
                 brandName: settings?.brandName || "Bracket of Death",

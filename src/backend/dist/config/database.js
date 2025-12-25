@@ -7,30 +7,30 @@ exports.connectToDatabase = void 0;
 const mongoose_1 = __importDefault(require("mongoose"));
 const connectToDatabase = async () => {
     try {
-        const mongoUri = process.env.MONGODB_URI || 'mongodb://localhost:27017/bracketofdeathsite';
+        const mongoUri = process.env.MONGODB_URI || "mongodb://localhost:27017/bracketofdeathsite";
         await mongoose_1.default.connect(mongoUri, {
             // Connection options for production
             maxPoolSize: 10,
             serverSelectionTimeoutMS: 5000,
             socketTimeoutMS: 45000,
         });
-        console.log('Connected to MongoDB');
+        console.log("Connected to MongoDB");
         // Handle connection events
-        mongoose_1.default.connection.on('error', (error) => {
-            console.error('MongoDB connection error:', error);
+        mongoose_1.default.connection.on("error", (error) => {
+            console.error("MongoDB connection error:", error);
         });
-        mongoose_1.default.connection.on('disconnected', () => {
-            console.log('MongoDB disconnected');
+        mongoose_1.default.connection.on("disconnected", () => {
+            console.log("MongoDB disconnected");
         });
         // Graceful shutdown
-        process.on('SIGINT', async () => {
+        process.on("SIGINT", async () => {
             await mongoose_1.default.connection.close();
-            console.log('MongoDB connection closed through app termination');
+            console.log("MongoDB connection closed through app termination");
             process.exit(0);
         });
     }
     catch (error) {
-        console.error('Failed to connect to MongoDB:', error);
+        console.error("Failed to connect to MongoDB:", error);
         throw error;
     }
 };

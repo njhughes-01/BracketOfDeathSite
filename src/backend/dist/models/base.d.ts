@@ -1,5 +1,5 @@
-import { Schema, Model, Document, QueryOptions } from 'mongoose';
-import { PaginationOptions, PaginatedResponse } from '../types/common';
+import { Schema, Model, Document, QueryOptions } from "mongoose";
+import { PaginationOptions, PaginatedResponse } from "../types/common";
 export interface BaseModelMethods {
     toJSON(): any;
 }

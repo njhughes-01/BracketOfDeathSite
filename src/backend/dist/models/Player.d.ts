@@ -1,5 +1,5 @@
-import { IPlayer } from '../types/player';
-import { BaseModelStatics } from './base';
+import { IPlayer } from "../types/player";
+import { BaseModelStatics } from "./base";
 export interface IPlayerModel extends BaseModelStatics<IPlayer> {
 }
 export declare const Player: IPlayerModel;
