@@ -98,7 +98,8 @@ describe('SettingsController', () => {
 
       await controller.testEmail(mockReq as Request, mockRes as Response);
 
-      expect(emailService.sendTestEmail).toHaveBeenCalledWith('test@example.com');
+      // Now expects config object as second parameter
+      expect(emailService.sendTestEmail).toHaveBeenCalledWith('test@example.com', expect.any(Object));
       expect(jsonMock).toHaveBeenCalledWith(
         expect.objectContaining({
           success: true,
