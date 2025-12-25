@@ -1,0 +1,27 @@
+export interface EmailParams {
+    to: string;
+    subject: string;
+    text: string;
+    html: string;
+}
+
+export interface BrandingConfig {
+    siteLogo?: string;
+    siteLogoUrl?: string;
+    brandName: string;
+    brandPrimaryColor: string;
+    brandSecondaryColor: string;
+    senderEmail: string;
+}
+
+export interface IEmailProvider {
+    /**
+     * Send a raw email
+     */
+    sendEmail(params: EmailParams, config: BrandingConfig): Promise<boolean>;
+
+    /**
+     * Get provider name for logging/debugging
+     */
+    getName(): string;
+}

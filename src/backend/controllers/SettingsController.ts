@@ -2,7 +2,7 @@ import { Response } from "express";
 import { RequestWithAuth } from "./base";
 import SystemSettings from "../models/SystemSettings";
 import { ApiResponse } from "../types/common";
-import mailjetService from "../services/MailjetService"; // We'll update this service to reload config
+import emailService from "../services/EmailService";
 
 export class SettingsController {
   // Get current settings (masked)
@@ -13,6 +13,9 @@ export class SettingsController {
       const response: ApiResponse = {
         success: true,
         data: {
+          // Email Provider config
+          activeProvider: settings?.activeProvider || "mailjet",
+
           // Mailjet config
           mailjetConfigured: !!(
             settings?.mailjetApiKey && settings?.mailjetApiSecret
@@ -20,6 +23,14 @@ export class SettingsController {
           mailjetSenderEmail: settings?.mailjetSenderEmail || "",
           hasApiKey: !!settings?.mailjetApiKey,
           hasApiSecret: !!settings?.mailjetApiSecret,
+
+          // Mailgun config
+          mailgunConfigured: !!(
+            settings?.mailgunApiKey && settings?.mailgunDomain
+          ),
+          mailgunDomain: settings?.mailgunDomain || "",
+          hasMailgunApiKey: !!settings?.mailgunApiKey,
+
           // Branding config
           siteLogo: settings?.siteLogo || "",
           siteLogoUrl: settings?.siteLogoUrl || "",
@@ -43,9 +54,12 @@ export class SettingsController {
   public updateSettings = async (req: RequestWithAuth, res: Response) => {
     try {
       const {
+        activeProvider,
         mailjetApiKey,
         mailjetApiSecret,
         mailjetSenderEmail,
+        mailgunApiKey,
+        mailgunDomain,
         siteLogo,
         siteLogoUrl,
         favicon,
@@ -133,6 +147,22 @@ export class SettingsController {
         }
       }
 
+      // Validate provider availability if switching
+      if (activeProvider === "mailgun") {
+        // If switching to Mailgun, ensure we have creds or they are being provided
+        const settings = await SystemSettings.findOne().select("+mailgunApiKey");
+        const hasStoredKey = !!settings?.mailgunApiKey;
+        const providingKey = !!mailgunApiKey;
+        const hasStoredDomain = !!settings?.mailgunDomain;
+        const providingDomain = !!mailgunDomain;
+
+        if ((!hasStoredKey && !providingKey) || (!hasStoredDomain && !providingDomain)) {
+          // It's possible they are relying on ENV vars, so maybe just a warning? 
+          // Or strictly warn if env vars are missing too?
+          // For now, let's allow it but the service will warn if missing.
+        }
+      }
+
       if (errors.length > 0) {
         res.status(400).json({ success: false, error: errors.join(". ") });
         return;
@@ -149,11 +179,22 @@ export class SettingsController {
         return input.replace(/<[^>]*>/g, "").trim();
       };
 
+      // Active Provider
+      if (activeProvider !== undefined) {
+        if (["mailjet", "mailgun"].includes(activeProvider)) {
+          settings.activeProvider = activeProvider;
+        }
+      }
+
       // Mailjet settings
       if (mailjetApiKey) settings.mailjetApiKey = mailjetApiKey;
       if (mailjetApiSecret) settings.mailjetApiSecret = mailjetApiSecret;
       if (mailjetSenderEmail !== undefined)
         settings.mailjetSenderEmail = mailjetSenderEmail;
+
+      // Mailgun settings
+      if (mailgunApiKey) settings.mailgunApiKey = mailgunApiKey;
+      if (mailgunDomain) settings.mailgunDomain = mailgunDomain;
 
       // Branding settings (sanitized)
       if (siteLogo !== undefined) settings.siteLogo = siteLogo;
@@ -198,7 +239,7 @@ export class SettingsController {
         return;
       }
 
-      const success = await mailjetService.sendTestEmail(testEmail);
+      const success = await emailService.sendTestEmail(testEmail);
 
       if (success) {
         res.json({ success: true, message: "Test email sent successfully" });
@@ -208,7 +249,7 @@ export class SettingsController {
           .json({
             success: false,
             error:
-              "Failed to send test email. Check your Mailjet configuration.",
+              "Failed to send test email. Check your provider configuration.",
           });
       }
     } catch (error) {
@@ -224,7 +265,8 @@ export class SettingsController {
     try {
       const settings = await SystemSettings.findOne();
       const configured = !!(
-        settings?.mailjetApiKey && settings?.mailjetApiSecret
+        (settings?.activeProvider === "mailgun" && settings?.mailgunApiKey && settings?.mailgunDomain) ||
+        (settings?.activeProvider !== "mailgun" && settings?.mailjetApiKey && settings?.mailjetApiSecret)
       );
       res.json({ success: true, data: { configured } });
     } catch (error) {

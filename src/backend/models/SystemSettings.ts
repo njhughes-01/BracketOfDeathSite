@@ -5,6 +5,13 @@ export interface ISystemSettings extends Document {
   mailjetApiKey?: string;
   mailjetApiSecret?: string;
   mailjetSenderEmail?: string;
+
+  // Mailgun settings
+  mailgunApiKey?: string;
+  mailgunDomain?: string;
+
+  // Provider config
+  activeProvider: "mailjet" | "mailgun";
   // Branding settings
   siteLogo?: string; // Base64 or URL
   siteLogoUrl?: string; // External URL fallback
@@ -23,6 +30,17 @@ const SystemSettingsSchema: Schema = new Schema(
     mailjetApiKey: { type: String, select: false }, // Hide by default
     mailjetApiSecret: { type: String, select: false }, // Hide by default
     mailjetSenderEmail: { type: String },
+
+    // Mailgun settings
+    mailgunApiKey: { type: String, select: false },
+    mailgunDomain: { type: String },
+
+    // Provider config
+    activeProvider: {
+      type: String,
+      enum: ["mailjet", "mailgun"],
+      default: "mailjet"
+    },
     // Branding settings
     siteLogo: { type: String }, // Base64 encoded image
     siteLogoUrl: { type: String }, // External URL fallback

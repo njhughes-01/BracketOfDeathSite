@@ -11,10 +11,18 @@ const SettingsPage: React.FC = () => {
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
 
+  // Form state - Email Provider
+  const [activeProvider, setActiveProvider] = useState<"mailjet" | "mailgun">("mailjet");
+
   // Form state - Mailjet
   const [apiKey, setApiKey] = useState("");
   const [apiSecret, setApiSecret] = useState("");
   const [senderEmail, setSenderEmail] = useState("");
+
+  // Form state - Mailgun
+  const [mailgunApiKey, setMailgunApiKey] = useState("");
+  const [mailgunDomain, setMailgunDomain] = useState("");
+
   const [testEmailAddress, setTestEmailAddress] = useState("");
 
   // Form state - Branding
@@ -36,7 +44,14 @@ const SettingsPage: React.FC = () => {
       setLoading(true);
       const data = await apiClient.getSystemSettings();
       setSettings(data);
+      setActiveProvider(data.activeProvider || "mailjet");
+
+      // Mailjet defaults
       setSenderEmail(data.mailjetSenderEmail);
+
+      // Mailgun defaults
+      setMailgunDomain(data.mailgunDomain || "");
+
       // Load branding settings
       setBrandName(data.brandName || "Bracket of Death");
       setBrandPrimaryColor(data.brandPrimaryColor || "#4CAF50");
@@ -62,10 +77,14 @@ const SettingsPage: React.FC = () => {
       setSuccess("");
 
       await apiClient.updateSystemSettings({
+        activeProvider,
         mailjetApiKey: apiKey || undefined,
         mailjetApiSecret: apiSecret || undefined,
         mailjetSenderEmail: senderEmail,
+        mailgunApiKey: mailgunApiKey || undefined,
+        mailgunDomain: mailgunDomain,
         siteLogo,
+        siteLogoUrl,
         favicon,
         brandName,
         brandPrimaryColor,
@@ -78,6 +97,7 @@ const SettingsPage: React.FC = () => {
       // Clear inputs for security
       setApiKey("");
       setApiSecret("");
+      setMailgunApiKey("");
     } catch (err: any) {
       console.error(err);
       setError(err.response?.data?.error || "Failed to save settings");
@@ -142,19 +162,51 @@ const SettingsPage: React.FC = () => {
       )}
 
       <div className="bg-[#1c2230] border border-white/5 rounded-2xl p-6 shadow-2xl">
+        {settings && (
+          <div className="mb-6 flex space-x-4">
+            <label className={`flex items-center space-x-2 cursor-pointer p-3 rounded-lg border ${activeProvider === 'mailjet' ? 'border-primary bg-primary/10' : 'border-white/10 hover:bg-white/5'}`}>
+              <input
+                type="radio"
+                name="provider"
+                value="mailjet"
+                checked={activeProvider === "mailjet"}
+                onChange={() => setActiveProvider("mailjet")}
+                className="hidden"
+              />
+              <span className="material-symbols-outlined">mail</span>
+              <span className="font-bold">Mailjet</span>
+              {settings.mailjetConfigured && <span className="material-symbols-outlined text-green-500 text-sm">check_circle</span>}
+            </label>
+
+            <label className={`flex items-center space-x-2 cursor-pointer p-3 rounded-lg border ${activeProvider === 'mailgun' ? 'border-primary bg-primary/10' : 'border-white/10 hover:bg-white/5'}`}>
+              <input
+                type="radio"
+                name="provider"
+                value="mailgun"
+                checked={activeProvider === "mailgun"}
+                onChange={() => setActiveProvider("mailgun")}
+                className="hidden"
+              />
+              <span className="material-symbols-outlined">send</span>
+              <span className="font-bold">Mailgun</span>
+              {settings.mailgunConfigured && <span className="material-symbols-outlined text-green-500 text-sm">check_circle</span>}
+            </label>
+          </div>
+        )}
+
         <div className="flex items-center gap-3 mb-6 border-b border-white/5 pb-4">
-          <div className="w-10 h-10 rounded-full bg-orange-500/20 flex items-center justify-center text-orange-500">
-            <span className="material-symbols-outlined">mail</span>
+          <div className={`w-10 h-10 rounded-full flex items-center justify-center ${activeProvider === 'mailjet' ? 'bg-orange-500/20 text-orange-500' : 'bg-red-500/20 text-red-500'}`}>
+            <span className="material-symbols-outlined">{activeProvider === 'mailjet' ? 'mail' : 'send'}</span>
           </div>
           <div>
             <h2 className="text-xl font-bold text-white">
-              Mailjet Configuration
+              {activeProvider === 'mailjet' ? 'Mailjet Configuration' : 'Mailgun Configuration'}
             </h2>
             <p className="text-sm text-slate-400">
-              Configure email delivery settings for invitations and alerts
+              Configure {activeProvider === 'mailjet' ? 'Mailjet' : 'Mailgun'} settings for invitations and alerts
             </p>
           </div>
-          {settings?.mailjetConfigured ? (
+          {((activeProvider === 'mailjet' && settings?.mailjetConfigured) || (activeProvider === 'mailgun' && settings?.mailgunConfigured)) ? (
             <span className="ml-auto px-3 py-1 bg-green-500/20 text-green-500 text-xs font-bold rounded-full border border-green-500/20">
               Active
             </span>
@@ -166,57 +218,93 @@ const SettingsPage: React.FC = () => {
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="space-y-2">
-              <label className="text-sm font-bold text-slate-400 uppercase tracking-wider">
-                API Key
-              </label>
-              <input
-                type="password"
-                value={apiKey}
-                onChange={(e) => setApiKey(e.target.value)}
-                placeholder={
-                  settings?.hasApiKey
-                    ? "•••••••••••••••• (Unchanged)"
-                    : "Enter Mailjet API Key"
-                }
-                className="w-full h-12 bg-black/20 border border-white/10 rounded-xl px-4 text-white focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-all placeholder:text-slate-600 font-mono"
-              />
-            </div>
+          {activeProvider === "mailjet" ? (
+            // Mailjet Fields
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="space-y-2">
+                <label className="text-sm font-bold text-slate-400 uppercase tracking-wider">
+                  API Key
+                </label>
+                <input
+                  type="password"
+                  value={apiKey}
+                  onChange={(e) => setApiKey(e.target.value)}
+                  placeholder={
+                    settings?.hasApiKey
+                      ? "•••••••••••••••• (Unchanged)"
+                      : "Enter Mailjet API Key"
+                  }
+                  className="w-full h-12 bg-black/20 border border-white/10 rounded-xl px-4 text-white focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-all placeholder:text-slate-600 font-mono"
+                />
+              </div>
 
-            <div className="space-y-2">
-              <label className="text-sm font-bold text-slate-400 uppercase tracking-wider">
-                API Secret
-              </label>
-              <input
-                type="password"
-                value={apiSecret}
-                onChange={(e) => setApiSecret(e.target.value)}
-                placeholder={
-                  settings?.hasApiSecret
-                    ? "•••••••••••••••• (Unchanged)"
-                    : "Enter Mailjet API Secret"
-                }
-                className="w-full h-12 bg-black/20 border border-white/10 rounded-xl px-4 text-white focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-all placeholder:text-slate-600 font-mono"
-              />
-            </div>
+              <div className="space-y-2">
+                <label className="text-sm font-bold text-slate-400 uppercase tracking-wider">
+                  API Secret
+                </label>
+                <input
+                  type="password"
+                  value={apiSecret}
+                  onChange={(e) => setApiSecret(e.target.value)}
+                  placeholder={
+                    settings?.hasApiSecret
+                      ? "•••••••••••••••• (Unchanged)"
+                      : "Enter Mailjet API Secret"
+                  }
+                  className="w-full h-12 bg-black/20 border border-white/10 rounded-xl px-4 text-white focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-all placeholder:text-slate-600 font-mono"
+                />
+              </div>
 
-            <div className="space-y-2 md:col-span-2">
-              <label className="text-sm font-bold text-slate-400 uppercase tracking-wider">
-                Sender Email Address
-              </label>
-              <input
-                type="email"
-                value={senderEmail}
-                onChange={(e) => setSenderEmail(e.target.value)}
-                placeholder="noreply@yourdomain.com"
-                className="w-full h-12 bg-black/20 border border-white/10 rounded-xl px-4 text-white focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-all placeholder:text-slate-600"
-              />
-              <p className="text-xs text-slate-500">
-                This email must be verified in your Mailjet account.
-              </p>
+              <div className="space-y-2 md:col-span-2">
+                <label className="text-sm font-bold text-slate-400 uppercase tracking-wider">
+                  Sender Email Address
+                </label>
+                <input
+                  type="email"
+                  value={senderEmail}
+                  onChange={(e) => setSenderEmail(e.target.value)}
+                  placeholder="noreply@yourdomain.com"
+                  className="w-full h-12 bg-black/20 border border-white/10 rounded-xl px-4 text-white focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-all placeholder:text-slate-600"
+                />
+                <p className="text-xs text-slate-500">
+                  This email must be verified in your Mailjet account.
+                </p>
+              </div>
             </div>
-          </div>
+          ) : (
+            // Mailgun Fields
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="space-y-2 md:col-span-2">
+                <label className="text-sm font-bold text-slate-400 uppercase tracking-wider">
+                  Mailgun Domain
+                </label>
+                <input
+                  type="text"
+                  value={mailgunDomain}
+                  onChange={(e) => setMailgunDomain(e.target.value)}
+                  placeholder="mg.yourdomain.com"
+                  className="w-full h-12 bg-black/20 border border-white/10 rounded-xl px-4 text-white focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-all placeholder:text-slate-600"
+                />
+              </div>
+
+              <div className="space-y-2 md:col-span-2">
+                <label className="text-sm font-bold text-slate-400 uppercase tracking-wider">
+                  Mailgun API Key
+                </label>
+                <input
+                  type="password"
+                  value={mailgunApiKey}
+                  onChange={(e) => setMailgunApiKey(e.target.value)}
+                  placeholder={
+                    settings?.hasMailgunApiKey
+                      ? "•••••••••••••••• (Unchanged)"
+                      : "Enter Mailgun Private API Key"
+                  }
+                  className="w-full h-12 bg-black/20 border border-white/10 rounded-xl px-4 text-white focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-all placeholder:text-slate-600 font-mono"
+                />
+              </div>
+            </div>
+          )}
 
           <div className="pt-4 border-t border-white/5 flex justify-end">
             <button
@@ -237,7 +325,7 @@ const SettingsPage: React.FC = () => {
         </form>
 
         {/* Test Email Section */}
-        {settings?.mailjetConfigured && (
+        {((activeProvider === 'mailjet' && settings?.mailjetConfigured) || (activeProvider === 'mailgun' && settings?.mailgunConfigured)) && (
           <div className="mt-6 pt-6 border-t border-white/5">
             <h3 className="text-lg font-bold text-white mb-4">
               Test Email Configuration
