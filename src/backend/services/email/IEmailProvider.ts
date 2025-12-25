@@ -27,4 +27,9 @@ export interface IEmailProvider {
      * Get provider name for logging/debugging
      */
     getName(): string;
+
+    /**
+     * Verify credentials are valid (e.g. by making a lightweight API call)
+     */
+    verifyCredentials(): Promise<boolean>;
 }

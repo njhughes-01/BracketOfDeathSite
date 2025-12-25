@@ -1,7 +1,7 @@
 import { IEmailProvider, EmailParams, BrandingConfig, EmailProviderType } from "./email/IEmailProvider";
 import { MailjetProvider } from "./email/MailjetProvider";
 import { MailgunProvider } from "./email/MailgunProvider";
-import SystemSettings from "../models/SystemSettings";
+import SystemSettings, { ISystemSettings } from "../models/SystemSettings";
 
 export interface EmailConfig extends BrandingConfig {
     activeProvider: EmailProviderType;
@@ -24,6 +24,28 @@ export class EmailService {
             this.defaultMailjetKey,
             this.defaultMailjetSecret
         );
+    }
+
+    private createProvider(type: EmailProviderType, config: Partial<ISystemSettings>): IEmailProvider | null {
+        switch (type) {
+            case "mailjet":
+                if (config.mailjetApiKey && config.mailjetApiSecret) {
+                    return new MailjetProvider(config.mailjetApiKey, config.mailjetApiSecret);
+                }
+                break;
+            case "mailgun":
+                if (config.mailgunApiKey && config.mailgunDomain) {
+                    return new MailgunProvider(config.mailgunApiKey, config.mailgunDomain);
+                }
+                break;
+        }
+        return null;
+    }
+
+    async verifyProvider(type: EmailProviderType, config: any): Promise<boolean> {
+        const provider = this.createProvider(type, config);
+        if (!provider) return false;
+        return provider.verifyCredentials();
     }
 
     private async getConfig(): Promise<EmailConfig & { provider: IEmailProvider }> {

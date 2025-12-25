@@ -19,6 +19,23 @@ export class MailjetProvider implements IEmailProvider {
         return "mailjet";
     }
 
+    async verifyCredentials(): Promise<boolean> {
+        if (!this.apiKey || !this.apiSecret) return false;
+        try {
+            const response = await axios.get(
+                "https://api.mailjet.com/v3.1/sender",
+                {
+                    auth: { username: this.apiKey, password: this.apiSecret },
+                    params: { Limit: 1 }
+                }
+            );
+            return response.status === 200;
+        } catch (error) {
+            console.error("Mailjet verification failed:", error);
+            return false;
+        }
+    }
+
     async sendEmail(
         { to, subject, text, html }: EmailParams,
         config: BrandingConfig,

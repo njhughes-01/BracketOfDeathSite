@@ -17,6 +17,17 @@ export class MailgunProvider implements IEmailProvider {
         return "mailgun";
     }
 
+    async verifyCredentials(): Promise<boolean> {
+        if (!this.client || !this.domain) return false;
+        try {
+            await this.client.domains.get(this.domain);
+            return true;
+        } catch (error) {
+            console.error("Mailgun verification failed:", error);
+            return false;
+        }
+    }
+
     async sendEmail(
         { to, subject, text, html }: EmailParams,
         config: BrandingConfig,
