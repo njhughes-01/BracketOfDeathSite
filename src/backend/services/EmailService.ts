@@ -51,8 +51,7 @@ export class EmailService {
             return {
                 activeProvider,
                 provider,
-                activeProvider,
-                provider,
+
                 // Use generic sender if available, then legacy specific, then fallback
                 senderEmail: settings?.senderEmail || settings?.mailjetSenderEmail ||
                     (activeProvider === "mailgun"
