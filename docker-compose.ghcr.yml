@@ -40,7 +40,7 @@ services:
       KC_HOSTNAME_STRICT: false
       KC_HOSTNAME_STRICT_HTTPS: false
       KC_HTTP_ENABLED: true
-      KC_HOSTNAME_URL: ${APP_URL}/auth
+      KC_HOSTNAME_URL: ${APP_URL:-http://localhost:5173}/auth
     ports:
       - "8080:8080"
     networks:
@@ -105,7 +105,6 @@ services:
       keycloak:
         condition: service_healthy
     volumes:
-      - ./scripts:/scripts:ro
       - secrets-data:/secrets:ro
     environment:
       KEYCLOAK_ADMIN_USER: admin
@@ -125,7 +124,6 @@ services:
       mongodb:
         condition: service_healthy
     volumes:
-      - ./json:/app/data:ro
       - data-init-status:/app/status
       - secrets-data:/secrets:ro
     environment:
@@ -187,10 +185,10 @@ services:
     volumes:
       - secrets-data:/secrets:ro
     environment:
-      VITE_API_URL: ${VITE_API_URL}
-      VITE_KEYCLOAK_URL: ${VITE_KEYCLOAK_URL}
-      APP_URL: ${APP_URL}
-      CORS_ORIGIN: ${CORS_ORIGIN}
+      VITE_API_URL: ${VITE_API_URL:-/api}
+      VITE_KEYCLOAK_URL: ${VITE_KEYCLOAK_URL:-/auth}
+      APP_URL: ${APP_URL:-http://localhost:5173}
+      CORS_ORIGIN: ${CORS_ORIGIN:-http://localhost:5173}
 
       # Derived within the container
       # VITE_ALLOWED_HOSTS: derived from APP_URL and CORS_ORIGIN
