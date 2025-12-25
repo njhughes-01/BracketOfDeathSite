@@ -215,6 +215,21 @@ export class EmailService {
         let config: EmailConfig & { provider: IEmailProvider };
 
         if (testConfig?.activeProvider) {
+            // Validate credentials are provided
+            if (testConfig.activeProvider === 'mailgun') {
+                const apiKey = testConfig.mailgunApiKey || this.defaultMailgunKey;
+                const domain = testConfig.mailgunDomain || this.defaultMailgunDomain;
+                if (!apiKey || !domain) {
+                    throw new Error('Mailgun credentials missing. Please enter API Key and Domain.');
+                }
+            } else if (testConfig.activeProvider === 'mailjet') {
+                const apiKey = testConfig.mailjetApiKey || this.defaultMailjetKey;
+                const apiSecret = testConfig.mailjetApiSecret || this.defaultMailjetSecret;
+                if (!apiKey || !apiSecret) {
+                    throw new Error('Mailjet credentials missing. Please enter API Key and API Secret.');
+                }
+            }
+
             // Use provided test configuration
             const provider = testConfig.activeProvider === 'mailgun'
                 ? new MailgunProvider(

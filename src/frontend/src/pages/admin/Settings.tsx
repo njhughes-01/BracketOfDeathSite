@@ -226,6 +226,20 @@ const SettingsPage: React.FC = () => {
       setError("Please enter an email address to send a test to");
       return;
     }
+
+    // Validate provider credentials are entered
+    if (activeProvider === 'mailgun') {
+      if (!mailgunApiKey || !mailgunDomain) {
+        setError("Please enter Mailgun API Key and Domain before testing");
+        return;
+      }
+    } else if (activeProvider === 'mailjet') {
+      if (!apiKey || !apiSecret) {
+        setError("Please enter Mailjet API Key and API Secret before testing");
+        return;
+      }
+    }
+
     try {
       setTesting(true);
       setError("");
