@@ -60,8 +60,6 @@ export interface SystemSettings {
 
 // ... existing code ...
 
-
-
 // Global token getter function - will be set by AuthContext
 let getKeycloakToken: (() => string | undefined) | null = null;
 let refreshKeycloakToken: (() => Promise<boolean>) | null = null;
@@ -724,7 +722,8 @@ class ApiClient {
   }
 
   async getSystemSettings(): Promise<SystemSettings> {
-    return this.get<SystemSettings>("/settings");
+    const response = await this.get<ApiResponse<SystemSettings>>("/settings");
+    return response.data as SystemSettings;
   }
 
   async updateSystemSettings(settings: {
@@ -754,11 +753,11 @@ class ApiClient {
       mailjetApiKey?: string;
       mailjetApiSecret?: string;
       senderEmail?: string;
-    }
+    },
   ): Promise<ApiResponse> {
     return this.post<ApiResponse>("/settings/email/test", {
       testEmail: email,
-      ...config
+      ...config,
     });
   }
 
