@@ -252,12 +252,14 @@ export class EmailService {
             ${this.createButton("Visit Site", process.env.FRONTEND_URL || "http://localhost:8080", config.brandPrimaryColor)}
         `;
 
-        return this.sendEmail({
+        // Call provider.sendEmail directly to use the test config
+        // (not this.sendEmail which would load from database)
+        return config.provider.sendEmail({
             to: email,
             subject: `${config.brandName} - Test Email (${providerName})`,
             text: `This is a test email from ${config.brandName} via ${providerName}. If you received this, email configuration is working!`,
             html: this.buildBrandedTemplate(content, config),
-        });
+        }, config);
     }
 }
 

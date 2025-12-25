@@ -174,10 +174,9 @@ const SettingsPage: React.FC = () => {
         senderEmail !== initialValues.senderEmail
       ));
 
-    // Enforce test-before-save workflow only if email credentials changed
+    // Optional: Warn if email credentials changed without testing (but allow save)
     if (emailCredentialsChanged && !testEmailSuccess) {
-      setError("⚠️ Please send a test email before saving your email settings.");
-      return;
+      console.warn("Saving email settings without testing. Consider testing first.");
     }
 
     try {
@@ -442,17 +441,12 @@ const SettingsPage: React.FC = () => {
           <div className="pt-4 border-t border-white/5 flex justify-end">
             <button
               type="submit"
-              disabled={saving || (hasChanges && !testEmailSuccess)}
+              disabled={saving}
               className="h-12 px-8 bg-primary hover:bg-primary-dark text-black font-bold rounded-xl shadow-lg shadow-primary/20 flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
-              title={(hasChanges && !testEmailSuccess) ? "Please send a test email first" : "Save settings"}
+              title="Save settings"
             >
               {saving ? (
                 <LoadingSpinner size="sm" color="black" />
-              ) : (hasChanges && !testEmailSuccess) ? (
-                <>
-                  <span className="material-symbols-outlined">lock</span>
-                  Test Email First
-                </>
               ) : (
                 <>
                   <span className="material-symbols-outlined">save</span>
@@ -470,9 +464,9 @@ const SettingsPage: React.FC = () => {
               Test Email Configuration
             </h3>
             {!testEmailSuccess && hasChanges && (
-              <span className="text-xs text-yellow-500 flex items-center gap-1 px-3 py-1 bg-yellow-500/10 rounded-full border border-yellow-500/20">
-                <span className="material-symbols-outlined text-sm">warning</span>
-                Test required before saving
+              <span className="text-xs text-blue-400 flex items-center gap-1 px-3 py-1 bg-blue-400/10 rounded-full border border-blue-400/20">
+                <span className="material-symbols-outlined text-sm">info</span>
+                Testing recommended
               </span>
             )}
             {testEmailSuccess && (
@@ -484,7 +478,7 @@ const SettingsPage: React.FC = () => {
           </div>
           <p className="text-sm text-slate-400 mb-4">
             Send a test email to verify your configuration is working correctly.
-            {!testEmailSuccess && hasChanges && " You must test before saving."}
+            {!testEmailSuccess && hasChanges && " Testing is recommended but optional."}
           </p>
           <div className="flex gap-4">
             <input
@@ -498,10 +492,10 @@ const SettingsPage: React.FC = () => {
               type="button"
               onClick={handleTestEmail}
               disabled={testing || !testEmailAddress}
-              className={`h-12 px-6 ${!testEmailSuccess && hasChanges ? 'bg-primary hover:bg-primary-dark text-black' : 'bg-blue-500 hover:bg-blue-600 text-white'} font-bold rounded-xl flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed transition-all`}
+              className="h-12 px-6 bg-blue-500 hover:bg-blue-600 text-white font-bold rounded-xl flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
             >
               {testing ? (
-                <LoadingSpinner size="sm" color={!testEmailSuccess && hasChanges ? "black" : "white"} />
+                <LoadingSpinner size="sm" color="white" />
               ) : (
                 <>
                   <span className="material-symbols-outlined">send</span>
