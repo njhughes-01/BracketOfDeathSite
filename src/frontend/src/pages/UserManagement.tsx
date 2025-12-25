@@ -424,8 +424,8 @@ const UserManagement: React.FC = () => {
         <ClaimUserModal
           onClose={() => setShowClaimModal(false)}
           onSuccess={() => {
-            // Optional: refresh users if we want to show pending claims?
-            // Currently claim just sends email, they aren't users yet.
+            setShowClaimModal(false);
+            loadUsers(); // Refresh users list in case claim created a new user
           }}
         />
       )}
