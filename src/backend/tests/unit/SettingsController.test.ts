@@ -162,7 +162,11 @@ describe('SettingsController', () => {
 
       await controller.verifyCredentials(mockReq as Request, mockRes as Response);
 
-      expect(emailService.verifyProvider).toHaveBeenCalledWith('mailjet', mockReq.body);
+      // Controller destructures provider out before calling verifyProvider
+      expect(emailService.verifyProvider).toHaveBeenCalledWith('mailjet', {
+        mailjetApiKey: 'test-key',
+        mailjetApiSecret: 'test-secret',
+      });
       expect(jsonMock).toHaveBeenCalledWith(
         expect.objectContaining({
           success: true,
@@ -181,7 +185,11 @@ describe('SettingsController', () => {
 
       await controller.verifyCredentials(mockReq as Request, mockRes as Response);
 
-      expect(emailService.verifyProvider).toHaveBeenCalledWith('mailgun', mockReq.body);
+      // Controller destructures provider out before calling verifyProvider
+      expect(emailService.verifyProvider).toHaveBeenCalledWith('mailgun', {
+        mailgunApiKey: 'test-key',
+        mailgunDomain: 'mg.example.com',
+      });
       expect(jsonMock).toHaveBeenCalledWith(
         expect.objectContaining({
           success: true,
