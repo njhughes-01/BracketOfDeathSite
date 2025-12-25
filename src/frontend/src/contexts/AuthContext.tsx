@@ -96,24 +96,36 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
       let profile: any = {};
 
-      // Try to load user profile, but don't fail if it doesn't work (direct auth may not support this)
-      try {
-        if (
-          kc.authenticated &&
-          kc.authServerUrl &&
-          !kc.authServerUrl.includes("undefined")
-        ) {
+      // Only attempt to load user profile if we have a valid SSO session
+      // Direct auth (resource owner password flow) doesn't support the account endpoint
+      // and will always return 401. Check if we went through SSO by looking for session state.
+      const hasSsoSession = !!kc.sessionId;
+
+      if (
+        hasSsoSession &&
+        kc.authenticated &&
+        kc.authServerUrl &&
+        !kc.authServerUrl.includes("undefined")
+      ) {
+        try {
           profile = await kc.loadUserProfile();
-        } else {
-          // Skip profile loading if URL is invalid, use token data directly
-          throw new Error("Invalid auth server URL, skipping profile load");
+        } catch (profileError) {
+          console.warn(
+            "Could not load user profile from Keycloak, using token data:",
+            profileError,
+          );
+          // Use token data as fallback
+          profile = {
+            id: tokenParsed.sub,
+            email: tokenParsed.email,
+            username: tokenParsed.preferred_username,
+            firstName: tokenParsed.given_name,
+            lastName: tokenParsed.family_name,
+          };
         }
-      } catch (profileError) {
-        console.warn(
-          "Could not load user profile, using token data:",
-          profileError,
-        );
-        // Use token data as fallback
+      } else {
+        // Direct auth - use token data directly (no account API available)
+        console.log("Using token data directly (direct auth mode)");
         profile = {
           id: tokenParsed.sub,
           email: tokenParsed.email,
@@ -272,11 +284,11 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           try {
             const parsed = JSON.parse(atob(saved.access_token.split(".")[1]));
             kc.tokenParsed = parsed;
-          } catch { }
+          } catch {}
           // Set timeSkew so Keycloak knows expiry baseline
           try {
             // Removed manual timeSkew calculation as it was causing issues with token validation
-          } catch { }
+          } catch {}
           kc.authenticated = true;
           setTokenGetter(() => kc.token);
           await setupUserFromToken(kc);
@@ -431,7 +443,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       try {
         // Removed manual timeSkew calculation as it was causing issues with token validation
         // The token is already validated by the backend
-      } catch { }
+      } catch {}
       kc.authenticated = true;
 
       console.log("Direct tokens set on Keycloak, setting up user...");
