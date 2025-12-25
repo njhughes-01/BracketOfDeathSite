@@ -3,7 +3,8 @@ import Mailgun from "mailgun.js";
 import { IEmailProvider, EmailParams, BrandingConfig } from "./IEmailProvider";
 
 export class MailgunProvider implements IEmailProvider {
-    private client: Interfaces.IMailgunClient;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    private client: any;
     private domain: string;
 
     constructor(apiKey: string, domain: string, username: string = "api") {
