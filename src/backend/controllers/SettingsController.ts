@@ -15,6 +15,7 @@ export class SettingsController {
         data: {
           // Email Provider config
           activeProvider: settings?.activeProvider || "mailjet",
+          senderEmail: settings?.senderEmail || "",
 
           // Mailjet config
           mailjetConfigured: !!(
@@ -55,9 +56,10 @@ export class SettingsController {
     try {
       const {
         activeProvider,
+        senderEmail,
         mailjetApiKey,
         mailjetApiSecret,
-        mailjetSenderEmail,
+        mailjetSenderEmail, // Legacy support
         mailgunApiKey,
         mailgunDomain,
         siteLogo,
@@ -148,20 +150,8 @@ export class SettingsController {
       }
 
       // Validate provider availability if switching
-      if (activeProvider === "mailgun") {
-        // If switching to Mailgun, ensure we have creds or they are being provided
-        const settings = await SystemSettings.findOne().select("+mailgunApiKey");
-        const hasStoredKey = !!settings?.mailgunApiKey;
-        const providingKey = !!mailgunApiKey;
-        const hasStoredDomain = !!settings?.mailgunDomain;
-        const providingDomain = !!mailgunDomain;
-
-        if ((!hasStoredKey && !providingKey) || (!hasStoredDomain && !providingDomain)) {
-          // It's possible they are relying on ENV vars, so maybe just a warning? 
-          // Or strictly warn if env vars are missing too?
-          // For now, let's allow it but the service will warn if missing.
-        }
-      }
+      // Note: Validation is deferred to the service layer or handled by "configured" checks
+      // Removed unnecessary DB query per review feedback
 
       if (errors.length > 0) {
         res.status(400).json({ success: false, error: errors.join(". ") });
@@ -178,6 +168,9 @@ export class SettingsController {
         if (!input) return input;
         return input.replace(/<[^>]*>/g, "").trim();
       };
+
+      // General Email Settings
+      if (senderEmail !== undefined) settings.senderEmail = senderEmail;
 
       // Active Provider
       if (activeProvider !== undefined) {
@@ -266,10 +259,10 @@ export class SettingsController {
   public isEmailConfigured = async (_req: RequestWithAuth, res: Response) => {
     try {
       const settings = await SystemSettings.findOne();
-      const configured = !!(
-        (settings?.activeProvider === "mailgun" && settings?.mailgunApiKey && settings?.mailgunDomain) ||
-        (settings?.activeProvider !== "mailgun" && settings?.mailjetApiKey && settings?.mailjetApiSecret)
-      );
+      const provider = settings?.activeProvider || 'mailjet';
+      const isMailgunConfigured = provider === 'mailgun' && !!(settings?.mailgunApiKey && settings?.mailgunDomain);
+      const isMailjetConfigured = provider === 'mailjet' && !!(settings?.mailjetApiKey && settings?.mailjetApiSecret);
+      const configured = isMailgunConfigured || isMailjetConfigured;
       res.json({ success: true, data: { configured } });
     } catch (error) {
       res.json({ success: true, data: { configured: false } });

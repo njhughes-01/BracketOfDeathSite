@@ -36,6 +36,7 @@ import type {
 export interface SystemSettings {
   // Email Provider
   activeProvider: "mailjet" | "mailgun";
+  senderEmail: string;
 
   // Mailjet config
   mailjetConfigured: boolean;
@@ -728,6 +729,7 @@ class ApiClient {
 
   async updateSystemSettings(settings: {
     activeProvider?: "mailjet" | "mailgun";
+    senderEmail?: string;
     mailjetApiKey?: string;
     mailjetApiSecret?: string;
     mailjetSenderEmail?: string;

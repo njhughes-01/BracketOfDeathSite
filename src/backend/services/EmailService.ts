@@ -51,8 +51,10 @@ export class EmailService {
             return {
                 activeProvider,
                 provider,
-                // Use configured sender or fallback to provider-specific default
-                senderEmail: settings?.mailjetSenderEmail ||
+                activeProvider,
+                provider,
+                // Use generic sender if available, then legacy specific, then fallback
+                senderEmail: settings?.senderEmail || settings?.mailjetSenderEmail ||
                     (activeProvider === "mailgun"
                         ? `noreply@${settings?.mailgunDomain || this.defaultMailgunDomain}`
                         : this.defaultSenderEmail),

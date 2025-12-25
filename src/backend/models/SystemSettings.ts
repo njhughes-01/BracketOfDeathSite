@@ -10,6 +10,9 @@ export interface ISystemSettings extends Document {
   mailgunApiKey?: string;
   mailgunDomain?: string;
 
+  // Shared settings
+  senderEmail?: string;
+
   // Provider config
   activeProvider: "mailjet" | "mailgun";
   // Branding settings
@@ -34,6 +37,9 @@ const SystemSettingsSchema: Schema = new Schema(
     // Mailgun settings
     mailgunApiKey: { type: String, select: false },
     mailgunDomain: { type: String },
+
+    // Shared settings
+    senderEmail: { type: String },
 
     // Provider config
     activeProvider: {

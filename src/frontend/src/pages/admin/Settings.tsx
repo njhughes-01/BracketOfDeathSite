@@ -17,6 +17,7 @@ const SettingsPage: React.FC = () => {
   // Form state - Mailjet
   const [apiKey, setApiKey] = useState("");
   const [apiSecret, setApiSecret] = useState("");
+  // Generic sender email (mapped from settings.senderEmail or mailjetSenderEmail)
   const [senderEmail, setSenderEmail] = useState("");
 
   // Form state - Mailgun
@@ -47,7 +48,8 @@ const SettingsPage: React.FC = () => {
       setActiveProvider(data.activeProvider || "mailjet");
 
       // Mailjet defaults
-      setSenderEmail(data.mailjetSenderEmail);
+      // Prefer generic senderEmail, fallback to mailjetSenderEmail
+      setSenderEmail(data.senderEmail || data.mailjetSenderEmail || "");
 
       // Mailgun defaults
       setMailgunDomain(data.mailgunDomain || "");
@@ -78,13 +80,14 @@ const SettingsPage: React.FC = () => {
 
       await apiClient.updateSystemSettings({
         activeProvider,
+        senderEmail,
         mailjetApiKey: apiKey || undefined,
         mailjetApiSecret: apiSecret || undefined,
-        mailjetSenderEmail: senderEmail,
+        mailjetSenderEmail: senderEmail, // Sync legacy field for now
         mailgunApiKey: mailgunApiKey || undefined,
         mailgunDomain: mailgunDomain,
         siteLogo,
-        siteLogoUrl,
+        siteLogoUrl: siteLogo,
         favicon,
         brandName,
         brandPrimaryColor,
@@ -218,6 +221,25 @@ const SettingsPage: React.FC = () => {
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-6">
+          {/* General Settings */}
+          <div className="space-y-2">
+            <label className="text-sm font-bold text-slate-400 uppercase tracking-wider">
+              Default Sender Email
+            </label>
+            <input
+              type="email"
+              value={senderEmail}
+              onChange={(e) => setSenderEmail(e.target.value)}
+              placeholder="noreply@yourdomain.com"
+              className="w-full h-12 bg-black/20 border border-white/10 rounded-xl px-4 text-white focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-all placeholder:text-slate-600"
+            />
+            <p className="text-xs text-slate-500">
+              The email address that system emails will come from.
+              {activeProvider === "mailjet" && " Must be verified in Mailjet."}
+              {activeProvider === "mailgun" && " Should match your verified Mailgun domain."}
+            </p>
+          </div>
+
           {activeProvider === "mailjet" ? (
             // Mailjet Fields
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -255,22 +277,8 @@ const SettingsPage: React.FC = () => {
                 />
               </div>
 
-              <div className="space-y-2 md:col-span-2">
-                <label className="text-sm font-bold text-slate-400 uppercase tracking-wider">
-                  Sender Email Address
-                </label>
-                <input
-                  type="email"
-                  value={senderEmail}
-                  onChange={(e) => setSenderEmail(e.target.value)}
-                  placeholder="noreply@yourdomain.com"
-                  className="w-full h-12 bg-black/20 border border-white/10 rounded-xl px-4 text-white focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-all placeholder:text-slate-600"
-                />
-                <p className="text-xs text-slate-500">
-                  This email must be verified in your Mailjet account.
-                </p>
-              </div>
             </div>
+
           ) : (
             // Mailgun Fields
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -325,41 +333,43 @@ const SettingsPage: React.FC = () => {
         </form>
 
         {/* Test Email Section */}
-        {((activeProvider === 'mailjet' && settings?.mailjetConfigured) || (activeProvider === 'mailgun' && settings?.mailgunConfigured)) && (
-          <div className="mt-6 pt-6 border-t border-white/5">
-            <h3 className="text-lg font-bold text-white mb-4">
-              Test Email Configuration
-            </h3>
-            <div className="flex gap-4">
-              <input
-                type="email"
-                value={testEmailAddress}
-                onChange={(e) => setTestEmailAddress(e.target.value)}
-                placeholder="Enter email address to test"
-                className="flex-1 h-12 bg-black/20 border border-white/10 rounded-xl px-4 text-white focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-all placeholder:text-slate-600"
-              />
-              <button
-                type="button"
-                onClick={handleTestEmail}
-                disabled={testing || !testEmailAddress}
-                className="h-12 px-6 bg-blue-500 hover:bg-blue-600 text-white font-bold rounded-xl flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
-              >
-                {testing ? (
-                  <LoadingSpinner size="sm" color="white" />
-                ) : (
-                  <>
-                    <span className="material-symbols-outlined">send</span>
-                    Send Test
-                  </>
-                )}
-              </button>
+        {
+          ((activeProvider === 'mailjet' && settings?.mailjetConfigured) || (activeProvider === 'mailgun' && settings?.mailgunConfigured)) && (
+            <div className="mt-6 pt-6 border-t border-white/5">
+              <h3 className="text-lg font-bold text-white mb-4">
+                Test Email Configuration
+              </h3>
+              <div className="flex gap-4">
+                <input
+                  type="email"
+                  value={testEmailAddress}
+                  onChange={(e) => setTestEmailAddress(e.target.value)}
+                  placeholder="Enter email address to test"
+                  className="flex-1 h-12 bg-black/20 border border-white/10 rounded-xl px-4 text-white focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-all placeholder:text-slate-600"
+                />
+                <button
+                  type="button"
+                  onClick={handleTestEmail}
+                  disabled={testing || !testEmailAddress}
+                  className="h-12 px-6 bg-blue-500 hover:bg-blue-600 text-white font-bold rounded-xl flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+                >
+                  {testing ? (
+                    <LoadingSpinner size="sm" color="white" />
+                  ) : (
+                    <>
+                      <span className="material-symbols-outlined">send</span>
+                      Send Test
+                    </>
+                  )}
+                </button>
+              </div>
             </div>
-          </div>
-        )}
-      </div>
+          )
+        }
+      </div >
 
       {/* Branding Configuration */}
-      <div className="bg-[#1c2230] border border-white/5 rounded-2xl p-6 shadow-2xl">
+      < div className="bg-[#1c2230] border border-white/5 rounded-2xl p-6 shadow-2xl" >
         <div className="flex items-center gap-3 mb-6 border-b border-white/5 pb-4">
           <div className="w-10 h-10 rounded-full bg-pink-500/20 flex items-center justify-center text-pink-500">
             <span className="material-symbols-outlined">palette</span>
@@ -547,10 +557,10 @@ const SettingsPage: React.FC = () => {
             )}
           </button>
         </div>
-      </div>
+      </div >
 
       {/* Template Preview Variables */}
-      <div className="bg-[#1c2230] border border-white/5 rounded-2xl p-6 shadow-2xl">
+      < div className="bg-[#1c2230] border border-white/5 rounded-2xl p-6 shadow-2xl" >
         <div className="flex items-center gap-3 mb-6 border-b border-white/5 pb-4">
           <div className="w-10 h-10 rounded-full bg-cyan-500/20 flex items-center justify-center text-cyan-500">
             <span className="material-symbols-outlined">tune</span>
@@ -577,10 +587,10 @@ const SettingsPage: React.FC = () => {
             />
           </div>
         </div>
-      </div>
+      </div >
 
       {/* Email Templates Preview */}
-      <div className="bg-[#1c2230] border border-white/5 rounded-2xl p-6 shadow-2xl">
+      < div className="bg-[#1c2230] border border-white/5 rounded-2xl p-6 shadow-2xl" >
         <div className="flex items-center gap-3 mb-6 border-b border-white/5 pb-4">
           <div className="w-10 h-10 rounded-full bg-purple-500/20 flex items-center justify-center text-purple-500">
             <span className="material-symbols-outlined">article</span>
@@ -852,8 +862,8 @@ const SettingsPage: React.FC = () => {
             </div>
           </div>
         </div>
-      </div>
-    </div>
+      </div >
+    </div >
   );
 };
 
