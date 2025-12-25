@@ -14,6 +14,10 @@ const SettingsPage: React.FC = () => {
   // Form state - Email Provider
   const [activeProvider, setActiveProvider] = useState<"mailjet" | "mailgun">("mailjet");
 
+  // Configuration status (from backend)
+  const [mailjetConfigured, setMailjetConfigured] = useState(false);
+  const [mailgunConfigured, setMailgunConfigured] = useState(false);
+
   // Form state - Mailjet
   const [apiKey, setApiKey] = useState("");
   const [apiSecret, setApiSecret] = useState("");
@@ -89,6 +93,10 @@ const SettingsPage: React.FC = () => {
       const provider = data.activeProvider || "mailjet";
       setActiveProvider(provider);
       setInitialProvider(provider);
+
+      // Set configuration status
+      setMailjetConfigured(data.mailjetConfigured || false);
+      setMailgunConfigured(data.mailgunConfigured || false);
 
       // Mailjet defaults
       // Prefer generic senderEmail, fallback to mailjetSenderEmail
@@ -212,10 +220,41 @@ const SettingsPage: React.FC = () => {
       setHasChanges(false);
       setTestEmailSuccess(false);
 
-      setSuccess("Settings verified and saved successfully!");
+      const providerName = activeProvider === 'mailjet' ? 'Mailjet' : 'Mailgun';
+      setSuccess(`✅ ${providerName} configuration saved successfully!`);
     } catch (err: any) {
       console.error(err);
       setError(err.response?.data?.error || "Failed to save settings");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleRemoveConfiguration = async (provider: 'mailjet' | 'mailgun') => {
+    const providerName = provider === 'mailjet' ? 'Mailjet' : 'Mailgun';
+
+    if (!window.confirm(`Are you sure you want to remove ${providerName} configuration?\n\nThis will delete your saved credentials. You'll need to re-enter them to use ${providerName} again.`)) {
+      return;
+    }
+
+    try {
+      setSaving(true);
+      setError("");
+      setSuccess("");
+
+      // Send empty credentials to clear the configuration
+      const updates = provider === 'mailgun'
+        ? { mailgunApiKey: '', mailgunDomain: '' }
+        : { mailjetApiKey: '', mailjetApiSecret: '' };
+
+      await apiClient.updateSystemSettings(updates);
+
+      // Reload settings to reflect changes
+      await loadSettings();
+
+      setSuccess(`${providerName} configuration removed successfully`);
+    } catch (err: any) {
+      setError(err.response?.data?.error || `Failed to remove ${providerName} configuration`);
     } finally {
       setSaving(false);
     }
@@ -227,16 +266,20 @@ const SettingsPage: React.FC = () => {
       return;
     }
 
-    // Validate provider credentials are entered
-    if (activeProvider === 'mailgun') {
-      if (!mailgunApiKey || !mailgunDomain) {
-        setError("Please enter Mailgun API Key and Domain before testing");
-        return;
-      }
-    } else if (activeProvider === 'mailjet') {
-      if (!apiKey || !apiSecret) {
-        setError("Please enter Mailjet API Key and API Secret before testing");
-        return;
+    const isConfigured = activeProvider === 'mailgun' ? mailgunConfigured : mailjetConfigured;
+
+    // If not configured, validate credentials are entered
+    if (!isConfigured) {
+      if (activeProvider === 'mailgun') {
+        if (!mailgunApiKey || !mailgunDomain) {
+          setError("Please enter Mailgun API Key and Domain before testing");
+          return;
+        }
+      } else if (activeProvider === 'mailjet') {
+        if (!apiKey || !apiSecret) {
+          setError("Please enter Mailjet API Key and API Secret before testing");
+          return;
+        }
       }
     }
 
@@ -245,15 +288,20 @@ const SettingsPage: React.FC = () => {
       setError("");
       setSuccess("");
 
-      // Send current form state as test configuration
-      await apiClient.testEmail(testEmailAddress, {
-        activeProvider,
-        mailgunApiKey: mailgunApiKey || undefined,
-        mailgunDomain: mailgunDomain || undefined,
-        mailjetApiKey: apiKey || undefined,
-        mailjetApiSecret: apiSecret || undefined,
-        senderEmail: senderEmail || undefined,
-      });
+      // If configured, test with saved settings (don't send config)
+      // Otherwise, send current form state
+      if (isConfigured) {
+        await apiClient.testEmail(testEmailAddress);
+      } else {
+        await apiClient.testEmail(testEmailAddress, {
+          activeProvider,
+          mailgunApiKey: mailgunApiKey || undefined,
+          mailgunDomain: mailgunDomain || undefined,
+          mailjetApiKey: apiKey || undefined,
+          mailjetApiSecret: apiSecret || undefined,
+          senderEmail: senderEmail || undefined,
+        });
+      }
 
       setTestEmailSuccess(true);
       setSuccess("✅ Test email sent successfully! You can now save your settings.");
@@ -380,95 +428,133 @@ const SettingsPage: React.FC = () => {
 
           {activeProvider === "mailjet" ? (
             // Mailjet Fields
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div className="space-y-2">
-                <label className="text-sm font-bold text-slate-400 uppercase tracking-wider">
-                  API Key
-                </label>
-                <input
-                  type="password"
-                  value={apiKey}
-                  onChange={(e) => setApiKey(e.target.value)}
-                  placeholder={
-                    settings?.hasApiKey
-                      ? "•••••••••••••••• (Unchanged)"
-                      : "Enter Mailjet API Key"
-                  }
-                  className="w-full h-12 bg-black/20 border border-white/10 rounded-xl px-4 text-white focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-all placeholder:text-slate-600 font-mono"
-                />
+            mailjetConfigured ? (
+              // Configured State - Show status and remove button
+              <div className="p-6 bg-green-500/10 border border-green-500/20 rounded-xl">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <span className="material-symbols-outlined text-green-500 text-3xl">check_circle</span>
+                    <div>
+                      <p className="font-bold text-white">Mailjet Configured</p>
+                      <p className="text-sm text-slate-400">Credentials are saved and ready to use</p>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => handleRemoveConfiguration('mailjet')}
+                    className="px-4 py-2 bg-red-500/20 hover:bg-red-500/30 text-red-400 rounded-lg border border-red-500/20 flex items-center gap-2 transition-all"
+                  >
+                    <span className="material-symbols-outlined text-sm">delete</span>
+                    Remove Configuration
+                  </button>
+                </div>
               </div>
+            ) : (
+              // Unconfigured State - Show input fields
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="space-y-2">
+                  <label className="text-sm font-bold text-slate-400 uppercase tracking-wider">
+                    API Key
+                  </label>
+                  <input
+                    type="password"
+                    value={apiKey}
+                    onChange={(e) => setApiKey(e.target.value)}
+                    placeholder="Enter Mailjet API Key"
+                    className="w-full h-12 bg-black/20 border border-white/10 rounded-xl px-4 text-white focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-all placeholder:text-slate-600 font-mono"
+                  />
+                </div>
 
-              <div className="space-y-2">
-                <label className="text-sm font-bold text-slate-400 uppercase tracking-wider">
-                  API Secret
-                </label>
-                <input
-                  type="password"
-                  value={apiSecret}
-                  onChange={(e) => setApiSecret(e.target.value)}
-                  placeholder={
-                    settings?.hasApiSecret
-                      ? "•••••••••••••••• (Unchanged)"
-                      : "Enter Mailjet API Secret"
-                  }
-                  className="w-full h-12 bg-black/20 border border-white/10 rounded-xl px-4 text-white focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-all placeholder:text-slate-600 font-mono"
-                />
+                <div className="space-y-2">
+                  <label className="text-sm font-bold text-slate-400 uppercase tracking-wider">
+                    API Secret
+                  </label>
+                  <input
+                    type="password"
+                    value={apiSecret}
+                    onChange={(e) => setApiSecret(e.target.value)}
+                    placeholder="Enter Mailjet API Secret"
+                    className="w-full h-12 bg-black/20 border border-white/10 rounded-xl px-4 text-white focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-all placeholder:text-slate-600 font-mono"
+                  />
+                </div>
               </div>
-
-            </div>
+            )
 
           ) : (
             // Mailgun Fields
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div className="space-y-2 md:col-span-2">
-                <label className="text-sm font-bold text-slate-400 uppercase tracking-wider">
-                  Mailgun Domain
-                </label>
-                <input
-                  type="text"
-                  value={mailgunDomain}
-                  onChange={(e) => setMailgunDomain(e.target.value)}
-                  placeholder="mg.yourdomain.com"
-                  className="w-full h-12 bg-black/20 border border-white/10 rounded-xl px-4 text-white focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-all placeholder:text-slate-600"
-                />
+            mailgunConfigured ? (
+              // Configured State - Show status and remove button
+              <div className="p-6 bg-green-500/10 border border-green-500/20 rounded-xl">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <span className="material-symbols-outlined text-green-500 text-3xl">check_circle</span>
+                    <div>
+                      <p className="font-bold text-white">Mailgun Configured</p>
+                      <p className="text-sm text-slate-400">Domain: {settings?.mailgunDomain}</p>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => handleRemoveConfiguration('mailgun')}
+                    className="px-4 py-2 bg-red-500/20 hover:bg-red-500/30 text-red-400 rounded-lg border border-red-500/20 flex items-center gap-2 transition-all"
+                  >
+                    <span className="material-symbols-outlined text-sm">delete</span>
+                    Remove Configuration
+                  </button>
+                </div>
               </div>
+            ) : (
+              // Unconfigured State - Show input fields
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="space-y-2 md:col-span-2">
+                  <label className="text-sm font-bold text-slate-400 uppercase tracking-wider">
+                    Mailgun Domain
+                  </label>
+                  <input
+                    type="text"
+                    value={mailgunDomain}
+                    onChange={(e) => setMailgunDomain(e.target.value)}
+                    placeholder="mg.yourdomain.com"
+                    className="w-full h-12 bg-black/20 border border-white/10 rounded-xl px-4 text-white focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-all placeholder:text-slate-600"
+                  />
+                </div>
 
-              <div className="space-y-2 md:col-span-2">
-                <label className="text-sm font-bold text-slate-400 uppercase tracking-wider">
-                  Mailgun API Key
-                </label>
-                <input
-                  type="password"
-                  value={mailgunApiKey}
-                  onChange={(e) => setMailgunApiKey(e.target.value)}
-                  placeholder={
-                    settings?.hasMailgunApiKey
-                      ? "•••••••••••••••• (Unchanged)"
-                      : "Enter Mailgun Private API Key"
-                  }
-                  className="w-full h-12 bg-black/20 border border-white/10 rounded-xl px-4 text-white focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-all placeholder:text-slate-600 font-mono"
-                />
+                <div className="space-y-2 md:col-span-2">
+                  <label className="text-sm font-bold text-slate-400 uppercase tracking-wider">
+                    Mailgun API Key
+                  </label>
+                  <input
+                    type="password"
+                    value={mailgunApiKey}
+                    onChange={(e) => setMailgunApiKey(e.target.value)}
+                    placeholder="Enter Mailgun Private API Key"
+                    className="w-full h-12 bg-black/20 border border-white/10 rounded-xl px-4 text-white focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-all placeholder:text-slate-600 font-mono"
+                  />
+                </div>
               </div>
-            </div>
+            )
           )}
 
-          <div className="pt-4 border-t border-white/5 flex justify-end">
-            <button
-              type="submit"
-              disabled={saving}
-              className="h-12 px-8 bg-primary hover:bg-primary-dark text-black font-bold rounded-xl shadow-lg shadow-primary/20 flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
-              title="Save settings"
-            >
-              {saving ? (
-                <LoadingSpinner size="sm" color="black" />
-              ) : (
-                <>
-                  <span className="material-symbols-outlined">save</span>
-                  Save Settings
-                </>
-              )}
-            </button>
-          </div>
+          {/* Only show Save button if not configured */}
+          {!((activeProvider === 'mailjet' && mailjetConfigured) || (activeProvider === 'mailgun' && mailgunConfigured)) && (
+            <div className="pt-4 border-t border-white/5 flex justify-end">
+              <button
+                type="submit"
+                disabled={saving}
+                className="h-12 px-8 bg-primary hover:bg-primary-dark text-black font-bold rounded-xl shadow-lg shadow-primary/20 flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+                title="Save settings"
+              >
+                {saving ? (
+                  <LoadingSpinner size="sm" color="black" />
+                ) : (
+                  <>
+                    <span className="material-symbols-outlined">save</span>
+                    Save Configuration
+                  </>
+                )}
+              </button>
+            </div>
+          )}
         </form>
 
         {/* Test Email Section - Always visible when a provider is selected */}
