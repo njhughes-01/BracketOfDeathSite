@@ -209,7 +209,11 @@ const UserManagement: React.FC = () => {
         // Simpler: just clear selection or re-find in new list.
         // For smoother UX, let's keep modal open if possible, but loadUsers sets users async.
         // Let's just create a quick updated object for the modal
-        const updatedUser = { ...userToToggle, roles: newRoles, isAdmin: willBeAdmin };
+        const updatedUser = {
+          ...userToToggle,
+          roles: newRoles,
+          isAdmin: willBeAdmin,
+        };
         setSelectedUser(updatedUser);
 
         setError("");
@@ -272,7 +276,11 @@ const UserManagement: React.FC = () => {
       if (response.success) {
         // Refresh the user list to get updated roles
         await loadUsers();
-        const updatedUser = { ...userToToggle, roles: newRoles, isSuperAdmin: willBeSuperAdmin };
+        const updatedUser = {
+          ...userToToggle,
+          roles: newRoles,
+          isSuperAdmin: willBeSuperAdmin,
+        };
         setSelectedUser(updatedUser);
         setError("");
       } else {
@@ -286,7 +294,15 @@ const UserManagement: React.FC = () => {
     }
   };
 
-  const handleUpdateUser = async (userToUpdate: User, data: { firstName: string; lastName: string; email: string; gender: string }) => {
+  const handleUpdateUser = async (
+    userToUpdate: User,
+    data: {
+      firstName: string;
+      lastName: string;
+      email: string;
+      gender: string;
+    },
+  ) => {
     try {
       setLoading(true);
       const response = await apiClient.updateUser(userToUpdate.id, data);
@@ -309,7 +325,6 @@ const UserManagement: React.FC = () => {
       setLoading(false);
     }
   };
-
 
   if (!canManageUsers) {
     return (
@@ -339,10 +354,11 @@ const UserManagement: React.FC = () => {
           </div>
           <button
             onClick={() => setShowCreateForm(!showCreateForm)}
-            className={`flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold transition-all ${showCreateForm
-              ? "bg-red-500/10 text-red-500 hover:bg-red-500/20 border border-red-500/20"
-              : "bg-primary text-black hover:bg-white hover:scale-105 shadow-lg shadow-primary/20"
-              }`}
+            className={`flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold transition-all ${
+              showCreateForm
+                ? "bg-red-500/10 text-red-500 hover:bg-red-500/20 border border-red-500/20"
+                : "bg-primary text-black hover:bg-white hover:scale-105 shadow-lg shadow-primary/20"
+            }`}
           >
             {showCreateForm ? (
               <>
@@ -402,7 +418,6 @@ const UserManagement: React.FC = () => {
           onToggleSuperAdminRole={handleToggleSuperAdminRole}
           onUpdateUser={handleUpdateUser}
         />
-
       )}
 
       {showClaimModal && (
@@ -419,4 +434,3 @@ const UserManagement: React.FC = () => {
 };
 
 export default UserManagement;
-

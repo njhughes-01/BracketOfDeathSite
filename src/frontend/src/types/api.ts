@@ -62,22 +62,32 @@ export interface Tournament {
   id: string;
   date: string;
   bodNumber: number;
-  format: 'M' | 'W' | 'Mixed' | "Men's Singles" | "Men's Doubles" | "Women's Doubles" | "Mixed Doubles";
+  format:
+    | "M"
+    | "W"
+    | "Mixed"
+    | "Men's Singles"
+    | "Men's Doubles"
+    | "Women's Doubles"
+    | "Mixed Doubles";
   // Bracket/play structure selected during setup. Optional for legacy data.
-  bracketType?: 'single_elimination' | 'double_elimination' | 'round_robin_playoff';
+  bracketType?:
+    | "single_elimination"
+    | "double_elimination"
+    | "round_robin_playoff";
   location: string;
   advancementCriteria: string;
   notes?: string;
   photoAlbums?: string;
-  status: 'scheduled' | 'open' | 'active' | 'completed' | 'cancelled';
-  players?: Array<{ _id: string; name: string; }>;
+  status: "scheduled" | "open" | "active" | "completed" | "cancelled";
+  players?: Array<{ _id: string; name: string }>;
   maxPlayers?: number;
-  registrationType: 'open' | 'preselected';
+  registrationType: "open" | "preselected";
   registrationOpensAt?: string;
   registrationDeadline?: string;
   allowSelfRegistration: boolean;
-  registeredPlayers?: Array<{ _id: string; name: string; }>;
-  waitlistPlayers?: Array<{ _id: string; name: string; }>;
+  registeredPlayers?: Array<{ _id: string; name: string }>;
+  waitlistPlayers?: Array<{ _id: string; name: string }>;
   currentPlayerCount?: number;
   champion?: {
     playerId: string;
@@ -91,7 +101,7 @@ export interface Tournament {
   season?: string;
   isFull?: boolean;
   canStart?: boolean;
-  registrationStatus?: 'pending' | 'open' | 'closed' | 'full';
+  registrationStatus?: "pending" | "open" | "closed" | "full";
   registeredPlayerCount?: number;
   waitlistCount?: number;
   isRegistrationOpen?: boolean;
@@ -102,14 +112,21 @@ export interface Tournament {
 export interface TournamentInput {
   date: string | Date;
   bodNumber?: number; // Now optional, will auto-generate
-  format: 'M' | 'W' | 'Mixed' | "Men's Singles" | "Men's Doubles" | "Women's Doubles" | "Mixed Doubles";
+  format:
+    | "M"
+    | "W"
+    | "Mixed"
+    | "Men's Singles"
+    | "Men's Doubles"
+    | "Women's Doubles"
+    | "Mixed Doubles";
   location: string;
   advancementCriteria: string;
   notes?: string;
   photoAlbums?: string;
-  status?: 'scheduled' | 'open' | 'active' | 'completed' | 'cancelled';
+  status?: "scheduled" | "open" | "active" | "completed" | "cancelled";
   maxPlayers?: number;
-  registrationType: 'open' | 'preselected';
+  registrationType: "open" | "preselected";
   registrationOpensAt?: string | Date;
   registrationDeadline?: string | Date;
   allowSelfRegistration?: boolean;
@@ -130,7 +147,7 @@ export interface TournamentUpdate extends Partial<TournamentInput> {
 // Registration types
 export interface RegistrationInfo {
   tournament: Tournament;
-  registrationStatus: 'pending' | 'open' | 'closed' | 'full';
+  registrationStatus: "pending" | "open" | "closed" | "full";
   registeredCount: number;
   waitlistCount: number;
   maxPlayers?: number;
@@ -202,7 +219,7 @@ export interface TournamentResult {
   totalStats: TotalStats;
   // Virtuals from backend
   teamName?: string;
-  performanceGrade?: 'A' | 'B' | 'C' | 'D' | 'F';
+  performanceGrade?: "A" | "B" | "C" | "D" | "F";
   createdAt: string;
   updatedAt: string;
 }
@@ -224,7 +241,7 @@ export interface TournamentResultUpdate extends Partial<TournamentResultInput> {
 
 // Tournament Management Types
 export interface SeedingConfig {
-  method: 'historical' | 'recent_form' | 'elo' | 'manual';
+  method: "historical" | "recent_form" | "elo" | "manual";
   parameters?: {
     recentTournamentCount?: number;
     championshipWeight?: number;
@@ -234,7 +251,7 @@ export interface SeedingConfig {
 }
 
 export interface TeamFormationConfig {
-  method: 'preformed' | 'draft' | 'statistical_pairing' | 'random' | 'manual';
+  method: "preformed" | "draft" | "statistical_pairing" | "random" | "manual";
   parameters?: {
     skillBalancing?: boolean;
     avoidRecentPartners?: boolean;
@@ -246,7 +263,10 @@ export interface TournamentSetup {
   basicInfo: TournamentInput;
   seedingConfig: SeedingConfig;
   teamFormationConfig: TeamFormationConfig;
-  bracketType: 'single_elimination' | 'double_elimination' | 'round_robin_playoff';
+  bracketType:
+    | "single_elimination"
+    | "double_elimination"
+    | "round_robin_playoff";
   registrationDeadline?: string;
   maxPlayers: number;
 }
@@ -282,7 +302,7 @@ export interface Match {
   _id: string;
   id: string;
   tournamentId: string;
-  round: 'RR_R1' | 'RR_R2' | 'RR_R3' | 'quarterfinal' | 'semifinal' | 'final';
+  round: "RR_R1" | "RR_R2" | "RR_R3" | "quarterfinal" | "semifinal" | "final";
   matchNumber: number;
   team1: {
     teamId: string;
@@ -308,7 +328,12 @@ export interface Match {
       score: number;
     }>;
   };
-  status: 'scheduled' | 'in-progress' | 'in_progress' | 'completed' | 'confirmed';
+  status:
+    | "scheduled"
+    | "in-progress"
+    | "in_progress"
+    | "completed"
+    | "confirmed";
   startTime?: string;
   endTime?: string;
   court?: string;
@@ -323,9 +348,21 @@ export interface Match {
 }
 
 export interface TournamentPhase {
-  phase: 'setup' | 'registration' | 'check_in' | 'round_robin' | 'bracket' | 'completed';
-  currentRound?: 'RR_R1' | 'RR_R2' | 'RR_R3' | 'quarterfinal' | 'semifinal' | 'final';
-  roundStatus: 'not_started' | 'in_progress' | 'in-progress' | 'completed';
+  phase:
+    | "setup"
+    | "registration"
+    | "check_in"
+    | "round_robin"
+    | "bracket"
+    | "completed";
+  currentRound?:
+    | "RR_R1"
+    | "RR_R2"
+    | "RR_R3"
+    | "quarterfinal"
+    | "semifinal"
+    | "final";
+  roundStatus: "not_started" | "in_progress" | "in-progress" | "completed";
   totalMatches: number;
   completedMatches: number;
   canAdvance: boolean;
@@ -369,7 +406,7 @@ export interface MatchUpdate {
     playerName: string;
     score: number;
   }>;
-  status?: Match['status'];
+  status?: Match["status"];
   court?: string;
   notes?: string;
   startTime?: string;
@@ -381,8 +418,16 @@ export interface MatchUpdate {
 }
 
 export interface TournamentAction {
-  action: 'start_registration' | 'close_registration' | 'start_checkin' | 'start_round_robin' |
-  'advance_round' | 'start_bracket' | 'complete_tournament' | 'reset_tournament' | 'set_round';
+  action:
+    | "start_registration"
+    | "close_registration"
+    | "start_checkin"
+    | "start_round_robin"
+    | "advance_round"
+    | "start_bracket"
+    | "complete_tournament"
+    | "reset_tournament"
+    | "set_round";
   parameters?: {
     targetRound?: string;
     resetToPhase?: string;

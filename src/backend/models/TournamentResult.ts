@@ -1,6 +1,11 @@
-import { Schema, model, Types } from 'mongoose';
-import { ITournamentResult, IRoundRobinScores, IBracketScores, ITotalStats } from '../types/tournamentResult';
-import { ErrorMessages } from '../types/common';
+import { Schema, model, Types } from "mongoose";
+import {
+  ITournamentResult,
+  IRoundRobinScores,
+  IBracketScores,
+  ITotalStats,
+} from "../types/tournamentResult";
+import { ErrorMessages } from "../types/common";
 import {
   BaseModelStatics,
   baseSchemaOptions,
@@ -11,178 +16,187 @@ import {
   createStringValidator,
   createPreSaveMiddleware,
   createIndexes,
-} from './base';
+} from "./base";
 
 // Sub-schema for Round Robin Scores
-const roundRobinScoresSchema = new Schema<IRoundRobinScores>({
-  round1: {
-    type: Number,
-    min: [0, 'Round 1 score cannot be negative'],
-    validate: createNumericValidator(0),
+const roundRobinScoresSchema = new Schema<IRoundRobinScores>(
+  {
+    round1: {
+      type: Number,
+      min: [0, "Round 1 score cannot be negative"],
+      validate: createNumericValidator(0),
+    },
+    round2: {
+      type: Number,
+      min: [0, "Round 2 score cannot be negative"],
+      validate: createNumericValidator(0),
+    },
+    round3: {
+      type: Number,
+      min: [0, "Round 3 score cannot be negative"],
+      validate: createNumericValidator(0),
+    },
+    rrWon: {
+      type: Number,
+      min: [0, "Round robin games won cannot be negative"],
+      validate: createNumericValidator(0),
+    },
+    rrLost: {
+      type: Number,
+      min: [0, "Round robin games lost cannot be negative"],
+      validate: createNumericValidator(0),
+    },
+    rrPlayed: {
+      type: Number,
+      min: [0, "Round robin games played cannot be negative"],
+      validate: createNumericValidator(0),
+    },
+    rrWinPercentage: {
+      type: Number,
+      min: [0, "Round robin win percentage cannot be negative"],
+      max: [1, "Round robin win percentage cannot exceed 1"],
+      validate: createPercentageValidator(),
+    },
+    rrRank: {
+      type: Number,
+      min: [0, "Round robin rank cannot be negative"],
+      validate: createNumericValidator(0),
+    },
   },
-  round2: {
-    type: Number,
-    min: [0, 'Round 2 score cannot be negative'],
-    validate: createNumericValidator(0),
-  },
-  round3: {
-    type: Number,
-    min: [0, 'Round 3 score cannot be negative'],
-    validate: createNumericValidator(0),
-  },
-  rrWon: {
-    type: Number,
-    min: [0, 'Round robin games won cannot be negative'],
-    validate: createNumericValidator(0),
-  },
-  rrLost: {
-    type: Number,
-    min: [0, 'Round robin games lost cannot be negative'],
-    validate: createNumericValidator(0),
-  },
-  rrPlayed: {
-    type: Number,
-    min: [0, 'Round robin games played cannot be negative'],
-    validate: createNumericValidator(0),
-  },
-  rrWinPercentage: {
-    type: Number,
-    min: [0, 'Round robin win percentage cannot be negative'],
-    max: [1, 'Round robin win percentage cannot exceed 1'],
-    validate: createPercentageValidator(),
-  },
-  rrRank: {
-    type: Number,
-    min: [0, 'Round robin rank cannot be negative'],
-    validate: createNumericValidator(0),
-  },
-}, { _id: false });
+  { _id: false },
+);
 
 // Sub-schema for Bracket Scores
-const bracketScoresSchema = new Schema<IBracketScores>({
-  r16Won: {
-    type: Number,
-    min: [0, 'Round of 16 games won cannot be negative'],
-    validate: createNumericValidator(0),
+const bracketScoresSchema = new Schema<IBracketScores>(
+  {
+    r16Won: {
+      type: Number,
+      min: [0, "Round of 16 games won cannot be negative"],
+      validate: createNumericValidator(0),
+    },
+    r16Lost: {
+      type: Number,
+      min: [0, "Round of 16 games lost cannot be negative"],
+      validate: createNumericValidator(0),
+    },
+    qfWon: {
+      type: Number,
+      min: [0, "Quarterfinal games won cannot be negative"],
+      validate: createNumericValidator(0),
+    },
+    qfLost: {
+      type: Number,
+      min: [0, "Quarterfinal games lost cannot be negative"],
+      validate: createNumericValidator(0),
+    },
+    sfWon: {
+      type: Number,
+      min: [0, "Semifinal games won cannot be negative"],
+      validate: createNumericValidator(0),
+    },
+    sfLost: {
+      type: Number,
+      min: [0, "Semifinal games lost cannot be negative"],
+      validate: createNumericValidator(0),
+    },
+    finalsWon: {
+      type: Number,
+      min: [0, "Finals games won cannot be negative"],
+      validate: createNumericValidator(0),
+    },
+    finalsLost: {
+      type: Number,
+      min: [0, "Finals games lost cannot be negative"],
+      validate: createNumericValidator(0),
+    },
+    bracketWon: {
+      type: Number,
+      min: [0, "Total bracket games won cannot be negative"],
+      validate: createNumericValidator(0),
+    },
+    bracketLost: {
+      type: Number,
+      min: [0, "Total bracket games lost cannot be negative"],
+      validate: createNumericValidator(0),
+    },
+    bracketPlayed: {
+      type: Number,
+      min: [0, "Total bracket games played cannot be negative"],
+      validate: createNumericValidator(0),
+    },
   },
-  r16Lost: {
-    type: Number,
-    min: [0, 'Round of 16 games lost cannot be negative'],
-    validate: createNumericValidator(0),
-  },
-  qfWon: {
-    type: Number,
-    min: [0, 'Quarterfinal games won cannot be negative'],
-    validate: createNumericValidator(0),
-  },
-  qfLost: {
-    type: Number,
-    min: [0, 'Quarterfinal games lost cannot be negative'],
-    validate: createNumericValidator(0),
-  },
-  sfWon: {
-    type: Number,
-    min: [0, 'Semifinal games won cannot be negative'],
-    validate: createNumericValidator(0),
-  },
-  sfLost: {
-    type: Number,
-    min: [0, 'Semifinal games lost cannot be negative'],
-    validate: createNumericValidator(0),
-  },
-  finalsWon: {
-    type: Number,
-    min: [0, 'Finals games won cannot be negative'],
-    validate: createNumericValidator(0),
-  },
-  finalsLost: {
-    type: Number,
-    min: [0, 'Finals games lost cannot be negative'],
-    validate: createNumericValidator(0),
-  },
-  bracketWon: {
-    type: Number,
-    min: [0, 'Total bracket games won cannot be negative'],
-    validate: createNumericValidator(0),
-  },
-  bracketLost: {
-    type: Number,
-    min: [0, 'Total bracket games lost cannot be negative'],
-    validate: createNumericValidator(0),
-  },
-  bracketPlayed: {
-    type: Number,
-    min: [0, 'Total bracket games played cannot be negative'],
-    validate: createNumericValidator(0),
-  },
-}, { _id: false });
+  { _id: false },
+);
 
 // Sub-schema for Total Stats
-const totalStatsSchema = new Schema<ITotalStats>({
-  totalWon: {
-    type: Number,
-    required: [true, ErrorMessages.REQUIRED],
-    min: [0, 'Total games won cannot be negative'],
-    validate: [
-      createNumericValidator(0),
-      {
-        validator: function (this: any, v: number) {
-          return v <= this.totalPlayed;
+const totalStatsSchema = new Schema<ITotalStats>(
+  {
+    totalWon: {
+      type: Number,
+      required: [true, ErrorMessages.REQUIRED],
+      min: [0, "Total games won cannot be negative"],
+      validate: [
+        createNumericValidator(0),
+        {
+          validator: function (this: any, v: number) {
+            return v <= this.totalPlayed;
+          },
+          message: "Total games won cannot exceed total games played",
         },
-        message: 'Total games won cannot exceed total games played'
-      }
-    ]
-  },
-  totalLost: {
-    type: Number,
-    required: [true, ErrorMessages.REQUIRED],
-    min: [0, 'Total games lost cannot be negative'],
-    validate: [
-      createNumericValidator(0),
-      {
-        validator: function (this: any, v: number) {
-          return v <= this.totalPlayed;
+      ],
+    },
+    totalLost: {
+      type: Number,
+      required: [true, ErrorMessages.REQUIRED],
+      min: [0, "Total games lost cannot be negative"],
+      validate: [
+        createNumericValidator(0),
+        {
+          validator: function (this: any, v: number) {
+            return v <= this.totalPlayed;
+          },
+          message: "Total games lost cannot exceed total games played",
         },
-        message: 'Total games lost cannot exceed total games played'
-      }
-    ]
-  },
-  totalPlayed: {
-    type: Number,
-    required: [true, ErrorMessages.REQUIRED],
-    min: [0, 'Total games played cannot be negative'],
-    validate: [
-      createNumericValidator(0),
-      {
-        validator: function (this: any, v: number) {
-          return v === (this.totalWon + this.totalLost);
+      ],
+    },
+    totalPlayed: {
+      type: Number,
+      required: [true, ErrorMessages.REQUIRED],
+      min: [0, "Total games played cannot be negative"],
+      validate: [
+        createNumericValidator(0),
+        {
+          validator: function (this: any, v: number) {
+            return v === this.totalWon + this.totalLost;
+          },
+          message: "Total games played must equal total won plus total lost",
         },
-        message: 'Total games played must equal total won plus total lost'
-      }
-    ]
+      ],
+    },
+    winPercentage: {
+      type: Number,
+      required: [true, ErrorMessages.REQUIRED],
+      min: [0, "Win percentage cannot be negative"],
+      max: [1, "Win percentage cannot exceed 1"],
+      validate: createPercentageValidator(),
+    },
+    finalRank: {
+      type: Number,
+      min: [1, "Final rank must be positive"],
+      validate: createNumericValidator(1),
+    },
+    bodFinish: {
+      type: Number,
+      min: [1, "BOD finish must be positive"],
+      validate: createNumericValidator(1),
+    },
+    home: {
+      type: Boolean,
+      default: false,
+    },
   },
-  winPercentage: {
-    type: Number,
-    required: [true, ErrorMessages.REQUIRED],
-    min: [0, 'Win percentage cannot be negative'],
-    max: [1, 'Win percentage cannot exceed 1'],
-    validate: createPercentageValidator(),
-  },
-  finalRank: {
-    type: Number,
-    min: [1, 'Final rank must be positive'],
-    validate: createNumericValidator(1),
-  },
-  bodFinish: {
-    type: Number,
-    min: [1, 'BOD finish must be positive'],
-    validate: createNumericValidator(1),
-  },
-  home: {
-    type: Boolean,
-    default: false,
-  },
-}, { _id: false });
+  { _id: false },
+);
 
 // Tournament Result calculations
 const calculateTournamentResultStats = (result: ITournamentResult): void => {
@@ -241,16 +255,23 @@ const calculateTournamentResultStats = (result: ITournamentResult): void => {
   if (!result.totalStats.totalWon || result.totalStats.totalWon !== totalWon) {
     result.totalStats.totalWon = totalWon;
   }
-  if (!result.totalStats.totalLost || result.totalStats.totalLost !== totalLost) {
+  if (
+    !result.totalStats.totalLost ||
+    result.totalStats.totalLost !== totalLost
+  ) {
     result.totalStats.totalLost = totalLost;
   }
-  if (!result.totalStats.totalPlayed || result.totalStats.totalPlayed !== totalPlayed) {
+  if (
+    !result.totalStats.totalPlayed ||
+    result.totalStats.totalPlayed !== totalPlayed
+  ) {
     result.totalStats.totalPlayed = totalPlayed;
   }
 
   // Calculate win percentage
   if (result.totalStats.totalPlayed > 0) {
-    result.totalStats.winPercentage = result.totalStats.totalWon / result.totalStats.totalPlayed;
+    result.totalStats.winPercentage =
+      result.totalStats.totalWon / result.totalStats.totalPlayed;
   }
 };
 
@@ -258,14 +279,16 @@ const tournamentResultSchema = new Schema<ITournamentResult>(
   {
     tournamentId: {
       type: Schema.Types.ObjectId,
-      ref: 'Tournament',
+      ref: "Tournament",
       required: [true, ErrorMessages.REQUIRED],
     },
-    players: [{
-      type: Schema.Types.ObjectId,
-      ref: 'Player',
-      required: [true, ErrorMessages.REQUIRED],
-    }],
+    players: [
+      {
+        type: Schema.Types.ObjectId,
+        ref: "Player",
+        required: [true, ErrorMessages.REQUIRED],
+      },
+    ],
     division: {
       type: String,
       trim: true,
@@ -273,7 +296,7 @@ const tournamentResultSchema = new Schema<ITournamentResult>(
     },
     seed: {
       type: Number,
-      min: [1, 'Seed must be positive'],
+      min: [1, "Seed must be positive"],
       validate: createNumericValidator(1),
     },
     roundRobinScores: roundRobinScoresSchema,
@@ -283,31 +306,35 @@ const tournamentResultSchema = new Schema<ITournamentResult>(
       required: [true, ErrorMessages.REQUIRED],
     },
   },
-  baseSchemaOptions
+  baseSchemaOptions,
 );
 
 // Custom validations
-tournamentResultSchema.path('players').validate(function (players: Types.ObjectId[]) {
+tournamentResultSchema.path("players").validate(function (
+  players: Types.ObjectId[],
+) {
   return players && players.length >= 1 && players.length <= 2;
-}, 'A team must have 1 or 2 players');
-
-
+}, "A team must have 1 or 2 players");
 
 // Virtual for team name
-tournamentResultSchema.virtual('teamName').get(function (this: ITournamentResult) {
-  if (!this.populated('players')) return 'Team';
+tournamentResultSchema.virtual("teamName").get(function (
+  this: ITournamentResult,
+) {
+  if (!this.populated("players")) return "Team";
   const players = this.players as any[];
-  return players.map((p: any) => p.name || p.toString()).join(' & ');
+  return players.map((p: any) => p.name || p.toString()).join(" & ");
 });
 
 // Virtual for performance grade
-tournamentResultSchema.virtual('performanceGrade').get(function (this: ITournamentResult) {
+tournamentResultSchema.virtual("performanceGrade").get(function (
+  this: ITournamentResult,
+) {
   const winPct = this.totalStats.winPercentage;
-  if (winPct >= 0.8) return 'A';
-  if (winPct >= 0.7) return 'B';
-  if (winPct >= 0.6) return 'C';
-  if (winPct >= 0.5) return 'D';
-  return 'F';
+  if (winPct >= 0.8) return "A";
+  if (winPct >= 0.7) return "B";
+  if (winPct >= 0.6) return "C";
+  if (winPct >= 0.5) return "D";
+  return "F";
 });
 
 // Add methods and statics
@@ -315,8 +342,11 @@ tournamentResultSchema.methods = { ...baseMethods };
 tournamentResultSchema.statics = { ...baseStatics };
 
 // Pre-save middleware
-tournamentResultSchema.pre('save', createPreSaveMiddleware(calculateTournamentResultStats));
-tournamentResultSchema.pre('findOneAndUpdate', function () {
+tournamentResultSchema.pre(
+  "save",
+  createPreSaveMiddleware(calculateTournamentResultStats),
+);
+tournamentResultSchema.pre("findOneAndUpdate", function () {
   this.setOptions({ runValidators: true });
 });
 
@@ -325,15 +355,18 @@ createIndexes(tournamentResultSchema, [
   { fields: { tournamentId: 1, players: 1 }, options: { unique: true } },
   { fields: { tournamentId: 1 } },
   { fields: { players: 1 } },
-  { fields: { 'totalStats.winPercentage': -1 } },
-  { fields: { 'totalStats.finalRank': 1 } },
-  { fields: { 'totalStats.bodFinish': 1 } },
+  { fields: { "totalStats.winPercentage": -1 } },
+  { fields: { "totalStats.finalRank": 1 } },
+  { fields: { "totalStats.bodFinish": 1 } },
   { fields: { division: 1 } },
   { fields: { seed: 1 } },
   { fields: { createdAt: -1 } },
 ]);
 
-export interface ITournamentResultModel extends BaseModelStatics<ITournamentResult> { }
+export interface ITournamentResultModel extends BaseModelStatics<ITournamentResult> {}
 
-export const TournamentResult = model<ITournamentResult, ITournamentResultModel>('TournamentResult', tournamentResultSchema);
+export const TournamentResult = model<
+  ITournamentResult,
+  ITournamentResultModel
+>("TournamentResult", tournamentResultSchema);
 export default TournamentResult;

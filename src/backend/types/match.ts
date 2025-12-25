@@ -1,5 +1,5 @@
-import { BaseDocument } from './common';
-import { Types } from 'mongoose';
+import { BaseDocument } from "./common";
+import { Types } from "mongoose";
 
 export interface IMatch extends BaseDocument {
   tournamentId: Types.ObjectId;
@@ -8,7 +8,7 @@ export interface IMatch extends BaseDocument {
   roundNumber: number;
   team1: IMatchTeam;
   team2: IMatchTeam;
-  winner?: 'team1' | 'team2';
+  winner?: "team1" | "team2";
   status: MatchStatus;
   scheduledDate?: Date;
   completedDate?: Date;
@@ -59,7 +59,7 @@ export interface IMatchTeamInput {
 
 export interface IMatchUpdate extends Partial<IMatchInput> {
   _id?: never;
-  winner?: 'team1' | 'team2';
+  winner?: "team1" | "team2";
   status?: MatchStatus;
   completedDate?: Date;
   adminOverride?: {
@@ -74,102 +74,101 @@ export interface IMatchFilter {
   round?: MatchRound | { $in?: MatchRound[] };
   roundNumber?: number | { $gte?: number; $lte?: number };
   status?: MatchStatus | { $in?: MatchStatus[] };
-  'team1.players'?: { $in?: Types.ObjectId[] };
-  'team2.players'?: { $in?: Types.ObjectId[] };
-  winner?: 'team1' | 'team2';
+  "team1.players"?: { $in?: Types.ObjectId[] };
+  "team2.players"?: { $in?: Types.ObjectId[] };
+  winner?: "team1" | "team2";
   scheduledDate?: { $gte?: Date; $lte?: Date };
 }
 
 export const MatchRounds = [
-  'RR_R1',
-  'RR_R2', 
-  'RR_R3',
-  'round-of-64',
-  'round-of-32',
-  'round-of-16',
-  'quarterfinal',
-  'semifinal',
-  'final',
-  'third-place',
+  "RR_R1",
+  "RR_R2",
+  "RR_R3",
+  "round-of-64",
+  "round-of-32",
+  "round-of-16",
+  "quarterfinal",
+  "semifinal",
+  "final",
+  "third-place",
   // Losers bracket rounds (double elimination)
-  'lbr-round-1',
-  'lbr-round-2',
-  'lbr-quarterfinal',
-  'lbr-semifinal',
-  'lbr-final',
+  "lbr-round-1",
+  "lbr-round-2",
+  "lbr-quarterfinal",
+  "lbr-semifinal",
+  "lbr-final",
   // Grand final between WB winner and LBR winner
-  'grand-final',
+  "grand-final",
 ] as const;
 
 // Backward compatibility - deprecated
-export const LegacyMatchRounds = [
-  'round-robin',
-  ...MatchRounds
-] as const;
+export const LegacyMatchRounds = ["round-robin", ...MatchRounds] as const;
 
-export type MatchRound = typeof MatchRounds[number];
+export type MatchRound = (typeof MatchRounds)[number];
 
 export const MatchStatuses = [
-  'scheduled',
-  'in-progress',
-  'completed',
-  'cancelled',
-  'postponed',
+  "scheduled",
+  "in-progress",
+  "completed",
+  "cancelled",
+  "postponed",
 ] as const;
 
-export type MatchStatus = typeof MatchStatuses[number];
+export type MatchStatus = (typeof MatchStatuses)[number];
 
 // Round Robin helper functions
-export const RoundRobinRounds = ['RR_R1', 'RR_R2', 'RR_R3'] as const;
-export type RoundRobinRound = typeof RoundRobinRounds[number];
+export const RoundRobinRounds = ["RR_R1", "RR_R2", "RR_R3"] as const;
+export type RoundRobinRound = (typeof RoundRobinRounds)[number];
 
 export const isRoundRobinRound = (round: string): round is RoundRobinRound => {
   return RoundRobinRounds.includes(round as RoundRobinRound);
 };
 
-export const getNextRoundRobinRound = (currentRound: RoundRobinRound): RoundRobinRound | 'bracket' => {
+export const getNextRoundRobinRound = (
+  currentRound: RoundRobinRound,
+): RoundRobinRound | "bracket" => {
   const currentIndex = RoundRobinRounds.indexOf(currentRound);
-  if (currentIndex === -1) return 'RR_R1';
-  if (currentIndex >= RoundRobinRounds.length - 1) return 'bracket';
+  if (currentIndex === -1) return "RR_R1";
+  if (currentIndex >= RoundRobinRounds.length - 1) return "bracket";
   return RoundRobinRounds[currentIndex + 1];
 };
 
 export const getRoundNumber = (round: MatchRound): number => {
-  if (round === 'RR_R1') return 1;
-  if (round === 'RR_R2') return 2;
-  if (round === 'RR_R3') return 3;
-  if (round === 'quarterfinal') return 4;
-  if (round === 'semifinal') return 5;
-  if (round === 'final') return 6;
-  if (round === 'grand-final') return 7;
+  if (round === "RR_R1") return 1;
+  if (round === "RR_R2") return 2;
+  if (round === "RR_R3") return 3;
+  if (round === "quarterfinal") return 4;
+  if (round === "semifinal") return 5;
+  if (round === "final") return 6;
+  if (round === "grand-final") return 7;
   // Losers bracket ordering (after winners rounds for sorting)
-  if (round === 'lbr-round-1') return 41;
-  if (round === 'lbr-round-2') return 42;
-  if (round === 'lbr-quarterfinal') return 43;
-  if (round === 'lbr-semifinal') return 44;
-  if (round === 'lbr-final') return 45;
+  if (round === "lbr-round-1") return 41;
+  if (round === "lbr-round-2") return 42;
+  if (round === "lbr-quarterfinal") return 43;
+  if (round === "lbr-semifinal") return 44;
+  if (round === "lbr-final") return 45;
   return 1; // default
 };
 
 // Helper function to determine the next round
 export const getNextRound = (currentRound: MatchRound): MatchRound | null => {
   const roundOrder = [
-    'RR_R1',
-    'RR_R2',
-    'RR_R3',
-    'round-of-64',
-    'round-of-32', 
-    'round-of-16',
-    'quarterfinal',
-    'semifinal',
-    'final'
+    "RR_R1",
+    "RR_R2",
+    "RR_R3",
+    "round-of-64",
+    "round-of-32",
+    "round-of-16",
+    "quarterfinal",
+    "semifinal",
+    "final",
   ];
-  
+
   const currentIndex = roundOrder.indexOf(currentRound);
   if (currentIndex === -1 || currentIndex === roundOrder.length - 1) {
     return null;
   }
-  
+
   return roundOrder[currentIndex + 1] as MatchRound;
 };
 

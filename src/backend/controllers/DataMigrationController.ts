@@ -1,15 +1,19 @@
-import { Response, NextFunction } from 'express';
-import { RequestWithAuth } from './base';
-import { ApiResponse } from '../types/common';
+import { Response, NextFunction } from "express";
+import { RequestWithAuth } from "./base";
+import { ApiResponse } from "../types/common";
 
 export class DataMigrationController {
   // Migrate all data from JSON files
-  migrateAll = async (_req: RequestWithAuth, res: Response, next: NextFunction): Promise<void> => {
+  migrateAll = async (
+    _req: RequestWithAuth,
+    res: Response,
+    next: NextFunction,
+  ): Promise<void> => {
     try {
       // TODO: Implement full migration from JSON files
       const response: ApiResponse = {
         success: false,
-        error: 'Migration not yet implemented',
+        error: "Migration not yet implemented",
       };
       res.status(501).json(response);
     } catch (error) {
@@ -18,12 +22,16 @@ export class DataMigrationController {
   };
 
   // Migrate players from JSON
-  migratePlayers = async (_req: RequestWithAuth, res: Response, next: NextFunction): Promise<void> => {
+  migratePlayers = async (
+    _req: RequestWithAuth,
+    res: Response,
+    next: NextFunction,
+  ): Promise<void> => {
     try {
       // TODO: Implement player migration
       const response: ApiResponse = {
         success: false,
-        error: 'Player migration not yet implemented',
+        error: "Player migration not yet implemented",
       };
       res.status(501).json(response);
     } catch (error) {
@@ -32,12 +40,16 @@ export class DataMigrationController {
   };
 
   // Migrate tournaments from JSON
-  migrateTournaments = async (_req: RequestWithAuth, res: Response, next: NextFunction): Promise<void> => {
+  migrateTournaments = async (
+    _req: RequestWithAuth,
+    res: Response,
+    next: NextFunction,
+  ): Promise<void> => {
     try {
       // TODO: Implement tournament migration
       const response: ApiResponse = {
         success: false,
-        error: 'Tournament migration not yet implemented',
+        error: "Tournament migration not yet implemented",
       };
       res.status(501).json(response);
     } catch (error) {
@@ -46,12 +58,16 @@ export class DataMigrationController {
   };
 
   // Migrate results from JSON
-  migrateResults = async (_req: RequestWithAuth, res: Response, next: NextFunction): Promise<void> => {
+  migrateResults = async (
+    _req: RequestWithAuth,
+    res: Response,
+    next: NextFunction,
+  ): Promise<void> => {
     try {
       // TODO: Implement results migration
       const response: ApiResponse = {
         success: false,
-        error: 'Results migration not yet implemented',
+        error: "Results migration not yet implemented",
       };
       res.status(501).json(response);
     } catch (error) {
@@ -60,14 +76,18 @@ export class DataMigrationController {
   };
 
   // Get migration status
-  getMigrationStatus = async (_req: RequestWithAuth, res: Response, next: NextFunction): Promise<void> => {
+  getMigrationStatus = async (
+    _req: RequestWithAuth,
+    res: Response,
+    next: NextFunction,
+  ): Promise<void> => {
     try {
       // TODO: Implement migration status check
       const response: ApiResponse = {
         success: true,
         data: {
-          status: 'not_started',
-          message: 'Migration system not yet implemented',
+          status: "not_started",
+          message: "Migration system not yet implemented",
         },
       };
       res.status(200).json(response);
@@ -77,12 +97,16 @@ export class DataMigrationController {
   };
 
   // Preview migration data
-  previewMigration = async (_req: RequestWithAuth, res: Response, next: NextFunction): Promise<void> => {
+  previewMigration = async (
+    _req: RequestWithAuth,
+    res: Response,
+    next: NextFunction,
+  ): Promise<void> => {
     try {
       // TODO: Implement migration preview
       const response: ApiResponse = {
         success: false,
-        error: 'Migration preview not yet implemented',
+        error: "Migration preview not yet implemented",
       };
       res.status(501).json(response);
     } catch (error) {
@@ -91,12 +115,16 @@ export class DataMigrationController {
   };
 
   // Create backup
-  createBackup = async (_req: RequestWithAuth, res: Response, next: NextFunction): Promise<void> => {
+  createBackup = async (
+    _req: RequestWithAuth,
+    res: Response,
+    next: NextFunction,
+  ): Promise<void> => {
     try {
       // TODO: Implement backup creation
       const response: ApiResponse = {
         success: false,
-        error: 'Backup system not yet implemented',
+        error: "Backup system not yet implemented",
       };
       res.status(501).json(response);
     } catch (error) {
@@ -105,12 +133,16 @@ export class DataMigrationController {
   };
 
   // Restore backup
-  restoreBackup = async (_req: RequestWithAuth, res: Response, next: NextFunction): Promise<void> => {
+  restoreBackup = async (
+    _req: RequestWithAuth,
+    res: Response,
+    next: NextFunction,
+  ): Promise<void> => {
     try {
       // TODO: Implement backup restoration
       const response: ApiResponse = {
         success: false,
-        error: 'Restore system not yet implemented',
+        error: "Restore system not yet implemented",
       };
       res.status(501).json(response);
     } catch (error) {
@@ -119,12 +151,16 @@ export class DataMigrationController {
   };
 
   // Validate data
-  validateData = async (_req: RequestWithAuth, res: Response, next: NextFunction): Promise<void> => {
+  validateData = async (
+    _req: RequestWithAuth,
+    res: Response,
+    next: NextFunction,
+  ): Promise<void> => {
     try {
       // TODO: Implement data validation
       const response: ApiResponse = {
         success: false,
-        error: 'Data validation not yet implemented',
+        error: "Data validation not yet implemented",
       };
       res.status(501).json(response);
     } catch (error) {

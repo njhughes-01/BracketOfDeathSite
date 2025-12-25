@@ -1,5 +1,5 @@
-import { BaseDocument } from './common';
-import { Types } from 'mongoose';
+import { BaseDocument } from "./common";
+import { Types } from "mongoose";
 
 export interface ITournament extends BaseDocument {
   date: Date;
@@ -31,14 +31,14 @@ export interface ITournament extends BaseDocument {
   currentPlayerCount?: number;
   isFull?: boolean;
   canStart?: boolean;
-  registrationStatus?: 'pending' | 'open' | 'closed' | 'full';
+  registrationStatus?: "pending" | "open" | "closed" | "full";
   registeredPlayerCount?: number;
   waitlistCount?: number;
   isRegistrationOpen?: boolean;
 
   // Tournament setup configuration
   seedingConfig?: {
-    method: 'historical' | 'recent_form' | 'elo' | 'manual';
+    method: "historical" | "recent_form" | "elo" | "manual";
     parameters?: {
       recentTournamentCount?: number;
       championshipWeight?: number;
@@ -47,14 +47,17 @@ export interface ITournament extends BaseDocument {
     };
   };
   teamFormationConfig?: {
-    method: 'preformed' | 'draft' | 'statistical_pairing' | 'random' | 'manual';
+    method: "preformed" | "draft" | "statistical_pairing" | "random" | "manual";
     parameters?: {
       skillBalancing?: boolean;
       avoidRecentPartners?: boolean;
       maxTimesPartnered?: number;
     };
   };
-  bracketType?: 'single_elimination' | 'double_elimination' | 'round_robin_playoff';
+  bracketType?:
+    | "single_elimination"
+    | "double_elimination"
+    | "round_robin_playoff";
   // Generated tournament data
   generatedSeeds?: Array<{
     playerId: Types.ObjectId;
@@ -136,33 +139,30 @@ export interface ITournamentFilter {
   registrationType?: RegistrationType;
   registrationDeadline?: { $gte?: Date; $lte?: Date };
   allowSelfRegistration?: boolean;
-  'champion.playerId'?: Types.ObjectId;
+  "champion.playerId"?: Types.ObjectId;
 }
 
 export const TournamentFormats = [
-  'M',
-  'W',
-  'Mixed',
-  'Men\'s Singles',
-  'Men\'s Doubles',
-  'Women\'s Doubles',
-  'Mixed Doubles',
+  "M",
+  "W",
+  "Mixed",
+  "Men's Singles",
+  "Men's Doubles",
+  "Women's Doubles",
+  "Mixed Doubles",
 ] as const;
 
-export type TournamentFormat = typeof TournamentFormats[number];
+export type TournamentFormat = (typeof TournamentFormats)[number];
 
 export const TournamentStatuses = [
-  'scheduled',
-  'open',
-  'active',
-  'completed',
-  'cancelled',
+  "scheduled",
+  "open",
+  "active",
+  "completed",
+  "cancelled",
 ] as const;
 
-export type TournamentStatus = typeof TournamentStatuses[number];
-export const RegistrationTypes = [
-  'open',
-  'preselected',
-] as const;
+export type TournamentStatus = (typeof TournamentStatuses)[number];
+export const RegistrationTypes = ["open", "preselected"] as const;
 
-export type RegistrationType = typeof RegistrationTypes[number];
+export type RegistrationType = (typeof RegistrationTypes)[number];

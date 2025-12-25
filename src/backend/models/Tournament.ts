@@ -1,7 +1,11 @@
-import { Schema, model } from 'mongoose';
-import { ITournament } from '../types/tournament';
-import { TournamentFormats, TournamentStatuses, RegistrationTypes } from '../types/tournament';
-import { ErrorMessages } from '../types/common';
+import { Schema, model } from "mongoose";
+import { ITournament } from "../types/tournament";
+import {
+  TournamentFormats,
+  TournamentStatuses,
+  RegistrationTypes,
+} from "../types/tournament";
+import { ErrorMessages } from "../types/common";
 import {
   BaseModelStatics,
   baseSchemaOptions,
@@ -11,20 +15,26 @@ import {
   createStringValidator,
   createPreSaveMiddleware,
   createIndexes,
-} from './base';
+} from "./base";
 
 // Tournament-specific calculations
 const calculateTournamentStats = (tournament: ITournament): void => {
   // Ensure date is properly formatted
-  if (tournament.date && typeof tournament.date === 'string') {
+  if (tournament.date && typeof tournament.date === "string") {
     tournament.date = new Date(tournament.date);
   }
 
   // Format registration dates
-  if (tournament.registrationOpensAt && typeof tournament.registrationOpensAt === 'string') {
+  if (
+    tournament.registrationOpensAt &&
+    typeof tournament.registrationOpensAt === "string"
+  ) {
     tournament.registrationOpensAt = new Date(tournament.registrationOpensAt);
   }
-  if (tournament.registrationDeadline && typeof tournament.registrationDeadline === 'string') {
+  if (
+    tournament.registrationDeadline &&
+    typeof tournament.registrationDeadline === "string"
+  ) {
     tournament.registrationDeadline = new Date(tournament.registrationDeadline);
   }
 
@@ -42,11 +52,11 @@ const calculateTournamentStats = (tournament: ITournament): void => {
 
   // Set default registration behavior
   if (tournament.allowSelfRegistration === undefined) {
-    tournament.allowSelfRegistration = tournament.registrationType === 'open';
+    tournament.allowSelfRegistration = tournament.registrationType === "open";
   }
   // Ensure bracketType has a default if not provided (fixes legacy/custom format issues)
   if (!tournament.bracketType) {
-    tournament.bracketType = 'round_robin_playoff';
+    tournament.bracketType = "round_robin_playoff";
   }
 };
 
@@ -57,18 +67,18 @@ const tournamentSchema = new Schema<ITournament>(
       required: [true, ErrorMessages.REQUIRED],
       validate: {
         validator: (date: Date) => {
-          const minDate = new Date('2009-01-01');
+          const minDate = new Date("2009-01-01");
           const maxDate = new Date();
           maxDate.setFullYear(maxDate.getFullYear() + 10);
           return date >= minDate && date <= maxDate;
         },
-        message: 'Date must be between 2009 and 10 years in the future',
+        message: "Date must be between 2009 and 10 years in the future",
       },
     },
     bodNumber: {
       type: Number,
       required: [true, ErrorMessages.REQUIRED],
-      min: [1, 'BOD number must be a positive integer starting from 1'],
+      min: [1, "BOD number must be a positive integer starting from 1"],
       validate: createNumericValidator(1),
     },
     format: {
@@ -76,7 +86,7 @@ const tournamentSchema = new Schema<ITournament>(
       required: [true, ErrorMessages.REQUIRED],
       enum: {
         values: TournamentFormats,
-        message: `Format must be one of: ${TournamentFormats.join(', ')}`,
+        message: `Format must be one of: ${TournamentFormats.join(", ")}`,
       },
     },
     location: {
@@ -97,10 +107,10 @@ const tournamentSchema = new Schema<ITournament>(
       validate: {
         validator: function (value: string) {
           // Allow empty strings or null/undefined, but validate length if provided
-          if (!value || value.trim() === '') return true;
+          if (!value || value.trim() === "") return true;
           return value.length >= 1 && value.length <= 1000;
         },
-        message: 'Notes must be between 1 and 1000 characters when provided'
+        message: "Notes must be between 1 and 1000 characters when provided",
       },
     },
     photoAlbums: {
@@ -108,37 +118,40 @@ const tournamentSchema = new Schema<ITournament>(
       trim: true,
       validate: {
         validator: (value: string) => {
-          if (!value || value.trim() === '') return true;
+          if (!value || value.trim() === "") return true;
           // Basic URL validation
-          const urlRegex = /^(https?:\/\/)?([\da-z\.-]+)\.([a-z\.]{2,6})([\/\w \.-]*)*\/?$/;
+          const urlRegex =
+            /^(https?:\/\/)?([\da-z\.-]+)\.([a-z\.]{2,6})([\/\w \.-]*)*\/?$/;
           return urlRegex.test(value);
         },
-        message: 'Photo albums must be a valid URL when provided',
+        message: "Photo albums must be a valid URL when provided",
       },
     },
     status: {
       type: String,
       enum: {
         values: TournamentStatuses,
-        message: `Status must be one of: ${TournamentStatuses.join(', ')}`,
+        message: `Status must be one of: ${TournamentStatuses.join(", ")}`,
       },
-      default: 'scheduled',
+      default: "scheduled",
     },
-    players: [{
-      type: Schema.Types.ObjectId,
-      ref: 'Player',
-    }],
+    players: [
+      {
+        type: Schema.Types.ObjectId,
+        ref: "Player",
+      },
+    ],
     maxPlayers: {
       type: Number,
-      min: [2, 'Tournament must allow at least 2 players'],
-      max: [64, 'Tournament cannot exceed 64 players'],
+      min: [2, "Tournament must allow at least 2 players"],
+      max: [64, "Tournament cannot exceed 64 players"],
       validate: {
         validator: function (value: number) {
           if (!value) return true;
           // Must be a power of 2 for bracket tournaments
           return Number.isInteger(Math.log2(value));
         },
-        message: 'Maximum players must be a power of 2 (2, 4, 8, 16, 32, 64)',
+        message: "Maximum players must be a power of 2 (2, 4, 8, 16, 32, 64)",
       },
     },
     registrationType: {
@@ -146,9 +159,9 @@ const tournamentSchema = new Schema<ITournament>(
       required: [true, ErrorMessages.REQUIRED],
       enum: {
         values: RegistrationTypes,
-        message: `Registration type must be one of: ${RegistrationTypes.join(', ')}`,
+        message: `Registration type must be one of: ${RegistrationTypes.join(", ")}`,
       },
-      default: 'open',
+      default: "open",
     },
     registrationOpensAt: {
       type: Date,
@@ -157,7 +170,7 @@ const tournamentSchema = new Schema<ITournament>(
           if (!date) return true;
           return date <= this.date;
         },
-        message: 'Registration must open before tournament date',
+        message: "Registration must open before tournament date",
       },
     },
     registrationDeadline: {
@@ -169,39 +182,44 @@ const tournamentSchema = new Schema<ITournament>(
           const tournamentDate = this.date;
           return date >= now && date <= tournamentDate;
         },
-        message: 'Registration deadline must be between now and tournament date',
+        message:
+          "Registration deadline must be between now and tournament date",
       },
     },
     allowSelfRegistration: {
       type: Boolean,
       default: function (this: ITournament) {
-        return this.registrationType === 'open';
+        return this.registrationType === "open";
       },
     },
-    registeredPlayers: [{
-      type: Schema.Types.ObjectId,
-      ref: 'Player',
-    }],
-    waitlistPlayers: [{
-      type: Schema.Types.ObjectId,
-      ref: 'Player',
-    }],
+    registeredPlayers: [
+      {
+        type: Schema.Types.ObjectId,
+        ref: "Player",
+      },
+    ],
+    waitlistPlayers: [
+      {
+        type: Schema.Types.ObjectId,
+        ref: "Player",
+      },
+    ],
     champion: {
       playerId: {
         type: Schema.Types.ObjectId,
-        ref: 'Player',
+        ref: "Player",
       },
       playerName: String,
       tournamentResult: {
         type: Schema.Types.ObjectId,
-        ref: 'TournamentResult',
+        ref: "TournamentResult",
       },
     },
     // Tournament setup configuration
     seedingConfig: {
       method: {
         type: String,
-        enum: ['historical', 'recent_form', 'elo', 'manual'],
+        enum: ["historical", "recent_form", "elo", "manual"],
       },
       parameters: {
         recentTournamentCount: Number,
@@ -213,7 +231,7 @@ const tournamentSchema = new Schema<ITournament>(
     teamFormationConfig: {
       method: {
         type: String,
-        enum: ['preformed', 'draft', 'statistical_pairing', 'random', 'manual'],
+        enum: ["preformed", "draft", "statistical_pairing", "random", "manual"],
       },
       parameters: {
         skillBalancing: Boolean,
@@ -223,30 +241,14 @@ const tournamentSchema = new Schema<ITournament>(
     },
     bracketType: {
       type: String,
-      enum: ['single_elimination', 'double_elimination', 'round_robin_playoff'],
+      enum: ["single_elimination", "double_elimination", "round_robin_playoff"],
     },
     // Generated tournament data
-    generatedSeeds: [{
-      playerId: {
-        type: Schema.Types.ObjectId,
-        ref: 'Player',
-      },
-      playerName: String,
-      seed: Number,
-      statistics: {
-        avgFinish: Number,
-        winningPercentage: Number,
-        totalChampionships: Number,
-        bodsPlayed: Number,
-        recentForm: Number,
-      },
-    }],
-    generatedTeams: [{
-      teamId: String,
-      players: [{
+    generatedSeeds: [
+      {
         playerId: {
           type: Schema.Types.ObjectId,
-          ref: 'Player',
+          ref: "Player",
         },
         playerName: String,
         seed: Number,
@@ -257,30 +259,52 @@ const tournamentSchema = new Schema<ITournament>(
           bodsPlayed: Number,
           recentForm: Number,
         },
-      }],
-      combinedSeed: Number,
-      teamName: String,
-      combinedStatistics: {
-        avgFinish: Number,
-        combinedWinPercentage: Number,
-        totalChampionships: Number,
-        combinedBodsPlayed: Number,
       },
-    }],
+    ],
+    generatedTeams: [
+      {
+        teamId: String,
+        players: [
+          {
+            playerId: {
+              type: Schema.Types.ObjectId,
+              ref: "Player",
+            },
+            playerName: String,
+            seed: Number,
+            statistics: {
+              avgFinish: Number,
+              winningPercentage: Number,
+              totalChampionships: Number,
+              bodsPlayed: Number,
+              recentForm: Number,
+            },
+          },
+        ],
+        combinedSeed: Number,
+        teamName: String,
+        combinedStatistics: {
+          avgFinish: Number,
+          combinedWinPercentage: Number,
+          totalChampionships: Number,
+          combinedBodsPlayed: Number,
+        },
+      },
+    ],
     // Live management state (admin-selected)
     managementState: {
       currentRound: {
         type: String,
         required: false,
         trim: true,
-      }
-    }
+      },
+    },
   },
-  baseSchemaOptions
+  baseSchemaOptions,
 );
 
 // Custom validation for BOD number format - supports both sequential (1, 2, 3...) and legacy YYYYMM format
-tournamentSchema.path('bodNumber').validate(function (bodNumber: number) {
+tournamentSchema.path("bodNumber").validate(function (bodNumber: number) {
   // Sequential format: positive integers starting from 1
   if (bodNumber >= 1 && bodNumber <= 999999) {
     return Number.isInteger(bodNumber);
@@ -295,16 +319,19 @@ tournamentSchema.path('bodNumber').validate(function (bodNumber: number) {
   }
 
   return false;
-}, 'BOD number must be a positive integer or legacy YYYYMM format');
+}, "BOD number must be a positive integer or legacy YYYYMM format");
 
 // Validation for players array
-tournamentSchema.path('players').validate(function (this: any, players: any[]) {
+tournamentSchema.path("players").validate(function (this: any, players: any[]) {
   if (!players || !this.maxPlayers) return true;
   return players.length <= this.maxPlayers;
-}, 'Tournament exceeds maximum player limit');
+}, "Tournament exceeds maximum player limit");
 
 // Validation for status transitions
-tournamentSchema.path('status').validate(function (this: any, newStatus: string) {
+tournamentSchema.path("status").validate(function (
+  this: any,
+  newStatus: string,
+) {
   if (this.isNew) return true; // Allow any status for new tournaments
 
   const currentStatus = (this as any)._original?.status;
@@ -312,97 +339,109 @@ tournamentSchema.path('status').validate(function (this: any, newStatus: string)
 
   // Define valid status transitions
   const validTransitions: Record<string, string[]> = {
-    'scheduled': ['open', 'cancelled'],
-    'open': ['active', 'cancelled', 'scheduled'],
-    'active': ['completed', 'cancelled'],
-    'completed': [], // Completed tournaments cannot change status
-    'cancelled': ['scheduled', 'open'], // Can be rescheduled
+    scheduled: ["open", "cancelled"],
+    open: ["active", "cancelled", "scheduled"],
+    active: ["completed", "cancelled"],
+    completed: [], // Completed tournaments cannot change status
+    cancelled: ["scheduled", "open"], // Can be rescheduled
   };
 
   return validTransitions[currentStatus]?.includes(newStatus) ?? false;
-}, 'Invalid status transition');
+}, "Invalid status transition");
 
 // Remove strict date/BOD number consistency validation since we now support sequential numbering
 // tournamentSchema.path('date').validate(function (date: Date) {
 //   if (!this.bodNumber) return true;
-//   
+//
 //   const bodStr = this.bodNumber.toString();
 //   const bodYear = parseInt(bodStr.substring(0, 4));
 //   const bodMonth = parseInt(bodStr.substring(4, 6));
-//   
+//
 //   return date.getFullYear() === bodYear && (date.getMonth() + 1) === bodMonth;
 // }, 'Date must match BOD number year and month');
 
 // Virtual for formatted date
-tournamentSchema.virtual('formattedDate').get(function (this: ITournament) {
-  return this.date.toLocaleDateString('en-US', {
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric',
+tournamentSchema.virtual("formattedDate").get(function (this: ITournament) {
+  return this.date.toLocaleDateString("en-US", {
+    year: "numeric",
+    month: "long",
+    day: "numeric",
   });
 });
 
 // Virtual for year
-tournamentSchema.virtual('year').get(function (this: ITournament) {
+tournamentSchema.virtual("year").get(function (this: ITournament) {
   return this.date.getFullYear();
 });
 
 // Virtual for month
-tournamentSchema.virtual('month').get(function (this: ITournament) {
+tournamentSchema.virtual("month").get(function (this: ITournament) {
   return this.date.getMonth() + 1;
 });
 
 // Virtual for season (approximation)
-tournamentSchema.virtual('season').get(function (this: ITournament) {
+tournamentSchema.virtual("season").get(function (this: ITournament) {
   const month = this.date.getMonth() + 1;
-  if (month >= 3 && month <= 5) return 'Spring';
-  if (month >= 6 && month <= 8) return 'Summer';
-  if (month >= 9 && month <= 11) return 'Fall';
-  return 'Winter';
+  if (month >= 3 && month <= 5) return "Spring";
+  if (month >= 6 && month <= 8) return "Summer";
+  if (month >= 9 && month <= 11) return "Fall";
+  return "Winter";
 });
 
 // Virtual for current player count
-tournamentSchema.virtual('currentPlayerCount').get(function (this: ITournament) {
+tournamentSchema.virtual("currentPlayerCount").get(function (
+  this: ITournament,
+) {
   return this.players?.length || 0;
 });
 
 // Virtual for checking if tournament is full
-tournamentSchema.virtual('isFull').get(function (this: ITournament) {
+tournamentSchema.virtual("isFull").get(function (this: ITournament) {
   if (!this.maxPlayers) return false;
   return (this.players?.length || 0) >= this.maxPlayers;
 });
 
 // Virtual for checking if tournament can start
-tournamentSchema.virtual('canStart').get(function (this: ITournament) {
+tournamentSchema.virtual("canStart").get(function (this: ITournament) {
   const playerCount = this.players?.length || 0;
-  return this.status === 'open' && playerCount >= 2 && playerCount <= (this.maxPlayers || 64);
+  return (
+    this.status === "open" &&
+    playerCount >= 2 &&
+    playerCount <= (this.maxPlayers || 64)
+  );
 });
 
 // Virtual for registration status
-tournamentSchema.virtual('registrationStatus').get(function (this: ITournament) {
+tournamentSchema.virtual("registrationStatus").get(function (
+  this: ITournament,
+) {
   const now = new Date();
   const registrationOpen = this.registrationOpensAt || new Date(0);
   const registrationDeadline = this.registrationDeadline || this.date;
 
-  if (now < registrationOpen) return 'pending';
-  if (now > registrationDeadline) return 'closed';
-  if (this.isFull) return 'full';
-  return 'open';
+  if (now < registrationOpen) return "pending";
+  if (now > registrationDeadline) return "closed";
+  if (this.isFull) return "full";
+  return "open";
 });
 
 // Virtual for registered player count
-tournamentSchema.virtual('registeredPlayerCount').get(function (this: ITournament) {
+tournamentSchema.virtual("registeredPlayerCount").get(function (
+  this: ITournament,
+) {
   return this.registeredPlayers?.length || 0;
 });
 
 // Virtual for waitlist count
-tournamentSchema.virtual('waitlistCount').get(function (this: ITournament) {
+tournamentSchema.virtual("waitlistCount").get(function (this: ITournament) {
   return this.waitlistPlayers?.length || 0;
 });
 
 // Virtual for checking if registration is open
-tournamentSchema.virtual('isRegistrationOpen').get(function (this: ITournament) {
-  return this.registrationStatus === 'open';
+tournamentSchema.virtual("isRegistrationOpen").get(function (
+  this: ITournament,
+) {
+  return this.registrationStatus === "open";
 });
 
 // Add methods and statics
@@ -410,29 +449,33 @@ tournamentSchema.methods = { ...baseMethods } as any;
 (tournamentSchema.statics as any) = { ...baseStatics };
 
 // Auto-generate BOD number if not provided
-tournamentSchema.pre('save', async function (this: ITournament) {
+tournamentSchema.pre("save", async function (this: ITournament) {
   if (this.isNew && !this.bodNumber) {
     try {
-      const lastTournament = await Tournament.findOne().sort({ bodNumber: -1 }).exec();
+      const lastTournament = await Tournament.findOne()
+        .sort({ bodNumber: -1 })
+        .exec();
       this.bodNumber = lastTournament ? lastTournament.bodNumber + 1 : 1;
     } catch (error) {
-      throw new Error('Failed to generate BOD number');
+      throw new Error("Failed to generate BOD number");
     }
   }
 });
 
 // Pre-save middleware
-tournamentSchema.pre('save', createPreSaveMiddleware(calculateTournamentStats));
+tournamentSchema.pre("save", createPreSaveMiddleware(calculateTournamentStats));
 
 // Middleware to track original status for validation
-tournamentSchema.pre('save', function (this: any) {
-  if (!this.isNew && this.isModified('status')) {
+tournamentSchema.pre("save", function (this: any) {
+  if (!this.isNew && this.isModified("status")) {
     (this as any)._original = (this as any)._original || {};
-    (this as any)._original.status = this.get('status', null, { getters: false });
+    (this as any)._original.status = this.get("status", null, {
+      getters: false,
+    });
   }
 });
 
-tournamentSchema.pre('findOneAndUpdate', function () {
+tournamentSchema.pre("findOneAndUpdate", function () {
   this.setOptions({ runValidators: true });
 });
 
@@ -451,17 +494,20 @@ createIndexes(tournamentSchema, [
   { fields: { registrationType: 1, status: 1 } },
   { fields: { registrationDeadline: 1, status: 1 } },
   { fields: { createdAt: -1 } },
-  { fields: { 'champion.playerId': 1 } },
+  { fields: { "champion.playerId": 1 } },
 ]);
 
 // Text index for search
 tournamentSchema.index({
-  location: 'text',
-  notes: 'text',
-  advancementCriteria: 'text'
+  location: "text",
+  notes: "text",
+  advancementCriteria: "text",
 });
 
-export interface ITournamentModel extends BaseModelStatics<ITournament> { }
+export interface ITournamentModel extends BaseModelStatics<ITournament> {}
 
-export const Tournament = model<ITournament, ITournamentModel>('Tournament', tournamentSchema);
+export const Tournament = model<ITournament, ITournamentModel>(
+  "Tournament",
+  tournamentSchema,
+);
 export default Tournament;

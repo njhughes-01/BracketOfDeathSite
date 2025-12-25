@@ -1,5 +1,5 @@
-import React, { useState, useRef, useEffect } from 'react';
-import { useAuth } from '../../contexts/AuthContext';
+import React, { useState, useRef, useEffect } from "react";
+import { useAuth } from "../../contexts/AuthContext";
 
 interface SelectOption {
   value: string;
@@ -29,7 +29,7 @@ const EditableSelect: React.FC<EditableSelectProps> = ({
   editClassName = "",
   disabled = false,
   required = false,
-  validator
+  validator,
 }) => {
   const { isAdmin } = useAuth();
   const [isEditing, setIsEditing] = useState(false);
@@ -61,13 +61,13 @@ const EditableSelect: React.FC<EditableSelectProps> = ({
     }
 
     if (required && !editValue) {
-      setError('This field is required');
+      setError("This field is required");
       return;
     }
 
     // Validate that the selected value is in the options
-    if (editValue && !options.some(option => option.value === editValue)) {
-      setError('Invalid selection');
+    if (editValue && !options.some((option) => option.value === editValue)) {
+      setError("Invalid selection");
       return;
     }
 
@@ -86,7 +86,7 @@ const EditableSelect: React.FC<EditableSelectProps> = ({
       await onSave(editValue);
       setIsEditing(false);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to save');
+      setError(err instanceof Error ? err.message : "Failed to save");
     } finally {
       setIsLoading(false);
     }
@@ -99,16 +99,16 @@ const EditableSelect: React.FC<EditableSelectProps> = ({
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter') {
+    if (e.key === "Enter") {
       e.preventDefault();
       handleSave();
-    } else if (e.key === 'Escape') {
+    } else if (e.key === "Escape") {
       handleCancel();
     }
   };
 
   const getDisplayLabel = (val: string) => {
-    const option = options.find(opt => opt.value === val);
+    const option = options.find((opt) => opt.value === val);
     return option ? option.label : val || placeholder;
   };
 
@@ -131,12 +131,10 @@ const EditableSelect: React.FC<EditableSelectProps> = ({
           onBlur={handleSave}
           disabled={isLoading}
           className={`select ${editClassName} ${
-            error ? 'border-red-500 focus:ring-red-500' : ''
-          } ${isLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
+            error ? "border-red-500 focus:ring-red-500" : ""
+          } ${isLoading ? "opacity-50 cursor-not-allowed" : ""}`}
         >
-          {!required && (
-            <option value="">-- Select --</option>
-          )}
+          {!required && <option value="">-- Select --</option>}
           {options.map((option) => (
             <option key={option.value} value={option.value}>
               {option.label}
@@ -148,9 +146,7 @@ const EditableSelect: React.FC<EditableSelectProps> = ({
             <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
           </div>
         )}
-        {error && (
-          <p className="text-red-500 text-xs mt-1">{error}</p>
-        )}
+        {error && <p className="text-red-500 text-xs mt-1">{error}</p>}
         <div className="flex items-center space-x-2 mt-1">
           <button
             onClick={handleSave}
@@ -175,14 +171,26 @@ const EditableSelect: React.FC<EditableSelectProps> = ({
     <div
       onClick={handleEdit}
       className={`${className} ${displayClassName} ${
-        !disabled ? 'cursor-pointer hover:bg-gray-100 hover:text-blue-600 rounded px-1 -mx-1 transition-colors inline-flex items-center' : ''
-      } ${!value ? 'text-gray-400 italic' : ''}`}
+        !disabled
+          ? "cursor-pointer hover:bg-gray-100 hover:text-blue-600 rounded px-1 -mx-1 transition-colors inline-flex items-center"
+          : ""
+      } ${!value ? "text-gray-400 italic" : ""}`}
       title={!disabled ? "Click to edit" : undefined}
     >
       <span>{getDisplayLabel(value)}</span>
       {!disabled && (
-        <svg className="w-4 h-4 ml-1 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+        <svg
+          className="w-4 h-4 ml-1 opacity-50"
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
+        >
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={2}
+            d="M19 9l-7 7-7-7"
+          />
         </svg>
       )}
     </div>

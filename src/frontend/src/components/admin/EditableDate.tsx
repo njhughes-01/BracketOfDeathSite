@@ -1,5 +1,5 @@
-import React, { useState, useRef, useEffect } from 'react';
-import { useAuth } from '../../contexts/AuthContext';
+import React, { useState, useRef, useEffect } from "react";
+import { useAuth } from "../../contexts/AuthContext";
 
 interface EditableDateProps {
   value: string | Date;
@@ -26,32 +26,34 @@ const EditableDate: React.FC<EditableDateProps> = ({
   required = false,
   min,
   max,
-  validator
+  validator,
 }) => {
   const { isAdmin } = useAuth();
   const [isEditing, setIsEditing] = useState(false);
-  const [editValue, setEditValue] = useState('');
+  const [editValue, setEditValue] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
   // Convert value to YYYY-MM-DD format for input
   const formatDateForInput = (dateValue: string | Date): string => {
-    if (!dateValue) return '';
-    const date = typeof dateValue === 'string' ? new Date(dateValue) : dateValue;
-    if (isNaN(date.getTime())) return '';
-    return date.toISOString().split('T')[0];
+    if (!dateValue) return "";
+    const date =
+      typeof dateValue === "string" ? new Date(dateValue) : dateValue;
+    if (isNaN(date.getTime())) return "";
+    return date.toISOString().split("T")[0];
   };
 
   // Format date for display
   const formatDateForDisplay = (dateValue: string | Date): string => {
     if (!dateValue) return placeholder;
-    const date = typeof dateValue === 'string' ? new Date(dateValue) : dateValue;
+    const date =
+      typeof dateValue === "string" ? new Date(dateValue) : dateValue;
     if (isNaN(date.getTime())) return placeholder;
-    return date.toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric'
+    return date.toLocaleDateString("en-US", {
+      year: "numeric",
+      month: "long",
+      day: "numeric",
     });
   };
 
@@ -74,16 +76,16 @@ const EditableDate: React.FC<EditableDateProps> = ({
   const validateDate = (dateStr: string): string | null => {
     const date = new Date(dateStr);
     if (isNaN(date.getTime())) {
-      return 'Please enter a valid date';
+      return "Please enter a valid date";
     }
 
     // Check backend constraints: between 2009 and 10 years in the future
-    const minDate = new Date('2009-01-01');
+    const minDate = new Date("2009-01-01");
     const maxDate = new Date();
     maxDate.setFullYear(maxDate.getFullYear() + 10);
-    
+
     if (date < minDate || date > maxDate) {
-      return 'Date must be between 2009 and 10 years in the future';
+      return "Date must be between 2009 and 10 years in the future";
     }
 
     if (min && date < new Date(min)) {
@@ -108,7 +110,7 @@ const EditableDate: React.FC<EditableDateProps> = ({
     }
 
     if (required && !editValue) {
-      setError('This field is required');
+      setError("This field is required");
       return;
     }
 
@@ -125,11 +127,11 @@ const EditableDate: React.FC<EditableDateProps> = ({
 
     try {
       // Convert to ISO string for backend
-      const dateToSave = editValue ? new Date(editValue).toISOString() : '';
+      const dateToSave = editValue ? new Date(editValue).toISOString() : "";
       await onSave(dateToSave);
       setIsEditing(false);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to save');
+      setError(err instanceof Error ? err.message : "Failed to save");
     } finally {
       setIsLoading(false);
     }
@@ -142,10 +144,10 @@ const EditableDate: React.FC<EditableDateProps> = ({
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter') {
+    if (e.key === "Enter") {
       e.preventDefault();
       handleSave();
-    } else if (e.key === 'Escape') {
+    } else if (e.key === "Escape") {
       handleCancel();
     }
   };
@@ -172,17 +174,15 @@ const EditableDate: React.FC<EditableDateProps> = ({
           max={max}
           disabled={isLoading}
           className={`input ${editClassName} ${
-            error ? 'border-red-500 focus:ring-red-500' : ''
-          } ${isLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
+            error ? "border-red-500 focus:ring-red-500" : ""
+          } ${isLoading ? "opacity-50 cursor-not-allowed" : ""}`}
         />
         {isLoading && (
           <div className="absolute right-2 top-1/2 transform -translate-y-1/2">
             <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
           </div>
         )}
-        {error && (
-          <p className="text-red-500 text-xs mt-1">{error}</p>
-        )}
+        {error && <p className="text-red-500 text-xs mt-1">{error}</p>}
         <div className="flex items-center space-x-2 mt-1">
           <button
             onClick={handleSave}
@@ -207,8 +207,10 @@ const EditableDate: React.FC<EditableDateProps> = ({
     <span
       onClick={handleEdit}
       className={`${className} ${displayClassName} ${
-        !disabled ? 'cursor-pointer hover:bg-gray-100 hover:text-blue-600 rounded px-1 -mx-1 transition-colors' : ''
-      } ${!value ? 'text-gray-400 italic' : ''}`}
+        !disabled
+          ? "cursor-pointer hover:bg-gray-100 hover:text-blue-600 rounded px-1 -mx-1 transition-colors"
+          : ""
+      } ${!value ? "text-gray-400 italic" : ""}`}
       title={!disabled ? "Click to edit" : undefined}
     >
       {formatDateForDisplay(value)}

@@ -1,7 +1,14 @@
-import React, { createContext, useContext, useEffect, useState, useCallback, useRef } from 'react';
-import type { ReactNode } from 'react';
-import Keycloak from 'keycloak-js';
-import { setTokenGetter, setTokenRefresher } from '../services/api';
+import React, {
+  createContext,
+  useContext,
+  useEffect,
+  useState,
+  useCallback,
+  useRef,
+} from "react";
+import type { ReactNode } from "react";
+import Keycloak from "keycloak-js";
+import { setTokenGetter, setTokenRefresher } from "../services/api";
 
 interface KeycloakTokenParsed {
   sub: string;
@@ -20,24 +27,7 @@ interface KeycloakTokenParsed {
   };
 }
 
-import type { User } from '../types/user';
-
-interface KeycloakTokenParsed {
-  sub: string;
-  email?: string;
-  preferred_username?: string;
-  given_name?: string;
-  family_name?: string;
-  name?: string;
-  realm_access?: {
-    roles: string[];
-  };
-  resource_access?: {
-    [key: string]: {
-      roles: string[];
-    };
-  };
-}
+import type { User } from "../types/user";
 
 interface AuthContextType {
   isAuthenticated: boolean;
@@ -50,7 +40,11 @@ interface AuthContextType {
   isAdmin: boolean;
   token: string | undefined;
   loading: boolean;
-  setDirectAuthTokens: (tokens: { access_token: string; refresh_token?: string; id_token?: string }) => Promise<void>;
+  setDirectAuthTokens: (tokens: {
+    access_token: string;
+    refresh_token?: string;
+    id_token?: string;
+  }) => Promise<void>;
   refreshUser: () => Promise<void>;
 }
 
@@ -73,7 +67,11 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     // Intentionally empty - tokens are kept in memory only
     // Logic for refreshing is handled by Keycloak JS automatically via iframe/silent-sso
   };
-  const loadTokens = (): { access_token: string; refresh_token?: string; id_token?: string } | null => {
+  const loadTokens = (): {
+    access_token: string;
+    refresh_token?: string;
+    id_token?: string;
+  } | null => {
     // Intentionally returning null to force fresh login or silent SSO check
     return null;
   };
@@ -84,47 +82,61 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       const tokenParsed = kc.tokenParsed as KeycloakTokenParsed;
 
       if (!tokenParsed) {
-        console.error('No token parsed available');
+        console.error("No token parsed available");
         return;
       }
 
       const roles: string[] = [
         ...(tokenParsed.realm_access?.roles || []),
-        ...(tokenParsed.resource_access?.[import.meta.env.VITE_KEYCLOAK_CLIENT_ID]?.roles || [])
+        ...(tokenParsed.resource_access?.[
+          import.meta.env.VITE_KEYCLOAK_CLIENT_ID
+        ]?.roles || []),
       ];
 
       let profile: any = {};
 
       // Try to load user profile, but don't fail if it doesn't work (direct auth may not support this)
       try {
-        if (kc.authenticated && kc.authServerUrl && !kc.authServerUrl.includes('undefined')) {
+        if (
+          kc.authenticated &&
+          kc.authServerUrl &&
+          !kc.authServerUrl.includes("undefined")
+        ) {
           profile = await kc.loadUserProfile();
         } else {
           // Skip profile loading if URL is invalid, use token data directly
-          throw new Error('Invalid auth server URL, skipping profile load');
+          throw new Error("Invalid auth server URL, skipping profile load");
         }
       } catch (profileError) {
-        console.warn('Could not load user profile, using token data:', profileError);
+        console.warn(
+          "Could not load user profile, using token data:",
+          profileError,
+        );
         // Use token data as fallback
         profile = {
           id: tokenParsed.sub,
           email: tokenParsed.email,
           username: tokenParsed.preferred_username,
           firstName: tokenParsed.given_name,
-          lastName: tokenParsed.family_name
+          lastName: tokenParsed.family_name,
         };
       }
 
       const userData: User = {
         id: profile.id || tokenParsed.sub,
-        email: profile.email || tokenParsed.email || '',
-        username: profile.username || tokenParsed.preferred_username || '',
+        email: profile.email || tokenParsed.email || "",
+        username: profile.username || tokenParsed.preferred_username || "",
         firstName: profile.firstName || tokenParsed.given_name,
         lastName: profile.lastName || tokenParsed.family_name,
-        fullName: `${profile.firstName || tokenParsed.given_name || ''} ${profile.lastName || tokenParsed.family_name || ''}`.trim() || tokenParsed.name || profile.username || tokenParsed.preferred_username || '',
+        fullName:
+          `${profile.firstName || tokenParsed.given_name || ""} ${profile.lastName || tokenParsed.family_name || ""}`.trim() ||
+          tokenParsed.name ||
+          profile.username ||
+          tokenParsed.preferred_username ||
+          "",
         roles,
-        isAdmin: roles.includes('admin'),
-        isSuperAdmin: roles.includes('superadmin'),
+        isAdmin: roles.includes("admin"),
+        isSuperAdmin: roles.includes("superadmin"),
         playerId: profile.attributes?.playerId?.[0],
         enabled: true, // Keycloak users are enabled if we are here
       };
@@ -132,7 +144,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       setUser(userData);
       setIsAuthenticated(true);
 
-      console.log('User authenticated successfully:', userData);
+      console.log("User authenticated successfully:", userData);
 
       // Set up token refresh
       setTokenRefresher(async () => {
@@ -140,39 +152,41 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           // Increase min validity to 300 seconds (5 minutes) for better refresh timing
           const refreshed = await kc.updateToken(300);
           if (refreshed) {
-            console.log('Token refreshed via API call');
+            console.log("Token refreshed via API call");
             // ensure API picks up the latest token
             setTokenGetter(() => kc.token);
             saveTokens(kc);
           }
           return refreshed as boolean;
         } catch (e) {
-          console.warn('Token refresh failed:', e);
+          console.warn("Token refresh failed:", e);
           return false;
         }
       });
       kc.onTokenExpired = () => {
-        console.log('Token expired, attempting refresh...');
+        console.log("Token expired, attempting refresh...");
         // Increase min validity to 300 seconds (5 minutes)
         kc.updateToken(300)
           .then((refreshed) => {
             if (refreshed) {
-              console.log('Token refreshed successfully');
+              console.log("Token refreshed successfully");
               setTokenGetter(() => kc.token);
               saveTokens(kc);
             } else {
-              console.log('Token refresh not needed or failed');
+              console.log("Token refresh not needed or failed");
             }
           })
           .catch((error) => {
-            console.error('Failed to refresh token on expiry:', error);
+            console.error("Failed to refresh token on expiry:", error);
             // Don't auto-logout on refresh failure - let the user manually logout
             // This prevents the logout loop
-            console.warn('Token refresh failed - user will need to re-login for next request');
+            console.warn(
+              "Token refresh failed - user will need to re-login for next request",
+            );
           });
       };
     } catch (error) {
-      console.error('Failed to setup user from token:', error);
+      console.error("Failed to setup user from token:", error);
     }
   };
 
@@ -184,8 +198,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       }
     };
 
-    window.addEventListener('keycloak-authenticated', handleManualAuth);
-    return () => window.removeEventListener('keycloak-authenticated', handleManualAuth);
+    window.addEventListener("keycloak-authenticated", handleManualAuth);
+    return () =>
+      window.removeEventListener("keycloak-authenticated", handleManualAuth);
   }, [keycloak]);
 
   // Periodic token refresh check (every 30 seconds)
@@ -198,18 +213,19 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         const tokenParsed = keycloak.tokenParsed as any;
         if (tokenParsed?.exp) {
           const expiresIn = tokenParsed.exp * 1000 - Date.now();
-          if (expiresIn < 90000) { // Less than 90 seconds until expiry
-            console.log('Periodic check: Token expiring soon, refreshing...');
+          if (expiresIn < 90000) {
+            // Less than 90 seconds until expiry
+            console.log("Periodic check: Token expiring soon, refreshing...");
             const refreshed = await keycloak.updateToken(300);
             if (refreshed) {
-              console.log('Periodic token refresh successful');
+              console.log("Periodic token refresh successful");
               setTokenGetter(() => keycloak.token);
               saveTokens(keycloak);
             }
           }
         }
       } catch (error) {
-        console.warn('Periodic token refresh check failed:', error);
+        console.warn("Periodic token refresh check failed:", error);
       }
     }, 30000); // Check every 30 seconds
 
@@ -219,7 +235,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   // Manual initialization function (called by Login page)
   const initializeAuth = useCallback(async () => {
     if (keycloak || initializationAttempted.current) {
-      console.log('Keycloak already initialized or initialization attempted');
+      console.log("Keycloak already initialized or initialization attempted");
       return;
     }
 
@@ -228,8 +244,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     setLoading(true);
 
     try {
-      console.log('Starting Keycloak initialization...');
-      console.log('Environment check:', {
+      console.log("Starting Keycloak initialization...");
+      console.log("Environment check:", {
         VITE_KEYCLOAK_URL: import.meta.env.VITE_KEYCLOAK_URL,
         VITE_KEYCLOAK_REALM: import.meta.env.VITE_KEYCLOAK_REALM,
         VITE_KEYCLOAK_CLIENT_ID: import.meta.env.VITE_KEYCLOAK_CLIENT_ID,
@@ -243,7 +259,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       });
       setKeycloak(kc);
 
-      console.log('Keycloak client created, initializing...');
+      console.log("Keycloak client created, initializing...");
 
       // Attempt to restore tokens before init for instant session
       const saved = loadTokens();
@@ -253,20 +269,20 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           kc.refreshToken = saved.refresh_token;
           kc.idToken = saved.id_token;
           try {
-            const parsed = JSON.parse(atob(saved.access_token.split('.')[1]));
+            const parsed = JSON.parse(atob(saved.access_token.split(".")[1]));
             kc.tokenParsed = parsed;
-          } catch { }
+          } catch {}
           // Set timeSkew so Keycloak knows expiry baseline
           try {
             // Removed manual timeSkew calculation as it was causing issues with token validation
-          } catch { }
+          } catch {}
           kc.authenticated = true;
           setTokenGetter(() => kc.token);
           await setupUserFromToken(kc);
           saveTokens(kc);
           setIsAuthenticated(true);
         } catch (e) {
-          console.warn('Failed to restore tokens from storage:', e);
+          console.warn("Failed to restore tokens from storage:", e);
         }
       }
 
@@ -274,23 +290,26 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       let authenticated = false;
       try {
         authenticated = await kc.init({
-          onLoad: 'check-sso',
+          onLoad: "check-sso",
           checkLoginIframe: false,
           enableLogging: true,
           silentCheckSsoFallback: true,
           silentCheckSsoRedirectUri: `${window.location.origin}/silent-check-sso.html`,
           messageReceiveTimeout: 5000,
-          pkceMethod: 'S256',
+          pkceMethod: "S256",
         });
       } catch (initError) {
-        console.warn('Keycloak init failed, but continuing with manual setup:', initError);
+        console.warn(
+          "Keycloak init failed, but continuing with manual setup:",
+          initError,
+        );
       }
 
-      console.log('Keycloak initialization completed:', {
+      console.log("Keycloak initialization completed:", {
         authenticated,
         keycloakUrl: kc.authServerUrl,
         realm: kc.realm,
-        clientId: kc.clientId
+        clientId: kc.clientId,
       });
 
       // Set up token wiring and refresh regardless
@@ -314,7 +333,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         setIsAuthenticated(true);
       }
     } catch (error) {
-      console.error('Keycloak initialization failed:', error);
+      console.error("Keycloak initialization failed:", error);
 
       // Still try to set up Keycloak for manual login
       try {
@@ -325,7 +344,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         });
         setKeycloak(kc);
       } catch (setupError) {
-        console.error('Failed to create Keycloak instance:', setupError);
+        console.error("Failed to create Keycloak instance:", setupError);
         setKeycloak(null);
       }
 
@@ -336,21 +355,20 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
   }, [keycloak]);
 
-
   const login = () => {
-    console.log('Login button clicked');
+    console.log("Login button clicked");
 
     if (!keycloak) {
-      console.error('Keycloak not initialized');
+      console.error("Keycloak not initialized");
       return;
     }
 
-    console.log('Redirecting to Keycloak login...');
+    console.log("Redirecting to Keycloak login...");
     keycloak.login();
   };
 
   const logout = () => {
-    console.log('Logout initiated');
+    console.log("Logout initiated");
 
     // Clear authentication state
     setIsAuthenticated(false);
@@ -366,29 +384,33 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
 
     // Clear any stored session data
-    sessionStorage.removeItem('redirectAfterLogin');
-    localStorage.removeItem('hasLoggedInBefore');
+    sessionStorage.removeItem("redirectAfterLogin");
+    localStorage.removeItem("hasLoggedInBefore");
 
     // IMPORTANT: Clear stored tokens to prevent auto-login loop
     // localStorage.removeItem(TOKENS_KEY); // Removed as TOKENS_KEY is no longer used/defined
 
     // Redirect to login page
-    window.location.href = '/login';
+    window.location.href = "/login";
 
-    console.log('Logout completed');
+    console.log("Logout completed");
   };
 
   const hasRole = (role: string): boolean => {
     return user?.roles.includes(role) || false;
   };
 
-  const setDirectAuthTokens = async (tokens: { access_token: string; refresh_token?: string; id_token?: string }) => {
+  const setDirectAuthTokens = async (tokens: {
+    access_token: string;
+    refresh_token?: string;
+    id_token?: string;
+  }) => {
     try {
       let kc = keycloak;
 
       // If keycloak is not initialized, create a new instance
       if (!kc) {
-        console.log('Creating Keycloak instance for direct token setup...');
+        console.log("Creating Keycloak instance for direct token setup...");
         kc = new Keycloak({
           url: import.meta.env.VITE_KEYCLOAK_URL,
           realm: import.meta.env.VITE_KEYCLOAK_REALM,
@@ -403,15 +425,15 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       kc.idToken = tokens.id_token;
 
       // Parse the access token to get user info
-      const tokenParsed = JSON.parse(atob(tokens.access_token.split('.')[1]));
+      const tokenParsed = JSON.parse(atob(tokens.access_token.split(".")[1]));
       kc.tokenParsed = tokenParsed;
       try {
         // Removed manual timeSkew calculation as it was causing issues with token validation
         // The token is already validated by the backend
-      } catch { }
+      } catch {}
       kc.authenticated = true;
 
-      console.log('Direct tokens set on Keycloak, setting up user...');
+      console.log("Direct tokens set on Keycloak, setting up user...");
 
       // Set up token getter for API client
       setTokenGetter(() => kc.token);
@@ -420,9 +442,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       await setupUserFromToken(kc);
       saveTokens(kc);
 
-      console.log('Direct authentication setup complete');
+      console.log("Direct authentication setup complete");
     } catch (error) {
-      console.error('Failed to set direct auth tokens:', error);
+      console.error("Failed to set direct auth tokens:", error);
       throw error;
     }
   };
@@ -454,17 +476,13 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     initializeAuth();
   }, [initializeAuth]);
 
-  return (
-    <AuthContext.Provider value={value}>
-      {children}
-    </AuthContext.Provider>
-  );
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };
 
 export const useAuth = (): AuthContextType => {
   const context = useContext(AuthContext);
   if (context === undefined) {
-    throw new Error('useAuth must be used within an AuthProvider');
+    throw new Error("useAuth must be used within an AuthProvider");
   }
   return context;
 };

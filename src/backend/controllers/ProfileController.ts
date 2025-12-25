@@ -174,22 +174,18 @@ class ProfileController {
       }
 
       if (!currentPassword || !newPassword) {
-        res
-          .status(400)
-          .json({
-            success: false,
-            error: "Current and new password are required",
-          });
+        res.status(400).json({
+          success: false,
+          error: "Current and new password are required",
+        });
         return;
       }
 
       if (newPassword.length < 8) {
-        res
-          .status(400)
-          .json({
-            success: false,
-            error: "New password must be at least 8 characters",
-          });
+        res.status(400).json({
+          success: false,
+          error: "New password must be at least 8 characters",
+        });
         return;
       }
 

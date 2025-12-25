@@ -16,7 +16,6 @@ export interface User {
   lastLogin?: Date;
 }
 
-
 export interface CreateUserInput {
   username: string;
   email: string;
@@ -29,7 +28,6 @@ export interface CreateUserInput {
   gender?: string;
 }
 
-
 export interface UpdateUserInput {
   firstName?: string;
   lastName?: string;
@@ -39,7 +37,6 @@ export interface UpdateUserInput {
   playerId?: string;
   gender?: string;
 }
-
 
 export interface UserFilters {
   search?: string;
@@ -110,4 +107,3 @@ export const UpdateUserValidation = {
     validOptions: ["male", "female", "other"],
   },
 };
-

@@ -1,5 +1,5 @@
-import React, { useState, useRef, useEffect } from 'react';
-import { useAuth } from '../../contexts/AuthContext';
+import React, { useState, useRef, useEffect } from "react";
+import { useAuth } from "../../contexts/AuthContext";
 
 interface EditableNumberProps {
   value: number | undefined;
@@ -30,17 +30,17 @@ const EditableNumber: React.FC<EditableNumberProps> = ({
   max,
   step = 1,
   integer = false,
-  validator
+  validator,
 }) => {
   const { isAdmin } = useAuth();
   const [isEditing, setIsEditing] = useState(false);
-  const [editValue, setEditValue] = useState(value?.toString() || '');
+  const [editValue, setEditValue] = useState(value?.toString() || "");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    setEditValue(value?.toString() || '');
+    setEditValue(value?.toString() || "");
   }, [value]);
 
   useEffect(() => {
@@ -58,7 +58,7 @@ const EditableNumber: React.FC<EditableNumberProps> = ({
 
   const validateNumber = (numValue: number): string | null => {
     if (integer && !Number.isInteger(numValue)) {
-      return 'Value must be a whole number';
+      return "Value must be a whole number";
     }
 
     if (min !== undefined && numValue < min) {
@@ -78,13 +78,13 @@ const EditableNumber: React.FC<EditableNumberProps> = ({
 
   const handleSave = async () => {
     const trimmedValue = editValue.trim();
-    
+
     if (required && !trimmedValue) {
-      setError('This field is required');
+      setError("This field is required");
       return;
     }
 
-    if (trimmedValue === '') {
+    if (trimmedValue === "") {
       if (value === undefined) {
         setIsEditing(false);
         return;
@@ -96,7 +96,7 @@ const EditableNumber: React.FC<EditableNumberProps> = ({
         await onSave(0); // or handle undefined based on your needs
         setIsEditing(false);
       } catch (err) {
-        setError(err instanceof Error ? err.message : 'Failed to save');
+        setError(err instanceof Error ? err.message : "Failed to save");
       } finally {
         setIsLoading(false);
       }
@@ -104,9 +104,9 @@ const EditableNumber: React.FC<EditableNumberProps> = ({
     }
 
     const numValue = parseFloat(trimmedValue);
-    
+
     if (isNaN(numValue)) {
-      setError('Please enter a valid number');
+      setError("Please enter a valid number");
       return;
     }
 
@@ -128,23 +128,23 @@ const EditableNumber: React.FC<EditableNumberProps> = ({
       await onSave(numValue);
       setIsEditing(false);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to save');
+      setError(err instanceof Error ? err.message : "Failed to save");
     } finally {
       setIsLoading(false);
     }
   };
 
   const handleCancel = () => {
-    setEditValue(value?.toString() || '');
+    setEditValue(value?.toString() || "");
     setIsEditing(false);
     setError(null);
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter') {
+    if (e.key === "Enter") {
       e.preventDefault();
       handleSave();
-    } else if (e.key === 'Escape') {
+    } else if (e.key === "Escape") {
       handleCancel();
     }
   };
@@ -173,17 +173,15 @@ const EditableNumber: React.FC<EditableNumberProps> = ({
           step={step}
           disabled={isLoading}
           className={`input ${editClassName} ${
-            error ? 'border-red-500 focus:ring-red-500' : ''
-          } ${isLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
+            error ? "border-red-500 focus:ring-red-500" : ""
+          } ${isLoading ? "opacity-50 cursor-not-allowed" : ""}`}
         />
         {isLoading && (
           <div className="absolute right-2 top-1/2 transform -translate-y-1/2">
             <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
           </div>
         )}
-        {error && (
-          <p className="text-red-500 text-xs mt-1">{error}</p>
-        )}
+        {error && <p className="text-red-500 text-xs mt-1">{error}</p>}
         <div className="flex items-center space-x-2 mt-1">
           <button
             onClick={handleSave}
@@ -208,8 +206,10 @@ const EditableNumber: React.FC<EditableNumberProps> = ({
     <span
       onClick={handleEdit}
       className={`${className} ${displayClassName} ${
-        !disabled ? 'cursor-pointer hover:bg-gray-100 hover:text-blue-600 rounded px-1 -mx-1 transition-colors' : ''
-      } ${value === undefined ? 'text-gray-400 italic' : ''}`}
+        !disabled
+          ? "cursor-pointer hover:bg-gray-100 hover:text-blue-600 rounded px-1 -mx-1 transition-colors"
+          : ""
+      } ${value === undefined ? "text-gray-400 italic" : ""}`}
       title={!disabled ? "Click to edit" : undefined}
     >
       {value !== undefined ? value.toString() : placeholder}

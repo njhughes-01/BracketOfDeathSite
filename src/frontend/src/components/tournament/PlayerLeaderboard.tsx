@@ -1,6 +1,6 @@
-import React, { useEffect, useState } from 'react';
-import Card from '../../components/ui/Card';
-import apiClient from '../../services/api';
+import React, { useEffect, useState } from "react";
+import Card from "../../components/ui/Card";
+import apiClient from "../../services/api";
 
 interface PlayerStat {
   playerId: string;
@@ -11,7 +11,9 @@ interface PlayerStat {
   losses: number;
 }
 
-const PlayerLeaderboard: React.FC<{ tournamentId: string }> = ({ tournamentId }) => {
+const PlayerLeaderboard: React.FC<{ tournamentId: string }> = ({
+  tournamentId,
+}) => {
   const [stats, setStats] = useState<PlayerStat[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -26,17 +28,19 @@ const PlayerLeaderboard: React.FC<{ tournamentId: string }> = ({ tournamentId })
           if (res.success && Array.isArray(res.data)) {
             setStats(res.data);
           } else {
-            setError(res.error || 'Failed to load player stats');
+            setError(res.error || "Failed to load player stats");
           }
         }
       } catch (e) {
-        if (mounted) setError('Network error loading player stats');
+        if (mounted) setError("Network error loading player stats");
       } finally {
         if (mounted) setLoading(false);
       }
     };
     load();
-    return () => { mounted = false; };
+    return () => {
+      mounted = false;
+    };
   }, [tournamentId]);
 
   return (
@@ -60,32 +64,58 @@ const PlayerLeaderboard: React.FC<{ tournamentId: string }> = ({ tournamentId })
                 <th className="text-right p-2">Points</th>
                 <th className="text-right p-2">Matches</th>
                 <th className="text-right p-2 hidden sm:table-cell">W</th>
-                <th className="text-right p-2 rounded-r-lg hidden sm:table-cell">L</th>
+                <th className="text-right p-2 rounded-r-lg hidden sm:table-cell">
+                  L
+                </th>
               </tr>
             </thead>
             <tbody className="divide-y divide-white/5">
               {stats.slice(0, 10).map((s, idx) => (
-                <tr key={s.playerId} className="group hover:bg-white/5 transition-colors">
+                <tr
+                  key={s.playerId}
+                  className="group hover:bg-white/5 transition-colors"
+                >
                   <td className="p-2 flex items-center gap-2">
-                    <span className={`text-[10px] w-4 text-slate-500 font-mono ${(idx < 3) ? 'text-accent' : ''}`}>{idx + 1}</span>
-                    <span className="font-medium text-white group-hover:text-primary transition-colors truncate max-w-[100px]">{s.playerName || s.playerId}</span>
+                    <span
+                      className={`text-[10px] w-4 text-slate-500 font-mono ${idx < 3 ? "text-accent" : ""}`}
+                    >
+                      {idx + 1}
+                    </span>
+                    <span className="font-medium text-white group-hover:text-primary transition-colors truncate max-w-[100px]">
+                      {s.playerName || s.playerId}
+                    </span>
                   </td>
-                  <td className="p-2 text-right font-bold text-primary">{s.totalPoints}</td>
-                  <td className="p-2 text-right text-slate-400">{s.matchesWithPoints}</td>
-                  <td className="p-2 text-right text-green-500 hidden sm:table-cell">{s.wins}</td>
-                  <td className="p-2 text-right text-red-500 hidden sm:table-cell">{s.losses}</td>
+                  <td className="p-2 text-right font-bold text-primary">
+                    {s.totalPoints}
+                  </td>
+                  <td className="p-2 text-right text-slate-400">
+                    {s.matchesWithPoints}
+                  </td>
+                  <td className="p-2 text-right text-green-500 hidden sm:table-cell">
+                    {s.wins}
+                  </td>
+                  <td className="p-2 text-right text-red-500 hidden sm:table-cell">
+                    {s.losses}
+                  </td>
                 </tr>
               ))}
               {stats.length === 0 && (
                 <tr>
-                  <td colSpan={5} className="p-6 text-center text-slate-500 text-xs">No stats available</td>
+                  <td
+                    colSpan={5}
+                    className="p-6 text-center text-slate-500 text-xs"
+                  >
+                    No stats available
+                  </td>
                 </tr>
               )}
             </tbody>
           </table>
           {stats.length > 10 && (
             <div className="text-center mt-2">
-              <button className="text-xs text-primary hover:text-white transition-colors">View All</button>
+              <button className="text-xs text-primary hover:text-white transition-colors">
+                View All
+              </button>
             </div>
           )}
         </div>
@@ -95,4 +125,3 @@ const PlayerLeaderboard: React.FC<{ tournamentId: string }> = ({ tournamentId })
 };
 
 export default PlayerLeaderboard;
-

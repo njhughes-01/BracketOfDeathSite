@@ -1,6 +1,6 @@
-import React from 'react';
-import { usePermissions } from '../../hooks/usePermissions';
-import type { PermissionValue } from '../../types/user';
+import React from "react";
+import { usePermissions } from "../../hooks/usePermissions";
+import type { PermissionValue } from "../../types/user";
 
 interface RequirePermissionProps {
   children: React.ReactNode;
@@ -19,9 +19,10 @@ const RequirePermission: React.FC<RequirePermissionProps> = ({
   permission,
   anyPermission,
   allPermissions,
-  fallback = null
+  fallback = null,
 }) => {
-  const { hasPermission, hasAnyPermission, hasAllPermissions } = usePermissions();
+  const { hasPermission, hasAnyPermission, hasAllPermissions } =
+    usePermissions();
 
   const authorized =
     (!permission || hasPermission(permission)) &&

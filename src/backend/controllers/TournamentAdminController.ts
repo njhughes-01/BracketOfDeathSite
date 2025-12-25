@@ -1,26 +1,33 @@
-import { Request, Response, NextFunction } from 'express';
-import { Tournament } from '../models/Tournament';
-import { Player } from '../models/Player';
-import { Match } from '../models/Match';
-import { TournamentResult } from '../models/TournamentResult';
-import { ITournament, TournamentStatus } from '../types/tournament';
-import { IMatch, MatchRound, calculateBracketMatches } from '../types/match';
-import { BaseController, RequestWithAuth } from './base';
-import { ApiResponse, ErrorMessages } from '../types/common';
-import { Types } from 'mongoose';
-import { TournamentRegistrationService } from '../services/TournamentRegistrationService';
-import { TournamentSeedingService } from '../services/TournamentSeedingService';
-import { TournamentDeletionService, TournamentDeletionError } from '../services/TournamentDeletionService';
+import { Request, Response, NextFunction } from "express";
+import { Tournament } from "../models/Tournament";
+import { Player } from "../models/Player";
+import { Match } from "../models/Match";
+import { TournamentResult } from "../models/TournamentResult";
+import { ITournament, TournamentStatus } from "../types/tournament";
+import { IMatch, MatchRound, calculateBracketMatches } from "../types/match";
+import { BaseController, RequestWithAuth } from "./base";
+import { ApiResponse, ErrorMessages } from "../types/common";
+import { Types } from "mongoose";
+import { TournamentRegistrationService } from "../services/TournamentRegistrationService";
+import { TournamentSeedingService } from "../services/TournamentSeedingService";
+import {
+  TournamentDeletionService,
+  TournamentDeletionError,
+} from "../services/TournamentDeletionService";
 
 export class TournamentAdminController extends BaseController<ITournament> {
   constructor() {
-    super(Tournament, 'Tournament');
+    super(Tournament, "Tournament");
   }
 
   /**
    * Update tournament status with validation
    */
-  public updateStatus = async (req: RequestWithAuth, res: Response, next: NextFunction): Promise<void> => {
+  public updateStatus = async (
+    req: RequestWithAuth,
+    res: Response,
+    next: NextFunction,
+  ): Promise<void> => {
     try {
       const { id } = req.params;
       const { status } = req.body as { status: TournamentStatus };
@@ -28,7 +35,7 @@ export class TournamentAdminController extends BaseController<ITournament> {
       if (!status) {
         res.status(400).json({
           success: false,
-          message: 'Status is required',
+          message: "Status is required",
           data: null,
         });
         return;
@@ -38,7 +45,7 @@ export class TournamentAdminController extends BaseController<ITournament> {
       if (!tournament) {
         res.status(404).json({
           success: false,
-          message: 'Tournament not found',
+          message: "Tournament not found",
           data: null,
         });
         return;
@@ -51,7 +58,7 @@ export class TournamentAdminController extends BaseController<ITournament> {
       try {
         await tournament.save();
       } catch (error: any) {
-        if (error.message.includes('Invalid status transition')) {
+        if (error.message.includes("Invalid status transition")) {
           res.status(400).json({
             success: false,
             message: `Cannot transition from ${oldStatus} to ${status}`,
@@ -77,7 +84,11 @@ export class TournamentAdminController extends BaseController<ITournament> {
   /**
    * Add players to a tournament
    */
-  public addPlayers = async (req: RequestWithAuth, res: Response, next: NextFunction): Promise<void> => {
+  public addPlayers = async (
+    req: RequestWithAuth,
+    res: Response,
+    next: NextFunction,
+  ): Promise<void> => {
     try {
       const { id } = req.params;
       const { playerIds } = req.body as { playerIds: string[] };
@@ -85,53 +96,59 @@ export class TournamentAdminController extends BaseController<ITournament> {
       if (!playerIds || !Array.isArray(playerIds)) {
         res.status(400).json({
           success: false,
-          message: 'Player IDs array is required',
+          message: "Player IDs array is required",
           data: null,
         });
         return;
       }
 
-      const tournament = await Tournament.findById(id).populate('players', 'name');
+      const tournament = await Tournament.findById(id).populate(
+        "players",
+        "name",
+      );
       if (!tournament) {
         res.status(404).json({
           success: false,
-          message: 'Tournament not found',
+          message: "Tournament not found",
           data: null,
         });
         return;
       }
 
       // Check if tournament allows player additions
-      if (!['scheduled', 'open'].includes(tournament.status)) {
+      if (!["scheduled", "open"].includes(tournament.status)) {
         res.status(400).json({
           success: false,
-          message: 'Players can only be added to scheduled or open tournaments',
+          message: "Players can only be added to scheduled or open tournaments",
           data: null,
         });
         return;
       }
 
       // Validate players exist
-      const objectIds = playerIds.map(id => new Types.ObjectId(id));
+      const objectIds = playerIds.map((id) => new Types.ObjectId(id));
       const players = await Player.find({ _id: { $in: objectIds } });
 
       if (players.length !== playerIds.length) {
         res.status(400).json({
           success: false,
-          message: 'One or more players not found',
+          message: "One or more players not found",
           data: null,
         });
         return;
       }
 
       // Add new players (avoid duplicates)
-      const existingPlayerIds = tournament.players?.map(p => p.toString()) || [];
-      const newPlayerIds = objectIds.filter(id => !existingPlayerIds.includes(id.toString()));
+      const existingPlayerIds =
+        tournament.players?.map((p) => p.toString()) || [];
+      const newPlayerIds = objectIds.filter(
+        (id) => !existingPlayerIds.includes(id.toString()),
+      );
 
       if (newPlayerIds.length === 0) {
         res.status(400).json({
           success: false,
-          message: 'All players are already registered for this tournament',
+          message: "All players are already registered for this tournament",
           data: null,
         });
         return;
@@ -140,7 +157,10 @@ export class TournamentAdminController extends BaseController<ITournament> {
       tournament.players = [...(tournament.players || []), ...newPlayerIds];
 
       // Check max players limit
-      if (tournament.maxPlayers && tournament.players.length > tournament.maxPlayers) {
+      if (
+        tournament.maxPlayers &&
+        tournament.players.length > tournament.maxPlayers
+      ) {
         res.status(400).json({
           success: false,
           message: `Tournament is limited to ${tournament.maxPlayers} players`,
@@ -151,7 +171,10 @@ export class TournamentAdminController extends BaseController<ITournament> {
 
       await tournament.save();
 
-      const updatedTournament = await Tournament.findById(id).populate('players', 'name firstName lastName');
+      const updatedTournament = await Tournament.findById(id).populate(
+        "players",
+        "name firstName lastName",
+      );
 
       const response: ApiResponse<ITournament> = {
         success: true,
@@ -168,7 +191,11 @@ export class TournamentAdminController extends BaseController<ITournament> {
   /**
    * Remove a player from a tournament
    */
-  public removePlayer = async (req: RequestWithAuth, res: Response, next: NextFunction): Promise<void> => {
+  public removePlayer = async (
+    req: RequestWithAuth,
+    res: Response,
+    next: NextFunction,
+  ): Promise<void> => {
     try {
       const { id, playerId } = req.params;
 
@@ -176,29 +203,32 @@ export class TournamentAdminController extends BaseController<ITournament> {
       if (!tournament) {
         res.status(404).json({
           success: false,
-          message: 'Tournament not found',
+          message: "Tournament not found",
           data: null,
         });
         return;
       }
 
       // Check if tournament allows player removal
-      if (!['scheduled', 'open'].includes(tournament.status)) {
+      if (!["scheduled", "open"].includes(tournament.status)) {
         res.status(400).json({
           success: false,
-          message: 'Players can only be removed from scheduled or open tournaments',
+          message:
+            "Players can only be removed from scheduled or open tournaments",
           data: null,
         });
         return;
       }
 
       const playerObjectId = new Types.ObjectId(playerId);
-      const playerIndex = tournament.players?.findIndex(p => p.toString() === playerId);
+      const playerIndex = tournament.players?.findIndex(
+        (p) => p.toString() === playerId,
+      );
 
       if (playerIndex === undefined || playerIndex === -1) {
         res.status(404).json({
           success: false,
-          message: 'Player not found in this tournament',
+          message: "Player not found in this tournament",
           data: null,
         });
         return;
@@ -207,11 +237,14 @@ export class TournamentAdminController extends BaseController<ITournament> {
       tournament.players?.splice(playerIndex, 1);
       await tournament.save();
 
-      const updatedTournament = await Tournament.findById(id).populate('players', 'name firstName lastName');
+      const updatedTournament = await Tournament.findById(id).populate(
+        "players",
+        "name firstName lastName",
+      );
 
       const response: ApiResponse<ITournament> = {
         success: true,
-        message: 'Player removed from tournament',
+        message: "Player removed from tournament",
         data: updatedTournament!,
       };
 
@@ -224,26 +257,35 @@ export class TournamentAdminController extends BaseController<ITournament> {
   /**
    * Generate matches for a tournament (create bracket)
    */
-  public generateMatches = async (req: RequestWithAuth, res: Response, next: NextFunction): Promise<void> => {
+  public generateMatches = async (
+    req: RequestWithAuth,
+    res: Response,
+    next: NextFunction,
+  ): Promise<void> => {
     try {
       const { id } = req.params;
-      const { bracketType = 'single-elimination' } = req.body as { bracketType?: string };
+      const { bracketType = "single-elimination" } = req.body as {
+        bracketType?: string;
+      };
 
-      const tournament = await Tournament.findById(id).populate('players', 'name firstName lastName');
+      const tournament = await Tournament.findById(id).populate(
+        "players",
+        "name firstName lastName",
+      );
       if (!tournament) {
         res.status(404).json({
           success: false,
-          message: 'Tournament not found',
+          message: "Tournament not found",
           data: null,
         });
         return;
       }
 
       // Check if tournament can start
-      if (tournament.status !== 'open') {
+      if (tournament.status !== "open") {
         res.status(400).json({
           success: false,
-          message: 'Tournament must be open to generate matches',
+          message: "Tournament must be open to generate matches",
           data: null,
         });
         return;
@@ -253,7 +295,7 @@ export class TournamentAdminController extends BaseController<ITournament> {
       if (playerCount < 2) {
         res.status(400).json({
           success: false,
-          message: 'Tournament needs at least 2 players to generate matches',
+          message: "Tournament needs at least 2 players to generate matches",
           data: null,
         });
         return;
@@ -264,31 +306,39 @@ export class TournamentAdminController extends BaseController<ITournament> {
       if (existingMatches.length > 0) {
         res.status(400).json({
           success: false,
-          message: 'Matches already exist for this tournament',
+          message: "Matches already exist for this tournament",
           data: null,
         });
         return;
       }
 
       // For doubles tournaments, we need an even number of players (teams of 2)
-      const isDoubles = ['Mixed', 'Men\'s Doubles', 'Women\'s Doubles'].includes(tournament.format);
+      const isDoubles = ["Mixed", "Men's Doubles", "Women's Doubles"].includes(
+        tournament.format,
+      );
       if (isDoubles && playerCount % 2 !== 0) {
         res.status(400).json({
           success: false,
-          message: 'Doubles tournaments require an even number of players',
+          message: "Doubles tournaments require an even number of players",
           data: null,
         });
         return;
       }
 
       // Generate seeded bracket matches
-      const matches = await this.createSeededBracketMatches(tournament, isDoubles);
+      const matches = await this.createSeededBracketMatches(
+        tournament,
+        isDoubles,
+      );
 
       // Update tournament status to active
-      tournament.status = 'active';
+      tournament.status = "active";
       await tournament.save();
 
-      const response: ApiResponse<{ tournament: ITournament; matches: IMatch[] }> = {
+      const response: ApiResponse<{
+        tournament: ITournament;
+        matches: IMatch[];
+      }> = {
         success: true,
         message: `Generated ${matches.length} matches for tournament`,
         data: { tournament, matches },
@@ -303,16 +353,23 @@ export class TournamentAdminController extends BaseController<ITournament> {
   /**
    * Update match score
    */
-  public updateMatchScore = async (req: RequestWithAuth, res: Response, next: NextFunction): Promise<void> => {
+  public updateMatchScore = async (
+    req: RequestWithAuth,
+    res: Response,
+    next: NextFunction,
+  ): Promise<void> => {
     try {
       const { matchId } = req.params;
       const { team1Score, team2Score, notes } = req.body;
 
-      const match = await Match.findById(matchId).populate('tournamentId', 'status');
+      const match = await Match.findById(matchId).populate(
+        "tournamentId",
+        "status",
+      );
       if (!match) {
         res.status(404).json({
           success: false,
-          message: 'Match not found',
+          message: "Match not found",
           data: null,
         });
         return;
@@ -320,10 +377,10 @@ export class TournamentAdminController extends BaseController<ITournament> {
 
       // Verify tournament is active
       const tournament = match.tournamentId as any;
-      if (tournament.status !== 'active') {
+      if (tournament.status !== "active") {
         res.status(400).json({
           success: false,
-          message: 'Can only update scores for active tournaments',
+          message: "Can only update scores for active tournaments",
           data: null,
         });
         return;
@@ -338,13 +395,13 @@ export class TournamentAdminController extends BaseController<ITournament> {
       await match.save();
 
       // If this match is completed, update tournament results
-      if (match.status === 'completed') {
+      if (match.status === "completed") {
         await this.updateTournamentResults(match);
       }
 
       const response: ApiResponse<IMatch> = {
         success: true,
-        message: 'Match score updated',
+        message: "Match score updated",
         data: match,
       };
 
@@ -357,7 +414,11 @@ export class TournamentAdminController extends BaseController<ITournament> {
   /**
    * Finalize tournament (mark as completed)
    */
-  public finalizeTournament = async (req: RequestWithAuth, res: Response, next: NextFunction): Promise<void> => {
+  public finalizeTournament = async (
+    req: RequestWithAuth,
+    res: Response,
+    next: NextFunction,
+  ): Promise<void> => {
     try {
       const { id } = req.params;
 
@@ -365,16 +426,16 @@ export class TournamentAdminController extends BaseController<ITournament> {
       if (!tournament) {
         res.status(404).json({
           success: false,
-          message: 'Tournament not found',
+          message: "Tournament not found",
           data: null,
         });
         return;
       }
 
-      if (tournament.status !== 'active') {
+      if (tournament.status !== "active") {
         res.status(400).json({
           success: false,
-          message: 'Only active tournaments can be finalized',
+          message: "Only active tournaments can be finalized",
           data: null,
         });
         return;
@@ -383,7 +444,7 @@ export class TournamentAdminController extends BaseController<ITournament> {
       // Check if all matches are completed
       const incompleteMatches = await Match.find({
         tournamentId: id,
-        status: { $ne: 'completed' }
+        status: { $ne: "completed" },
       });
 
       if (incompleteMatches.length > 0) {
@@ -398,21 +459,24 @@ export class TournamentAdminController extends BaseController<ITournament> {
       // Find the champion (winner of the final match)
       const finalMatch = await Match.findOne({
         tournamentId: id,
-        round: 'final'
-      }).populate('team1.players team2.players', 'name firstName lastName');
+        round: "final",
+      }).populate("team1.players team2.players", "name firstName lastName");
 
       if (finalMatch && finalMatch.winner) {
-        const winningTeam = finalMatch.winner === 'team1' ? finalMatch.team1 : finalMatch.team2;
+        const winningTeam =
+          finalMatch.winner === "team1" ? finalMatch.team1 : finalMatch.team2;
         const championPlayer = winningTeam.players[0] as any;
 
         tournament.champion = {
           playerId: championPlayer._id,
-          playerName: championPlayer.name || `${championPlayer.firstName} ${championPlayer.lastName}`,
+          playerName:
+            championPlayer.name ||
+            `${championPlayer.firstName} ${championPlayer.lastName}`,
         };
       }
 
       // Update status to completed
-      tournament.status = 'completed';
+      tournament.status = "completed";
       await tournament.save();
 
       // Update player statistics
@@ -420,7 +484,7 @@ export class TournamentAdminController extends BaseController<ITournament> {
 
       const response: ApiResponse<ITournament> = {
         success: true,
-        message: 'Tournament finalized successfully',
+        message: "Tournament finalized successfully",
         data: tournament,
       };
 
@@ -433,7 +497,11 @@ export class TournamentAdminController extends BaseController<ITournament> {
   /**
    * Register a player for a tournament
    */
-  public registerPlayer = async (req: RequestWithAuth, res: Response, next: NextFunction): Promise<void> => {
+  public registerPlayer = async (
+    req: RequestWithAuth,
+    res: Response,
+    next: NextFunction,
+  ): Promise<void> => {
     try {
       const { id } = req.params; // tournament ID
       const { playerId } = req.body;
@@ -441,13 +509,16 @@ export class TournamentAdminController extends BaseController<ITournament> {
       if (!playerId) {
         res.status(400).json({
           success: false,
-          message: 'Player ID is required',
+          message: "Player ID is required",
           data: null,
         });
         return;
       }
 
-      const result = await TournamentRegistrationService.registerPlayer(id, playerId);
+      const result = await TournamentRegistrationService.registerPlayer(
+        id,
+        playerId,
+      );
 
       if (!result.success) {
         res.status(400).json({
@@ -476,11 +547,18 @@ export class TournamentAdminController extends BaseController<ITournament> {
   /**
    * Unregister a player from a tournament
    */
-  public unregisterPlayer = async (req: RequestWithAuth, res: Response, next: NextFunction): Promise<void> => {
+  public unregisterPlayer = async (
+    req: RequestWithAuth,
+    res: Response,
+    next: NextFunction,
+  ): Promise<void> => {
     try {
       const { id, playerId } = req.params;
 
-      const result = await TournamentRegistrationService.unregisterPlayer(id, playerId);
+      const result = await TournamentRegistrationService.unregisterPlayer(
+        id,
+        playerId,
+      );
 
       if (!result.success) {
         res.status(400).json({
@@ -506,11 +584,16 @@ export class TournamentAdminController extends BaseController<ITournament> {
   /**
    * Get tournament registration information
    */
-  public getRegistrationInfo = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+  public getRegistrationInfo = async (
+    req: Request,
+    res: Response,
+    next: NextFunction,
+  ): Promise<void> => {
     try {
       const { id } = req.params;
 
-      const result = await TournamentRegistrationService.getRegistrationInfo(id);
+      const result =
+        await TournamentRegistrationService.getRegistrationInfo(id);
 
       if (!result.success) {
         res.status(404).json({
@@ -523,7 +606,7 @@ export class TournamentAdminController extends BaseController<ITournament> {
 
       const response: ApiResponse<any> = {
         success: true,
-        message: 'Registration info retrieved',
+        message: "Registration info retrieved",
         data: result.data,
       };
 
@@ -536,11 +619,16 @@ export class TournamentAdminController extends BaseController<ITournament> {
   /**
    * Finalize tournament registration and move to player selection
    */
-  public finalizeRegistration = async (req: RequestWithAuth, res: Response, next: NextFunction): Promise<void> => {
+  public finalizeRegistration = async (
+    req: RequestWithAuth,
+    res: Response,
+    next: NextFunction,
+  ): Promise<void> => {
     try {
       const { id } = req.params;
 
-      const result = await TournamentRegistrationService.finalizeRegistration(id);
+      const result =
+        await TournamentRegistrationService.finalizeRegistration(id);
 
       if (!result.success) {
         res.status(400).json({
@@ -566,7 +654,11 @@ export class TournamentAdminController extends BaseController<ITournament> {
   /**
    * Get seeding preview for tournament
    */
-  public getSeedingPreview = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+  public getSeedingPreview = async (
+    req: Request,
+    res: Response,
+    next: NextFunction,
+  ): Promise<void> => {
     try {
       const { id } = req.params;
 
@@ -574,24 +666,31 @@ export class TournamentAdminController extends BaseController<ITournament> {
       if (!tournament) {
         res.status(404).json({
           success: false,
-          message: 'Tournament not found',
+          message: "Tournament not found",
           data: null,
         });
         return;
       }
 
-      const playerIds = (tournament.players || tournament.registeredPlayers || []).map(p => p.toString());
+      const playerIds = (
+        tournament.players ||
+        tournament.registeredPlayers ||
+        []
+      ).map((p) => p.toString());
 
       if (playerIds.length === 0) {
         res.status(400).json({
           success: false,
-          message: 'No players found for seeding',
+          message: "No players found for seeding",
           data: null,
         });
         return;
       }
 
-      const result = await TournamentSeedingService.getSeedingPreview(playerIds, tournament.format);
+      const result = await TournamentSeedingService.getSeedingPreview(
+        playerIds,
+        tournament.format,
+      );
 
       if (!result.success) {
         res.status(400).json({
@@ -617,22 +716,34 @@ export class TournamentAdminController extends BaseController<ITournament> {
   /**
    * Get tournament with matches and results
    */
-  public getTournamentWithMatches = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+  public getTournamentWithMatches = async (
+    req: Request,
+    res: Response,
+    next: NextFunction,
+  ): Promise<void> => {
     try {
       const { id } = req.params;
 
-      const tournament = await Tournament.findById(id).populate('players', 'name firstName lastName');
+      const tournament = await Tournament.findById(id).populate(
+        "players",
+        "name firstName lastName",
+      );
       if (!tournament) {
         res.status(404).json({
           success: false,
-          message: 'Tournament not found',
+          message: "Tournament not found",
           data: null,
         });
         return;
       }
 
-      const matches = await Match.find({ tournamentId: id }).sort({ roundNumber: 1, matchNumber: 1 });
-      const results = await TournamentResult.find({ tournamentId: id }).populate('players', 'name firstName lastName');
+      const matches = await Match.find({ tournamentId: id }).sort({
+        roundNumber: 1,
+        matchNumber: 1,
+      });
+      const results = await TournamentResult.find({
+        tournamentId: id,
+      }).populate("players", "name firstName lastName");
 
       const response: ApiResponse<{
         tournament: ITournament;
@@ -640,7 +751,7 @@ export class TournamentAdminController extends BaseController<ITournament> {
         results: any[];
       }> = {
         success: true,
-        message: 'Tournament details retrieved',
+        message: "Tournament details retrieved",
         data: {
           tournament,
           matches,
@@ -658,9 +769,14 @@ export class TournamentAdminController extends BaseController<ITournament> {
    * Delete a scheduled tournament with enterprise-grade cascade deletion
    * Implements compensation patterns, audit trails, and robust error handling
    */
-  public deleteTournament = async (req: RequestWithAuth, res: Response, next: NextFunction): Promise<void> => {
+  public deleteTournament = async (
+    req: RequestWithAuth,
+    res: Response,
+    next: NextFunction,
+  ): Promise<void> => {
     const deletionService = new TournamentDeletionService();
-    const correlationId = req.headers['x-correlation-id'] as string || undefined;
+    const correlationId =
+      (req.headers["x-correlation-id"] as string) || undefined;
 
     try {
       const { id } = req.params;
@@ -669,14 +785,18 @@ export class TournamentAdminController extends BaseController<ITournament> {
       if (!adminUserId) {
         res.status(401).json({
           success: false,
-          message: 'Authentication required',
+          message: "Authentication required",
           data: null,
         });
         return;
       }
 
       // Use the enhanced deletion service
-      const result = await deletionService.deleteTournament(id, adminUserId, correlationId);
+      const result = await deletionService.deleteTournament(
+        id,
+        adminUserId,
+        correlationId,
+      );
 
       const response: ApiResponse<{
         tournamentId: string;
@@ -701,14 +821,15 @@ export class TournamentAdminController extends BaseController<ITournament> {
           tournamentId: id,
           operation: {
             correlationId: result.operation.correlationId,
-            steps: result.operation.steps.map(step => ({
+            steps: result.operation.steps.map((step) => ({
               name: step.name,
               status: step.status,
               expectedCount: step.expectedCount,
               actualCount: step.actualCount,
             })),
             duration: result.operation.endTime
-              ? result.operation.endTime.getTime() - result.operation.startTime.getTime()
+              ? result.operation.endTime.getTime() -
+                result.operation.startTime.getTime()
               : 0,
           },
           tournamentInfo: result.tournamentInfo!,
@@ -716,7 +837,6 @@ export class TournamentAdminController extends BaseController<ITournament> {
       };
 
       res.status(200).json(response);
-
     } catch (error) {
       // Handle different types of errors appropriately
       if (error instanceof TournamentDeletionError) {
@@ -725,19 +845,19 @@ export class TournamentAdminController extends BaseController<ITournament> {
         // Map deletion error codes to HTTP status codes
         let statusCode = 500;
         switch (deletionError.code) {
-          case 'INVALID_ID':
+          case "INVALID_ID":
             statusCode = 400;
             break;
-          case 'NOT_FOUND':
-          case 'TOURNAMENT_NOT_FOUND_FOR_DELETION':
+          case "NOT_FOUND":
+          case "TOURNAMENT_NOT_FOUND_FOR_DELETION":
             statusCode = 404;
             break;
-          case 'INVALID_STATUS':
+          case "INVALID_STATUS":
             statusCode = 409;
             break;
-          case 'MATCHES_DELETION_FAILED':
-          case 'RESULTS_DELETION_FAILED':
-          case 'TOURNAMENT_DELETION_FAILED':
+          case "MATCHES_DELETION_FAILED":
+          case "RESULTS_DELETION_FAILED":
+          case "TOURNAMENT_DELETION_FAILED":
             statusCode = 500;
             break;
         }
@@ -745,8 +865,8 @@ export class TournamentAdminController extends BaseController<ITournament> {
         // Add retry information for retryable errors
         const responseHeaders: any = {};
         if (deletionService.isRetryable(deletionError)) {
-          responseHeaders['Retry-After'] = '60'; // Suggest retry after 60 seconds
-          responseHeaders['X-Retryable'] = 'true';
+          responseHeaders["Retry-After"] = "60"; // Suggest retry after 60 seconds
+          responseHeaders["X-Retryable"] = "true";
         }
 
         Object.entries(responseHeaders).forEach(([key, value]) => {
@@ -759,22 +879,27 @@ export class TournamentAdminController extends BaseController<ITournament> {
           data: {
             code: deletionError.code,
             retryable: deletionError.retryable,
-            operation: deletionError.operation ? deletionService.getOperationSummary(deletionError.operation) : null,
+            operation: deletionError.operation
+              ? deletionService.getOperationSummary(deletionError.operation)
+              : null,
           },
         });
         return;
       }
 
       // Log unexpected errors
-      console.error('Unexpected error in tournament deletion:', {
+      console.error("Unexpected error in tournament deletion:", {
         tournamentId: req.params.id,
         adminUserId: req.user?.id,
         correlationId,
-        error: error instanceof Error ? {
-          name: error.name,
-          message: error.message,
-          stack: error.stack,
-        } : error,
+        error:
+          error instanceof Error
+            ? {
+                name: error.name,
+                message: error.message,
+                stack: error.stack,
+              }
+            : error,
       });
 
       // Let Express error handler deal with unexpected errors
@@ -784,16 +909,22 @@ export class TournamentAdminController extends BaseController<ITournament> {
 
   // Private helper methods
 
-  private async createSeededBracketMatches(tournament: ITournament, isDoubles: boolean): Promise<IMatch[]> {
+  private async createSeededBracketMatches(
+    tournament: ITournament,
+    isDoubles: boolean,
+  ): Promise<IMatch[]> {
     const players = tournament.players || [];
     const matches: IMatch[] = [];
 
     // Get seeded rankings
-    const playerIds = players.map(p => p.toString());
-    const seedingResult = await TournamentSeedingService.calculateSeeding(playerIds, tournament.format);
+    const playerIds = players.map((p) => p.toString());
+    const seedingResult = await TournamentSeedingService.calculateSeeding(
+      playerIds,
+      tournament.format,
+    );
 
     if (!seedingResult.success || !seedingResult.seeds) {
-      throw new Error('Failed to calculate seeding for tournament');
+      throw new Error("Failed to calculate seeding for tournament");
     }
 
     const seeds = seedingResult.seeds;
@@ -825,14 +956,18 @@ export class TournamentAdminController extends BaseController<ITournament> {
       await this.generateSeededBracketForTeams(tournament._id, teams, matches);
     } else {
       // Singles tournament - use individual seeds
-      const seededTeams = seeds.map(seed => ({
+      const seededTeams = seeds.map((seed) => ({
         players: [seed.playerId],
         playerNames: [seed.player.name],
         seed: seed.seed,
         score: seed.score,
       }));
 
-      await this.generateSeededBracketForTeams(tournament._id, seededTeams, matches);
+      await this.generateSeededBracketForTeams(
+        tournament._id,
+        seededTeams,
+        matches,
+      );
     }
 
     // Save all matches
@@ -843,7 +978,7 @@ export class TournamentAdminController extends BaseController<ITournament> {
   private async generateSeededBracketForTeams(
     tournamentId: Types.ObjectId,
     teams: any[],
-    matches: any[]
+    matches: any[],
   ): Promise<void> {
     const teamCount = teams.length;
     const bracketSize = Math.pow(2, Math.ceil(Math.log2(teamCount)));
@@ -886,7 +1021,7 @@ export class TournamentAdminController extends BaseController<ITournament> {
             roundNumber,
             team1: { ...team1, score: 0 },
             team2: { ...team2, score: 0 },
-            status: 'scheduled',
+            status: "scheduled",
           });
           nextRound.push(null); // TBD winner
         } else if (team1) {
@@ -909,7 +1044,7 @@ export class TournamentAdminController extends BaseController<ITournament> {
    */
   private arrangeTeamsForBracket(teams: any[]): any[] {
     const arrangedTeams = [...teams];
-    const teamCount = teams.filter(t => t !== null).length;
+    const teamCount = teams.filter((t) => t !== null).length;
 
     if (teamCount <= 2) {
       return arrangedTeams;
@@ -917,7 +1052,7 @@ export class TournamentAdminController extends BaseController<ITournament> {
 
     // For proper seeding: seed 1 should play lowest seed in first potential meeting
     // This is a simplified arrangement - could be enhanced for more complex seeding
-    const nonNullTeams = teams.filter(t => t !== null);
+    const nonNullTeams = teams.filter((t) => t !== null);
     const sortedByGoodSeed = [...nonNullTeams].sort((a, b) => a.seed - b.seed);
 
     const result = [];
@@ -941,13 +1076,20 @@ export class TournamentAdminController extends BaseController<ITournament> {
 
   private getRoundName(teamsRemaining: number): MatchRound {
     switch (teamsRemaining) {
-      case 64: return 'round-of-64';
-      case 32: return 'round-of-32';
-      case 16: return 'round-of-16';
-      case 8: return 'quarterfinal';
-      case 4: return 'semifinal';
-      case 2: return 'final';
-      default: return 'round-of-16'; // fallback
+      case 64:
+        return "round-of-64";
+      case 32:
+        return "round-of-32";
+      case 16:
+        return "round-of-16";
+      case 8:
+        return "quarterfinal";
+      case 4:
+        return "semifinal";
+      case 2:
+        return "final";
+      default:
+        return "round-of-16"; // fallback
     }
   }
 
@@ -959,28 +1101,32 @@ export class TournamentAdminController extends BaseController<ITournament> {
       if (!tournament) return;
 
       // Determine teams involved
-      const winningTeam = match.winner === 'team1' ? match.team1 : match.team2;
-      const losingTeam = match.winner === 'team1' ? match.team2 : match.team1;
+      const winningTeam = match.winner === "team1" ? match.team1 : match.team2;
+      const losingTeam = match.winner === "team1" ? match.team2 : match.team1;
 
       // Update or create TournamentResult for winning team
       await this.updateTeamResult(tournament, winningTeam, true, match);
 
-      // Update or create TournamentResult for losing team  
+      // Update or create TournamentResult for losing team
       await this.updateTeamResult(tournament, losingTeam, false, match);
-
     } catch (error) {
-      console.error('Error updating tournament results:', error);
+      console.error("Error updating tournament results:", error);
     }
   }
 
-  private async updateTeamResult(tournament: ITournament, team: any, won: boolean, match: IMatch): Promise<void> {
+  private async updateTeamResult(
+    tournament: ITournament,
+    team: any,
+    won: boolean,
+    match: IMatch,
+  ): Promise<void> {
     try {
       // For each player in the team
       for (const playerId of team.players) {
         // Find or create TournamentResult
         let result = await TournamentResult.findOne({
           tournamentId: tournament._id,
-          players: playerId
+          players: playerId,
         });
 
         if (!result) {
@@ -1029,41 +1175,51 @@ export class TournamentAdminController extends BaseController<ITournament> {
         }
 
         // Update bracket statistics based on match round and outcome
-        result.bracketScores.bracketPlayed = (result.bracketScores.bracketPlayed || 0) + 1;
+        result.bracketScores.bracketPlayed =
+          (result.bracketScores.bracketPlayed || 0) + 1;
 
         if (won) {
-          result.bracketScores.bracketWon = (result.bracketScores.bracketWon || 0) + 1;
+          result.bracketScores.bracketWon =
+            (result.bracketScores.bracketWon || 0) + 1;
 
           // Set finish position based on round
-          if (match.round === 'final') {
+          if (match.round === "final") {
             result.totalStats.bodFinish = 1; // Champion
-          } else if (match.round === 'semifinal') {
+          } else if (match.round === "semifinal") {
             result.totalStats.bodFinish = 2; // Finalist
           }
         } else {
-          result.bracketScores.bracketLost = (result.bracketScores.bracketLost || 0) + 1;
+          result.bracketScores.bracketLost =
+            (result.bracketScores.bracketLost || 0) + 1;
 
           // Set finish position for losing rounds
-          if (match.round === 'final') {
+          if (match.round === "final") {
             result.totalStats.bodFinish = 2; // Runner-up
-          } else if (match.round === 'semifinal') {
+          } else if (match.round === "semifinal") {
             result.totalStats.bodFinish = 3; // Semifinalist
           }
         }
 
         // Update total stats
-        result.totalStats.totalPlayed = (result.bracketScores.bracketPlayed || 0) + (result.roundRobinScores?.rrPlayed || 0);
-        result.totalStats.totalWon = (result.bracketScores.bracketWon || 0) + (result.roundRobinScores?.rrWon || 0);
-        result.totalStats.totalLost = (result.bracketScores.bracketLost || 0) + (result.roundRobinScores?.rrLost || 0);
+        result.totalStats.totalPlayed =
+          (result.bracketScores.bracketPlayed || 0) +
+          (result.roundRobinScores?.rrPlayed || 0);
+        result.totalStats.totalWon =
+          (result.bracketScores.bracketWon || 0) +
+          (result.roundRobinScores?.rrWon || 0);
+        result.totalStats.totalLost =
+          (result.bracketScores.bracketLost || 0) +
+          (result.roundRobinScores?.rrLost || 0);
 
         if (result.totalStats.totalPlayed > 0) {
-          result.totalStats.winPercentage = result.totalStats.totalWon / result.totalStats.totalPlayed;
+          result.totalStats.winPercentage =
+            result.totalStats.totalWon / result.totalStats.totalPlayed;
         }
 
         await result.save();
       }
     } catch (error) {
-      console.error('Error updating team result:', error);
+      console.error("Error updating team result:", error);
     }
   }
 
@@ -1093,14 +1249,17 @@ export class TournamentAdminController extends BaseController<ITournament> {
   private async updatePlayerStatistics(tournament: ITournament): Promise<void> {
     try {
       // Get all tournament results for this tournament
-      const results = await TournamentResult.find({ tournamentId: tournament._id });
+      const results = await TournamentResult.find({
+        tournamentId: tournament._id,
+      });
 
       // For each result, update each player's career stats
       for (const result of results) {
         const players = result.players as any[];
         const totalPlayed = result.totalStats?.totalPlayed || 0;
         const totalWon = result.totalStats?.totalWon || 0;
-        const bodFinish = result.totalStats?.bodFinish || result.totalStats?.finalRank || 0;
+        const bodFinish =
+          result.totalStats?.bodFinish || result.totalStats?.finalRank || 0;
         const isChampion = bodFinish === 1;
 
         for (const playerId of players) {
@@ -1108,17 +1267,24 @@ export class TournamentAdminController extends BaseController<ITournament> {
           if (!existingPlayer) continue;
 
           const newBods = (existingPlayer.bodsPlayed || 0) + 1;
-          const newGamesPlayed = (existingPlayer.gamesPlayed || 0) + totalPlayed;
+          const newGamesPlayed =
+            (existingPlayer.gamesPlayed || 0) + totalPlayed;
           const newGamesWon = (existingPlayer.gamesWon || 0) + totalWon;
-          const newWinningPct = newGamesPlayed > 0 ? newGamesWon / newGamesPlayed : 0;
+          const newWinningPct =
+            newGamesPlayed > 0 ? newGamesWon / newGamesPlayed : 0;
 
-          const prevFinishTotal = (existingPlayer.avgFinish || 0) * (existingPlayer.bodsPlayed || 0);
-          const newAvgFinish = newBods > 0 ? (prevFinishTotal + (bodFinish || 0)) / newBods : existingPlayer.avgFinish || 0;
+          const prevFinishTotal =
+            (existingPlayer.avgFinish || 0) * (existingPlayer.bodsPlayed || 0);
+          const newAvgFinish =
+            newBods > 0
+              ? (prevFinishTotal + (bodFinish || 0)) / newBods
+              : existingPlayer.avgFinish || 0;
 
           let divisionChamps = existingPlayer.divisionChampionships || 0;
           let individualChamps = existingPlayer.individualChampionships || 0;
           if (isChampion) {
-            if (tournament.format === 'M' || tournament.format === 'W') divisionChamps += 1;
+            if (tournament.format === "M" || tournament.format === "W")
+              divisionChamps += 1;
             else individualChamps += 1;
           }
 
@@ -1128,8 +1294,14 @@ export class TournamentAdminController extends BaseController<ITournament> {
             gamesWon: newGamesWon,
             winningPercentage: newWinningPct,
             avgFinish: newAvgFinish,
-            totalChampionships: (existingPlayer.totalChampionships || 0) + (isChampion ? 1 : 0),
-            bestResult: existingPlayer.bestResult ? Math.min(existingPlayer.bestResult, bodFinish || existingPlayer.bestResult) : (bodFinish || 0),
+            totalChampionships:
+              (existingPlayer.totalChampionships || 0) + (isChampion ? 1 : 0),
+            bestResult: existingPlayer.bestResult
+              ? Math.min(
+                  existingPlayer.bestResult,
+                  bodFinish || existingPlayer.bestResult,
+                )
+              : bodFinish || 0,
             divisionChampionships: divisionChamps,
             individualChampionships: individualChamps,
           };
@@ -1138,7 +1310,7 @@ export class TournamentAdminController extends BaseController<ITournament> {
         }
       }
     } catch (error) {
-      console.error('Error updating player statistics:', error);
+      console.error("Error updating player statistics:", error);
     }
   }
 }

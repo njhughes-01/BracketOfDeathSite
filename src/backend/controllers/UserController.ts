@@ -26,7 +26,6 @@ class UserController {
     res.status(500).json(response);
   }
 
-
   async getUsers(req: RequestWithAuth, res: Response): Promise<void> {
     try {
       const { search, max = "100" } = req.query as {
@@ -58,7 +57,6 @@ class UserController {
         playerId: kcUser.attributes?.playerId?.[0],
         gender: kcUser.attributes?.gender?.[0],
       }));
-
 
       const response: ApiResponse<User[]> = {
         success: true,
@@ -106,7 +104,6 @@ class UserController {
         playerId: kcUser.attributes?.playerId?.[0],
         gender: kcUser.attributes?.gender?.[0],
       };
-
 
       const response: ApiResponse<User> = {
         success: true,
@@ -159,8 +156,6 @@ class UserController {
         },
       };
 
-
-
       const kcUser = await keycloakAdminService.createUser(serviceRequest);
 
       const user: User = {
@@ -182,7 +177,6 @@ class UserController {
         playerId: userData.playerId,
         gender: userData.gender,
       };
-
 
       const response: ApiResponse<User> = {
         success: true,
@@ -245,8 +239,6 @@ class UserController {
         },
       };
 
-
-
       const kcUser = await keycloakAdminService.updateUser(id, serviceRequest);
 
       const user: User = {
@@ -268,7 +260,6 @@ class UserController {
         playerId: kcUser.attributes?.playerId?.[0],
         gender: kcUser.attributes?.gender?.[0],
       };
-
 
       const response: ApiResponse<User> = {
         success: true,
@@ -538,7 +529,6 @@ class UserController {
         gender: kcUser.attributes?.gender?.[0],
       };
 
-
       const response: ApiResponse<User> = {
         success: true,
         data: user,
@@ -591,12 +581,10 @@ class UserController {
       const { username, password } = req.body;
 
       if (!username || !password) {
-        res
-          .status(400)
-          .json({
-            success: false,
-            error: "Username and password are required",
-          });
+        res.status(400).json({
+          success: false,
+          error: "Username and password are required",
+        });
         return;
       }
 
@@ -723,7 +711,6 @@ class UserController {
       // eslint-disable-next-line @typescript-eslint/no-unused-vars
       const { playerId: _pid, gender: _g, ...safeAuthData } = userData;
 
-
       // Default role for public registration is always 'user'
       // Admin claim is now handled via explicit onboarding flow
       const userRoles = ["user"];
@@ -739,8 +726,6 @@ class UserController {
           // Assuming we just leave it undefined for now as it wasn't in CreateUserInput before
         },
       };
-
-
 
       // Create user in Keycloak
       const createdUser = await keycloakAdminService.createUser(safeUserData);
@@ -922,7 +907,8 @@ class UserController {
     }
 
     // Gender validation
-    if (userData.gender) { // @ts-ignore - CreateUserValidation has gender but TS might not see it yet if types file update wasn't flushed or context issue
+    if (userData.gender) {
+      // @ts-ignore - CreateUserValidation has gender but TS might not see it yet if types file update wasn't flushed or context issue
       // actually UpdateUserValidation should have gender, let's check what I added to types
       // I added gender to UpdateUserValidation in previous tool call
       if (
@@ -932,7 +918,6 @@ class UserController {
         errors.push("Invalid gender option");
       }
     }
-
 
     return {
       isValid: errors.length === 0,

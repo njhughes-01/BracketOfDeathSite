@@ -1,6 +1,6 @@
-import { Request, Response, NextFunction } from 'express';
-import { Model, Document } from 'mongoose';
-import { ApiResponse, PaginationOptions } from '../types/common';
+import { Request, Response, NextFunction } from "express";
+import { Model, Document } from "mongoose";
+import { ApiResponse, PaginationOptions } from "../types/common";
 
 export interface RequestWithAuth extends Request {
   user?: {
@@ -24,12 +24,16 @@ export class BaseController<T extends Document> {
   }
 
   // Get all items with pagination
-  getAll = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+  getAll = async (
+    req: Request,
+    res: Response,
+    next: NextFunction,
+  ): Promise<void> => {
     try {
       const options: PaginationOptions = {
         page: parseInt(req.query.page as string) || 1,
         limit: parseInt(req.query.limit as string) || 10,
-        sort: (req.query.sort as string) || '-createdAt',
+        sort: (req.query.sort as string) || "-createdAt",
         select: req.query.select as string,
       };
 
@@ -37,7 +41,7 @@ export class BaseController<T extends Document> {
       const filter = this.buildFilter(req.query);
 
       // Check if the model has paginate method, otherwise use regular find
-      if (typeof (this.model as any).paginate === 'function') {
+      if (typeof (this.model as any).paginate === "function") {
         const result = await (this.model as any).paginate(filter, options);
         res.status(200).json(result);
       } else {
@@ -55,7 +59,7 @@ export class BaseController<T extends Document> {
 
         const [docs, totalDocs] = await Promise.all([
           query.skip(skip).limit(options.limit).exec(),
-          this.model.countDocuments(filter)
+          this.model.countDocuments(filter),
         ]);
 
         const totalPages = Math.ceil(totalDocs / options.limit);
@@ -81,7 +85,11 @@ export class BaseController<T extends Document> {
   };
 
   // Get single item by ID
-  getById = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+  getById = async (
+    req: Request,
+    res: Response,
+    next: NextFunction,
+  ): Promise<void> => {
     try {
       const { id } = req.params;
       const populate = req.query.populate as string;
@@ -89,8 +97,8 @@ export class BaseController<T extends Document> {
       let query = this.model.findById(id);
 
       if (populate) {
-        const populateFields = populate.split(',').map(field => field.trim());
-        populateFields.forEach(field => {
+        const populateFields = populate.split(",").map((field) => field.trim());
+        populateFields.forEach((field) => {
           query = query.populate(field);
         });
       }
@@ -118,7 +126,11 @@ export class BaseController<T extends Document> {
   };
 
   // Create new item
-  async create(req: RequestWithAuth, res: Response, next: NextFunction): Promise<void> {
+  async create(
+    req: RequestWithAuth,
+    res: Response,
+    next: NextFunction,
+  ): Promise<void> {
     try {
       const item = new this.model(req.body);
       const savedItem = await item.save();
@@ -136,14 +148,18 @@ export class BaseController<T extends Document> {
   }
 
   // Update item by ID
-  async update(req: RequestWithAuth, res: Response, next: NextFunction): Promise<void> {
+  async update(
+    req: RequestWithAuth,
+    res: Response,
+    next: NextFunction,
+  ): Promise<void> {
     try {
       const { id } = req.params;
 
       const updatedItem = await (this.model as any).findByIdAndUpdateSafe(
         id,
         req.body,
-        { new: true }
+        { new: true },
       );
 
       if (!updatedItem) {
@@ -168,7 +184,11 @@ export class BaseController<T extends Document> {
   }
 
   // Delete item by ID
-  delete = async (req: RequestWithAuth, res: Response, next: NextFunction): Promise<void> => {
+  delete = async (
+    req: RequestWithAuth,
+    res: Response,
+    next: NextFunction,
+  ): Promise<void> => {
     try {
       const { id } = req.params;
 
@@ -195,14 +215,18 @@ export class BaseController<T extends Document> {
   };
 
   // Search items
-  search = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+  search = async (
+    req: Request,
+    res: Response,
+    next: NextFunction,
+  ): Promise<void> => {
     try {
       const { q } = req.query;
 
-      if (!q || typeof q !== 'string') {
+      if (!q || typeof q !== "string") {
         const response: ApiResponse = {
           success: false,
-          error: 'Search query is required',
+          error: "Search query is required",
         };
         res.status(400).json(response);
         return;
@@ -212,7 +236,7 @@ export class BaseController<T extends Document> {
       const options: PaginationOptions = {
         page: parseInt(req.query.page as string) || 1,
         limit: parseInt(req.query.limit as string) || 10,
-        sort: (req.query.sort as string) || '-createdAt',
+        sort: (req.query.sort as string) || "-createdAt",
       };
 
       const result = await (this.model as any).paginate(searchFilter, options);
@@ -232,8 +256,8 @@ export class BaseController<T extends Document> {
     const { page, limit, sort, select, populate, q, ...filterParams } = query;
 
     // Add simple equality filters
-    Object.keys(filterParams).forEach(key => {
-      if (filterParams[key] !== undefined && filterParams[key] !== '') {
+    Object.keys(filterParams).forEach((key) => {
+      if (filterParams[key] !== undefined && filterParams[key] !== "") {
         filter[key] = filterParams[key];
       }
     });
@@ -251,8 +275,11 @@ export class BaseController<T extends Document> {
   protected validateRequired(fields: string[], body: any): string[] {
     const missing: string[] = [];
 
-    fields.forEach(field => {
-      if (!body[field] || (typeof body[field] === 'string' && body[field].trim() === '')) {
+    fields.forEach((field) => {
+      if (
+        !body[field] ||
+        (typeof body[field] === "string" && body[field].trim() === "")
+      ) {
         missing.push(field);
       }
     });
@@ -274,7 +301,7 @@ export class BaseController<T extends Document> {
     res: Response,
     data?: T,
     message?: string,
-    status: number = 200
+    status: number = 200,
   ): void {
     const response: ApiResponse<T> = {
       success: true,
@@ -286,9 +313,17 @@ export class BaseController<T extends Document> {
 
   // Async wrapper for better error handling
   protected asyncHandler = (
-    fn: (req: Request | RequestWithAuth, res: Response, next: NextFunction) => Promise<void>
+    fn: (
+      req: Request | RequestWithAuth,
+      res: Response,
+      next: NextFunction,
+    ) => Promise<void>,
   ) => {
-    return (req: Request | RequestWithAuth, res: Response, next: NextFunction): Promise<void> => {
+    return (
+      req: Request | RequestWithAuth,
+      res: Response,
+      next: NextFunction,
+    ): Promise<void> => {
       return Promise.resolve(fn(req, res, next)).catch(next);
     };
   };

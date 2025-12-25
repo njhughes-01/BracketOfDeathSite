@@ -1,13 +1,13 @@
-import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { useMutation } from '../hooks/useApi';
-import apiClient from '../services/api';
-import type { PlayerInput } from '../types/api';
+import React, { useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { useMutation } from "../hooks/useApi";
+import apiClient from "../services/api";
+import type { PlayerInput } from "../types/api";
 
 const PlayerCreate: React.FC = () => {
   const navigate = useNavigate();
   const [formData, setFormData] = useState<PlayerInput>({
-    name: '',
+    name: "",
     bodsPlayed: 0,
     bestResult: 0,
     avgFinish: 0,
@@ -17,22 +17,24 @@ const PlayerCreate: React.FC = () => {
     individualChampionships: 0,
     divisionChampionships: 0,
     totalChampionships: 0,
-    pairing: '',
+    pairing: "",
   });
 
-  const { mutate: createPlayer, loading, error } = useMutation(
-    (data: PlayerInput) => apiClient.createPlayer(data),
-    {
-      onSuccess: () => navigate('/players'),
-      onError: (err) => console.error('Failed to create player:', err)
-    }
-  );
+  const {
+    mutate: createPlayer,
+    loading,
+    error,
+  } = useMutation((data: PlayerInput) => apiClient.createPlayer(data), {
+    onSuccess: () => navigate("/players"),
+    onError: (err) => console.error("Failed to create player:", err),
+  });
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value, type } = e.target;
-    setFormData(prev => ({
+    setFormData((prev) => ({
       ...prev,
-      [name]: type === 'number' ? (value === '' ? 0 : parseFloat(value)) : value
+      [name]:
+        type === "number" ? (value === "" ? 0 : parseFloat(value)) : value,
     }));
   };
 
@@ -45,7 +47,10 @@ const PlayerCreate: React.FC = () => {
     <div className="flex flex-col min-h-screen bg-background-dark pb-20">
       {/* Header */}
       <div className="sticky top-0 z-10 bg-background-dark/80 backdrop-blur-md border-b border-white/5 px-4 py-4 flex items-center gap-3">
-        <button onClick={() => navigate('/players')} className="p-2 -ml-2 rounded-full hover:bg-white/10 text-white transition-colors">
+        <button
+          onClick={() => navigate("/players")}
+          className="p-2 -ml-2 rounded-full hover:bg-white/10 text-white transition-colors"
+        >
           <span className="material-symbols-outlined">arrow_back</span>
         </button>
         <h1 className="text-xl font-bold text-white">New Player</h1>
@@ -53,15 +58,18 @@ const PlayerCreate: React.FC = () => {
 
       <div className="flex-1 p-4 max-w-lg mx-auto w-full">
         <form onSubmit={handleSubmit} className="space-y-6">
-
           {/* Photo Upload Placeholder */}
           <div className="flex flex-col items-center justify-center gap-3 py-6">
             <div className="relative group">
               <div className="size-24 rounded-full bg-[#1c2230] border-2 border-dashed border-white/20 flex items-center justify-center group-hover:border-primary transition-colors cursor-pointer">
-                <span className="material-symbols-outlined text-slate-500 group-hover:text-primary">add_a_photo</span>
+                <span className="material-symbols-outlined text-slate-500 group-hover:text-primary">
+                  add_a_photo
+                </span>
               </div>
               <div className="absolute bottom-0 right-0 p-1.5 bg-primary rounded-full text-black shadow-lg">
-                <span className="material-symbols-outlined text-[16px] font-bold">edit</span>
+                <span className="material-symbols-outlined text-[16px] font-bold">
+                  edit
+                </span>
               </div>
             </div>
             <p className="text-xs text-slate-500">Upload profile photo</p>
@@ -69,10 +77,14 @@ const PlayerCreate: React.FC = () => {
 
           {/* Basic Info Section */}
           <div className="space-y-4">
-            <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider pl-1">Basic Info</h3>
+            <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider pl-1">
+              Basic Info
+            </h3>
             <div className="space-y-3">
               <div>
-                <label className="block text-sm text-slate-400 mb-1 ml-1">Name</label>
+                <label className="block text-sm text-slate-400 mb-1 ml-1">
+                  Name
+                </label>
                 <input
                   type="text"
                   name="name"
@@ -84,7 +96,9 @@ const PlayerCreate: React.FC = () => {
                 />
               </div>
               <div>
-                <label className="block text-sm text-slate-400 mb-1 ml-1">Usual Partner</label>
+                <label className="block text-sm text-slate-400 mb-1 ml-1">
+                  Usual Partner
+                </label>
                 <input
                   type="text"
                   name="pairing"
@@ -100,13 +114,19 @@ const PlayerCreate: React.FC = () => {
           {/* Stats Section */}
           <div className="space-y-4">
             <div className="flex items-center justify-between">
-              <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider pl-1">Initial Stats</h3>
-              <span className="text-[10px] text-slate-600 italic">Optional (Legacy Data)</span>
+              <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider pl-1">
+                Initial Stats
+              </h3>
+              <span className="text-[10px] text-slate-600 italic">
+                Optional (Legacy Data)
+              </span>
             </div>
 
             <div className="grid grid-cols-2 gap-3">
               <div className="bg-[#1c2230] p-3 rounded-xl border border-white/5">
-                <label className="block text-xs text-slate-500 mb-1">Win % (0.00-1.00)</label>
+                <label className="block text-xs text-slate-500 mb-1">
+                  Win % (0.00-1.00)
+                </label>
                 <input
                   type="number"
                   name="winningPercentage"
@@ -119,7 +139,9 @@ const PlayerCreate: React.FC = () => {
                 />
               </div>
               <div className="bg-[#1c2230] p-3 rounded-xl border border-white/5">
-                <label className="block text-xs text-slate-500 mb-1">Total Titles</label>
+                <label className="block text-xs text-slate-500 mb-1">
+                  Total Titles
+                </label>
                 <input
                   type="number"
                   name="totalChampionships"
@@ -130,7 +152,9 @@ const PlayerCreate: React.FC = () => {
                 />
               </div>
               <div className="bg-[#1c2230] p-3 rounded-xl border border-white/5">
-                <label className="block text-xs text-slate-500 mb-1">Games Played</label>
+                <label className="block text-xs text-slate-500 mb-1">
+                  Games Played
+                </label>
                 <input
                   type="number"
                   name="gamesPlayed"
@@ -141,7 +165,9 @@ const PlayerCreate: React.FC = () => {
                 />
               </div>
               <div className="bg-[#1c2230] p-3 rounded-xl border border-white/5">
-                <label className="block text-xs text-slate-500 mb-1">BODs Played</label>
+                <label className="block text-xs text-slate-500 mb-1">
+                  BODs Played
+                </label>
                 <input
                   type="number"
                   name="bodsPlayed"
@@ -167,7 +193,7 @@ const PlayerCreate: React.FC = () => {
             disabled={loading || !formData.name}
             className="w-full py-4 rounded-xl bg-primary text-white font-bold text-lg shadow-lg shadow-primary/20 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-primary-dark active:scale-[0.98] transition-all"
           >
-            {loading ? 'Creating...' : 'Create Player'}
+            {loading ? "Creating..." : "Create Player"}
           </button>
         </form>
       </div>

@@ -1,5 +1,5 @@
-import { Schema, Model, Document, QueryOptions } from 'mongoose';
-import { PaginationOptions, PaginatedResponse } from '../types/common';
+import { Schema, Model, Document, QueryOptions } from "mongoose";
+import { PaginationOptions, PaginatedResponse } from "../types/common";
 
 export interface BaseModelMethods {
   toJSON(): any;
@@ -8,17 +8,17 @@ export interface BaseModelMethods {
 export interface BaseModelStatics<T extends Document> extends Model<T> {
   paginate(
     filter: any,
-    options: PaginationOptions
+    options: PaginationOptions,
   ): Promise<PaginatedResponse<T>>;
   findByIdAndUpdateSafe(
     id: string,
     update: any,
-    options?: QueryOptions
+    options?: QueryOptions,
   ): Promise<T | null>;
   findOneAndUpdateSafe(
     filter: any,
     update: any,
-    options?: QueryOptions
+    options?: QueryOptions,
   ): Promise<T | null>;
 }
 
@@ -70,14 +70,9 @@ export const baseStatics = {
   async paginate<T extends Document>(
     this: Model<T>,
     filter: any = {},
-    options: PaginationOptions = {}
+    options: PaginationOptions = {},
   ): Promise<PaginatedResponse<T>> {
-    const {
-      page = 1,
-      limit = 10,
-      sort = '-createdAt',
-      select = '',
-    } = options;
+    const { page = 1, limit = 10, sort = "-createdAt", select = "" } = options;
 
     const skip = (page - 1) * limit;
     const query = this.find(filter);
@@ -110,12 +105,12 @@ export const baseStatics = {
     this: Model<T>,
     id: string,
     update: any,
-    options: QueryOptions = {}
+    options: QueryOptions = {},
   ): Promise<T | null> {
     const defaultOptions = {
       new: true,
       runValidators: true,
-      context: 'query',
+      context: "query",
     };
 
     return this.findByIdAndUpdate(id, update, {
@@ -128,12 +123,12 @@ export const baseStatics = {
     this: Model<T>,
     filter: any,
     update: any,
-    options: QueryOptions = {}
+    options: QueryOptions = {},
   ): Promise<T | null> {
     const defaultOptions = {
       new: true,
       runValidators: true,
-      context: 'query',
+      context: "query",
     };
 
     return this.findOneAndUpdate(filter, update, {
@@ -150,15 +145,18 @@ export const createNumericValidator = (min: number = 0, max?: number) => ({
     if (max !== undefined && value > max) return false;
     return true;
   },
-  message: `Value must be between ${min}${max ? ` and ${max}` : ' and above'}`,
+  message: `Value must be between ${min}${max ? ` and ${max}` : " and above"}`,
 });
 
 export const createPercentageValidator = () => ({
   validator: (value: number) => value >= 0 && value <= 1,
-  message: 'Percentage must be between 0 and 1',
+  message: "Percentage must be between 0 and 1",
 });
 
-export const createStringValidator = (minLength: number = 1, maxLength: number = 100) => ({
+export const createStringValidator = (
+  minLength: number = 1,
+  maxLength: number = 100,
+) => ({
   validator: (value: string) => {
     if (!value || value.trim().length < minLength) return false;
     if (value.trim().length > maxLength) return false;
@@ -171,17 +169,20 @@ export const createStringValidator = (minLength: number = 1, maxLength: number =
 export const createPreSaveMiddleware = (calculations?: (doc: any) => void) => {
   return function (this: any, next: any) {
     this.updatedAt = new Date();
-    
+
     if (calculations) {
       calculations(this);
     }
-    
+
     next();
   };
 };
 
 // Index creation helper
-export const createIndexes = (schema: Schema, indexes: Array<{ fields: any; options?: any }>) => {
+export const createIndexes = (
+  schema: Schema,
+  indexes: Array<{ fields: any; options?: any }>,
+) => {
   indexes.forEach(({ fields, options }) => {
     schema.index(fields, options);
   });

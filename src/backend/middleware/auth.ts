@@ -1,9 +1,9 @@
-import { Response, NextFunction } from 'express';
-import jwt from 'jsonwebtoken';
-import jwksClient from 'jwks-rsa';
-import axios from 'axios';
-import { RequestWithAuth } from '../controllers/base';
-import { ApiResponse } from '../types/common';
+import { Response, NextFunction } from "express";
+import jwt from "jsonwebtoken";
+import jwksClient from "jwks-rsa";
+import axios from "axios";
+import { RequestWithAuth } from "../controllers/base";
+import { ApiResponse } from "../types/common";
 
 interface KeycloakToken {
   sub: string;
@@ -42,12 +42,17 @@ const getKey = (header: any, callback: any) => {
 };
 
 // Verify Keycloak JWT token
-export const verifyKeycloakToken = async (token: string): Promise<KeycloakToken> => {
+export const verifyKeycloakToken = async (
+  token: string,
+): Promise<KeycloakToken> => {
   return new Promise((resolve, reject) => {
     // First, let's decode the token to see what audience it has
     const decoded = jwt.decode(token, { complete: true });
     // Force log for debugging
-    console.log('DEBUG: Token decoded:', JSON.stringify((decoded as any)?.payload, null, 2));
+    console.log(
+      "DEBUG: Token decoded:",
+      JSON.stringify((decoded as any)?.payload, null, 2),
+    );
 
     jwt.verify(
       token,
@@ -61,29 +66,33 @@ export const verifyKeycloakToken = async (token: string): Promise<KeycloakToken>
           // Allow issuers from frontend proxy (vite) which happens in some local configs
           `http://127.0.0.1:5173/auth/realms/bracketofdeathsite`,
           `http://localhost:5173/auth/realms/bracketofdeathsite`,
-          `http://localhost:8080/realms/bracketofdeathsite`
+          `http://localhost:8080/realms/bracketofdeathsite`,
         ],
-        algorithms: ['RS256'],
+        algorithms: ["RS256"],
         clockTolerance: 120, // Tolerate 2 minutes of clock skew
       },
       (err, decoded) => {
         if (err) {
-          console.error('DEBUG: JWT Verify Error:', err);
+          console.error("DEBUG: JWT Verify Error:", err);
           reject(err);
           return;
         }
 
         // Manually validate the authorized party (azp) since Keycloak uses this instead of audience
         const decodedToken = decoded as KeycloakToken & { azp?: string };
-        const expectedClient = process.env.KEYCLOAK_CLIENT_ID || 'bod-app';
+        const expectedClient = process.env.KEYCLOAK_CLIENT_ID || "bod-app";
 
         if (decodedToken.azp && decodedToken.azp !== expectedClient) {
-          reject(new Error(`Invalid client. Expected: ${expectedClient}, got: ${decodedToken.azp}`));
+          reject(
+            new Error(
+              `Invalid client. Expected: ${expectedClient}, got: ${decodedToken.azp}`,
+            ),
+          );
           return;
         }
 
         resolve(decodedToken);
-      }
+      },
     );
   });
 };
@@ -97,19 +106,19 @@ export const hasRole = (token: KeycloakToken, role: string): boolean => {
   }
 
   // Check client roles
-  const clientId = process.env.KEYCLOAK_CLIENT_ID || 'bod-app';
+  const clientId = process.env.KEYCLOAK_CLIENT_ID || "bod-app";
   const clientRoles = token.resource_access?.[clientId]?.roles || [];
   return clientRoles.includes(role);
 };
 
 // Check if user has admin role
 export const hasAdminRole = (token: KeycloakToken): boolean => {
-  return hasRole(token, 'admin');
+  return hasRole(token, "admin");
 };
 
 // Check if user has superadmin role
 export const hasSuperAdminRole = (token: KeycloakToken): boolean => {
-  return hasRole(token, 'superadmin');
+  return hasRole(token, "superadmin");
 };
 
 // Check if user is authorized (has user or admin role)
@@ -124,15 +133,15 @@ export const isAuthorizedUser = (token: KeycloakToken): boolean => {
 export const requireAuth = async (
   req: RequestWithAuth,
   res: Response,
-  next: NextFunction
+  next: NextFunction,
 ): Promise<void> => {
   try {
     const authHeader = req.headers.authorization;
 
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    if (!authHeader || !authHeader.startsWith("Bearer ")) {
       const response: ApiResponse = {
         success: false,
-        error: 'Authorization token required',
+        error: "Authorization token required",
       };
       res.status(401).json(response);
       return;
@@ -143,14 +152,14 @@ export const requireAuth = async (
     if (!token) {
       const response: ApiResponse = {
         success: false,
-        error: 'Authorization token required',
+        error: "Authorization token required",
       };
       res.status(401).json(response);
       return;
     }
 
     // Verify the Keycloak token (quiet in production)
-    if (process.env.NODE_ENV !== 'production') {
+    if (process.env.NODE_ENV !== "production") {
       // console.log('Attempting to verify token:', token.substring(0, 20) + '...');
     }
     const tokenData = await verifyKeycloakToken(token);
@@ -161,7 +170,7 @@ export const requireAuth = async (
     if (!authorized) {
       const response: ApiResponse = {
         success: false,
-        error: 'Access denied. User not authorized.',
+        error: "Access denied. User not authorized.",
       };
       res.status(403).json(response);
       return;
@@ -172,24 +181,31 @@ export const requireAuth = async (
       id: tokenData.sub,
       email: tokenData.email,
       username: tokenData.preferred_username,
-      name: tokenData.name || `${tokenData.given_name || ''} ${tokenData.family_name || ''}`.trim(),
+      name:
+        tokenData.name ||
+        `${tokenData.given_name || ""} ${tokenData.family_name || ""}`.trim(),
       isAuthorized: true,
       isAdmin: hasAdminRole(tokenData),
       roles: [
         ...(tokenData.realm_access?.roles || []),
-        ...(tokenData.resource_access?.[process.env.KEYCLOAK_CLIENT_ID || 'bod-app']?.roles || [])
+        ...(tokenData.resource_access?.[
+          process.env.KEYCLOAK_CLIENT_ID || "bod-app"
+        ]?.roles || []),
       ],
     };
 
     next();
   } catch (error) {
-    console.error('Auth middleware error:', error);
-    if ((error as any).message) console.error('Error message:', (error as any).message);
+    console.error("Auth middleware error:", error);
+    if ((error as any).message)
+      console.error("Error message:", (error as any).message);
     const response: ApiResponse = {
       success: false,
-      error: 'Invalid or expired token',
+      error: "Invalid or expired token",
       // Include more details in non-production for debugging
-      ...(process.env.NODE_ENV !== 'production' ? { debug: (error as any).message } : {})
+      ...(process.env.NODE_ENV !== "production"
+        ? { debug: (error as any).message }
+        : {}),
     };
     res.status(401).json(response);
   }
@@ -199,12 +215,12 @@ export const requireAuth = async (
 export const optionalAuth = async (
   req: RequestWithAuth,
   _res: Response,
-  next: NextFunction
+  next: NextFunction,
 ): Promise<void> => {
   try {
     const authHeader = req.headers.authorization;
 
-    if (authHeader && authHeader.startsWith('Bearer ')) {
+    if (authHeader && authHeader.startsWith("Bearer ")) {
       const token = authHeader.substring(7);
 
       if (token) {
@@ -216,12 +232,16 @@ export const optionalAuth = async (
             id: tokenData.sub,
             email: tokenData.email,
             username: tokenData.preferred_username,
-            name: tokenData.name || `${tokenData.given_name || ''} ${tokenData.family_name || ''}`.trim(),
+            name:
+              tokenData.name ||
+              `${tokenData.given_name || ""} ${tokenData.family_name || ""}`.trim(),
             isAuthorized: authorized,
             isAdmin: hasAdminRole(tokenData),
             roles: [
               ...(tokenData.realm_access?.roles || []),
-              ...(tokenData.resource_access?.[process.env.KEYCLOAK_CLIENT_ID || 'bod-app']?.roles || [])
+              ...(tokenData.resource_access?.[
+                process.env.KEYCLOAK_CLIENT_ID || "bod-app"
+              ]?.roles || []),
             ],
           };
         } catch (error) {
@@ -242,17 +262,20 @@ export const optionalAuth = async (
 export const requireAdmin = async (
   req: RequestWithAuth,
   res: Response,
-  next: NextFunction
+  next: NextFunction,
 ): Promise<void> => {
   // First check authentication
   await requireAuth(req, res, () => {
     // Check if user has admin role or superadmin role (superadmin is implicitly admin)
-    if (req.user && (req.user.isAdmin || req.user.roles.includes('superadmin'))) {
+    if (
+      req.user &&
+      (req.user.isAdmin || req.user.roles.includes("superadmin"))
+    ) {
       next();
     } else {
       const response: ApiResponse = {
         success: false,
-        error: 'Admin access required',
+        error: "Admin access required",
       };
       res.status(403).json(response);
     }
@@ -263,17 +286,17 @@ export const requireAdmin = async (
 export const requireSuperAdmin = async (
   req: RequestWithAuth,
   res: Response,
-  next: NextFunction
+  next: NextFunction,
 ): Promise<void> => {
   // First check authentication
   await requireAuth(req, res, () => {
     // Check if user has superadmin role
-    if (req.user && req.user.roles.includes('superadmin')) {
+    if (req.user && req.user.roles.includes("superadmin")) {
       next();
     } else {
       const response: ApiResponse = {
         success: false,
-        error: 'Super Admin access required',
+        error: "Super Admin access required",
       };
       res.status(403).json(response);
     }

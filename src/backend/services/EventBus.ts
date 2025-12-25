@@ -1,4 +1,4 @@
-import { EventEmitter } from 'events';
+import { EventEmitter } from "events";
 
 type TournamentEvent = {
   type: string;
@@ -14,7 +14,10 @@ class EventBus {
     this.emitter.setMaxListeners(0);
   }
 
-  onTournament(id: string, listener: (evt: TournamentEvent) => void): () => void {
+  onTournament(
+    id: string,
+    listener: (evt: TournamentEvent) => void,
+  ): () => void {
     const channel = this.channel(id);
     this.emitter.on(channel, listener);
     return () => this.emitter.off(channel, listener);
@@ -37,4 +40,3 @@ class EventBus {
 
 export const eventBus = new EventBus();
 export type { TournamentEvent };
-

@@ -1,1 +1,1 @@
-export * from './SettingsController';
+export * from "./SettingsController";

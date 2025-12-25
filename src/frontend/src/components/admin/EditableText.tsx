@@ -1,5 +1,5 @@
-import React, { useState, useRef, useEffect } from 'react';
-import { useAuth } from '../../contexts/AuthContext';
+import React, { useState, useRef, useEffect } from "react";
+import { useAuth } from "../../contexts/AuthContext";
 
 interface EditableTextProps {
   value: string;
@@ -26,7 +26,7 @@ const EditableText: React.FC<EditableTextProps> = ({
   disabled = false,
   required = false,
   maxLength,
-  validator
+  validator,
 }) => {
   const { isAdmin } = useAuth();
   const [isEditing, setIsEditing] = useState(false);
@@ -61,7 +61,7 @@ const EditableText: React.FC<EditableTextProps> = ({
     }
 
     if (required && !editValue.trim()) {
-      setError('This field is required');
+      setError("This field is required");
       return;
     }
 
@@ -80,7 +80,7 @@ const EditableText: React.FC<EditableTextProps> = ({
       await onSave(editValue);
       setIsEditing(false);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to save');
+      setError(err instanceof Error ? err.message : "Failed to save");
     } finally {
       setIsLoading(false);
     }
@@ -93,10 +93,10 @@ const EditableText: React.FC<EditableTextProps> = ({
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' && !multiline) {
+    if (e.key === "Enter" && !multiline) {
       e.preventDefault();
       handleSave();
-    } else if (e.key === 'Escape') {
+    } else if (e.key === "Escape") {
       handleCancel();
     }
   };
@@ -110,12 +110,12 @@ const EditableText: React.FC<EditableTextProps> = ({
   }
 
   if (isEditing) {
-    const InputComponent = multiline ? 'textarea' : 'input';
+    const InputComponent = multiline ? "textarea" : "input";
     return (
       <div className={`relative ${className}`}>
         <InputComponent
           ref={inputRef as any}
-          type={multiline ? undefined : 'text'}
+          type={multiline ? undefined : "text"}
           value={editValue}
           onChange={(e) => setEditValue(e.target.value)}
           onKeyDown={handleKeyDown}
@@ -124,8 +124,8 @@ const EditableText: React.FC<EditableTextProps> = ({
           maxLength={maxLength}
           disabled={isLoading}
           className={`input ${editClassName} ${
-            error ? 'border-red-500 focus:ring-red-500' : ''
-          } ${isLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
+            error ? "border-red-500 focus:ring-red-500" : ""
+          } ${isLoading ? "opacity-50 cursor-not-allowed" : ""}`}
           rows={multiline ? 3 : undefined}
         />
         {isLoading && (
@@ -133,9 +133,7 @@ const EditableText: React.FC<EditableTextProps> = ({
             <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
           </div>
         )}
-        {error && (
-          <p className="text-red-500 text-xs mt-1">{error}</p>
-        )}
+        {error && <p className="text-red-500 text-xs mt-1">{error}</p>}
         <div className="flex items-center space-x-2 mt-1">
           <button
             onClick={handleSave}
@@ -160,8 +158,10 @@ const EditableText: React.FC<EditableTextProps> = ({
     <span
       onClick={handleEdit}
       className={`${className} ${displayClassName} ${
-        !disabled ? 'cursor-pointer hover:bg-gray-100 hover:text-blue-600 rounded px-1 -mx-1 transition-colors' : ''
-      } ${!value ? 'text-gray-400 italic' : ''}`}
+        !disabled
+          ? "cursor-pointer hover:bg-gray-100 hover:text-blue-600 rounded px-1 -mx-1 transition-colors"
+          : ""
+      } ${!value ? "text-gray-400 italic" : ""}`}
       title={!disabled ? "Click to edit" : undefined}
     >
       {value || placeholder}

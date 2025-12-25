@@ -1,7 +1,7 @@
-import { Types } from 'mongoose';
-import { Player } from '../models/Player';
-import { TournamentResult } from '../models/TournamentResult';
-import { IPlayer } from '../types/player';
+import { Types } from "mongoose";
+import { Player } from "../models/Player";
+import { TournamentResult } from "../models/TournamentResult";
+import { IPlayer } from "../types/player";
 
 export interface PlayerSeed {
   playerId: Types.ObjectId;
@@ -23,16 +23,16 @@ export class TournamentSeedingService {
    */
   static async calculateSeeding(
     playerIds: string[],
-    tournamentFormat: string
+    tournamentFormat: string,
   ): Promise<SeedingResult> {
     try {
-      const objectIds = playerIds.map(id => new Types.ObjectId(id));
-      
+      const objectIds = playerIds.map((id) => new Types.ObjectId(id));
+
       // Get players with their statistics
       const players = await Player.find({ _id: { $in: objectIds } });
-      
+
       if (players.length !== playerIds.length) {
-        return { success: false, message: 'Some players not found' };
+        return { success: false, message: "Some players not found" };
       }
 
       // Calculate seeds for each player
@@ -61,8 +61,8 @@ export class TournamentSeedingService {
         seeds: playerSeeds,
       };
     } catch (error) {
-      console.error('Seeding calculation error:', error);
-      return { success: false, message: 'Failed to calculate seeding' };
+      console.error("Seeding calculation error:", error);
+      return { success: false, message: "Failed to calculate seeding" };
     }
   }
 
@@ -70,8 +70,8 @@ export class TournamentSeedingService {
    * Calculate a score for a player based on their historical performance
    */
   private static async calculatePlayerScore(
-    player: IPlayer, 
-    tournamentFormat: string
+    player: IPlayer,
+    tournamentFormat: string,
   ): Promise<number> {
     let score = 0;
 
@@ -109,7 +109,7 @@ export class TournamentSeedingService {
   private static applyFormatAdjustments(
     baseScore: number,
     player: IPlayer,
-    format: string
+    format: string,
   ): number {
     let adjustedScore = baseScore;
 
@@ -118,16 +118,16 @@ export class TournamentSeedingService {
     // In the future, we could track format-specific performance
 
     switch (format) {
-      case 'M':
+      case "M":
       case "Men's Singles":
         // Men's format adjustments
         break;
-      case 'W':
+      case "W":
       case "Women's Doubles":
         // Women's format adjustments
         break;
-      case 'Mixed':
-      case 'Mixed Doubles':
+      case "Mixed":
+      case "Mixed Doubles":
         // Mixed format adjustments - maybe favor players with good partnership history
         break;
       default:
@@ -150,36 +150,38 @@ export class TournamentSeedingService {
     const tournamentsPlayed = player.bodsPlayed || 0;
 
     if (tournamentsPlayed < 2) {
-      return 'New player - neutral seeding';
+      return "New player - neutral seeding";
     }
 
     if (winPct > 70) {
-      parts.push('excellent win rate');
+      parts.push("excellent win rate");
     } else if (winPct > 50) {
-      parts.push('good win rate');
+      parts.push("good win rate");
     } else if (winPct > 30) {
-      parts.push('moderate win rate');
+      parts.push("moderate win rate");
     }
 
     if (championships > 0) {
-      parts.push(`${championships} championship${championships > 1 ? 's' : ''}`);
+      parts.push(
+        `${championships} championship${championships > 1 ? "s" : ""}`,
+      );
     }
 
     if (avgFinish <= 3) {
-      parts.push('consistently high finishes');
+      parts.push("consistently high finishes");
     } else if (avgFinish <= 6) {
-      parts.push('solid tournament finishes');
+      parts.push("solid tournament finishes");
     }
 
     if (tournamentsPlayed >= 10) {
-      parts.push('extensive experience');
+      parts.push("extensive experience");
     } else if (tournamentsPlayed >= 5) {
-      parts.push('good experience');
+      parts.push("good experience");
     }
 
-    return parts.length > 0 
-      ? parts.join(', ') 
-      : 'based on available statistics';
+    return parts.length > 0
+      ? parts.join(", ")
+      : "based on available statistics";
   }
 
   /**
@@ -192,7 +194,10 @@ export class TournamentSeedingService {
   }> {
     try {
       if (seeds.length < 2) {
-        return { success: false, message: 'Need at least 2 players for bracket' };
+        return {
+          success: false,
+          message: "Need at least 2 players for bracket",
+        };
       }
 
       // Ensure we have a power of 2 number of players
@@ -202,16 +207,16 @@ export class TournamentSeedingService {
       // Create first round pairings using traditional seeding
       // Seed 1 vs lowest seed, seed 2 vs second lowest, etc.
       const sortedSeeds = [...seeds].sort((a, b) => a.seed - b.seed);
-      
+
       for (let i = 0; i < Math.floor(sortedSeeds.length / 2); i++) {
         const highSeed = sortedSeeds[i];
         const lowSeed = sortedSeeds[sortedSeeds.length - 1 - i];
-        
+
         if (highSeed && lowSeed) {
           pairings.push({
             team1: highSeed,
             team2: lowSeed,
-            round: 'first',
+            round: "first",
           });
         }
       }
@@ -227,8 +232,8 @@ export class TournamentSeedingService {
         pairings,
       };
     } catch (error) {
-      console.error('Bracket pairing error:', error);
-      return { success: false, message: 'Failed to generate bracket pairings' };
+      console.error("Bracket pairing error:", error);
+      return { success: false, message: "Failed to generate bracket pairings" };
     }
   }
 
@@ -237,7 +242,7 @@ export class TournamentSeedingService {
    */
   static async getSeedingPreview(
     playerIds: string[],
-    tournamentFormat: string
+    tournamentFormat: string,
   ): Promise<{
     success: boolean;
     message: string;
@@ -250,8 +255,11 @@ export class TournamentSeedingService {
     };
   }> {
     try {
-      const seedingResult = await this.calculateSeeding(playerIds, tournamentFormat);
-      
+      const seedingResult = await this.calculateSeeding(
+        playerIds,
+        tournamentFormat,
+      );
+
       if (!seedingResult.success || !seedingResult.seeds) {
         return { success: false, message: seedingResult.message };
       }
@@ -262,7 +270,7 @@ export class TournamentSeedingService {
 
       return {
         success: true,
-        message: 'Seeding preview generated',
+        message: "Seeding preview generated",
         preview: {
           totalPlayers,
           bracketSize,
@@ -272,8 +280,8 @@ export class TournamentSeedingService {
         },
       };
     } catch (error) {
-      console.error('Seeding preview error:', error);
-      return { success: false, message: 'Failed to generate seeding preview' };
+      console.error("Seeding preview error:", error);
+      return { success: false, message: "Failed to generate seeding preview" };
     }
   }
 }

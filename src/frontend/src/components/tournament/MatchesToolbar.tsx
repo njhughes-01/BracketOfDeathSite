@@ -1,4 +1,4 @@
-import React from 'react';
+import React from "react";
 
 interface Props {
   matchCount: number;
@@ -28,7 +28,7 @@ const MatchesToolbar: React.FC<Props> = ({
   return (
     <div className="flex items-center justify-between mb-2 text-white">
       <div className="text-sm text-slate-400">
-        {matchCount} match{matchCount === 1 ? '' : 'es'} in this round
+        {matchCount} match{matchCount === 1 ? "" : "es"} in this round
       </div>
       <div className="flex items-center space-x-3">
         <label className="flex items-center space-x-2 text-sm text-slate-300 cursor-pointer hover:text-white transition-colors">
@@ -74,4 +74,3 @@ const MatchesToolbar: React.FC<Props> = ({
 };
 
 export default MatchesToolbar;
-

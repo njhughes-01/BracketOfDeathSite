@@ -22,26 +22,29 @@ export interface TennisScoreValidation {
  * @param team2Score - Score for team 2
  * @returns Validation result with reason if invalid
  */
-export function validateTennisScore(team1Score: number, team2Score: number): TennisScoreValidation {
+export function validateTennisScore(
+  team1Score: number,
+  team2Score: number,
+): TennisScoreValidation {
   // Ensure scores are non-negative integers
   if (!Number.isInteger(team1Score) || !Number.isInteger(team2Score)) {
     return {
       isValid: false,
-      reason: 'Scores must be whole numbers'
+      reason: "Scores must be whole numbers",
     };
   }
 
   if (team1Score < 0 || team2Score < 0) {
     return {
       isValid: false,
-      reason: 'Scores cannot be negative'
+      reason: "Scores cannot be negative",
     };
   }
 
   // Special case: 0-0 is allowed for no contest/forfeit
   if (team1Score === 0 && team2Score === 0) {
     return {
-      isValid: true
+      isValid: true,
     };
   }
 
@@ -49,7 +52,7 @@ export function validateTennisScore(team1Score: number, team2Score: number): Ten
   if (team1Score === team2Score) {
     return {
       isValid: false,
-      reason: 'Scores cannot be tied - one team must win'
+      reason: "Scores cannot be tied - one team must win",
     };
   }
 
@@ -68,14 +71,14 @@ export function validateTennisScore(team1Score: number, team2Score: number): Ten
 
   // Check win-by-2 scenarios after 10-10 (12-10, 13-11, 14-12, etc.)
   // Both scores must be >= 10, difference must be 2, higher score wins
-  if (lowerScore >= 10 && (higherScore - lowerScore) === 2) {
+  if (lowerScore >= 10 && higherScore - lowerScore === 2) {
     return { isValid: true };
   }
 
   // Invalid score
   return {
     isValid: false,
-    reason: `Invalid score: ${team1Score}-${team2Score}. Valid scores: 11-0 through 11-9, or win-by-2 after 10-10 (e.g., 12-10, 13-11). Incomplete matches require admin override.`
+    reason: `Invalid score: ${team1Score}-${team2Score}. Valid scores: 11-0 through 11-9, or win-by-2 after 10-10 (e.g., 12-10, 13-11). Incomplete matches require admin override.`,
   };
 }
 
@@ -83,7 +86,10 @@ export function validateTennisScore(team1Score: number, team2Score: number): Ten
  * Check if a score requires admin override
  * (e.g., incomplete match, injury retirement)
  */
-export function requiresAdminOverride(team1Score: number, team2Score: number): boolean {
+export function requiresAdminOverride(
+  team1Score: number,
+  team2Score: number,
+): boolean {
   // Scores that don't follow standard tennis rules
   const validation = validateTennisScore(team1Score, team2Score);
   return !validation.isValid;
@@ -101,14 +107,14 @@ export interface ScoreValidationWithOverride {
 export function validateScoreForCompletion(
   team1Score: number,
   team2Score: number,
-  adminOverride?: { reason: string; authorizedBy: string }
+  adminOverride?: { reason: string; authorizedBy: string },
 ): ScoreValidationWithOverride {
   const validation = validateTennisScore(team1Score, team2Score);
 
   if (validation.isValid) {
     return {
       canComplete: true,
-      requiresOverride: false
+      requiresOverride: false,
     };
   }
 
@@ -117,7 +123,7 @@ export function validateScoreForCompletion(
     return {
       canComplete: true,
       requiresOverride: true,
-      validationMessage: `Admin override: ${adminOverride.reason}`
+      validationMessage: `Admin override: ${adminOverride.reason}`,
     };
   }
 
@@ -125,6 +131,6 @@ export function validateScoreForCompletion(
   return {
     canComplete: false,
     requiresOverride: true,
-    validationMessage: validation.reason
+    validationMessage: validation.reason,
   };
 }

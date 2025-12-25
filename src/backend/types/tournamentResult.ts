@@ -1,5 +1,5 @@
-import { Types } from 'mongoose';
-import { BaseDocument } from './common';
+import { Types } from "mongoose";
+import { BaseDocument } from "./common";
 
 export interface IRoundRobinScores {
   round1?: number;
@@ -66,9 +66,9 @@ export interface ITournamentResultFilter {
   players?: { $in: Types.ObjectId[] | string[] };
   division?: string | RegExp;
   seed?: number | { $gte?: number; $lte?: number };
-  'totalStats.finalRank'?: number | { $gte?: number; $lte?: number };
-  'totalStats.bodFinish'?: number | { $gte?: number; $lte?: number };
-  'totalStats.winPercentage'?: { $gte?: number; $lte?: number };
-  'tournament.date'?: any;
+  "totalStats.finalRank"?: number | { $gte?: number; $lte?: number };
+  "totalStats.bodFinish"?: number | { $gte?: number; $lte?: number };
+  "totalStats.winPercentage"?: { $gte?: number; $lte?: number };
+  "tournament.date"?: any;
   [key: string]: any; // Allow dynamic fields for aggregation
 }

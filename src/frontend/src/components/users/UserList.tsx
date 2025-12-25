@@ -152,7 +152,9 @@ const UserList: React.FC<UserListProps> = ({
                   </div>
                   <button className="text-xs font-bold text-primary flex items-center gap-1">
                     Manage
-                    <span className="material-symbols-outlined text-[16px]">chevron_right</span>
+                    <span className="material-symbols-outlined text-[16px]">
+                      chevron_right
+                    </span>
                   </button>
                 </div>
               </div>
@@ -237,10 +239,11 @@ const UserList: React.FC<UserListProps> = ({
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <span
-                        className={`inline-flex items-center gap-1 px-2.5 py-0.5 text-[10px] font-bold uppercase rounded-full ${user.enabled
+                        className={`inline-flex items-center gap-1 px-2.5 py-0.5 text-[10px] font-bold uppercase rounded-full ${
+                          user.enabled
                             ? "bg-green-500/20 text-green-400 border border-green-500/30"
                             : "bg-red-500/20 text-red-400 border border-red-500/30"
-                          }`}
+                        }`}
                       >
                         <span
                           className={`size-1.5 rounded-full ${user.enabled ? "bg-green-500" : "bg-red-500"}`}
@@ -269,4 +272,3 @@ const UserList: React.FC<UserListProps> = ({
 };
 
 export default UserList;
-

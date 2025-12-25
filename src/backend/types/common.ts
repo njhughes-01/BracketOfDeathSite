@@ -1,4 +1,4 @@
-import { Document, Types } from 'mongoose';
+import { Document, Types } from "mongoose";
 
 // Base interface for all models
 export interface BaseDocument extends Document {
@@ -16,14 +16,15 @@ export const ValidationPatterns = {
 
 // Common error messages
 export const ErrorMessages = {
-  REQUIRED: 'This field is required',
-  INVALID_FORMAT: 'Invalid format',
-  INVALID_EMAIL: 'Invalid email format',
-  INVALID_NAME: 'Name must be 2-50 characters and contain only letters, spaces, hyphens, and apostrophes',
-  INVALID_PHONE: 'Invalid phone number format',
-  NOT_FOUND: 'Resource not found',
-  DUPLICATE_ENTRY: 'Duplicate entry',
-  VALIDATION_ERROR: 'Validation error',
+  REQUIRED: "This field is required",
+  INVALID_FORMAT: "Invalid format",
+  INVALID_EMAIL: "Invalid email format",
+  INVALID_NAME:
+    "Name must be 2-50 characters and contain only letters, spaces, hyphens, and apostrophes",
+  INVALID_PHONE: "Invalid phone number format",
+  NOT_FOUND: "Resource not found",
+  DUPLICATE_ENTRY: "Duplicate entry",
+  VALIDATION_ERROR: "Validation error",
 } as const;
 
 // Common response interfaces

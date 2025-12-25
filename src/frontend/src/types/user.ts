@@ -31,7 +31,6 @@ export interface User {
   gender?: string;
 }
 
-
 export interface UserProfile {
   id: string;
   username: string;
@@ -67,7 +66,6 @@ export interface UpdateUserInput {
   playerId?: string;
   gender?: string;
 }
-
 
 export interface CreateUserRequest {
   username: string;

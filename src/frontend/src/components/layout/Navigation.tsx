@@ -1,27 +1,31 @@
-import React from 'react';
-import { NavLink } from 'react-router-dom';
-import { useAuth } from '../../contexts/AuthContext';
-import { usePermissions } from '../../hooks/usePermissions';
+import React from "react";
+import { NavLink } from "react-router-dom";
+import { useAuth } from "../../contexts/AuthContext";
+import { usePermissions } from "../../hooks/usePermissions";
 
 const Navigation: React.FC = () => {
   const { isAdmin } = useAuth();
   const { canViewAdmin, canManageUsers } = usePermissions();
-  
+
   const navItems = [
-    { path: '/', label: 'Home', icon: '🏠' },
-    { path: '/players', label: 'Players', icon: '👥' },
-    { path: '/tournaments', label: 'Tournaments', icon: '🏆' },
-    { path: '/results', label: 'Results', icon: '📊' },
+    { path: "/", label: "Home", icon: "🏠" },
+    { path: "/players", label: "Players", icon: "👥" },
+    { path: "/tournaments", label: "Tournaments", icon: "🏆" },
+    { path: "/results", label: "Results", icon: "📊" },
   ];
 
   // Add admin link for admin users
   if (canViewAdmin) {
-    navItems.push({ path: '/admin', label: 'Admin', icon: '⚙️' });
+    navItems.push({ path: "/admin", label: "Admin", icon: "⚙️" });
   }
 
   // Add user management for users with permissions
   if (canManageUsers) {
-    navItems.push({ path: '/admin/users', label: 'User Management', icon: '👤' });
+    navItems.push({
+      path: "/admin/users",
+      label: "User Management",
+      icon: "👤",
+    });
   }
 
   return (
@@ -35,8 +39,8 @@ const Navigation: React.FC = () => {
               className={({ isActive }) =>
                 `inline-flex items-center px-1 pt-1 pb-4 border-b-2 text-sm font-medium transition-colors ${
                   isActive
-                    ? 'border-primary-500 text-primary-600'
-                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                    ? "border-primary-500 text-primary-600"
+                    : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
                 }`
               }
             >

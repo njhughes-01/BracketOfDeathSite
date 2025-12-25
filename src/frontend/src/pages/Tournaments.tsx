@@ -1,15 +1,17 @@
-import React, { useState, useMemo } from 'react';
-import { Link } from 'react-router-dom';
-import { usePaginatedApi } from '../hooks/useApi';
-import { useAuth } from '../contexts/AuthContext';
-import apiClient from '../services/api';
-import { getTournamentStatus } from '../utils/tournamentStatus';
-import type { Tournament } from '../types/api';
+import React, { useState, useMemo } from "react";
+import { Link } from "react-router-dom";
+import { usePaginatedApi } from "../hooks/useApi";
+import { useAuth } from "../contexts/AuthContext";
+import apiClient from "../services/api";
+import { getTournamentStatus } from "../utils/tournamentStatus";
+import type { Tournament } from "../types/api";
 
 const Tournaments: React.FC = () => {
   const { isAdmin, user } = useAuth();
-  const [searchTerm, setSearchTerm] = useState('');
-  const [activeFilter, setActiveFilter] = useState<'All' | 'Live' | 'Upcoming' | 'My Registered'>('All');
+  const [searchTerm, setSearchTerm] = useState("");
+  const [activeFilter, setActiveFilter] = useState<
+    "All" | "Live" | "Upcoming" | "My Registered"
+  >("All");
 
   // Use usePaginatedApi
   const {
@@ -18,7 +20,7 @@ const Tournaments: React.FC = () => {
     refresh,
   } = usePaginatedApi<Tournament>(
     (page, filters) => apiClient.getTournaments({ page, ...filters }),
-    { pageSize: 50, immediate: true }
+    { pageSize: 50, immediate: true },
   );
 
   // Filter and Sort Logic
@@ -30,23 +32,28 @@ const Tournaments: React.FC = () => {
     // Search Filter
     if (searchTerm) {
       const lowerTerm = searchTerm.toLowerCase();
-      filtered = filtered.filter(t =>
-        t.bodNumber?.toString().includes(lowerTerm) ||
-        t.location?.toLowerCase().includes(lowerTerm) ||
-        t.format?.toLowerCase().includes(lowerTerm)
+      filtered = filtered.filter(
+        (t) =>
+          t.bodNumber?.toString().includes(lowerTerm) ||
+          t.location?.toLowerCase().includes(lowerTerm) ||
+          t.format?.toLowerCase().includes(lowerTerm),
       );
     }
 
     // Status/Tab Filter
     const now = new Date();
-    if (activeFilter === 'Upcoming') {
-      filtered = filtered.filter(t => new Date(t.date) > now);
-    } else if (activeFilter === 'Live') {
-      filtered = filtered.filter(t => getTournamentStatus(t.date) === 'active');
-    } else if (activeFilter === 'My Registered') {
+    if (activeFilter === "Upcoming") {
+      filtered = filtered.filter((t) => new Date(t.date) > now);
+    } else if (activeFilter === "Live") {
+      filtered = filtered.filter(
+        (t) => getTournamentStatus(t.date) === "active",
+      );
+    } else if (activeFilter === "My Registered") {
       // Filter by user registration
       if (user) {
-        filtered = filtered.filter(t => t.players?.some(p => p._id === user.id || p.name === user.username));
+        filtered = filtered.filter((t) =>
+          t.players?.some((p) => p._id === user.id || p.name === user.username),
+        );
       } else {
         filtered = []; // No results if not logged in
       }
@@ -55,15 +62,19 @@ const Tournaments: React.FC = () => {
     // Sort by Date (Default)
     // Upcoming -> Ascending
     // Others -> Descending (newest first)
-    if (activeFilter === 'Upcoming') {
-      return filtered.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+    if (activeFilter === "Upcoming") {
+      return filtered.sort(
+        (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime(),
+      );
     }
-    return filtered.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+    return filtered.sort(
+      (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime(),
+    );
   }, [tournaments, searchTerm, activeFilter, user]);
 
   const liveTournament = useMemo(() => {
     if (!tournaments) return null;
-    return tournaments.find(t => getTournamentStatus(t.date) === 'active');
+    return tournaments.find((t) => getTournamentStatus(t.date) === "active");
   }, [tournaments]);
 
   return (
@@ -75,20 +86,34 @@ const Tournaments: React.FC = () => {
           <div className="flex items-center gap-3">
             {/* Admin Add Button in Header or user defaults */}
             {isAdmin && (
-              <Link to="/tournaments/setup" className="flex items-center justify-center w-8 h-8 rounded-full hover:bg-gray-200 dark:hover:bg-white/10 transition-colors text-primary">
-                <span className="material-symbols-outlined text-[24px]">add_circle</span>
+              <Link
+                to="/tournaments/setup"
+                className="flex items-center justify-center w-8 h-8 rounded-full hover:bg-gray-200 dark:hover:bg-white/10 transition-colors text-primary"
+              >
+                <span className="material-symbols-outlined text-[24px]">
+                  add_circle
+                </span>
               </Link>
             )}
-            <h1 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-white">Tournaments</h1>
+            <h1 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-white">
+              Tournaments
+            </h1>
           </div>
 
           <div className="flex items-center gap-2">
-            <button onClick={() => refresh()} className="relative p-2 rounded-full hover:bg-gray-200 dark:hover:bg-white/10 transition-colors">
-              <span className="material-symbols-outlined text-slate-600 dark:text-slate-400 text-[24px]">refresh</span>
+            <button
+              onClick={() => refresh()}
+              className="relative p-2 rounded-full hover:bg-gray-200 dark:hover:bg-white/10 transition-colors"
+            >
+              <span className="material-symbols-outlined text-slate-600 dark:text-slate-400 text-[24px]">
+                refresh
+              </span>
             </button>
             {/* Notification */}
             <button className="relative p-2 rounded-full hover:bg-gray-200 dark:hover:bg-white/10 transition-colors">
-              <span className="material-symbols-outlined text-slate-600 dark:text-slate-400 text-[24px]">notifications</span>
+              <span className="material-symbols-outlined text-slate-600 dark:text-slate-400 text-[24px]">
+                notifications
+              </span>
               <span className="absolute top-2 right-2 h-2 w-2 rounded-full bg-neon-accent shadow-[0_0_8px_rgba(212,248,0,0.6)]"></span>
             </button>
           </div>
@@ -98,7 +123,9 @@ const Tournaments: React.FC = () => {
         <div className="px-4 pb-2">
           <div className="flex w-full items-center rounded-xl bg-white dark:bg-surface-dark border border-gray-200 dark:border-white/5 h-11 focus-within:ring-2 focus-within:ring-primary/50 transition-all">
             <div className="pl-3 pr-2 flex items-center justify-center text-slate-400">
-              <span className="material-symbols-outlined text-[20px]">search</span>
+              <span className="material-symbols-outlined text-[20px]">
+                search
+              </span>
             </div>
             <input
               className="w-full bg-transparent border-none text-sm text-slate-900 dark:text-white placeholder-slate-400 focus:ring-0 p-0"
@@ -108,8 +135,13 @@ const Tournaments: React.FC = () => {
               onChange={(e) => setSearchTerm(e.target.value)}
             />
             {searchTerm && (
-              <button onClick={() => setSearchTerm('')} className="pr-3 pl-2 flex items-center justify-center text-slate-400 hover:text-primary">
-                <span className="material-symbols-outlined text-[20px]">close</span>
+              <button
+                onClick={() => setSearchTerm("")}
+                className="pr-3 pl-2 flex items-center justify-center text-slate-400 hover:text-primary"
+              >
+                <span className="material-symbols-outlined text-[20px]">
+                  close
+                </span>
               </button>
             )}
           </div>
@@ -119,41 +151,51 @@ const Tournaments: React.FC = () => {
         <div className="flex gap-2 px-4 py-3 overflow-x-auto no-scrollbar items-center">
           {/* All Events */}
           <button
-            onClick={() => setActiveFilter('All')}
-            className={`shrink-0 flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium transition-all ${activeFilter === 'All'
-              ? 'bg-primary text-white shadow-lg shadow-primary/25'
-              : 'bg-white dark:bg-surface-dark border border-gray-200 dark:border-white/5 text-slate-600 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-white/5'}`}
+            onClick={() => setActiveFilter("All")}
+            className={`shrink-0 flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium transition-all ${
+              activeFilter === "All"
+                ? "bg-primary text-white shadow-lg shadow-primary/25"
+                : "bg-white dark:bg-surface-dark border border-gray-200 dark:border-white/5 text-slate-600 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-white/5"
+            }`}
           >
             <span>All Events</span>
           </button>
 
           {/* Live Now */}
           <button
-            onClick={() => setActiveFilter('Live')}
-            className={`shrink-0 flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium transition-all ${activeFilter === 'Live'
-              ? 'bg-primary text-white shadow-lg shadow-primary/25'
-              : 'bg-white dark:bg-surface-dark border border-gray-200 dark:border-white/5 text-slate-600 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-white/5'}`}
+            onClick={() => setActiveFilter("Live")}
+            className={`shrink-0 flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium transition-all ${
+              activeFilter === "Live"
+                ? "bg-primary text-white shadow-lg shadow-primary/25"
+                : "bg-white dark:bg-surface-dark border border-gray-200 dark:border-white/5 text-slate-600 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-white/5"
+            }`}
           >
-            <span className={`w-2 h-2 rounded-full bg-neon-accent shadow-[0_0_6px_rgba(212,248,0,0.8)] ${activeFilter === 'Live' ? 'animate-none' : 'animate-pulse'}`}></span>
+            <span
+              className={`w-2 h-2 rounded-full bg-neon-accent shadow-[0_0_6px_rgba(212,248,0,0.8)] ${activeFilter === "Live" ? "animate-none" : "animate-pulse"}`}
+            ></span>
             <span>Live Now</span>
           </button>
 
           {/* Upcoming */}
           <button
-            onClick={() => setActiveFilter('Upcoming')}
-            className={`shrink-0 flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium transition-all ${activeFilter === 'Upcoming'
-              ? 'bg-primary text-white shadow-lg shadow-primary/25'
-              : 'bg-white dark:bg-surface-dark border border-gray-200 dark:border-white/5 text-slate-600 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-white/5'}`}
+            onClick={() => setActiveFilter("Upcoming")}
+            className={`shrink-0 flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium transition-all ${
+              activeFilter === "Upcoming"
+                ? "bg-primary text-white shadow-lg shadow-primary/25"
+                : "bg-white dark:bg-surface-dark border border-gray-200 dark:border-white/5 text-slate-600 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-white/5"
+            }`}
           >
             <span>Upcoming</span>
           </button>
 
           {/* My Registered */}
           <button
-            onClick={() => setActiveFilter('My Registered')}
-            className={`shrink-0 flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium transition-all ${activeFilter === 'My Registered'
-              ? 'bg-primary text-white shadow-lg shadow-primary/25'
-              : 'bg-white dark:bg-[#1c2230] border border-gray-200 dark:border-gray-700 text-slate-600 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-gray-800'}`}
+            onClick={() => setActiveFilter("My Registered")}
+            className={`shrink-0 flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium transition-all ${
+              activeFilter === "My Registered"
+                ? "bg-primary text-white shadow-lg shadow-primary/25"
+                : "bg-white dark:bg-[#1c2230] border border-gray-200 dark:border-gray-700 text-slate-600 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-gray-800"
+            }`}
           >
             <span>My Registered</span>
           </button>
@@ -161,17 +203,21 @@ const Tournaments: React.FC = () => {
 
         {/* Secondary Filters (Hidden for now or static) */}
         <div className="flex items-center justify-between px-4 pb-3 pt-1 border-t border-gray-100 dark:border-gray-800/50">
-          <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">{filteredTournaments.length} Tournaments</p>
+          <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">
+            {filteredTournaments.length} Tournaments
+          </p>
           {/* Sorting placeholder if needed */}
         </div>
       </div>
 
       {/* Main Content Area */}
       <div className="flex-1 overflow-y-auto overflow-x-hidden p-4 space-y-4">
-
         {/* Featured Live Card */}
         {liveTournament && (
-          <Link to={`/tournaments/${liveTournament.id}`} className="block group relative overflow-hidden rounded-2xl bg-surface-dark border border-primary/30 p-0 shadow-lg shadow-primary/5 transition-all hover:border-primary/50">
+          <Link
+            to={`/tournaments/${liveTournament.id}`}
+            className="block group relative overflow-hidden rounded-2xl bg-surface-dark border border-primary/30 p-0 shadow-lg shadow-primary/5 transition-all hover:border-primary/50"
+          >
             <div className="absolute top-0 right-0 p-3 z-10">
               <span className="inline-flex items-center gap-1.5 rounded-full bg-neon-accent px-2.5 py-1 text-xs font-bold text-black shadow-[0_0_10px_rgba(212,248,0,0.4)] animate-pulse">
                 <span className="h-1.5 w-1.5 rounded-full bg-black"></span>
@@ -183,29 +229,52 @@ const Tournaments: React.FC = () => {
               <div className="h-32 w-full sm:w-32 sm:h-auto relative bg-gray-800 shrink-0">
                 <div
                   className="absolute inset-0 bg-cover bg-center opacity-80 group-hover:opacity-100 transition-opacity"
-                  style={{ backgroundImage: 'url("https://lh3.googleusercontent.com/aida-public/AB6AXuAaQ_oN9Qgwao-ZSZQjJ9QDYpsp0T1EtvGSKNed9sv515fUBVPkGBinAC8i7NzoN5JtuieSEmeGVTXm6RQZ83QaCNln8_yJ_k-s_ykaCW5Pc4feD14_rEm_LNGMzEXHCxuO2E6Dw92yNK0Cj9vZ2TaLU3UgCR-UyGDC9OuZJ0IM9IV4ifggudKpav2PmqVd-ya5QgjG1IfpKrz6QEf-HfONtzH6L33t7o3CDuvT_0UuqkZR82nx_z9lAp_oLFHYk8304yP3arqsyHk")' }}
+                  style={{
+                    backgroundImage:
+                      'url("https://lh3.googleusercontent.com/aida-public/AB6AXuAaQ_oN9Qgwao-ZSZQjJ9QDYpsp0T1EtvGSKNed9sv515fUBVPkGBinAC8i7NzoN5JtuieSEmeGVTXm6RQZ83QaCNln8_yJ_k-s_ykaCW5Pc4feD14_rEm_LNGMzEXHCxuO2E6Dw92yNK0Cj9vZ2TaLU3UgCR-UyGDC9OuZJ0IM9IV4ifggudKpav2PmqVd-ya5QgjG1IfpKrz6QEf-HfONtzH6L33t7o3CDuvT_0UuqkZR82nx_z9lAp_oLFHYk8304yP3arqsyHk")',
+                  }}
                 ></div>
                 <div className="absolute inset-0 bg-gradient-to-t from-[#1c2230] to-transparent sm:bg-gradient-to-r sm:from-transparent sm:to-[#1c2230]"></div>
               </div>
 
               <div className="flex-1 p-4 pt-2 sm:p-5 sm:pl-2">
                 <div className="flex justify-between items-start mb-1">
-                  <span className="text-xs font-bold text-primary uppercase tracking-wider">Major Event</span>
+                  <span className="text-xs font-bold text-primary uppercase tracking-wider">
+                    Major Event
+                  </span>
                 </div>
                 <h3 className="text-lg font-bold text-white mb-1 leading-tight">{`BOD #${liveTournament.bodNumber}`}</h3>
                 <div className="flex items-center text-slate-400 text-xs mb-3 gap-2">
-                  <span className="flex items-center gap-1"><span className="material-symbols-outlined text-[14px]">location_on</span> {liveTournament.location}</span>
-                  <span className="flex items-center gap-1"><span className="material-symbols-outlined text-[14px]">sports_tennis</span> {liveTournament.format}</span>
+                  <span className="flex items-center gap-1">
+                    <span className="material-symbols-outlined text-[14px]">
+                      location_on
+                    </span>{" "}
+                    {liveTournament.location}
+                  </span>
+                  <span className="flex items-center gap-1">
+                    <span className="material-symbols-outlined text-[14px]">
+                      sports_tennis
+                    </span>{" "}
+                    {liveTournament.format}
+                  </span>
                 </div>
 
                 <div className="flex items-center justify-between mt-2 pt-3 border-t border-gray-700/50">
                   <div className="flex -space-x-2">
                     <div className="h-6 w-6 rounded-full ring-2 ring-[#1c2230] bg-gray-600"></div>
                     <div className="h-6 w-6 rounded-full ring-2 ring-[#1c2230] bg-gray-500"></div>
-                    <div className="h-6 w-6 rounded-full ring-2 ring-[#1c2230] bg-gray-700 flex items-center justify-center text-[8px] text-white font-bold">+{liveTournament.currentPlayerCount || 10}</div>
+                    <div className="h-6 w-6 rounded-full ring-2 ring-[#1c2230] bg-gray-700 flex items-center justify-center text-[8px] text-white font-bold">
+                      +{liveTournament.currentPlayerCount || 10}
+                    </div>
                   </div>
                   <span className="text-neon-accent text-xs font-bold hover:underline flex items-center gap-1">
-                    Watch Live <span className="material-symbols-outlined" style={{ fontSize: '14px' }}>arrow_forward</span>
+                    Watch Live{" "}
+                    <span
+                      className="material-symbols-outlined"
+                      style={{ fontSize: "14px" }}
+                    >
+                      arrow_forward
+                    </span>
                   </span>
                 </div>
               </div>
@@ -216,47 +285,77 @@ const Tournaments: React.FC = () => {
         {/* Filtered Lists */}
         {loading ? (
           <div className="space-y-4">
-            {[1, 2, 3].map(i => <div key={i} className="h-24 bg-card-dark rounded-xl animate-pulse"></div>)}
+            {[1, 2, 3].map((i) => (
+              <div
+                key={i}
+                className="h-24 bg-card-dark rounded-xl animate-pulse"
+              ></div>
+            ))}
           </div>
         ) : filteredTournaments.length > 0 ? (
-          filteredTournaments.map(tournament => {
+          filteredTournaments.map((tournament) => {
             const date = new Date(tournament.date);
-            const month = date.toLocaleString('default', { month: 'short' });
+            const month = date.toLocaleString("default", { month: "short" });
             const day = date.getDate();
             const status = getTournamentStatus(tournament.date);
 
             return (
-              <Link key={tournament.id} to={`/tournaments/${tournament.id}`} className="flex flex-col rounded-xl bg-white dark:bg-card-dark p-4 shadow-sm border border-transparent hover:border-white/10 transition-all">
+              <Link
+                key={tournament.id}
+                to={`/tournaments/${tournament.id}`}
+                className="flex flex-col rounded-xl bg-white dark:bg-card-dark p-4 shadow-sm border border-transparent hover:border-white/10 transition-all"
+              >
                 <div className="flex gap-4">
                   {/* Date Box */}
                   <div className="flex flex-col items-center justify-center h-14 w-14 rounded-lg bg-background-light dark:bg-surface-dark shrink-0 border border-gray-200 dark:border-white/5">
-                    <span className={`text-[10px] font-bold uppercase ${status === 'active' ? 'text-red-500' : 'text-slate-500'}`}>{month}</span>
-                    <span className="text-xl font-bold text-slate-900 dark:text-white leading-none">{day}</span>
+                    <span
+                      className={`text-[10px] font-bold uppercase ${status === "active" ? "text-red-500" : "text-slate-500"}`}
+                    >
+                      {month}
+                    </span>
+                    <span className="text-xl font-bold text-slate-900 dark:text-white leading-none">
+                      {day}
+                    </span>
                   </div>
 
                   <div className="flex-1 min-w-0">
                     <div className="flex justify-between items-start">
                       <h3 className="text-base font-bold text-slate-900 dark:text-gray-100 truncate pr-2">{`BOD #${tournament.bodNumber}`}</h3>
-                      <span className={`shrink-0 inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium ring-1 ring-inset ${status === 'active' ? 'bg-primary/10 text-primary ring-primary/20' :
-                        status === 'scheduled' ? 'bg-green-500/10 text-green-500 ring-green-500/20' :
-                          status === 'completed' ? 'bg-gray-500/10 text-gray-400 ring-gray-500/20' :
-                            'bg-blue-500/10 text-blue-400 ring-blue-500/20'
-                        }`}>
-                        {status === 'active' ? 'Live' : status}
+                      <span
+                        className={`shrink-0 inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium ring-1 ring-inset ${
+                          status === "active"
+                            ? "bg-primary/10 text-primary ring-primary/20"
+                            : status === "scheduled"
+                              ? "bg-green-500/10 text-green-500 ring-green-500/20"
+                              : status === "completed"
+                                ? "bg-gray-500/10 text-gray-400 ring-gray-500/20"
+                                : "bg-blue-500/10 text-blue-400 ring-blue-500/20"
+                        }`}
+                      >
+                        {status === "active" ? "Live" : status}
                       </span>
                     </div>
                     <p className="text-sm text-slate-500 dark:text-slate-400 mt-0.5 flex items-center gap-1">
-                      {tournament.location} <span className="text-slate-700 dark:text-slate-600">•</span> {tournament.format}
+                      {tournament.location}{" "}
+                      <span className="text-slate-700 dark:text-slate-600">
+                        •
+                      </span>{" "}
+                      {tournament.format}
                     </p>
                     <div className="mt-2 flex items-center gap-2">
                       <span className="inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[10px] font-medium bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400">
-                        <span className="material-symbols-outlined text-[12px]">group</span> {tournament.maxPlayers || 16} Players
+                        <span className="material-symbols-outlined text-[12px]">
+                          group
+                        </span>{" "}
+                        {tournament.maxPlayers || 16} Players
                       </span>
                     </div>
                   </div>
 
                   <div className="flex flex-col items-end justify-center shrink-0 pl-1">
-                    <span className="material-symbols-outlined text-slate-400 hover:text-white transition-colors">chevron_right</span>
+                    <span className="material-symbols-outlined text-slate-400 hover:text-white transition-colors">
+                      chevron_right
+                    </span>
                   </div>
                 </div>
               </Link>
@@ -265,14 +364,27 @@ const Tournaments: React.FC = () => {
         ) : (
           <div className="flex flex-col items-center justify-center py-16 text-center">
             <div className="size-16 rounded-full bg-slate-100 dark:bg-card-dark flex items-center justify-center mb-4">
-              <span className="material-symbols-outlined text-slate-400 text-3xl">sports_tennis</span>
+              <span className="material-symbols-outlined text-slate-400 text-3xl">
+                sports_tennis
+              </span>
             </div>
-            <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-1">No tournaments found</h3>
-            <p className="text-slate-500 dark:text-slate-400 text-sm mb-4">Try adjusting your filters.</p>
-            <button onClick={() => { setActiveFilter('All'); setSearchTerm(''); }} className="text-primary font-bold text-sm hover:underline">Clear Filters</button>
+            <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-1">
+              No tournaments found
+            </h3>
+            <p className="text-slate-500 dark:text-slate-400 text-sm mb-4">
+              Try adjusting your filters.
+            </p>
+            <button
+              onClick={() => {
+                setActiveFilter("All");
+                setSearchTerm("");
+              }}
+              className="text-primary font-bold text-sm hover:underline"
+            >
+              Clear Filters
+            </button>
           </div>
         )}
-
       </div>
     </div>
   );

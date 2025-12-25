@@ -104,7 +104,6 @@ describe("ProfileController", () => {
       });
     });
 
-
     it("should return isComplete: true for admin user regardless of player data", async () => {
       // Mock Keycloak user response with admin role in realmRoles
       const mockKcUser = {
