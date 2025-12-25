@@ -9,7 +9,9 @@ export class SettingsController {
   // Get current settings (masked)
   public getSettings = async (req: RequestWithAuth, res: Response) => {
     try {
-      const settings = await SystemSettings.findOne();
+      const settings = await SystemSettings.findOne().select(
+        "+mailjetApiKey +mailjetApiSecret +mailgunApiKey",
+      );
 
       const response: ApiResponse = {
         success: true,
@@ -267,6 +269,32 @@ export class SettingsController {
       res.json({ success: true, data: { configured } });
     } catch (error) {
       res.json({ success: true, data: { configured: false } });
+    }
+  };
+
+  // Verify provider credentials
+  public verifyCredentials = async (req: RequestWithAuth, res: Response) => {
+    try {
+      const { provider, ...config } = req.body;
+
+      if (!provider || !SUPPORTED_EMAIL_PROVIDERS.includes(provider)) {
+        res.status(400).json({ success: false, error: "Invalid provider" });
+        return;
+      }
+
+      const verified = await emailService.verifyProvider(provider, config);
+
+      if (verified) {
+        res.json({ success: true, message: "Credentials verified successfully" });
+      } else {
+        res.status(400).json({
+          success: false,
+          error: "Verification failed. Please check your credentials.",
+        });
+      }
+    } catch (error) {
+      console.error("Error verifying credentials:", error);
+      res.status(500).json({ success: false, error: "Internal server error during verification" });
     }
   };
 }

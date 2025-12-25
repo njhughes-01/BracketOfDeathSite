@@ -16,4 +16,7 @@ router.put("/", requireSuperAdmin, SettingsController.updateSettings);
 // POST /api/settings/email/test - Send test email
 router.post("/email/test", requireSuperAdmin, SettingsController.testEmail);
 
+// POST /api/settings/email/verify - Verify credentials
+router.post("/email/verify", requireSuperAdmin, SettingsController.verifyCredentials);
+
 export default router;
