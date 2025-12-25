@@ -21,6 +21,7 @@ describe("Onboarding Component", () => {
     (useAuth as any).mockReturnValue({
       user: { username: "testuser", firstName: "Test" },
       refreshUser: vi.fn(),
+      forceTokenRefresh: vi.fn(),
     });
     // Default to initialized system so we see the profile form
     (apiClient.getSystemStatus as any).mockResolvedValue({

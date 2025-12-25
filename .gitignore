@@ -18,3 +18,7 @@ CON
 latest_tournament.json
 status.txt
 .env
+
+# Testing
+coverage/
+.nyc_output/
