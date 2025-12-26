@@ -88,6 +88,143 @@ export class TournamentController extends BaseController<ITournament> {
     };
   }
 
+  // Override getAll to include player counts from TournamentResults
+  override getAll = async (
+    req: Request,
+    res: Response,
+    next: NextFunction,
+  ): Promise<void> => {
+    try {
+      const page = parseInt(req.query.page as string) || 1;
+      const limit = parseInt(req.query.limit as string) || 10;
+      const sortField = (req.query.sort as string) || "-date";
+      const skip = (page - 1) * limit;
+
+      // Build base filter
+      const filter = this.buildFilter(req.query);
+
+      // Use aggregation to include result player count
+      const pipeline: any[] = [
+        { $match: filter },
+        {
+          $lookup: {
+            from: "tournamentresults",
+            localField: "_id",
+            foreignField: "tournamentId",
+            as: "tournamentResults",
+          },
+        },
+        {
+          $addFields: {
+            // Count results (each result typically = 1 player or 1 team entry)
+            resultPlayerCount: { $size: "$tournamentResults" },
+            // Use players array length if available, otherwise use result count
+            currentPlayerCount: {
+              $cond: {
+                if: { $gt: [{ $size: { $ifNull: ["$players", []] } }, 0] },
+                then: { $size: "$players" },
+                else: { $size: "$tournamentResults" },
+              },
+            },
+          },
+        },
+        // Remove the heavy results array from output
+        { $project: { tournamentResults: 0 } },
+      ];
+
+      // Add sorting
+      const sortDirection = sortField.startsWith("-") ? -1 : 1;
+      const sortKey = sortField.replace(/^-/, "");
+      pipeline.push({ $sort: { [sortKey]: sortDirection } });
+
+      // Get total count before pagination
+      const countPipeline = [...pipeline.slice(0, 2), { $count: "total" }];
+      const countResult = await Tournament.aggregate(countPipeline);
+      const totalDocs = countResult[0]?.total || 0;
+
+      // Add pagination
+      pipeline.push({ $skip: skip }, { $limit: limit });
+
+      const docs = await Tournament.aggregate(pipeline);
+
+      const totalPages = Math.ceil(totalDocs / limit);
+
+      const result = {
+        docs,
+        totalDocs,
+        limit,
+        page,
+        totalPages,
+        hasNextPage: page < totalPages,
+        hasPrevPage: page > 1,
+        nextPage: page < totalPages ? page + 1 : null,
+        prevPage: page > 1 ? page - 1 : null,
+        pagingCounter: skip + 1,
+      };
+
+      res.status(200).json(result);
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  // Override getById to include result player count for single tournament
+  override getById = async (
+    req: Request,
+    res: Response,
+    next: NextFunction,
+  ): Promise<void> => {
+    try {
+      const { id } = req.params;
+
+      // Use aggregation to get tournament with result count
+      const pipeline: any[] = [
+        { $match: { _id: new (require("mongoose").Types.ObjectId)(id) } },
+        {
+          $lookup: {
+            from: "tournamentresults",
+            localField: "_id",
+            foreignField: "tournamentId",
+            as: "tournamentResults",
+          },
+        },
+        {
+          $addFields: {
+            resultPlayerCount: { $size: "$tournamentResults" },
+            currentPlayerCount: {
+              $cond: {
+                if: { $gt: [{ $size: { $ifNull: ["$players", []] } }, 0] },
+                then: { $size: "$players" },
+                else: { $size: "$tournamentResults" },
+              },
+            },
+          },
+        },
+        { $project: { tournamentResults: 0 } },
+      ];
+
+      const [tournament] = await Tournament.aggregate(pipeline);
+
+      if (!tournament) {
+        const response: ApiResponse = {
+          success: false,
+          error: "Tournament not found",
+        };
+        res.status(404).json(response);
+        return;
+      }
+
+      const response: ApiResponse = {
+        success: true,
+        data: tournament,
+      };
+
+      res.status(200).json(response);
+    } catch (error) {
+      next(error);
+    }
+  };
+
   // Get tournament statistics
   getStats = this.asyncHandler(
     async (req: Request, res: Response, next: NextFunction): Promise<void> => {

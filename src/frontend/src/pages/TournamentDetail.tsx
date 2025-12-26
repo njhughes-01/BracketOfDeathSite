@@ -562,6 +562,207 @@ const TournamentDetail: React.FC = () => {
                 </div>
               </div>
 
+              {/* Admin Configuration Section - Only visible to admins */}
+              {isAdmin &&
+                (tournament.seedingConfig ||
+                  tournament.teamFormationConfig ||
+                  tournament.managementState) && (
+                  <div className="bg-[#1c2230] rounded-2xl p-6 border border-white/5 shadow-lg">
+                    <div className="flex items-center gap-2 mb-4">
+                      <span className="material-symbols-outlined text-primary">
+                        admin_panel_settings
+                      </span>
+                      <h3 className="text-white font-bold text-lg">
+                        Configuration
+                      </h3>
+                      <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase bg-primary/20 text-primary">
+                        Admin Only
+                      </span>
+                    </div>
+                    <div className="space-y-4">
+                      {/* Seeding Configuration */}
+                      {tournament.seedingConfig && (
+                        <div>
+                          <span className="text-[10px] text-slate-500 uppercase tracking-wider font-bold block mb-2">
+                            Seeding Method
+                          </span>
+                          <div className="grid grid-cols-2 gap-3">
+                            <div className="bg-background-dark rounded-lg p-3">
+                              <span className="text-slate-400 text-xs block mb-1">
+                                Method
+                              </span>
+                              <span className="text-white text-sm font-medium capitalize">
+                                {tournament.seedingConfig.method?.replace(
+                                  /_/g,
+                                  " ",
+                                ) || "Not set"}
+                              </span>
+                            </div>
+                            {tournament.seedingConfig.parameters && (
+                              <>
+                                {tournament.seedingConfig.parameters
+                                  .recentTournamentCount !== undefined && (
+                                  <div className="bg-background-dark rounded-lg p-3">
+                                    <span className="text-slate-400 text-xs block mb-1">
+                                      Recent Tournaments
+                                    </span>
+                                    <span className="text-white text-sm font-medium">
+                                      {
+                                        tournament.seedingConfig.parameters
+                                          .recentTournamentCount
+                                      }
+                                    </span>
+                                  </div>
+                                )}
+                                {tournament.seedingConfig.parameters
+                                  .championshipWeight !== undefined && (
+                                  <div className="bg-background-dark rounded-lg p-3">
+                                    <span className="text-slate-400 text-xs block mb-1">
+                                      Championship Weight
+                                    </span>
+                                    <span className="text-white text-sm font-medium">
+                                      {
+                                        tournament.seedingConfig.parameters
+                                          .championshipWeight
+                                      }
+                                    </span>
+                                  </div>
+                                )}
+                                {tournament.seedingConfig.parameters
+                                  .winPercentageWeight !== undefined && (
+                                  <div className="bg-background-dark rounded-lg p-3">
+                                    <span className="text-slate-400 text-xs block mb-1">
+                                      Win % Weight
+                                    </span>
+                                    <span className="text-white text-sm font-medium">
+                                      {
+                                        tournament.seedingConfig.parameters
+                                          .winPercentageWeight
+                                      }
+                                    </span>
+                                  </div>
+                                )}
+                                {tournament.seedingConfig.parameters
+                                  .avgFinishWeight !== undefined && (
+                                  <div className="bg-background-dark rounded-lg p-3">
+                                    <span className="text-slate-400 text-xs block mb-1">
+                                      Avg Finish Weight
+                                    </span>
+                                    <span className="text-white text-sm font-medium">
+                                      {
+                                        tournament.seedingConfig.parameters
+                                          .avgFinishWeight
+                                      }
+                                    </span>
+                                  </div>
+                                )}
+                              </>
+                            )}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Team Formation Configuration */}
+                      {tournament.teamFormationConfig && (
+                        <>
+                          <div className="h-px bg-white/5"></div>
+                          <div>
+                            <span className="text-[10px] text-slate-500 uppercase tracking-wider font-bold block mb-2">
+                              Team Formation
+                            </span>
+                            <div className="grid grid-cols-2 gap-3">
+                              <div className="bg-background-dark rounded-lg p-3">
+                                <span className="text-slate-400 text-xs block mb-1">
+                                  Method
+                                </span>
+                                <span className="text-white text-sm font-medium capitalize">
+                                  {tournament.teamFormationConfig.method?.replace(
+                                    /_/g,
+                                    " ",
+                                  ) || "Not set"}
+                                </span>
+                              </div>
+                              {tournament.teamFormationConfig.parameters && (
+                                <>
+                                  {tournament.teamFormationConfig.parameters
+                                    .skillBalancing !== undefined && (
+                                    <div className="bg-background-dark rounded-lg p-3">
+                                      <span className="text-slate-400 text-xs block mb-1">
+                                        Skill Balancing
+                                      </span>
+                                      <span
+                                        className={`text-sm font-medium ${tournament.teamFormationConfig.parameters.skillBalancing ? "text-green-400" : "text-slate-400"}`}
+                                      >
+                                        {tournament.teamFormationConfig
+                                          .parameters.skillBalancing
+                                          ? "Enabled"
+                                          : "Disabled"}
+                                      </span>
+                                    </div>
+                                  )}
+                                  {tournament.teamFormationConfig.parameters
+                                    .avoidRecentPartners !== undefined && (
+                                    <div className="bg-background-dark rounded-lg p-3">
+                                      <span className="text-slate-400 text-xs block mb-1">
+                                        Avoid Recent Partners
+                                      </span>
+                                      <span
+                                        className={`text-sm font-medium ${tournament.teamFormationConfig.parameters.avoidRecentPartners ? "text-green-400" : "text-slate-400"}`}
+                                      >
+                                        {tournament.teamFormationConfig
+                                          .parameters.avoidRecentPartners
+                                          ? "Yes"
+                                          : "No"}
+                                      </span>
+                                    </div>
+                                  )}
+                                  {tournament.teamFormationConfig.parameters
+                                    .maxTimesPartnered !== undefined && (
+                                    <div className="bg-background-dark rounded-lg p-3">
+                                      <span className="text-slate-400 text-xs block mb-1">
+                                        Max Times Partnered
+                                      </span>
+                                      <span className="text-white text-sm font-medium">
+                                        {
+                                          tournament.teamFormationConfig
+                                            .parameters.maxTimesPartnered
+                                        }
+                                      </span>
+                                    </div>
+                                  )}
+                                </>
+                              )}
+                            </div>
+                          </div>
+                        </>
+                      )}
+
+                      {/* Management State */}
+                      {tournament.managementState?.currentRound && (
+                        <>
+                          <div className="h-px bg-white/5"></div>
+                          <div>
+                            <span className="text-[10px] text-slate-500 uppercase tracking-wider font-bold block mb-2">
+                              Management State
+                            </span>
+                            <div className="bg-background-dark rounded-lg p-3 inline-block">
+                              <span className="text-slate-400 text-xs block mb-1">
+                                Current Round
+                              </span>
+                              <span className="text-primary text-sm font-bold uppercase">
+                                {tournament.managementState.currentRound.replace(
+                                  /_/g,
+                                  " ",
+                                )}
+                              </span>
+                            </div>
+                          </div>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                )}
+
               {/* Live Section Placeholders */}
               {isLive && (
                 <div className="bg-gradient-to-br from-primary/10 to-primary/5 rounded-2xl p-6 border border-primary/20">
@@ -996,6 +1197,49 @@ const TournamentDetail: React.FC = () => {
                       </span>
                     </Link>
                   ))}
+
+                  {/* Waitlist Players Section */}
+                  {tournament.waitlistPlayers &&
+                    tournament.waitlistPlayers.length > 0 && (
+                      <>
+                        <div className="h-px bg-white/10 my-4"></div>
+                        <h4 className="text-white font-bold text-sm uppercase tracking-wider flex items-center gap-2">
+                          <span className="material-symbols-outlined text-yellow-500 text-lg">
+                            hourglass_empty
+                          </span>
+                          Waitlist ({tournament.waitlistPlayers.length})
+                        </h4>
+                        {tournament.waitlistPlayers.map(
+                          (player: any, idx: number) => (
+                            <Link
+                              to={`/players/${player._id}`}
+                              key={player._id}
+                              className="flex items-center justify-between p-3 rounded-xl bg-yellow-500/5 border border-yellow-500/10 hover:border-yellow-500/20 transition-all group"
+                            >
+                              <div className="flex items-center gap-4">
+                                <div className="size-8 rounded-full bg-yellow-500/20 flex items-center justify-center text-yellow-500 font-bold text-xs">
+                                  {idx + 1}
+                                </div>
+                                <div className="size-10 rounded-full bg-gray-700 flex items-center justify-center text-white font-bold text-xs">
+                                  {player.name?.[0]}
+                                </div>
+                                <div>
+                                  <p className="text-white font-bold text-sm group-hover:text-yellow-500 transition-colors">
+                                    {player.name}
+                                  </p>
+                                  <p className="text-yellow-500/60 text-xs">
+                                    Position #{idx + 1} on waitlist
+                                  </p>
+                                </div>
+                              </div>
+                              <span className="material-symbols-outlined text-slate-600 group-hover:text-white transition-colors">
+                                chevron_right
+                              </span>
+                            </Link>
+                          ),
+                        )}
+                      </>
+                    )}
                 </div>
               ) : (
                 <div className="flex flex-col items-center justify-center py-16 text-center">
