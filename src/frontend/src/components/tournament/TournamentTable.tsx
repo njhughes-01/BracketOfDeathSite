@@ -3,7 +3,13 @@ import { Link } from "react-router-dom";
 import type { Tournament } from "../../types/api";
 import { getTournamentStatus } from "../../utils/tournamentStatus";
 
-export type SortField = "date" | "bodNumber" | "playerCount" | "status";
+export type SortField =
+  | "date"
+  | "bodNumber"
+  | "playerCount"
+  | "status"
+  | "location"
+  | "format";
 export type SortDirection = "asc" | "desc";
 
 interface TournamentTableProps {
@@ -157,12 +163,8 @@ const TournamentTable: React.FC<TournamentTableProps> = ({
           <tr className="border-b border-white/10">
             <SortableHeader field="bodNumber" label="BOD #" className="w-20" />
             <SortableHeader field="date" label="Date" className="w-28" />
-            <th className="text-left py-3 px-4 text-xs font-bold text-slate-500 uppercase tracking-wider">
-              Location
-            </th>
-            <th className="text-left py-3 px-4 text-xs font-bold text-slate-500 uppercase tracking-wider">
-              Format
-            </th>
+            <SortableHeader field="location" label="Location" />
+            <SortableHeader field="format" label="Format" className="w-28" />
             <SortableHeader
               field="playerCount"
               label="Players"

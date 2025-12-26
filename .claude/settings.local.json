@@ -33,7 +33,6 @@
       "Bash(docker restart:*)",
       "Bash(npm run typecheck:*)",
       "Bash(npx tsc:*)",
-<<<<<<< HEAD
       "mcp__archon__health_check",
       "mcp__archon__manage_project",
       "mcp__archon__manage_task",
@@ -43,8 +42,7 @@
       "Bash(python:*)",
       "Bash(cp:*)",
       "Bash(powershell:*)",
-      "Bash(git add:*)"
-=======
+      "Bash(git add:*)",
       "Bash(echo)",
       "Bash(npm run dev)",
       "mcp__sequential-thinking__sequentialthinking",
@@ -64,7 +62,6 @@
       "Bash(do echo \"=== $file ===\")",
       "Bash(done)",
       "Bash(python3:*)"
->>>>>>> new-ui
     ],
     "deny": []
   },
@@ -73,13 +70,11 @@
     "memory",
     "sequential-thinking",
     "filesystem",
-<<<<<<< HEAD
     "quillopy",
     "desktop-commander"
-  ]
+  ],
+  "statusLine": {
+    "type": "command",
+    "command": "powershell -NoProfile -Command \"$input = $input | ConvertFrom-Json; $cwd = $input.workspace.current_dir; $model = $input.model.display_name; $usage = $input.context_window.current_usage; $contextSize = $input.context_window.context_window_size; $gitBranch = ''; try { $gitBranch = git -C $cwd rev-parse --abbrev-ref HEAD 2>$null; if ($gitBranch) { $gitBranch = \\\" [$gitBranch]\\\" } } catch {}; $contextPct = ''; if ($usage -ne $null) { $currentTokens = $usage.input_tokens + $usage.cache_creation_input_tokens + $usage.cache_read_input_tokens; $pct = [math]::Floor(($currentTokens * 100) / $contextSize); $contextPct = \\\" | $pct% context\\\" }; Write-Host \\\"$cwd$gitBranch | $model$contextPct\\\" -NoNewline\""
+  }
 }
-=======
-    "quillopy"
-  ]
-}
->>>>>>> new-ui

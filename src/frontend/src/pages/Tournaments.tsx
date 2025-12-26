@@ -4,7 +4,8 @@ import { usePaginatedApi } from "../hooks/useApi";
 import { useAuth } from "../contexts/AuthContext";
 import apiClient from "../services/api";
 import { getTournamentStatus } from "../utils/tournamentStatus";
-import TournamentTable, {
+import TournamentTable from "../components/tournament/TournamentTable";
+import type {
   SortField,
   SortDirection,
 } from "../components/tournament/TournamentTable";
@@ -119,6 +120,12 @@ const Tournaments: React.FC = () => {
           const countA = a.players?.length || a.currentPlayerCount || 0;
           const countB = b.players?.length || b.currentPlayerCount || 0;
           comparison = countA - countB;
+          break;
+        case "location":
+          comparison = (a.location || "").localeCompare(b.location || "");
+          break;
+        case "format":
+          comparison = (a.format || "").localeCompare(b.format || "");
           break;
         case "status":
           const statusOrder = { active: 0, scheduled: 1, completed: 2 };

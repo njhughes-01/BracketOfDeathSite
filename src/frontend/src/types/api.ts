@@ -94,6 +94,63 @@ export interface Tournament {
     playerName: string;
     tournamentResult?: string;
   };
+  // Configuration fields
+  seedingConfig?: {
+    method: "historical" | "recent_form" | "elo" | "manual";
+    parameters?: {
+      recentTournamentCount?: number;
+      championshipWeight?: number;
+      winPercentageWeight?: number;
+      avgFinishWeight?: number;
+    };
+  };
+  teamFormationConfig?: {
+    method: "preformed" | "draft" | "statistical_pairing" | "random" | "manual";
+    parameters?: {
+      skillBalancing?: boolean;
+      avoidRecentPartners?: boolean;
+      maxTimesPartnered?: number;
+    };
+  };
+  // Generated tournament data
+  generatedSeeds?: Array<{
+    playerId: string;
+    playerName: string;
+    seed: number;
+    statistics?: {
+      avgFinish?: number;
+      winningPercentage?: number;
+      totalChampionships?: number;
+      bodsPlayed?: number;
+      recentForm?: number;
+    };
+  }>;
+  generatedTeams?: Array<{
+    teamId: string;
+    players: Array<{
+      playerId: string;
+      playerName: string;
+      seed?: number;
+      statistics?: {
+        avgFinish?: number;
+        winningPercentage?: number;
+        totalChampionships?: number;
+        bodsPlayed?: number;
+        recentForm?: number;
+      };
+    }>;
+    combinedSeed?: number;
+    teamName: string;
+    combinedStatistics?: {
+      avgFinish?: number;
+      combinedWinPercentage?: number;
+      totalChampionships?: number;
+      combinedBodsPlayed?: number;
+    };
+  }>;
+  managementState?: {
+    currentRound?: string;
+  };
   // Virtuals from backend
   formattedDate?: string;
   year?: number;
