@@ -13,6 +13,14 @@ vi.mock("../../contexts/AuthContext", () => ({
   }),
 }));
 
+// Mock the new tournament components to prevent interference
+vi.mock("../../components/tournament/TournamentTable", () => ({
+  default: () => null,
+}));
+vi.mock("../../components/tournament/TournamentFilters", () => ({
+  default: () => null,
+}));
+
 const mockTournaments = [
   {
     id: "1",

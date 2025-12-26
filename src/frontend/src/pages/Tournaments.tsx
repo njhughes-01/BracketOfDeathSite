@@ -1,9 +1,14 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useCallback } from "react";
 import { Link } from "react-router-dom";
 import { usePaginatedApi } from "../hooks/useApi";
 import { useAuth } from "../contexts/AuthContext";
 import apiClient from "../services/api";
 import { getTournamentStatus } from "../utils/tournamentStatus";
+import TournamentTable, {
+  SortField,
+  SortDirection,
+} from "../components/tournament/TournamentTable";
+import TournamentFilters from "../components/tournament/TournamentFilters";
 import type { Tournament } from "../types/api";
 
 const Tournaments: React.FC = () => {
@@ -12,6 +17,14 @@ const Tournaments: React.FC = () => {
   const [activeFilter, setActiveFilter] = useState<
     "All" | "Live" | "Upcoming" | "My Registered"
   >("All");
+
+  // New sorting and filtering state
+  const [sortField, setSortField] = useState<SortField>("date");
+  const [sortDirection, setSortDirection] = useState<SortDirection>("desc");
+  const [yearFilter, setYearFilter] = useState<number | null>(null);
+  const [formatFilter, setFormatFilter] = useState<string | null>(null);
+  const [statusFilter, setStatusFilter] = useState<string | null>(null);
+  const [viewMode, setViewMode] = useState<"table" | "cards">("cards");
 
   // Use usePaginatedApi
   const {
@@ -22,6 +35,17 @@ const Tournaments: React.FC = () => {
     (page, filters) => apiClient.getTournaments({ page, ...filters }),
     { pageSize: 50, immediate: true },
   );
+
+  // Get available years from tournaments
+  const availableYears = useMemo(() => {
+    if (!tournaments) return [];
+    const years = new Set<number>();
+    tournaments.forEach((t) => {
+      const year = new Date(t.date).getFullYear();
+      years.add(year);
+    });
+    return Array.from(years).sort((a, b) => b - a);
+  }, [tournaments]);
 
   // Filter and Sort Logic
   const filteredTournaments = useMemo(() => {
@@ -36,11 +60,33 @@ const Tournaments: React.FC = () => {
         (t) =>
           t.bodNumber?.toString().includes(lowerTerm) ||
           t.location?.toLowerCase().includes(lowerTerm) ||
-          t.format?.toLowerCase().includes(lowerTerm),
+          t.format?.toLowerCase().includes(lowerTerm) ||
+          t.champion?.playerName?.toLowerCase().includes(lowerTerm),
       );
     }
 
-    // Status/Tab Filter
+    // Year Filter
+    if (yearFilter) {
+      filtered = filtered.filter((t) => {
+        const year = new Date(t.date).getFullYear();
+        return year === yearFilter;
+      });
+    }
+
+    // Format Filter
+    if (formatFilter) {
+      filtered = filtered.filter((t) => t.format === formatFilter);
+    }
+
+    // Status Filter (from dropdown)
+    if (statusFilter) {
+      filtered = filtered.filter((t) => {
+        const status = getTournamentStatus(t.date);
+        return status === statusFilter;
+      });
+    }
+
+    // Status/Tab Filter (quick tabs)
     const now = new Date();
     if (activeFilter === "Upcoming") {
       filtered = filtered.filter((t) => new Date(t.date) > now);
@@ -49,33 +95,222 @@ const Tournaments: React.FC = () => {
         (t) => getTournamentStatus(t.date) === "active",
       );
     } else if (activeFilter === "My Registered") {
-      // Filter by user registration
       if (user) {
         filtered = filtered.filter((t) =>
           t.players?.some((p) => p._id === user.id || p.name === user.username),
         );
       } else {
-        filtered = []; // No results if not logged in
+        filtered = [];
       }
     }
 
-    // Sort by Date (Default)
-    // Upcoming -> Ascending
-    // Others -> Descending (newest first)
-    if (activeFilter === "Upcoming") {
-      return filtered.sort(
-        (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime(),
-      );
-    }
-    return filtered.sort(
-      (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime(),
-    );
-  }, [tournaments, searchTerm, activeFilter, user]);
+    // Sorting
+    filtered.sort((a, b) => {
+      let comparison = 0;
+
+      switch (sortField) {
+        case "date":
+          comparison = new Date(a.date).getTime() - new Date(b.date).getTime();
+          break;
+        case "bodNumber":
+          comparison = (a.bodNumber || 0) - (b.bodNumber || 0);
+          break;
+        case "playerCount":
+          const countA = a.players?.length || a.currentPlayerCount || 0;
+          const countB = b.players?.length || b.currentPlayerCount || 0;
+          comparison = countA - countB;
+          break;
+        case "status":
+          const statusOrder = { active: 0, scheduled: 1, completed: 2 };
+          const statusA = getTournamentStatus(a.date);
+          const statusB = getTournamentStatus(b.date);
+          comparison =
+            (statusOrder[statusA as keyof typeof statusOrder] || 2) -
+            (statusOrder[statusB as keyof typeof statusOrder] || 2);
+          break;
+      }
+
+      return sortDirection === "asc" ? comparison : -comparison;
+    });
+
+    return filtered;
+  }, [
+    tournaments,
+    searchTerm,
+    activeFilter,
+    user,
+    sortField,
+    sortDirection,
+    yearFilter,
+    formatFilter,
+    statusFilter,
+  ]);
 
   const liveTournament = useMemo(() => {
     if (!tournaments) return null;
     return tournaments.find((t) => getTournamentStatus(t.date) === "active");
   }, [tournaments]);
+
+  const handleSort = useCallback((field: SortField) => {
+    setSortField((prev) => {
+      if (prev === field) {
+        setSortDirection((dir) => (dir === "asc" ? "desc" : "asc"));
+        return prev;
+      }
+      setSortDirection("desc");
+      return field;
+    });
+  }, []);
+
+  const handleSortChange = useCallback(
+    (field: SortField, direction: SortDirection) => {
+      setSortField(field);
+      setSortDirection(direction);
+    },
+    [],
+  );
+
+  // Card view component (original design)
+  const renderCardView = () => {
+    if (loading) {
+      return (
+        <div className="space-y-4">
+          {[1, 2, 3].map((i) => (
+            <div
+              key={i}
+              className="h-24 bg-card-dark rounded-xl animate-pulse"
+            ></div>
+          ))}
+        </div>
+      );
+    }
+
+    if (filteredTournaments.length === 0) {
+      return (
+        <div className="flex flex-col items-center justify-center py-16 text-center">
+          <div className="size-16 rounded-full bg-slate-100 dark:bg-card-dark flex items-center justify-center mb-4">
+            <span className="material-symbols-outlined text-slate-400 text-3xl">
+              sports_tennis
+            </span>
+          </div>
+          <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-1">
+            No tournaments found
+          </h3>
+          <p className="text-slate-500 dark:text-slate-400 text-sm mb-4">
+            Try adjusting your filters.
+          </p>
+          <button
+            onClick={() => {
+              setActiveFilter("All");
+              setSearchTerm("");
+              setYearFilter(null);
+              setFormatFilter(null);
+              setStatusFilter(null);
+            }}
+            className="text-primary font-bold text-sm hover:underline"
+          >
+            Clear Filters
+          </button>
+        </div>
+      );
+    }
+
+    return filteredTournaments.map((tournament) => {
+      const date = new Date(tournament.date);
+      const month = date.toLocaleString("default", { month: "short" });
+      const day = date.getDate();
+      const status = getTournamentStatus(tournament.date);
+      const playerCount =
+        tournament.players?.length || tournament.currentPlayerCount || 0;
+
+      return (
+        <Link
+          key={tournament.id}
+          to={`/tournaments/${tournament.id}`}
+          className="flex flex-col rounded-xl bg-white dark:bg-card-dark p-4 shadow-sm border border-transparent hover:border-white/10 transition-all"
+        >
+          <div className="flex gap-4">
+            {/* Date Box */}
+            <div className="flex flex-col items-center justify-center h-14 w-14 rounded-lg bg-background-light dark:bg-surface-dark shrink-0 border border-gray-200 dark:border-white/5">
+              <span
+                className={`text-[10px] font-bold uppercase ${status === "active" ? "text-red-500" : "text-slate-500"}`}
+              >
+                {month}
+              </span>
+              <span className="text-xl font-bold text-slate-900 dark:text-white leading-none">
+                {day}
+              </span>
+            </div>
+
+            <div className="flex-1 min-w-0">
+              <div className="flex justify-between items-start">
+                <h3 className="text-base font-bold text-slate-900 dark:text-gray-100 truncate pr-2">{`BOD #${tournament.bodNumber}`}</h3>
+                <span
+                  className={`shrink-0 inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium ring-1 ring-inset ${
+                    status === "active"
+                      ? "bg-primary/10 text-primary ring-primary/20"
+                      : status === "scheduled"
+                        ? "bg-green-500/10 text-green-500 ring-green-500/20"
+                        : status === "completed"
+                          ? "bg-gray-500/10 text-gray-400 ring-gray-500/20"
+                          : "bg-blue-500/10 text-blue-400 ring-blue-500/20"
+                  }`}
+                >
+                  {status === "active" && (
+                    <span className="w-1.5 h-1.5 rounded-full bg-primary mr-1.5 animate-pulse" />
+                  )}
+                  {status === "active" ? "Live" : status}
+                </span>
+              </div>
+              <p className="text-sm text-slate-500 dark:text-slate-400 mt-0.5 flex items-center gap-1">
+                {tournament.location}{" "}
+                <span className="text-slate-700 dark:text-slate-600">•</span>{" "}
+                {tournament.format}
+              </p>
+              <div className="mt-2 flex items-center gap-2 flex-wrap">
+                <span className="inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[10px] font-medium bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400">
+                  <span className="material-symbols-outlined text-[12px]">
+                    group
+                  </span>{" "}
+                  {playerCount}
+                  {tournament.maxPlayers
+                    ? `/${tournament.maxPlayers}`
+                    : ""}{" "}
+                  Players
+                </span>
+                {/* Champion badge for completed tournaments */}
+                {status === "completed" && tournament.champion && (
+                  <span className="inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[10px] font-medium bg-yellow-500/10 text-yellow-500 ring-1 ring-inset ring-yellow-500/20">
+                    <span className="material-symbols-outlined text-[12px]">
+                      emoji_events
+                    </span>{" "}
+                    {tournament.champion.playerName}
+                  </span>
+                )}
+                {/* Registration status badge */}
+                {tournament.registrationStatus === "open" && (
+                  <span className="inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[10px] font-medium bg-green-500/10 text-green-400 ring-1 ring-inset ring-green-500/20">
+                    Open for Registration
+                  </span>
+                )}
+                {tournament.isFull && (
+                  <span className="inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[10px] font-medium bg-red-500/10 text-red-400 ring-1 ring-inset ring-red-500/20">
+                    Full
+                  </span>
+                )}
+              </div>
+            </div>
+
+            <div className="flex flex-col items-end justify-center shrink-0 pl-1">
+              <span className="material-symbols-outlined text-slate-400 hover:text-white transition-colors">
+                chevron_right
+              </span>
+            </div>
+          </div>
+        </Link>
+      );
+    });
+  };
 
   return (
     <div className="flex flex-col h-full bg-background-light dark:bg-background-dark min-h-screen pb-24 relative overflow-hidden">
@@ -212,6 +447,22 @@ const Tournaments: React.FC = () => {
 
       {/* Main Content Area */}
       <div className="flex-1 overflow-y-auto overflow-x-hidden p-4 space-y-4">
+        {/* Advanced Filters - Collapsible on mobile */}
+        <TournamentFilters
+          sortField={sortField}
+          sortDirection={sortDirection}
+          onSortChange={handleSortChange}
+          yearFilter={yearFilter}
+          onYearChange={setYearFilter}
+          formatFilter={formatFilter}
+          onFormatChange={setFormatFilter}
+          statusFilter={statusFilter}
+          onStatusChange={setStatusFilter}
+          viewMode={viewMode}
+          onViewModeChange={setViewMode}
+          availableYears={availableYears}
+        />
+
         {/* Featured Live Card */}
         {liveTournament && (
           <Link
@@ -282,108 +533,19 @@ const Tournaments: React.FC = () => {
           </Link>
         )}
 
-        {/* Filtered Lists */}
-        {loading ? (
-          <div className="space-y-4">
-            {[1, 2, 3].map((i) => (
-              <div
-                key={i}
-                className="h-24 bg-card-dark rounded-xl animate-pulse"
-              ></div>
-            ))}
+        {/* Tournament List/Table */}
+        {viewMode === "table" ? (
+          <div className="bg-surface-dark rounded-xl border border-white/5 overflow-hidden">
+            <TournamentTable
+              tournaments={filteredTournaments}
+              sortField={sortField}
+              sortDirection={sortDirection}
+              onSort={handleSort}
+              loading={loading}
+            />
           </div>
-        ) : filteredTournaments.length > 0 ? (
-          filteredTournaments.map((tournament) => {
-            const date = new Date(tournament.date);
-            const month = date.toLocaleString("default", { month: "short" });
-            const day = date.getDate();
-            const status = getTournamentStatus(tournament.date);
-
-            return (
-              <Link
-                key={tournament.id}
-                to={`/tournaments/${tournament.id}`}
-                className="flex flex-col rounded-xl bg-white dark:bg-card-dark p-4 shadow-sm border border-transparent hover:border-white/10 transition-all"
-              >
-                <div className="flex gap-4">
-                  {/* Date Box */}
-                  <div className="flex flex-col items-center justify-center h-14 w-14 rounded-lg bg-background-light dark:bg-surface-dark shrink-0 border border-gray-200 dark:border-white/5">
-                    <span
-                      className={`text-[10px] font-bold uppercase ${status === "active" ? "text-red-500" : "text-slate-500"}`}
-                    >
-                      {month}
-                    </span>
-                    <span className="text-xl font-bold text-slate-900 dark:text-white leading-none">
-                      {day}
-                    </span>
-                  </div>
-
-                  <div className="flex-1 min-w-0">
-                    <div className="flex justify-between items-start">
-                      <h3 className="text-base font-bold text-slate-900 dark:text-gray-100 truncate pr-2">{`BOD #${tournament.bodNumber}`}</h3>
-                      <span
-                        className={`shrink-0 inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium ring-1 ring-inset ${
-                          status === "active"
-                            ? "bg-primary/10 text-primary ring-primary/20"
-                            : status === "scheduled"
-                              ? "bg-green-500/10 text-green-500 ring-green-500/20"
-                              : status === "completed"
-                                ? "bg-gray-500/10 text-gray-400 ring-gray-500/20"
-                                : "bg-blue-500/10 text-blue-400 ring-blue-500/20"
-                        }`}
-                      >
-                        {status === "active" ? "Live" : status}
-                      </span>
-                    </div>
-                    <p className="text-sm text-slate-500 dark:text-slate-400 mt-0.5 flex items-center gap-1">
-                      {tournament.location}{" "}
-                      <span className="text-slate-700 dark:text-slate-600">
-                        •
-                      </span>{" "}
-                      {tournament.format}
-                    </p>
-                    <div className="mt-2 flex items-center gap-2">
-                      <span className="inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[10px] font-medium bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400">
-                        <span className="material-symbols-outlined text-[12px]">
-                          group
-                        </span>{" "}
-                        {tournament.maxPlayers || 16} Players
-                      </span>
-                    </div>
-                  </div>
-
-                  <div className="flex flex-col items-end justify-center shrink-0 pl-1">
-                    <span className="material-symbols-outlined text-slate-400 hover:text-white transition-colors">
-                      chevron_right
-                    </span>
-                  </div>
-                </div>
-              </Link>
-            );
-          })
         ) : (
-          <div className="flex flex-col items-center justify-center py-16 text-center">
-            <div className="size-16 rounded-full bg-slate-100 dark:bg-card-dark flex items-center justify-center mb-4">
-              <span className="material-symbols-outlined text-slate-400 text-3xl">
-                sports_tennis
-              </span>
-            </div>
-            <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-1">
-              No tournaments found
-            </h3>
-            <p className="text-slate-500 dark:text-slate-400 text-sm mb-4">
-              Try adjusting your filters.
-            </p>
-            <button
-              onClick={() => {
-                setActiveFilter("All");
-                setSearchTerm("");
-              }}
-              className="text-primary font-bold text-sm hover:underline"
-            >
-              Clear Filters
-            </button>
-          </div>
+          <div className="space-y-4">{renderCardView()}</div>
         )}
       </div>
     </div>
