@@ -335,7 +335,10 @@ const TournamentDetail: React.FC = () => {
         <div className="grid grid-cols-2 gap-3 p-6 pb-2">
           <div className="p-4 rounded-2xl bg-[#1c2230] border border-white/5 flex flex-col items-center justify-center gap-1 shadow-lg">
             <span className="text-3xl font-bold text-white">
-              {tournament.players?.length || 0}
+              {tournament.currentPlayerCount ||
+                tournament.players?.length ||
+                results.length ||
+                0}
             </span>
             <span className="text-[10px] text-slate-400 uppercase tracking-wider font-bold">
               Players
