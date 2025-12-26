@@ -90,7 +90,7 @@ describe("TournamentDetail Page", () => {
     renderPage();
 
     expect(screen.getByText("BOD Tournament #101")).toBeInTheDocument();
-    expect(screen.getByText("Test Court")).toBeInTheDocument();
+    expect(screen.getAllByText("Test Court").length).toBeGreaterThan(0);
     expect(screen.getByText("Overview")).toBeInTheDocument();
 
     // Players appears in stats grid label and tabs
@@ -100,7 +100,7 @@ describe("TournamentDetail Page", () => {
     expect(screen.getByText("Bracket")).toBeInTheDocument();
 
     // Overview content by default
-    expect(screen.getByText("Test Notes")).toBeInTheDocument();
+    expect(screen.getAllByText("Test Notes").length).toBeGreaterThan(0);
   });
 
   it("navigates tabs", async () => {
@@ -158,5 +158,163 @@ describe("TournamentDetail Page", () => {
 
     expect(confirmSpy).toHaveBeenCalled();
     expect(mockDelete).toHaveBeenCalled();
+  });
+
+  describe("Players Tab - Individual Player Display", () => {
+    const mockTournamentWithPlayers = {
+      ...mockTournament,
+      players: [
+        { _id: "p1", name: "Alice Johnson" },
+        { _id: "p2", name: "Bob Smith" },
+      ],
+    };
+
+    const mockTournamentResults = [
+      {
+        _id: "r1",
+        tournament: "1",
+        players: [
+          { _id: "p1", name: "Alice Johnson" },
+          { _id: "p2", name: "Bob Smith" },
+        ],
+        seed: 1,
+        division: "1A",
+        totalStats: {
+          totalWon: 45,
+          totalLost: 30,
+          winPercentage: 0.6,
+          bodFinish: 1,
+        },
+      },
+      {
+        _id: "r2",
+        tournament: "1",
+        players: [
+          { _id: "p3", name: "Charlie Brown" },
+          { _id: "p4", name: "Diana Wilson" },
+        ],
+        seed: 2,
+        division: "1B",
+        totalStats: {
+          totalWon: 38,
+          totalLost: 37,
+          winPercentage: 0.507,
+          bodFinish: 2,
+        },
+      },
+    ];
+
+    it("shows individual players from results for completed tournaments", async () => {
+      let callCount = 0;
+      (useApi as any).mockImplementation(() => {
+        callCount++;
+        if (callCount === 1)
+          return { data: { data: mockTournamentWithPlayers }, loading: false };
+        if (callCount === 2)
+          return { data: { data: mockMatches }, loading: false };
+        // Third call returns results
+        return { data: { results: mockTournamentResults }, loading: false };
+      });
+      (useMutation as any).mockReturnValue({ mutate: vi.fn() });
+
+      renderPage();
+
+      // Navigate to Players tab
+      fireEvent.click(screen.getByText("Players", { selector: "button" }));
+
+      // Should show Tournament Players heading
+      expect(screen.getByText(/Tournament Players/)).toBeInTheDocument();
+
+      // Should show individual player names
+      expect(screen.getByText("Alice Johnson")).toBeInTheDocument();
+      expect(screen.getByText("Charlie Brown")).toBeInTheDocument();
+    });
+
+    it("shows player stats including W-L and win percentage", async () => {
+      let callCount = 0;
+      (useApi as any).mockImplementation(() => {
+        callCount++;
+        if (callCount === 1)
+          return { data: { data: mockTournamentWithPlayers }, loading: false };
+        if (callCount === 2)
+          return { data: { data: mockMatches }, loading: false };
+        return { data: { results: mockTournamentResults }, loading: false };
+      });
+      (useMutation as any).mockReturnValue({ mutate: vi.fn() });
+
+      renderPage();
+      fireEvent.click(screen.getByText("Players", { selector: "button" }));
+
+      // Should show games won-lost
+      // Stats appear twice (once per player in each team)
+      expect(screen.getAllByText("45-30").length).toBeGreaterThan(0);
+      expect(screen.getAllByText("38-37").length).toBeGreaterThan(0);
+
+      // Win percentages appear twice (once per player in each team)
+      expect(screen.getAllByText("60.0% Win").length).toBeGreaterThan(0);
+      expect(screen.getAllByText("50.7% Win").length).toBeGreaterThan(0);
+    });
+
+    it("shows partner names in player cards", async () => {
+      let callCount = 0;
+      (useApi as any).mockImplementation(() => {
+        callCount++;
+        if (callCount === 1)
+          return { data: { data: mockTournamentWithPlayers }, loading: false };
+        if (callCount === 2)
+          return { data: { data: mockMatches }, loading: false };
+        return { data: { results: mockTournamentResults }, loading: false };
+      });
+      (useMutation as any).mockReturnValue({ mutate: vi.fn() });
+
+      renderPage();
+      fireEvent.click(screen.getByText("Players", { selector: "button" }));
+
+      // Should show partner info
+      expect(screen.getByText(/Partner: Bob Smith/)).toBeInTheDocument();
+      expect(screen.getByText(/Partner: Diana Wilson/)).toBeInTheDocument();
+    });
+
+    it("shows empty state when no players available", async () => {
+      const emptyTournament = {
+        ...mockTournament,
+        players: [],
+      };
+
+      let callCount = 0;
+      (useApi as any).mockImplementation(() => {
+        callCount++;
+        if (callCount === 1)
+          return { data: { data: emptyTournament }, loading: false };
+        if (callCount === 2) return { data: { data: [] }, loading: false };
+        return { data: { results: [] }, loading: false };
+      });
+      (useMutation as any).mockReturnValue({ mutate: vi.fn() });
+
+      renderPage();
+      fireEvent.click(screen.getByText("Players", { selector: "button" }));
+
+      expect(screen.getByText("No Players Available")).toBeInTheDocument();
+    });
+
+    it("links player cards to player profiles", async () => {
+      let callCount = 0;
+      (useApi as any).mockImplementation(() => {
+        callCount++;
+        if (callCount === 1)
+          return { data: { data: mockTournamentWithPlayers }, loading: false };
+        if (callCount === 2)
+          return { data: { data: mockMatches }, loading: false };
+        return { data: { results: mockTournamentResults }, loading: false };
+      });
+      (useMutation as any).mockReturnValue({ mutate: vi.fn() });
+
+      renderPage();
+      fireEvent.click(screen.getByText("Players", { selector: "button" }));
+
+      // Find player card link
+      const aliceLink = screen.getByText("Alice Johnson").closest("a");
+      expect(aliceLink).toHaveAttribute("href", "/players/p1");
+    });
   });
 });
