@@ -151,7 +151,17 @@ export class TournamentController extends BaseController<ITournament> {
 
       const totalPages = Math.ceil(totalDocs / limit);
 
+      // Return in PaginatedResponse format expected by frontend
       const result = {
+        success: true,
+        data: docs,
+        pagination: {
+          current: page,
+          pages: totalPages,
+          count: docs.length,
+          total: totalDocs,
+        },
+        // Also include mongoose-paginate-v2 style fields for backward compatibility
         docs,
         totalDocs,
         limit,
