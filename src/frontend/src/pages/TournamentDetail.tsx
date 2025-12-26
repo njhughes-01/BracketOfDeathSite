@@ -110,12 +110,13 @@ const TournamentDetail: React.FC = () => {
     return winner;
   }, [results, tournament]);
 
-  // Sort results by final rank
+  // Sort results by BOD finish position (1st, 2nd, 3rd, etc.)
   const sortedResults = useMemo(() => {
     if (!results.length) return [];
     return [...results].sort((a, b) => {
-      const rankA = a.totalStats?.finalRank || a.totalStats?.bodFinish || 999;
-      const rankB = b.totalStats?.finalRank || b.totalStats?.bodFinish || 999;
+      // Prioritize bodFinish (actual placement 1, 2, 3...) over finalRank (suffering score)
+      const rankA = a.totalStats?.bodFinish || 999;
+      const rankB = b.totalStats?.bodFinish || 999;
       return rankA - rankB;
     });
   }, [results]);
@@ -438,10 +439,11 @@ const TournamentDetail: React.FC = () => {
                 <button
                   key={tab}
                   onClick={() => setActiveTab(tab as any)}
-                  className={`pb-4 text-sm font-bold relative shrink-0 transition-colors ${activeTab === tab
-                    ? "text-primary"
-                    : "text-slate-500 hover:text-slate-300"
-                    }`}
+                  className={`pb-4 text-sm font-bold relative shrink-0 transition-colors ${
+                    activeTab === tab
+                      ? "text-primary"
+                      : "text-slate-500 hover:text-slate-300"
+                  }`}
                 >
                   {tab}
                   {activeTab === tab && (
@@ -483,19 +485,19 @@ const TournamentDetail: React.FC = () => {
                           </p>
                           <p className="text-white font-bold">
                             {"players" in champion &&
-                              Array.isArray(
-                                (champion as TournamentResult).players,
-                              )
+                            Array.isArray(
+                              (champion as TournamentResult).players,
+                            )
                               ? (champion as TournamentResult).players
-                                .map((p: any) =>
-                                  typeof p === "object" && "name" in p
-                                    ? p.name
-                                    : p,
-                                )
-                                .join(" & ")
+                                  .map((p: any) =>
+                                    typeof p === "object" && "name" in p
+                                      ? p.name
+                                      : p,
+                                  )
+                                  .join(" & ")
                               : "playerName" in champion
                                 ? (champion as { playerName?: string })
-                                  .playerName
+                                    .playerName
                                 : "Champion"}
                           </p>
                         </div>
@@ -559,14 +561,14 @@ const TournamentDetail: React.FC = () => {
                             </p>
                             <p className="text-white font-bold">
                               {finalist.players &&
-                                Array.isArray(finalist.players)
+                              Array.isArray(finalist.players)
                                 ? finalist.players
-                                  .map((p: any) =>
-                                    typeof p === "object" && "name" in p
-                                      ? p.name
-                                      : p,
-                                  )
-                                  .join(" & ")
+                                    .map((p: any) =>
+                                      typeof p === "object" && "name" in p
+                                        ? p.name
+                                        : p,
+                                    )
+                                    .join(" & ")
                                 : "Finalist"}
                             </p>
                           </div>
@@ -689,14 +691,14 @@ const TournamentDetail: React.FC = () => {
                         </span>
                         <span className="text-white text-sm font-medium">
                           {tournamentStats.highestScorer.players &&
-                            Array.isArray(tournamentStats.highestScorer.players)
+                          Array.isArray(tournamentStats.highestScorer.players)
                             ? tournamentStats.highestScorer.players
-                              .map((p: any) =>
-                                typeof p === "object" && "name" in p
-                                  ? p.name
-                                  : p,
-                              )
-                              .join(" & ")
+                                .map((p: any) =>
+                                  typeof p === "object" && "name" in p
+                                    ? p.name
+                                    : p,
+                                )
+                                .join(" & ")
                             : "Team"}{" "}
                           <span className="text-primary">
                             (
@@ -716,92 +718,92 @@ const TournamentDetail: React.FC = () => {
                 tournament.notes ||
                 tournament.photoAlbums ||
                 tournament.advancementCriteria) && (
-                  <div className="bg-[#1c2230] rounded-2xl p-6 border border-white/5 shadow-lg">
-                    <div className="flex items-center gap-2 mb-4">
-                      <span className="material-symbols-outlined text-primary">
-                        info
-                      </span>
-                      <h3 className="text-white font-bold text-lg">
-                        Tournament Info
-                      </h3>
-                    </div>
-                    <div className="space-y-4">
-                      {/* Location */}
-                      {tournament.location && (
-                        <div className="flex items-start gap-3">
-                          <span className="material-symbols-outlined text-slate-400 text-lg mt-0.5">
-                            location_on
-                          </span>
-                          <div>
-                            <p className="text-[10px] text-slate-500 uppercase tracking-wider font-bold mb-1">
-                              Location
-                            </p>
-                            <p className="text-white">{tournament.location}</p>
-                          </div>
-                        </div>
-                      )}
-
-                      {/* Advancement Criteria */}
-                      {tournament.advancementCriteria && (
-                        <div className="flex items-start gap-3">
-                          <span className="material-symbols-outlined text-slate-400 text-lg mt-0.5">
-                            emoji_events
-                          </span>
-                          <div>
-                            <p className="text-[10px] text-slate-500 uppercase tracking-wider font-bold mb-1">
-                              Advancement Criteria
-                            </p>
-                            <p className="text-white text-sm">
-                              {tournament.advancementCriteria}
-                            </p>
-                          </div>
-                        </div>
-                      )}
-
-                      {/* Notes */}
-                      {tournament.notes && (
-                        <div className="flex items-start gap-3">
-                          <span className="material-symbols-outlined text-slate-400 text-lg mt-0.5">
-                            notes
-                          </span>
-                          <div>
-                            <p className="text-[10px] text-slate-500 uppercase tracking-wider font-bold mb-1">
-                              Notes
-                            </p>
-                            <p className="text-slate-300 text-sm whitespace-pre-wrap">
-                              {tournament.notes}
-                            </p>
-                          </div>
-                        </div>
-                      )}
-
-                      {/* Photo Albums */}
-                      {tournament.photoAlbums && (
-                        <div className="flex items-start gap-3">
-                          <span className="material-symbols-outlined text-slate-400 text-lg mt-0.5">
-                            photo_library
-                          </span>
-                          <div>
-                            <p className="text-[10px] text-slate-500 uppercase tracking-wider font-bold mb-1">
-                              Photo Album
-                            </p>
-                            <a
-                              href={tournament.photoAlbums}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="text-primary hover:text-primary-light underline text-sm inline-flex items-center gap-1"
-                            >
-                              View Photos
-                              <span className="material-symbols-outlined text-sm">
-                                open_in_new
-                              </span>
-                            </a>
-                          </div>
-                        </div>
-                      )}
-                    </div>
+                <div className="bg-[#1c2230] rounded-2xl p-6 border border-white/5 shadow-lg">
+                  <div className="flex items-center gap-2 mb-4">
+                    <span className="material-symbols-outlined text-primary">
+                      info
+                    </span>
+                    <h3 className="text-white font-bold text-lg">
+                      Tournament Info
+                    </h3>
                   </div>
-                )}
+                  <div className="space-y-4">
+                    {/* Location */}
+                    {tournament.location && (
+                      <div className="flex items-start gap-3">
+                        <span className="material-symbols-outlined text-slate-400 text-lg mt-0.5">
+                          location_on
+                        </span>
+                        <div>
+                          <p className="text-[10px] text-slate-500 uppercase tracking-wider font-bold mb-1">
+                            Location
+                          </p>
+                          <p className="text-white">{tournament.location}</p>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Advancement Criteria */}
+                    {tournament.advancementCriteria && (
+                      <div className="flex items-start gap-3">
+                        <span className="material-symbols-outlined text-slate-400 text-lg mt-0.5">
+                          emoji_events
+                        </span>
+                        <div>
+                          <p className="text-[10px] text-slate-500 uppercase tracking-wider font-bold mb-1">
+                            Advancement Criteria
+                          </p>
+                          <p className="text-white text-sm">
+                            {tournament.advancementCriteria}
+                          </p>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Notes */}
+                    {tournament.notes && (
+                      <div className="flex items-start gap-3">
+                        <span className="material-symbols-outlined text-slate-400 text-lg mt-0.5">
+                          notes
+                        </span>
+                        <div>
+                          <p className="text-[10px] text-slate-500 uppercase tracking-wider font-bold mb-1">
+                            Notes
+                          </p>
+                          <p className="text-slate-300 text-sm whitespace-pre-wrap">
+                            {tournament.notes}
+                          </p>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Photo Albums */}
+                    {tournament.photoAlbums && (
+                      <div className="flex items-start gap-3">
+                        <span className="material-symbols-outlined text-slate-400 text-lg mt-0.5">
+                          photo_library
+                        </span>
+                        <div>
+                          <p className="text-[10px] text-slate-500 uppercase tracking-wider font-bold mb-1">
+                            Photo Album
+                          </p>
+                          <a
+                            href={tournament.photoAlbums}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-primary hover:text-primary-light underline text-sm inline-flex items-center gap-1"
+                          >
+                            View Photos
+                            <span className="material-symbols-outlined text-sm">
+                              open_in_new
+                            </span>
+                          </a>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
 
               {/* About Section */}
               <div className="bg-[#1c2230] rounded-2xl p-6 border border-white/5 shadow-lg">
@@ -847,14 +849,15 @@ const TournamentDetail: React.FC = () => {
                           Reg. Status
                         </span>
                         <span
-                          className={`text-sm font-medium capitalize ${tournament.registrationStatus === "open"
-                            ? "text-green-400"
-                            : tournament.registrationStatus === "full"
-                              ? "text-red-400"
-                              : tournament.registrationStatus === "closed"
-                                ? "text-slate-400"
-                                : "text-yellow-400"
-                            }`}
+                          className={`text-sm font-medium capitalize ${
+                            tournament.registrationStatus === "open"
+                              ? "text-green-400"
+                              : tournament.registrationStatus === "full"
+                                ? "text-red-400"
+                                : tournament.registrationStatus === "closed"
+                                  ? "text-slate-400"
+                                  : "text-yellow-400"
+                          }`}
                         >
                           {tournament.registrationStatus}
                         </span>
@@ -865,36 +868,36 @@ const TournamentDetail: React.FC = () => {
                   {/* Registration Dates */}
                   {(tournament.registrationOpensAt ||
                     tournament.registrationDeadline) && (
-                      <>
-                        <div className="h-px bg-white/5"></div>
-                        <div className="grid grid-cols-2 gap-3">
-                          {tournament.registrationOpensAt && (
-                            <div>
-                              <span className="text-[10px] text-slate-500 uppercase tracking-wider font-bold block mb-1">
-                                Registration Opens
-                              </span>
-                              <span className="text-slate-300 text-sm">
-                                {new Date(
-                                  tournament.registrationOpensAt,
-                                ).toLocaleDateString()}
-                              </span>
-                            </div>
-                          )}
-                          {tournament.registrationDeadline && (
-                            <div>
-                              <span className="text-[10px] text-slate-500 uppercase tracking-wider font-bold block mb-1">
-                                Registration Deadline
-                              </span>
-                              <span className="text-slate-300 text-sm">
-                                {new Date(
-                                  tournament.registrationDeadline,
-                                ).toLocaleDateString()}
-                              </span>
-                            </div>
-                          )}
-                        </div>
-                      </>
-                    )}
+                    <>
+                      <div className="h-px bg-white/5"></div>
+                      <div className="grid grid-cols-2 gap-3">
+                        {tournament.registrationOpensAt && (
+                          <div>
+                            <span className="text-[10px] text-slate-500 uppercase tracking-wider font-bold block mb-1">
+                              Registration Opens
+                            </span>
+                            <span className="text-slate-300 text-sm">
+                              {new Date(
+                                tournament.registrationOpensAt,
+                              ).toLocaleDateString()}
+                            </span>
+                          </div>
+                        )}
+                        {tournament.registrationDeadline && (
+                          <div>
+                            <span className="text-[10px] text-slate-500 uppercase tracking-wider font-bold block mb-1">
+                              Registration Deadline
+                            </span>
+                            <span className="text-slate-300 text-sm">
+                              {new Date(
+                                tournament.registrationDeadline,
+                              ).toLocaleDateString()}
+                            </span>
+                          </div>
+                        )}
+                      </div>
+                    </>
+                  )}
 
                   <div className="h-px bg-white/5"></div>
                   <div>
@@ -980,60 +983,60 @@ const TournamentDetail: React.FC = () => {
                               <>
                                 {tournament.seedingConfig.parameters
                                   .recentTournamentCount !== undefined && (
-                                    <div className="bg-background-dark rounded-lg p-3">
-                                      <span className="text-slate-400 text-xs block mb-1">
-                                        Recent Tournaments
-                                      </span>
-                                      <span className="text-white text-sm font-medium">
-                                        {
-                                          tournament.seedingConfig.parameters
-                                            .recentTournamentCount
-                                        }
-                                      </span>
-                                    </div>
-                                  )}
+                                  <div className="bg-background-dark rounded-lg p-3">
+                                    <span className="text-slate-400 text-xs block mb-1">
+                                      Recent Tournaments
+                                    </span>
+                                    <span className="text-white text-sm font-medium">
+                                      {
+                                        tournament.seedingConfig.parameters
+                                          .recentTournamentCount
+                                      }
+                                    </span>
+                                  </div>
+                                )}
                                 {tournament.seedingConfig.parameters
                                   .championshipWeight !== undefined && (
-                                    <div className="bg-background-dark rounded-lg p-3">
-                                      <span className="text-slate-400 text-xs block mb-1">
-                                        Championship Weight
-                                      </span>
-                                      <span className="text-white text-sm font-medium">
-                                        {
-                                          tournament.seedingConfig.parameters
-                                            .championshipWeight
-                                        }
-                                      </span>
-                                    </div>
-                                  )}
+                                  <div className="bg-background-dark rounded-lg p-3">
+                                    <span className="text-slate-400 text-xs block mb-1">
+                                      Championship Weight
+                                    </span>
+                                    <span className="text-white text-sm font-medium">
+                                      {
+                                        tournament.seedingConfig.parameters
+                                          .championshipWeight
+                                      }
+                                    </span>
+                                  </div>
+                                )}
                                 {tournament.seedingConfig.parameters
                                   .winPercentageWeight !== undefined && (
-                                    <div className="bg-background-dark rounded-lg p-3">
-                                      <span className="text-slate-400 text-xs block mb-1">
-                                        Win % Weight
-                                      </span>
-                                      <span className="text-white text-sm font-medium">
-                                        {
-                                          tournament.seedingConfig.parameters
-                                            .winPercentageWeight
-                                        }
-                                      </span>
-                                    </div>
-                                  )}
+                                  <div className="bg-background-dark rounded-lg p-3">
+                                    <span className="text-slate-400 text-xs block mb-1">
+                                      Win % Weight
+                                    </span>
+                                    <span className="text-white text-sm font-medium">
+                                      {
+                                        tournament.seedingConfig.parameters
+                                          .winPercentageWeight
+                                      }
+                                    </span>
+                                  </div>
+                                )}
                                 {tournament.seedingConfig.parameters
                                   .avgFinishWeight !== undefined && (
-                                    <div className="bg-background-dark rounded-lg p-3">
-                                      <span className="text-slate-400 text-xs block mb-1">
-                                        Avg Finish Weight
-                                      </span>
-                                      <span className="text-white text-sm font-medium">
-                                        {
-                                          tournament.seedingConfig.parameters
-                                            .avgFinishWeight
-                                        }
-                                      </span>
-                                    </div>
-                                  )}
+                                  <div className="bg-background-dark rounded-lg p-3">
+                                    <span className="text-slate-400 text-xs block mb-1">
+                                      Avg Finish Weight
+                                    </span>
+                                    <span className="text-white text-sm font-medium">
+                                      {
+                                        tournament.seedingConfig.parameters
+                                          .avgFinishWeight
+                                      }
+                                    </span>
+                                  </div>
+                                )}
                               </>
                             )}
                           </div>
@@ -1064,50 +1067,50 @@ const TournamentDetail: React.FC = () => {
                                 <>
                                   {tournament.teamFormationConfig.parameters
                                     .skillBalancing !== undefined && (
-                                      <div className="bg-background-dark rounded-lg p-3">
-                                        <span className="text-slate-400 text-xs block mb-1">
-                                          Skill Balancing
-                                        </span>
-                                        <span
-                                          className={`text-sm font-medium ${tournament.teamFormationConfig.parameters.skillBalancing ? "text-green-400" : "text-slate-400"}`}
-                                        >
-                                          {tournament.teamFormationConfig
-                                            .parameters.skillBalancing
-                                            ? "Enabled"
-                                            : "Disabled"}
-                                        </span>
-                                      </div>
-                                    )}
+                                    <div className="bg-background-dark rounded-lg p-3">
+                                      <span className="text-slate-400 text-xs block mb-1">
+                                        Skill Balancing
+                                      </span>
+                                      <span
+                                        className={`text-sm font-medium ${tournament.teamFormationConfig.parameters.skillBalancing ? "text-green-400" : "text-slate-400"}`}
+                                      >
+                                        {tournament.teamFormationConfig
+                                          .parameters.skillBalancing
+                                          ? "Enabled"
+                                          : "Disabled"}
+                                      </span>
+                                    </div>
+                                  )}
                                   {tournament.teamFormationConfig.parameters
                                     .avoidRecentPartners !== undefined && (
-                                      <div className="bg-background-dark rounded-lg p-3">
-                                        <span className="text-slate-400 text-xs block mb-1">
-                                          Avoid Recent Partners
-                                        </span>
-                                        <span
-                                          className={`text-sm font-medium ${tournament.teamFormationConfig.parameters.avoidRecentPartners ? "text-green-400" : "text-slate-400"}`}
-                                        >
-                                          {tournament.teamFormationConfig
-                                            .parameters.avoidRecentPartners
-                                            ? "Yes"
-                                            : "No"}
-                                        </span>
-                                      </div>
-                                    )}
+                                    <div className="bg-background-dark rounded-lg p-3">
+                                      <span className="text-slate-400 text-xs block mb-1">
+                                        Avoid Recent Partners
+                                      </span>
+                                      <span
+                                        className={`text-sm font-medium ${tournament.teamFormationConfig.parameters.avoidRecentPartners ? "text-green-400" : "text-slate-400"}`}
+                                      >
+                                        {tournament.teamFormationConfig
+                                          .parameters.avoidRecentPartners
+                                          ? "Yes"
+                                          : "No"}
+                                      </span>
+                                    </div>
+                                  )}
                                   {tournament.teamFormationConfig.parameters
                                     .maxTimesPartnered !== undefined && (
-                                      <div className="bg-background-dark rounded-lg p-3">
-                                        <span className="text-slate-400 text-xs block mb-1">
-                                          Max Times Partnered
-                                        </span>
-                                        <span className="text-white text-sm font-medium">
-                                          {
-                                            tournament.teamFormationConfig
-                                              .parameters.maxTimesPartnered
-                                          }
-                                        </span>
-                                      </div>
-                                    )}
+                                    <div className="bg-background-dark rounded-lg p-3">
+                                      <span className="text-slate-400 text-xs block mb-1">
+                                        Max Times Partnered
+                                      </span>
+                                      <span className="text-white text-sm font-medium">
+                                        {
+                                          tournament.teamFormationConfig
+                                            .parameters.maxTimesPartnered
+                                        }
+                                      </span>
+                                    </div>
+                                  )}
                                 </>
                               )}
                             </div>
@@ -1197,10 +1200,8 @@ const TournamentDetail: React.FC = () => {
                       </thead>
                       <tbody>
                         {sortedResults.map((result, idx) => {
-                          const rank =
-                            result.totalStats?.finalRank ||
-                            result.totalStats?.bodFinish ||
-                            idx + 1;
+                          // Use bodFinish (actual placement 1, 2, 3...) for display
+                          const rank = result.totalStats?.bodFinish || idx + 1;
                           const isChampion = rank === 1;
                           const rowKey = result.id || idx;
                           const isExpanded = expandedRows.has(rowKey);
@@ -1219,15 +1220,17 @@ const TournamentDetail: React.FC = () => {
                             <React.Fragment key={rowKey}>
                               <tr
                                 onClick={toggleExpand}
-                                className={`border-b border-white/5 hover:bg-white/5 transition-colors cursor-pointer ${isChampion ? "bg-yellow-500/10" : ""
-                                  }`}
+                                className={`border-b border-white/5 hover:bg-white/5 transition-colors cursor-pointer ${
+                                  isChampion ? "bg-yellow-500/10" : ""
+                                }`}
                               >
                                 <td className="py-4 px-2">
                                   <div
-                                    className={`flex items-center justify-center size-8 rounded-full font-bold text-sm ${isChampion
-                                      ? "bg-yellow-500 text-black"
-                                      : "bg-slate-700 text-white"
-                                      }`}
+                                    className={`flex items-center justify-center size-8 rounded-full font-bold text-sm ${
+                                      isChampion
+                                        ? "bg-yellow-500 text-black"
+                                        : "bg-slate-700 text-white"
+                                    }`}
                                   >
                                     {isChampion ? "🏆" : rank}
                                   </div>
@@ -1235,22 +1238,23 @@ const TournamentDetail: React.FC = () => {
                                 <td className="py-4 px-4">
                                   <div className="flex items-center gap-2">
                                     <span
-                                      className={`material-symbols-outlined text-slate-500 text-sm transition-transform ${isExpanded ? "rotate-90" : ""
-                                        }`}
+                                      className={`material-symbols-outlined text-slate-500 text-sm transition-transform ${
+                                        isExpanded ? "rotate-90" : ""
+                                      }`}
                                     >
                                       chevron_right
                                     </span>
                                     <p className="text-white font-medium">
                                       {result.players &&
-                                        Array.isArray(result.players)
+                                      Array.isArray(result.players)
                                         ? result.players
-                                          .map((p: any) =>
-                                            typeof p === "object" &&
+                                            .map((p: any) =>
+                                              typeof p === "object" &&
                                               "name" in p
-                                              ? p.name
-                                              : p,
-                                          )
-                                          .join(" & ")
+                                                ? p.name
+                                                : p,
+                                            )
+                                            .join(" & ")
                                         : "Team"}
                                     </p>
                                   </div>
@@ -1432,32 +1436,34 @@ const TournamentDetail: React.FC = () => {
                       return (
                         <div
                           key={result.id || idx}
-                          className={`rounded-xl p-4 border ${isChampion
-                            ? "bg-yellow-500/10 border-yellow-500/20"
-                            : "bg-[#1c2230] border-white/5"
-                            }`}
+                          className={`rounded-xl p-4 border ${
+                            isChampion
+                              ? "bg-yellow-500/10 border-yellow-500/20"
+                              : "bg-[#1c2230] border-white/5"
+                          }`}
                         >
                           <div className="flex items-center justify-between mb-3">
                             <div className="flex items-center gap-3">
                               <div
-                                className={`flex items-center justify-center size-10 rounded-full font-bold ${isChampion
-                                  ? "bg-yellow-500 text-black text-lg"
-                                  : "bg-slate-700 text-white"
-                                  }`}
+                                className={`flex items-center justify-center size-10 rounded-full font-bold ${
+                                  isChampion
+                                    ? "bg-yellow-500 text-black text-lg"
+                                    : "bg-slate-700 text-white"
+                                }`}
                               >
                                 {isChampion ? "🏆" : rank}
                               </div>
                               <div>
                                 <p className="text-white font-bold">
                                   {result.players &&
-                                    Array.isArray(result.players)
+                                  Array.isArray(result.players)
                                     ? result.players
-                                      .map((p: any) =>
-                                        typeof p === "object" && "name" in p
-                                          ? p.name
-                                          : p,
-                                      )
-                                      .join(" & ")
+                                        .map((p: any) =>
+                                          typeof p === "object" && "name" in p
+                                            ? p.name
+                                            : p,
+                                        )
+                                        .join(" & ")
                                     : "Team"}
                                 </p>
                                 <p className="text-slate-400 text-xs">
@@ -1527,37 +1533,37 @@ const TournamentDetail: React.FC = () => {
                                 <div className="flex gap-2">
                                   {result.roundRobinScores.round1 !==
                                     undefined && (
-                                      <div className="flex-1 bg-background-dark rounded px-2 py-1 text-center">
-                                        <p className="text-[9px] text-slate-500">
-                                          R1
-                                        </p>
-                                        <p className="text-white text-xs font-mono">
-                                          {result.roundRobinScores.round1}
-                                        </p>
-                                      </div>
-                                    )}
+                                    <div className="flex-1 bg-background-dark rounded px-2 py-1 text-center">
+                                      <p className="text-[9px] text-slate-500">
+                                        R1
+                                      </p>
+                                      <p className="text-white text-xs font-mono">
+                                        {result.roundRobinScores.round1}
+                                      </p>
+                                    </div>
+                                  )}
                                   {result.roundRobinScores.round2 !==
                                     undefined && (
-                                      <div className="flex-1 bg-background-dark rounded px-2 py-1 text-center">
-                                        <p className="text-[9px] text-slate-500">
-                                          R2
-                                        </p>
-                                        <p className="text-white text-xs font-mono">
-                                          {result.roundRobinScores.round2}
-                                        </p>
-                                      </div>
-                                    )}
+                                    <div className="flex-1 bg-background-dark rounded px-2 py-1 text-center">
+                                      <p className="text-[9px] text-slate-500">
+                                        R2
+                                      </p>
+                                      <p className="text-white text-xs font-mono">
+                                        {result.roundRobinScores.round2}
+                                      </p>
+                                    </div>
+                                  )}
                                   {result.roundRobinScores.round3 !==
                                     undefined && (
-                                      <div className="flex-1 bg-background-dark rounded px-2 py-1 text-center">
-                                        <p className="text-[9px] text-slate-500">
-                                          R3
-                                        </p>
-                                        <p className="text-white text-xs font-mono">
-                                          {result.roundRobinScores.round3}
-                                        </p>
-                                      </div>
-                                    )}
+                                    <div className="flex-1 bg-background-dark rounded px-2 py-1 text-center">
+                                      <p className="text-[9px] text-slate-500">
+                                        R3
+                                      </p>
+                                      <p className="text-white text-xs font-mono">
+                                        {result.roundRobinScores.round3}
+                                      </p>
+                                    </div>
+                                  )}
                                 </div>
                               </div>
                             )}
@@ -1590,7 +1596,7 @@ const TournamentDetail: React.FC = () => {
             <div className="space-y-4">
               {/* Show Generated Seeds if available */}
               {tournament.generatedSeeds &&
-                tournament.generatedSeeds.length > 0 ? (
+              tournament.generatedSeeds.length > 0 ? (
                 <div className="space-y-3">
                   <h4 className="text-white font-bold text-sm uppercase tracking-wider flex items-center gap-2">
                     <span className="material-symbols-outlined text-primary text-lg">

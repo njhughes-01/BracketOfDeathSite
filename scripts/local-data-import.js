@@ -143,6 +143,8 @@ async function importChampions(db) {
             location: champData.Location || 'Tournament Location',
             advancementCriteria: champData['Advancement Criteria'] || 'Standard rules',
             notes: champData.Notes || '',
+            photoAlbums: champData['Photo Albums'] || null,
+            status: 'completed',  // Historical tournaments are completed
             createdAt: new Date(),
             updatedAt: new Date()
         });
