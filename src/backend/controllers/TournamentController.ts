@@ -116,6 +116,8 @@ export class TournamentController extends BaseController<ITournament> {
         },
         {
           $addFields: {
+            // Add id field for frontend compatibility (mongoose virtuals don't apply to aggregation)
+            id: { $toString: "$_id" },
             // Count results (each result typically = 1 player or 1 team entry)
             resultPlayerCount: { $size: "$tournamentResults" },
             // Use players array length if available, otherwise use result count
@@ -190,6 +192,7 @@ export class TournamentController extends BaseController<ITournament> {
         },
         {
           $addFields: {
+            id: { $toString: "$_id" },
             resultPlayerCount: { $size: "$tournamentResults" },
             currentPlayerCount: {
               $cond: {
