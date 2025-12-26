@@ -546,6 +546,18 @@ const TournamentDetail: React.FC = () => {
                           )}
                         </div>
                       )}
+                      {/* Champion Suffering Score */}
+                      {tournament.championSufferingScore !== undefined &&
+                        tournament.championSufferingScore !== null && (
+                          <div className="mt-2 text-center">
+                            <span className="text-[10px] text-yellow-500/70 uppercase tracking-wider font-bold">
+                              Suffering Score:{" "}
+                            </span>
+                            <span className="text-yellow-400 font-bold text-sm">
+                              {tournament.championSufferingScore.toFixed(2)}
+                            </span>
+                          </div>
+                        )}
                     </div>
 
                     {/* Finalist */}
@@ -602,6 +614,18 @@ const TournamentDetail: React.FC = () => {
                             </p>
                           </div>
                         </div>
+                        {/* Finalist Suffering Score */}
+                        {tournament.finalistSufferingScore !== undefined &&
+                          tournament.finalistSufferingScore !== null && (
+                            <div className="mt-2 text-center">
+                              <span className="text-[10px] text-slate-400/70 uppercase tracking-wider font-bold">
+                                Suffering Score:{" "}
+                              </span>
+                              <span className="text-slate-400 font-bold text-sm">
+                                {tournament.finalistSufferingScore.toFixed(2)}
+                              </span>
+                            </div>
+                          )}
                       </div>
                     )}
                   </div>
@@ -710,6 +734,47 @@ const TournamentDetail: React.FC = () => {
                       </div>
                     )}
                   </div>
+
+                  {/* Historical Tournament Statistics (from Excel) */}
+                  {(tournament.tiebreakers !== undefined ||
+                    tournament.avgGames !== undefined ||
+                    tournament.avgRRGames !== undefined) && (
+                    <div className="grid grid-cols-3 gap-3 mt-3 pt-3 border-t border-white/10">
+                      {tournament.tiebreakers !== undefined &&
+                        tournament.tiebreakers !== null && (
+                          <div className="bg-background-dark rounded-lg p-3 text-center">
+                            <p className="text-xl font-bold text-orange-400">
+                              {tournament.tiebreakers}
+                            </p>
+                            <p className="text-[10px] text-slate-500 uppercase tracking-wider font-bold">
+                              Tiebreakers
+                            </p>
+                          </div>
+                        )}
+                      {tournament.avgGames !== undefined &&
+                        tournament.avgGames !== null && (
+                          <div className="bg-background-dark rounded-lg p-3 text-center">
+                            <p className="text-xl font-bold text-emerald-400">
+                              {tournament.avgGames.toFixed(1)}
+                            </p>
+                            <p className="text-[10px] text-slate-500 uppercase tracking-wider font-bold">
+                              Avg Games/Team
+                            </p>
+                          </div>
+                        )}
+                      {tournament.avgRRGames !== undefined &&
+                        tournament.avgRRGames !== null && (
+                          <div className="bg-background-dark rounded-lg p-3 text-center">
+                            <p className="text-xl font-bold text-cyan-400">
+                              {tournament.avgRRGames.toFixed(1)}
+                            </p>
+                            <p className="text-[10px] text-slate-500 uppercase tracking-wider font-bold">
+                              Avg RR Games
+                            </p>
+                          </div>
+                        )}
+                    </div>
+                  )}
                 </div>
               )}
 
@@ -1245,6 +1310,14 @@ const TournamentDetail: React.FC = () => {
                                       chevron_right
                                     </span>
                                     <p className="text-white font-medium">
+                                      {result.totalStats?.home && (
+                                        <span
+                                          className="mr-1 text-green-400"
+                                          title="Home Team"
+                                        >
+                                          🏠
+                                        </span>
+                                      )}
                                       {result.players &&
                                       Array.isArray(result.players)
                                         ? result.players
@@ -1363,6 +1436,17 @@ const TournamentDetail: React.FC = () => {
                                         <p className="text-[10px] text-purple-400 uppercase tracking-wider font-bold mb-2">
                                           Bracket Scores
                                         </p>
+                                        {/* R16 Matchup Opponent */}
+                                        {result.bracketScores?.r16Matchup && (
+                                          <div className="mb-2 text-xs">
+                                            <span className="text-slate-400">
+                                              R16 vs:{" "}
+                                            </span>
+                                            <span className="text-purple-300 font-medium">
+                                              {result.bracketScores.r16Matchup}
+                                            </span>
+                                          </div>
+                                        )}
                                         <div className="grid grid-cols-4 gap-2 text-center text-xs">
                                           <div className="bg-black/30 rounded p-2">
                                             <p className="text-white font-bold font-mono">

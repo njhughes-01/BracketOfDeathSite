@@ -79,6 +79,12 @@ export interface Tournament {
   advancementCriteria: string;
   notes?: string;
   photoAlbums?: string;
+  // Historical tournament statistics
+  tiebreakers?: number;
+  avgRRGames?: number;
+  avgGames?: number;
+  championSufferingScore?: number;
+  finalistSufferingScore?: number;
   status: "scheduled" | "open" | "active" | "completed" | "cancelled";
   players?: Array<{ _id: string; name: string }>;
   maxPlayers?: number;
@@ -243,6 +249,7 @@ export interface RoundRobinScores {
 export interface BracketScores {
   r16Won?: number;
   r16Lost?: number;
+  r16Matchup?: string;
   qfWon?: number;
   qfLost?: number;
   sfWon?: number;

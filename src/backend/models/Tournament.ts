@@ -127,6 +127,25 @@ const tournamentSchema = new Schema<ITournament>(
         message: "Photo albums must be a valid URL when provided",
       },
     },
+    // Historical tournament statistics
+    tiebreakers: {
+      type: Number,
+      min: [0, "Tiebreakers cannot be negative"],
+    },
+    avgRRGames: {
+      type: Number,
+      min: [0, "Average RR games cannot be negative"],
+    },
+    avgGames: {
+      type: Number,
+      min: [0, "Average games cannot be negative"],
+    },
+    championSufferingScore: {
+      type: Number,
+    },
+    finalistSufferingScore: {
+      type: Number,
+    },
     status: {
       type: String,
       enum: {

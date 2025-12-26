@@ -9,6 +9,12 @@ export interface ITournament extends BaseDocument {
   advancementCriteria: string;
   notes?: string;
   photoAlbums?: string;
+  // Historical tournament statistics
+  tiebreakers?: number;
+  avgRRGames?: number;
+  avgGames?: number;
+  championSufferingScore?: number;
+  finalistSufferingScore?: number;
   status: TournamentStatus;
   players?: Types.ObjectId[];
   maxPlayers?: number;
