@@ -183,6 +183,74 @@ const TournamentDetail: React.FC = () => {
     };
   }, [results]);
 
+  // Extract individual players from tournament results for completed tournaments
+  const individualPlayers = useMemo(() => {
+    if (!results.length) return [];
+
+    interface PlayerStats {
+      _id: string;
+      name: string;
+      partner: string;
+      gamesWon: number;
+      gamesLost: number;
+      winPct: number;
+      seed?: number;
+      division?: string;
+      finish?: number;
+    }
+
+    const playerMap = new Map<string, PlayerStats>();
+
+    results.forEach((result) => {
+      if (!result.players || !Array.isArray(result.players)) return;
+
+      // Get player names for partner display
+      const playerNames = result.players.map(
+        (p: { _id?: string; name?: string } | string) =>
+          typeof p === "object" && "name" in p ? p.name || "" : String(p),
+      );
+
+      result.players.forEach(
+        (player: { _id?: string; name?: string } | string, idx: number) => {
+          const playerId =
+            typeof player === "object" && "_id" in player
+              ? player._id
+              : String(player);
+          const playerName =
+            typeof player === "object" && "name" in player
+              ? player.name
+              : String(player);
+
+          if (!playerId) return;
+
+          // Partner is the other player in the team
+          const partnerName = playerNames
+            .filter((_: string, i: number) => i !== idx)
+            .join(" & ");
+
+          if (!playerMap.has(playerId)) {
+            playerMap.set(playerId, {
+              _id: playerId,
+              name: playerName || "Unknown",
+              partner: partnerName,
+              gamesWon: result.totalStats?.totalWon || 0,
+              gamesLost: result.totalStats?.totalLost || 0,
+              winPct: result.totalStats?.winPercentage || 0,
+              seed: result.seed,
+              division: result.division,
+              finish: result.totalStats?.bodFinish,
+            });
+          }
+        },
+      );
+    });
+
+    // Sort by finish rank
+    return Array.from(playerMap.values()).sort(
+      (a, b) => (a.finish || 999) - (b.finish || 999),
+    );
+  }, [results]);
+
   const status = tournament
     ? getTournamentStatus(tournament.date)
     : "scheduled";
@@ -1850,6 +1918,63 @@ const TournamentDetail: React.FC = () => {
                       </>
                     )}
                 </div>
+              ) : individualPlayers.length > 0 ? (
+                /* Show individual players from results for completed tournaments */
+                <div className="space-y-3">
+                  <h4 className="text-white font-bold text-sm uppercase tracking-wider flex items-center gap-2">
+                    <span className="material-symbols-outlined text-primary text-lg">
+                      person
+                    </span>
+                    Tournament Players ({individualPlayers.length})
+                  </h4>
+                  {individualPlayers.map((player) => (
+                    <Link
+                      to={`/players/${player._id}`}
+                      key={player._id}
+                      className="flex items-center justify-between p-4 rounded-xl bg-[#1c2230] border border-white/5 hover:border-white/10 transition-all group"
+                    >
+                      <div className="flex items-center gap-4">
+                        <div
+                          className={`size-10 rounded-full flex items-center justify-center text-white font-bold shadow-lg ${
+                            player.finish === 1
+                              ? "bg-gradient-to-br from-yellow-500 to-yellow-600"
+                              : player.finish === 2
+                                ? "bg-gradient-to-br from-slate-400 to-slate-500"
+                                : "bg-gradient-to-br from-primary to-blue-600"
+                          }`}
+                        >
+                          {player.finish || "-"}
+                        </div>
+                        <div>
+                          <p className="text-white font-bold group-hover:text-primary transition-colors">
+                            {player.name}
+                          </p>
+                          <p className="text-xs text-slate-400">
+                            Partner: {player.partner || "Unknown"}
+                            {player.division && (
+                              <span className="text-slate-500 ml-2">
+                                • Div {player.division}
+                              </span>
+                            )}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-4">
+                        <div className="text-right">
+                          <p className="text-white font-bold font-mono text-sm">
+                            {player.gamesWon}-{player.gamesLost}
+                          </p>
+                          <p className="text-xs text-slate-500">
+                            {(player.winPct * 100).toFixed(1)}% Win
+                          </p>
+                        </div>
+                        <span className="material-symbols-outlined text-slate-600 group-hover:text-white transition-colors">
+                          chevron_right
+                        </span>
+                      </div>
+                    </Link>
+                  ))}
+                </div>
               ) : (
                 <div className="flex flex-col items-center justify-center py-16 text-center">
                   <div className="size-16 rounded-full bg-slate-100 dark:bg-card-dark flex items-center justify-center mb-4">
@@ -1858,10 +1983,12 @@ const TournamentDetail: React.FC = () => {
                     </span>
                   </div>
                   <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-1">
-                    No Players Registered
+                    No Players Available
                   </h3>
                   <p className="text-slate-500 dark:text-slate-400 text-sm">
-                    Players will appear after registration.
+                    {status === "completed"
+                      ? "Player data is not available for this tournament."
+                      : "Players will appear after registration."}
                   </p>
                 </div>
               )}
