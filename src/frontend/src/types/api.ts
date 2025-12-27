@@ -79,6 +79,12 @@ export interface Tournament {
   advancementCriteria: string;
   notes?: string;
   photoAlbums?: string;
+  // Historical tournament statistics
+  tiebreakers?: number;
+  avgRRGames?: number;
+  avgGames?: number;
+  championSufferingScore?: number;
+  finalistSufferingScore?: number;
   status: "scheduled" | "open" | "active" | "completed" | "cancelled";
   players?: Array<{ _id: string; name: string }>;
   maxPlayers?: number;
@@ -93,6 +99,63 @@ export interface Tournament {
     playerId: string;
     playerName: string;
     tournamentResult?: string;
+  };
+  // Configuration fields
+  seedingConfig?: {
+    method: "historical" | "recent_form" | "elo" | "manual";
+    parameters?: {
+      recentTournamentCount?: number;
+      championshipWeight?: number;
+      winPercentageWeight?: number;
+      avgFinishWeight?: number;
+    };
+  };
+  teamFormationConfig?: {
+    method: "preformed" | "draft" | "statistical_pairing" | "random" | "manual";
+    parameters?: {
+      skillBalancing?: boolean;
+      avoidRecentPartners?: boolean;
+      maxTimesPartnered?: number;
+    };
+  };
+  // Generated tournament data
+  generatedSeeds?: Array<{
+    playerId: string;
+    playerName: string;
+    seed: number;
+    statistics?: {
+      avgFinish?: number;
+      winningPercentage?: number;
+      totalChampionships?: number;
+      bodsPlayed?: number;
+      recentForm?: number;
+    };
+  }>;
+  generatedTeams?: Array<{
+    teamId: string;
+    players: Array<{
+      playerId: string;
+      playerName: string;
+      seed?: number;
+      statistics?: {
+        avgFinish?: number;
+        winningPercentage?: number;
+        totalChampionships?: number;
+        bodsPlayed?: number;
+        recentForm?: number;
+      };
+    }>;
+    combinedSeed?: number;
+    teamName: string;
+    combinedStatistics?: {
+      avgFinish?: number;
+      combinedWinPercentage?: number;
+      totalChampionships?: number;
+      combinedBodsPlayed?: number;
+    };
+  }>;
+  managementState?: {
+    currentRound?: string;
   };
   // Virtuals from backend
   formattedDate?: string;
@@ -186,6 +249,7 @@ export interface RoundRobinScores {
 export interface BracketScores {
   r16Won?: number;
   r16Lost?: number;
+  r16Matchup?: string;
   qfWon?: number;
   qfLost?: number;
   sfWon?: number;

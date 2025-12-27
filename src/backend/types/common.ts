@@ -34,6 +34,7 @@ export interface ApiResponse<T = any> {
   error?: string;
   message?: string;
   details?: string[];
+  errors?: string[];
 }
 
 export interface PaginationOptions {

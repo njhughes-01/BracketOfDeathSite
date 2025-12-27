@@ -5,6 +5,8 @@ export declare class TournamentController extends BaseController<ITournament> {
     constructor();
     protected buildFilter(query: any): ITournamentFilter;
     protected buildSearchFilter(searchTerm: string): any;
+    getAll: (req: Request, res: Response, next: NextFunction) => Promise<void>;
+    getById: (req: Request, res: Response, next: NextFunction) => Promise<void>;
     getStats: (req: Request | RequestWithAuth, res: Response, next: NextFunction) => Promise<void>;
     getByYear: (req: Request | RequestWithAuth, res: Response, next: NextFunction) => Promise<void>;
     getByFormat: (req: Request | RequestWithAuth, res: Response, next: NextFunction) => Promise<void>;

@@ -33,12 +33,14 @@ const verifyKeycloakToken = async (token) => {
         jsonwebtoken_1.default.verify(token, getKey, {
             // Don't validate audience since Keycloak uses 'azp' (authorized party) instead of 'aud'
             issuer: [
+                process.env.KEYCLOAK_ISSUER,
                 `${process.env.KEYCLOAK_URL}/realms/${process.env.KEYCLOAK_REALM}`,
                 `http://localhost:8080/realms/${process.env.KEYCLOAK_REALM}`,
                 `http://localhost:8080/auth/realms/${process.env.KEYCLOAK_REALM}`,
                 // Allow issuers from frontend proxy (vite) which happens in some local configs
                 `http://127.0.0.1:5173/auth/realms/bracketofdeathsite`,
                 `http://localhost:5173/auth/realms/bracketofdeathsite`,
+                `http://localhost:5175/auth/realms/bracketofdeathsite`,
                 `http://localhost:8080/realms/bracketofdeathsite`,
             ],
             algorithms: ["RS256"],

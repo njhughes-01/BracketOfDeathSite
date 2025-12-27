@@ -1,1 +1,23 @@
 node_modules
+dist
+build
+*.log
+.env
+.env.*
+coverage
+.nyc_output
+
+# Testing
+__tests__
+*.test.tsx
+*.test.ts
+*.spec.tsx
+*.spec.ts
+
+# IDE
+.vscode
+.idea
+
+# OS
+.DS_Store
+Thumbs.db

@@ -60,6 +60,10 @@ const bracketScoresSchema = new mongoose_1.Schema({
         min: [0, "Round of 16 games lost cannot be negative"],
         validate: (0, base_1.createNumericValidator)(0),
     },
+    r16Matchup: {
+        type: String,
+        trim: true,
+    },
     qfWon: {
         type: Number,
         min: [0, "Quarterfinal games won cannot be negative"],

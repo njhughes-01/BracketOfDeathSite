@@ -13,6 +13,7 @@ export interface IRoundRobinScores {
 export interface IBracketScores {
     r16Won?: number;
     r16Lost?: number;
+    r16Matchup?: string;
     qfWon?: number;
     qfLost?: number;
     sfWon?: number;

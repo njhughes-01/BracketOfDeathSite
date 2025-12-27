@@ -17,25 +17,25 @@ import { eventBus } from "../services/EventBus";
 
 interface TournamentPhase {
   phase:
-    | "setup"
-    | "registration"
-    | "check_in"
-    | "round_robin"
-    | "bracket"
-    | "completed";
+  | "setup"
+  | "registration"
+  | "check_in"
+  | "round_robin"
+  | "bracket"
+  | "completed";
   currentRound?:
-    | "RR_R1"
-    | "RR_R2"
-    | "RR_R3"
-    | "quarterfinal"
-    | "semifinal"
-    | "final"
-    | "lbr-round-1"
-    | "lbr-round-2"
-    | "lbr-quarterfinal"
-    | "lbr-semifinal"
-    | "lbr-final"
-    | "grand-final";
+  | "RR_R1"
+  | "RR_R2"
+  | "RR_R3"
+  | "quarterfinal"
+  | "semifinal"
+  | "final"
+  | "lbr-round-1"
+  | "lbr-round-2"
+  | "lbr-quarterfinal"
+  | "lbr-semifinal"
+  | "lbr-final"
+  | "grand-final";
   roundStatus: "not_started" | "in_progress" | "completed";
   totalMatches: number;
   completedMatches: number;
@@ -76,22 +76,22 @@ interface LiveTournament {
     currentRound?: string;
   };
   bracketType?:
-    | "single_elimination"
-    | "double_elimination"
-    | "round_robin_playoff";
+  | "single_elimination"
+  | "double_elimination"
+  | "round_robin_playoff";
 }
 
 interface TournamentAction {
   action:
-    | "start_registration"
-    | "close_registration"
-    | "start_checkin"
-    | "start_round_robin"
-    | "advance_round"
-    | "start_bracket"
-    | "complete_tournament"
-    | "reset_tournament"
-    | "set_round";
+  | "start_registration"
+  | "close_registration"
+  | "start_checkin"
+  | "start_round_robin"
+  | "advance_round"
+  | "start_bracket"
+  | "complete_tournament"
+  | "reset_tournament"
+  | "set_round";
   parameters?: { targetRound?: string };
 }
 
@@ -149,7 +149,7 @@ export class LiveTournamentController extends BaseController<ITournament> {
           ),
           maxPlayers: t.maxPlayers,
           champion: t.champion,
-          phase: this.calculateTournamentPhase(t, matches),
+          phase: this.calculateTournamentPhase(t, matches, standings.length),
           teams: await this.generateTeamData(t),
           matches,
           currentStandings: standings,
@@ -436,7 +436,7 @@ export class LiveTournamentController extends BaseController<ITournament> {
             eventBus.emitTournament(match.tournamentId.toString(), "snapshot", {
               live,
             });
-        } catch {}
+        } catch { }
 
         res.status(200).json(response);
       } catch (error) {
@@ -468,7 +468,7 @@ export class LiveTournamentController extends BaseController<ITournament> {
         try {
           const live = await this.buildLiveTournament(id);
           if (live) eventBus.emitTournament(id, "snapshot", { live });
-        } catch {}
+        } catch { }
 
         res.status(200).json(response);
       } catch (error) {
@@ -570,7 +570,7 @@ export class LiveTournamentController extends BaseController<ITournament> {
         try {
           const live = await this.buildLiveTournament(id);
           if (live) eventBus.emitTournament(id, "snapshot", { live });
-        } catch {}
+        } catch { }
 
         res.status(200).json(response);
       } catch (error) {
@@ -763,7 +763,7 @@ export class LiveTournamentController extends BaseController<ITournament> {
       players: t.players?.map((p: any) => p.toString()),
       maxPlayers: t.maxPlayers,
       champion: t.champion,
-      phase: this.calculateTournamentPhase(tournament as any, matches),
+      phase: this.calculateTournamentPhase(tournament as any, matches, standings.length),
       teams: await this.generateTeamData(tournament as any),
       matches,
       currentStandings: standings,
@@ -777,6 +777,7 @@ export class LiveTournamentController extends BaseController<ITournament> {
   private calculateTournamentPhase(
     tournament: ITournament,
     matches: IMatch[],
+    resultCount: number = 0,
   ): TournamentPhase {
     const completedMatches = matches.filter(
       (m) => m.status === "completed",
@@ -790,12 +791,24 @@ export class LiveTournamentController extends BaseController<ITournament> {
     // Determine phase based on tournament status and matches
     switch (tournament.status) {
       case "scheduled":
+        // Historical tournament detection: has results but no matches
+        if (matches.length === 0 && resultCount > 0) {
+          phase = "completed";
+          roundStatus = "completed";
+          break;
+        }
         phase = "setup";
         break;
       case "open":
         phase = "registration";
         break;
       case "active":
+        // Historical tournament detection: has results but no matches
+        if (matches.length === 0 && resultCount > 0) {
+          phase = "completed";
+          roundStatus = "completed";
+          break;
+        }
         if (matches.length === 0) {
           // Check if players are already preselected from tournament setup
           const hasPreselectedPlayers =
@@ -2150,7 +2163,15 @@ export class LiveTournamentController extends BaseController<ITournament> {
 
         teams = synthesizedTeams;
         if (teams.length === 0) {
-          throw new Error("No teams found in tournament setup data");
+          // Fallback: reconstruct teams from TournamentResult (for historical data)
+          teams = await this.reconstructTeamsFromResults(tournament);
+          if (teams.length === 0) {
+            throw new Error("No teams found in tournament setup data or results");
+          }
+          // Persist reconstructed teams to tournament for future use
+          (tournament.generatedTeams as any) = teams;
+          await tournament.save();
+          console.log(`Reconstructed ${teams.length} teams from TournamentResult`);
         }
       }
 
@@ -2567,8 +2588,8 @@ export class LiveTournamentController extends BaseController<ITournament> {
       // Get team name from populated players or construct from IDs
       const teamName = result.populated("players")
         ? (result.players as any[])
-            .map((p: any) => p.name || p.toString())
-            .join(" & ")
+          .map((p: any) => p.name || p.toString())
+          .join(" & ")
         : result.players.map((p: any) => p.toString()).join(" & ");
       console.log(`Updated tournament result for team: ${teamName}`);
     } catch (error) {
@@ -2608,6 +2629,56 @@ export class LiveTournamentController extends BaseController<ITournament> {
     console.log(
       `Bracket progression: ${match.round} winner is team ${match.winner}`,
     );
+  }
+
+  /**
+   * Reconstruct generatedTeams from TournamentResult data.
+   * Used for historical tournaments that have results but no match/team data.
+   */
+  private async reconstructTeamsFromResults(
+    tournament: ITournament,
+  ): Promise<any[]> {
+    try {
+      const results = await TournamentResult.find({ tournamentId: tournament._id })
+        .populate("players", "name")
+        .sort({ seed: 1, "totalStats.bodFinish": 1 });
+
+      if (!results || results.length === 0) {
+        console.log("No TournamentResults to reconstruct teams from");
+        return [];
+      }
+
+      const teams: any[] = [];
+
+      for (const result of results) {
+        // Each result represents one team's participation
+        const players = (result.players || []).map((p: any, idx: number) => ({
+          playerId: p._id?.toString() || p.toString(),
+          playerName: p.name || `Player ${idx + 1}`,
+          seed: result.seed || idx + 1,
+          statistics: result.totalStats || {},
+        }));
+
+        if (players.length === 0) continue;
+
+        const teamName = players.map((p: any) => p.playerName).join(" & ");
+        const teamId = `${tournament._id}-R${teams.length + 1}`;
+
+        teams.push({
+          teamId,
+          teamName,
+          players,
+          combinedSeed: result.seed || teams.length + 1,
+          combinedStatistics: result.totalStats || {},
+        });
+      }
+
+      console.log(`Reconstructed ${teams.length} teams from ${results.length} results`);
+      return teams;
+    } catch (error) {
+      console.error("Error reconstructing teams from results:", error);
+      return [];
+    }
   }
 }
 

@@ -1,5 +1,8 @@
-# Frontend Dockerfile - Development
+# Frontend Dockerfile - Development/Production
 FROM node:20-alpine
+
+# Install system dependencies for healthcheck
+RUN apk add --no-cache curl
 
 # Set working directory
 WORKDIR /app
@@ -7,8 +10,8 @@ WORKDIR /app
 # Copy package files
 COPY package*.json ./
 
-# Install dependencies
-RUN npm install --force
+# Install dependencies (no --force for system-agnostic builds)
+RUN npm install
 
 # Copy source code
 COPY . .
