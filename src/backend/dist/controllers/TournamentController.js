@@ -72,6 +72,134 @@ class TournamentController extends base_1.BaseController {
             ],
         };
     }
+    // Override getAll to include player counts from TournamentResults
+    getAll = async (req, res, next) => {
+        try {
+            const page = parseInt(req.query.page) || 1;
+            const limit = parseInt(req.query.limit) || 10;
+            const sortField = req.query.sort || "-date";
+            const skip = (page - 1) * limit;
+            // Build base filter
+            const filter = this.buildFilter(req.query);
+            // Use aggregation to include result player count
+            const pipeline = [
+                { $match: filter },
+                {
+                    $lookup: {
+                        from: "tournamentresults",
+                        localField: "_id",
+                        foreignField: "tournamentId",
+                        as: "tournamentResults",
+                    },
+                },
+                {
+                    $addFields: {
+                        // Add id field for frontend compatibility (mongoose virtuals don't apply to aggregation)
+                        id: { $toString: "$_id" },
+                        // Count results (each result typically = 1 player or 1 team entry)
+                        resultPlayerCount: { $size: "$tournamentResults" },
+                        // Use players array length if available, otherwise use result count
+                        currentPlayerCount: {
+                            $cond: {
+                                if: { $gt: [{ $size: { $ifNull: ["$players", []] } }, 0] },
+                                then: { $size: "$players" },
+                                else: { $size: "$tournamentResults" },
+                            },
+                        },
+                    },
+                },
+                // Remove the heavy results array from output
+                { $project: { tournamentResults: 0 } },
+            ];
+            // Add sorting
+            const sortDirection = sortField.startsWith("-") ? -1 : 1;
+            const sortKey = sortField.replace(/^-/, "");
+            pipeline.push({ $sort: { [sortKey]: sortDirection } });
+            // Get total count before pagination
+            const countPipeline = [...pipeline.slice(0, 2), { $count: "total" }];
+            const countResult = await Tournament_1.Tournament.aggregate(countPipeline);
+            const totalDocs = countResult[0]?.total || 0;
+            // Add pagination
+            pipeline.push({ $skip: skip }, { $limit: limit });
+            const docs = await Tournament_1.Tournament.aggregate(pipeline);
+            const totalPages = Math.ceil(totalDocs / limit);
+            // Return in PaginatedResponse format expected by frontend
+            const result = {
+                success: true,
+                data: docs,
+                pagination: {
+                    current: page,
+                    pages: totalPages,
+                    count: docs.length,
+                    total: totalDocs,
+                },
+                // Also include mongoose-paginate-v2 style fields for backward compatibility
+                docs,
+                totalDocs,
+                limit,
+                page,
+                totalPages,
+                hasNextPage: page < totalPages,
+                hasPrevPage: page > 1,
+                nextPage: page < totalPages ? page + 1 : null,
+                prevPage: page > 1 ? page - 1 : null,
+                pagingCounter: skip + 1,
+            };
+            res.status(200).json(result);
+        }
+        catch (error) {
+            next(error);
+        }
+    };
+    // Override getById to include result player count for single tournament
+    getById = async (req, res, next) => {
+        try {
+            const { id } = req.params;
+            // Use aggregation to get tournament with result count
+            const pipeline = [
+                { $match: { _id: new (require("mongoose").Types.ObjectId)(id) } },
+                {
+                    $lookup: {
+                        from: "tournamentresults",
+                        localField: "_id",
+                        foreignField: "tournamentId",
+                        as: "tournamentResults",
+                    },
+                },
+                {
+                    $addFields: {
+                        id: { $toString: "$_id" },
+                        resultPlayerCount: { $size: "$tournamentResults" },
+                        currentPlayerCount: {
+                            $cond: {
+                                if: { $gt: [{ $size: { $ifNull: ["$players", []] } }, 0] },
+                                then: { $size: "$players" },
+                                else: { $size: "$tournamentResults" },
+                            },
+                        },
+                    },
+                },
+                { $project: { tournamentResults: 0 } },
+            ];
+            const [tournament] = await Tournament_1.Tournament.aggregate(pipeline);
+            if (!tournament) {
+                const response = {
+                    success: false,
+                    error: "Tournament not found",
+                };
+                res.status(404).json(response);
+                return;
+            }
+            const response = {
+                success: true,
+                data: tournament,
+            };
+            res.status(200).json(response);
+        }
+        catch (error) {
+            next(error);
+        }
+    };
     // Get tournament statistics
     getStats = this.asyncHandler(async (req, res, next) => {
         try {
