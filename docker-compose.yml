@@ -34,7 +34,7 @@ services:
       KC_HOSTNAME_STRICT: false
       KC_HOSTNAME_STRICT_HTTPS: false
       KC_HTTP_ENABLED: true
-      KC_HOSTNAME_URL: http://localhost:5173/auth
+      KC_HOSTNAME_URL: http://localhost:5175/auth
     networks:
       - bod-network
     healthcheck:
@@ -156,12 +156,12 @@ services:
       PORT: 3000
       MONGODB_URI: mongodb://bodadmin:${MONGO_PASSWORD:-bodpassword123}@mongodb:27017/bracket_of_death?authSource=admin
       JWT_SECRET: ${JWT_SECRET:-bracket-of-death-jwt-secret-key-2024}
-      CORS_ORIGIN: ${CORS_ORIGIN:-http://localhost:5173,http://127.0.0.1:5173}
+      CORS_ORIGIN: http://localhost:5175,http://127.0.0.1:5175
       KEYCLOAK_URL: http://keycloak:8080
       KEYCLOAK_REALM: bracketofdeathsite
       KEYCLOAK_CLIENT_ID: bod-app
       KEYCLOAK_CLIENT_SECRET: ${KEYCLOAK_CLIENT_SECRET:-bodclient123}
-      KEYCLOAK_ISSUER: http://keycloak:8080/realms/bracketofdeathsite
+      KEYCLOAK_ISSUER: http://localhost:5175/auth/realms/bracketofdeathsite
       KEYCLOAK_ADMIN_USER: ${KEYCLOAK_ADMIN_USER}
       KEYCLOAK_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD}
       # Mailjet email configuration (optional - can also configure in admin UI)
@@ -197,7 +197,7 @@ services:
       PROXY_TARGET: http://backend:3000
       KEYCLOAK_PROXY_TARGET: http://keycloak:8080
     ports:
-      - "${PORT:-5173}:5173"
+      - "5175:5173"
     networks:
       - bod-network
     healthcheck:

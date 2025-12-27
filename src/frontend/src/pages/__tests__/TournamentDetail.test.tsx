@@ -64,10 +64,11 @@ describe("TournamentDetail Page", () => {
     let callCount = 0;
     (useApi as any).mockImplementation(() => {
       callCount++;
-      // Odd calls = tournament, Even calls = matches
-      if (callCount % 2 !== 0)
-        return { data: { data: mockTournament }, loading: false };
-      return { data: { data: mockMatches }, loading: false };
+      // Cycle: 1=Tournament, 2=Matches, 3=Results
+      const mode = (callCount - 1) % 3;
+      if (mode === 0) return { data: { data: mockTournament }, loading: false };
+      if (mode === 1) return { data: { data: mockMatches }, loading: false };
+      return { data: { results: [] }, loading: false };
     });
   };
 
