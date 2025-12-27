@@ -36,22 +36,23 @@ describe("LiveTournamentController - Historical Data", () => {
             mockReq = { params: { id: "t1" } };
 
             // Setup mock data for a historical tournament
+            // Note: the getLiveTournament uses Tournament.findById().populate().lean()
             const mockTournament = {
                 _id: "t1",
                 status: "active", // Historical often stuck in active or scheduled
                 bracketType: "single_elimination",
-                toObject: jest.fn().mockReturnValue({
-                    _id: "t1",
-                    status: "active",
-                    bracketType: "single_elimination",
-                    bodNumber: 27,
-                    date: new Date(),
-                    format: "M",
-                    location: "Test",
-                    advancementCriteria: "Wins"
-                })
+                bodNumber: 27,
+                date: new Date(),
+                format: "M",
+                location: "Test",
+                advancementCriteria: "Wins",
+                players: [],
+                maxPlayers: 16,
+                generatedTeams: [],
+                // toObject not needed for lean() result
             };
 
+            // Mock Tournament.findById chain: findById().populate().lean()
             (Tournament.findById as jest.Mock).mockReturnValue({
                 populate: jest.fn().mockReturnValue({
                     lean: jest.fn().mockResolvedValue(mockTournament)

@@ -149,7 +149,7 @@ export class LiveTournamentController extends BaseController<ITournament> {
           ),
           maxPlayers: t.maxPlayers,
           champion: t.champion,
-          phase: this.calculateTournamentPhase(t, matches),
+          phase: this.calculateTournamentPhase(t, matches, standings.length),
           teams: await this.generateTeamData(t),
           matches,
           currentStandings: standings,
