@@ -2163,7 +2163,15 @@ export class LiveTournamentController extends BaseController<ITournament> {
 
         teams = synthesizedTeams;
         if (teams.length === 0) {
-          throw new Error("No teams found in tournament setup data");
+          // Fallback: reconstruct teams from TournamentResult (for historical data)
+          teams = await this.reconstructTeamsFromResults(tournament);
+          if (teams.length === 0) {
+            throw new Error("No teams found in tournament setup data or results");
+          }
+          // Persist reconstructed teams to tournament for future use
+          (tournament.generatedTeams as any) = teams;
+          await tournament.save();
+          console.log(`Reconstructed ${teams.length} teams from TournamentResult`);
         }
       }
 
@@ -2621,6 +2629,56 @@ export class LiveTournamentController extends BaseController<ITournament> {
     console.log(
       `Bracket progression: ${match.round} winner is team ${match.winner}`,
     );
+  }
+
+  /**
+   * Reconstruct generatedTeams from TournamentResult data.
+   * Used for historical tournaments that have results but no match/team data.
+   */
+  private async reconstructTeamsFromResults(
+    tournament: ITournament,
+  ): Promise<any[]> {
+    try {
+      const results = await TournamentResult.find({ tournamentId: tournament._id })
+        .populate("players", "name")
+        .sort({ seed: 1, "totalStats.bodFinish": 1 });
+
+      if (!results || results.length === 0) {
+        console.log("No TournamentResults to reconstruct teams from");
+        return [];
+      }
+
+      const teams: any[] = [];
+
+      for (const result of results) {
+        // Each result represents one team's participation
+        const players = (result.players || []).map((p: any, idx: number) => ({
+          playerId: p._id?.toString() || p.toString(),
+          playerName: p.name || `Player ${idx + 1}`,
+          seed: result.seed || idx + 1,
+          statistics: result.totalStats || {},
+        }));
+
+        if (players.length === 0) continue;
+
+        const teamName = players.map((p: any) => p.playerName).join(" & ");
+        const teamId = `${tournament._id}-R${teams.length + 1}`;
+
+        teams.push({
+          teamId,
+          teamName,
+          players,
+          combinedSeed: result.seed || teams.length + 1,
+          combinedStatistics: result.totalStats || {},
+        });
+      }
+
+      console.log(`Reconstructed ${teams.length} teams from ${results.length} results`);
+      return teams;
+    } catch (error) {
+      console.error("Error reconstructing teams from results:", error);
+      return [];
+    }
   }
 }
 
