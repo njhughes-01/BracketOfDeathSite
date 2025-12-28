@@ -1,12 +1,12 @@
 import { Request, Response, NextFunction } from "express";
 import { ITournament, ITournamentFilter } from "../types/tournament";
-import { BaseController, RequestWithAuth } from "./base";
-export declare class TournamentController extends BaseController<ITournament> {
+import { BaseCrudController, RequestWithAuth } from "./base";
+export declare class TournamentController extends BaseCrudController<ITournament> {
     constructor();
     protected buildFilter(query: any): ITournamentFilter;
     protected buildSearchFilter(searchTerm: string): any;
-    getAll: (req: Request, res: Response, next: NextFunction) => Promise<void>;
-    getById: (req: Request, res: Response, next: NextFunction) => Promise<void>;
+    getAll: (req: Request | RequestWithAuth, res: Response, next: NextFunction) => Promise<void>;
+    getById: (req: Request | RequestWithAuth, res: Response, next: NextFunction) => Promise<void>;
     getStats: (req: Request | RequestWithAuth, res: Response, next: NextFunction) => Promise<void>;
     getByYear: (req: Request | RequestWithAuth, res: Response, next: NextFunction) => Promise<void>;
     getByFormat: (req: Request | RequestWithAuth, res: Response, next: NextFunction) => Promise<void>;
@@ -33,9 +33,10 @@ export declare class TournamentController extends BaseController<ITournament> {
     private handleStatisticalPairing;
     private handleRandomPairing;
     private handleManualTeams;
-    create: (req: RequestWithAuth, res: Response, next: NextFunction) => Promise<void>;
-    update: (req: RequestWithAuth, res: Response, next: NextFunction) => Promise<void>;
-    delete: (req: RequestWithAuth, res: Response, next: NextFunction) => Promise<void>;
+    create: (req: Request | RequestWithAuth, res: Response, next: NextFunction) => Promise<void>;
+    update: (req: Request | RequestWithAuth, res: Response, next: NextFunction) => Promise<void>;
+    delete: (req: Request | RequestWithAuth, res: Response, next: NextFunction) => Promise<void>;
 }
-export declare const tournamentController: TournamentController;
+declare const _default: TournamentController;
+export default _default;
 //# sourceMappingURL=TournamentController.d.ts.map

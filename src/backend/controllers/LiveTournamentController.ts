@@ -95,639 +95,552 @@ interface TournamentAction {
   parameters?: { targetRound?: string };
 }
 
-export class LiveTournamentController extends BaseController<ITournament> {
+export class LiveTournamentController extends BaseController {
   constructor() {
-    super(Tournament, "LiveTournament");
+    super();
   }
 
   // Get live tournament with all live data
   getLiveTournament = this.asyncHandler(
-    async (req: Request, res: Response, next: NextFunction): Promise<void> => {
-      try {
-        const { id } = req.params;
+    async (req: Request, res: Response): Promise<void> => {
+      const { id } = req.params;
 
-        const tournament = await Tournament.findById(id)
-          .populate("players", "name")
-          .lean();
+      const tournament = await Tournament.findById(id)
+        .populate("players", "name")
+        .lean();
 
-        if (!tournament) {
-          this.sendError(res, 404, "Tournament not found");
-          return;
-        }
-
-        console.log(
-          "DEBUG: Fetched tournament",
-          id,
-          "bracketType:",
-          (tournament as any)?.bracketType,
-        );
-
-        // Get all matches for this tournament
-        const matches = await Match.find({ tournamentId: id })
-          .populate("team1.players team2.players", "name")
-          .sort({ roundNumber: 1, matchNumber: 1 });
-
-        // Get current tournament results/standings
-        const standings = await TournamentResult.find({ tournamentId: id })
-          .populate("players", "name")
-          .sort({ "totalStats.finalRank": 1 });
-
-        // Build live tournament data
-        const t = tournament as any;
-        const liveTournament: LiveTournament = {
-          _id: t._id.toString(),
-          date: t.date,
-          bodNumber: t.bodNumber,
-          format: t.format,
-          location: t.location,
-          advancementCriteria: t.advancementCriteria,
-          notes: t.notes,
-          photoAlbums: t.photoAlbums,
-          status: t.status,
-          players: t.players?.map((p: any) =>
-            p._id ? p._id.toString() : p.toString(),
-          ),
-          maxPlayers: t.maxPlayers,
-          champion: t.champion,
-          phase: this.calculateTournamentPhase(t, matches, standings.length),
-          teams: await this.generateTeamData(t),
-          matches,
-          currentStandings: standings,
-          bracketProgression: this.calculateBracketProgression(matches),
-          checkInStatus: await this.getCheckInStatus(t),
-          managementState: t.managementState || {},
-          bracketType: t.bracketType,
-        };
-
-        const response: ApiResponse = {
-          success: true,
-          data: liveTournament,
-        };
-
-        res.status(200).json(response);
-      } catch (error) {
-        next(error);
+      if (!tournament) {
+        this.sendNotFound(res, "Tournament");
+        return;
       }
+
+      console.log(
+        "DEBUG: Fetched tournament",
+        id,
+        "bracketType:",
+        (tournament as any)?.bracketType,
+      );
+
+      // Get all matches for this tournament
+      const matches = await Match.find({ tournamentId: id })
+        .populate("team1.players team2.players", "name")
+        .sort({ roundNumber: 1, matchNumber: 1 });
+
+      // Get current tournament results/standings
+      const standings = await TournamentResult.find({ tournamentId: id })
+        .populate("players", "name")
+        .sort({ "totalStats.finalRank": 1 });
+
+      // Build live tournament data
+      const t = tournament as any;
+      const liveTournament: LiveTournament = {
+        _id: t._id.toString(),
+        date: t.date,
+        bodNumber: t.bodNumber,
+        format: t.format,
+        location: t.location,
+        advancementCriteria: t.advancementCriteria,
+        notes: t.notes,
+        photoAlbums: t.photoAlbums,
+        status: t.status,
+        players: t.players?.map((p: any) =>
+          p._id ? p._id.toString() : p.toString(),
+        ),
+        maxPlayers: t.maxPlayers,
+        champion: t.champion,
+        phase: this.calculateTournamentPhase(t, matches, standings.length),
+        teams: await this.generateTeamData(t),
+        matches,
+        currentStandings: standings,
+        bracketProgression: this.calculateBracketProgression(matches),
+        checkInStatus: await this.getCheckInStatus(t),
+        managementState: t.managementState || {},
+        bracketType: t.bracketType,
+      };
+
+      this.sendSuccess(res, liveTournament);
     },
   );
 
   // Execute tournament actions (start registration, advance rounds, etc.)
   executeTournamentAction = this.asyncHandler(
-    async (
-      req: RequestWithAuth,
-      res: Response,
-      next: NextFunction,
-    ): Promise<void> => {
-      try {
-        console.log(
-          "DEBUG: executeTournamentAction called with body:",
-          JSON.stringify(req.body),
-        );
-        const { id } = req.params;
-        const { action }: TournamentAction = req.body;
+    async (req: RequestWithAuth, res: Response): Promise<void> => {
+      console.log(
+        "DEBUG: executeTournamentAction called with body:",
+        JSON.stringify(req.body),
+      );
+      const { id } = req.params;
+      const { action }: TournamentAction = req.body;
 
-        const tournament = await Tournament.findById(id);
-        if (!tournament) {
-          this.sendError(res, 404, "Tournament not found");
-          return;
-        }
-
-        let updatedTournament: ITournament;
-
-        switch (action) {
-          case "start_registration":
-            updatedTournament = await this.startRegistration(tournament);
-            break;
-          case "close_registration":
-            updatedTournament = await this.closeRegistration(tournament);
-            break;
-          case "start_checkin":
-            updatedTournament = await this.startCheckIn(tournament);
-            break;
-          case "start_round_robin":
-            updatedTournament = await this.startRoundRobin(tournament);
-            break;
-          case "advance_round":
-            updatedTournament = await this.advanceRound(tournament);
-            break;
-          case "set_round": {
-            const target = (req.body?.parameters?.targetRound || "").toString();
-            // Basic validation: allow known rounds from match types
-            const allowed = [
-              "RR_R1",
-              "RR_R2",
-              "RR_R3",
-              "round-of-64",
-              "round-of-32",
-              "round-of-16",
-              "quarterfinal",
-              "semifinal",
-              "final",
-              "third-place",
-              "lbr-round-1",
-              "lbr-round-2",
-              "lbr-quarterfinal",
-              "lbr-semifinal",
-              "lbr-final",
-              "grand-final",
-            ];
-            if (!target || !allowed.includes(target)) {
-              this.sendError(res, 400, `Invalid round: ${target}`);
-              return;
-            }
-            (tournament as any).managementState =
-              (tournament as any).managementState || {};
-            (tournament as any).managementState.currentRound = target;
-            updatedTournament = await tournament.save();
-            break;
-          }
-          case "start_bracket":
-            updatedTournament = await this.startBracket(tournament);
-            break;
-          case "complete_tournament":
-            updatedTournament = await this.completeTournament(tournament);
-            break;
-          case "reset_tournament":
-            updatedTournament = await this.resetTournament(tournament);
-            break;
-          default:
-            this.sendError(res, 400, `Unknown action: ${action}`);
-            return;
-        }
-
-        // Return updated live tournament data
-        const matches = await Match.find({ tournamentId: id })
-          .populate("team1.players team2.players", "name")
-          .sort({ roundNumber: 1, matchNumber: 1 });
-
-        const standings = await TournamentResult.find({ tournamentId: id })
-          .populate("players", "name")
-          .sort({ "totalStats.finalRank": 1 });
-
-        const updatedTournamentObj = updatedTournament.toObject();
-        const liveTournament: LiveTournament = {
-          _id: updatedTournamentObj._id.toString(),
-          date: updatedTournamentObj.date,
-          bodNumber: updatedTournamentObj.bodNumber,
-          format: updatedTournamentObj.format,
-          location: updatedTournamentObj.location,
-          advancementCriteria: updatedTournamentObj.advancementCriteria,
-          notes: updatedTournamentObj.notes,
-          photoAlbums: updatedTournamentObj.photoAlbums,
-          status: updatedTournamentObj.status,
-          players: updatedTournamentObj.players?.map((p: any) => p.toString()),
-          maxPlayers: updatedTournamentObj.maxPlayers,
-          champion: updatedTournamentObj.champion,
-          phase: this.calculateTournamentPhase(updatedTournament, matches),
-          teams: await this.generateTeamData(updatedTournament),
-          matches,
-          currentStandings: standings,
-          bracketProgression: this.calculateBracketProgression(matches),
-          checkInStatus: await this.getCheckInStatus(updatedTournament),
-          managementState: (updatedTournamentObj as any).managementState || {},
-          bracketType: (updatedTournamentObj as any).bracketType,
-        };
-
-        const response: ApiResponse = {
-          success: true,
-          data: liveTournament,
-          message: `Tournament action '${action}' completed successfully`,
-        };
-        // Notify subscribers with latest snapshot
-        eventBus.emitTournament(id, "action", { action, live: liveTournament });
-
-        res.status(200).json(response);
-      } catch (error) {
-        next(error);
+      const tournament = await Tournament.findById(id);
+      if (!tournament) {
+        console.log(`DEBUG: Tournament not found for ID: ${id}`);
+        // Log all tournament IDs in DB for debugging
+        const allTournaments = await Tournament.find({}, { _id: 1 });
+        console.log(`DEBUG: Available tournament IDs: ${allTournaments.map(t => t._id).join(", ")}`);
+        this.sendNotFound(res, "Tournament");
+        return;
       }
+
+      let updatedTournament: ITournament;
+
+      switch (action) {
+        case "start_registration":
+          updatedTournament = await this.startRegistration(tournament);
+          break;
+        case "close_registration":
+          updatedTournament = await this.closeRegistration(tournament);
+          break;
+        case "start_checkin":
+          updatedTournament = await this.startCheckIn(tournament);
+          break;
+        case "start_round_robin":
+          updatedTournament = await this.startRoundRobin(tournament);
+          break;
+        case "advance_round":
+          updatedTournament = await this.advanceRound(tournament);
+          break;
+        case "set_round": {
+          const target = (req.body?.parameters?.targetRound || "").toString();
+          // Basic validation: allow known rounds from match types
+          const allowed = [
+            "RR_R1",
+            "RR_R2",
+            "RR_R3",
+            "round-of-64",
+            "round-of-32",
+            "round-of-16",
+            "quarterfinal",
+            "semifinal",
+            "final",
+            "third-place",
+            "lbr-round-1",
+            "lbr-round-2",
+            "lbr-quarterfinal",
+            "lbr-semifinal",
+            "lbr-final",
+            "grand-final",
+          ];
+          if (!target || !allowed.includes(target)) {
+            this.sendError(res, `Invalid round: ${target}`, 400);
+            return;
+          }
+          (tournament as any).managementState =
+            (tournament as any).managementState || {};
+          (tournament as any).managementState.currentRound = target;
+          updatedTournament = await tournament.save();
+          break;
+        }
+        case "start_bracket":
+          updatedTournament = await this.startBracket(tournament);
+          break;
+        case "complete_tournament":
+          updatedTournament = await this.completeTournament(tournament);
+          break;
+        case "reset_tournament":
+          updatedTournament = await this.resetTournament(tournament);
+          break;
+        default:
+          this.sendError(res, `Unknown action: ${action}`, 400);
+          return;
+      }
+
+      // Return updated live tournament data
+      const matches = await Match.find({ tournamentId: id })
+        .populate("team1.players team2.players", "name")
+        .sort({ roundNumber: 1, matchNumber: 1 });
+
+      const standings = await TournamentResult.find({ tournamentId: id })
+        .populate("players", "name")
+        .sort({ "totalStats.finalRank": 1 });
+
+      const updatedTournamentObj = updatedTournament.toObject();
+      const liveTournament: LiveTournament = {
+        _id: updatedTournamentObj._id.toString(),
+        date: updatedTournamentObj.date,
+        bodNumber: updatedTournamentObj.bodNumber,
+        format: updatedTournamentObj.format,
+        location: updatedTournamentObj.location,
+        advancementCriteria: updatedTournamentObj.advancementCriteria,
+        notes: updatedTournamentObj.notes,
+        photoAlbums: updatedTournamentObj.photoAlbums,
+        status: updatedTournamentObj.status,
+        players: updatedTournamentObj.players?.map((p: any) => p.toString()),
+        maxPlayers: updatedTournamentObj.maxPlayers,
+        champion: updatedTournamentObj.champion,
+        phase: this.calculateTournamentPhase(updatedTournament, matches),
+        teams: await this.generateTeamData(updatedTournament),
+        matches,
+        currentStandings: standings,
+        bracketProgression: this.calculateBracketProgression(matches),
+        checkInStatus: await this.getCheckInStatus(updatedTournament),
+        managementState: (updatedTournamentObj as any).managementState || {},
+        bracketType: (updatedTournamentObj as any).bracketType,
+      };
+
+      // Notify subscribers with latest snapshot
+      eventBus.emitTournament(id, "action", { action, live: liveTournament });
+
+      this.sendSuccess(
+        res,
+        liveTournament,
+        `Tournament action '${action}' completed successfully`,
+      );
     },
   );
 
   // Get matches for a tournament (optionally filtered by round)
   getTournamentMatches = this.asyncHandler(
-    async (req: Request, res: Response, next: NextFunction): Promise<void> => {
-      try {
-        const { id } = req.params;
-        const { round } = req.query;
+    async (req: Request, res: Response): Promise<void> => {
+      const { id } = req.params;
+      const { round } = req.query;
 
-        const filter: any = { tournamentId: id };
-        if (round && typeof round === "string") {
-          filter.round = round;
-        }
-
-        const matches = await Match.find(filter)
-          .populate("team1.players team2.players", "name")
-          .sort({ roundNumber: 1, matchNumber: 1 });
-
-        const response: ApiResponse = {
-          success: true,
-          data: matches,
-        };
-
-        res.status(200).json(response);
-      } catch (error) {
-        next(error);
+      const filter: any = { tournamentId: id };
+      if (round && typeof round === "string") {
+        filter.round = round;
       }
+
+      const matches = await Match.find(filter)
+        .populate("team1.players team2.players", "name")
+        .sort({ roundNumber: 1, matchNumber: 1 });
+
+      this.sendSuccess(res, matches);
     },
   );
 
   // Update match scores and status
   updateMatch = this.asyncHandler(
-    async (
-      req: RequestWithAuth,
-      res: Response,
-      next: NextFunction,
-    ): Promise<void> => {
-      try {
-        const { matchId } = req.params;
-        const updateData = req.body;
+    async (req: RequestWithAuth, res: Response): Promise<void> => {
+      const { matchId } = req.params;
+      const updateData = req.body;
 
-        // Process individual player scores and calculate derived team scores
-        const processedUpdateData = this.processMatchUpdate(updateData);
+      // Process individual player scores and calculate derived team scores
+      const processedUpdateData = this.processMatchUpdate(updateData);
 
-        // Load the match doc to leverage full document validation and pre-save logic
-        const matchDoc = await Match.findById(matchId).populate(
-          "team1.players team2.players",
-          "name",
-        );
-        if (!matchDoc) {
-          this.sendError(res, 404, "Match not found");
-          return;
-        }
-
-        // Apply fields safely to the document
-        if (processedUpdateData["team1.playerScores"] !== undefined) {
-          (matchDoc as any).team1.playerScores =
-            processedUpdateData["team1.playerScores"];
-          matchDoc.markModified("team1.playerScores");
-        }
-        if (processedUpdateData["team2.playerScores"] !== undefined) {
-          (matchDoc as any).team2.playerScores =
-            processedUpdateData["team2.playerScores"];
-          matchDoc.markModified("team2.playerScores");
-        }
-        if (processedUpdateData["team1.score"] !== undefined) {
-          (matchDoc as any).team1.score = processedUpdateData["team1.score"];
-        }
-        if (processedUpdateData["team2.score"] !== undefined) {
-          (matchDoc as any).team2.score = processedUpdateData["team2.score"];
-        }
-        if (processedUpdateData.court !== undefined) {
-          (matchDoc as any).court = processedUpdateData.court;
-        }
-        if (processedUpdateData.notes !== undefined) {
-          (matchDoc as any).notes = processedUpdateData.notes;
-        }
-        // Map client times to model fields
-        if ((processedUpdateData as any).startTime) {
-          (matchDoc as any).scheduledDate = new Date(
-            (processedUpdateData as any).startTime,
-          );
-        }
-        if ((processedUpdateData as any).endTime) {
-          (matchDoc as any).completedDate = new Date(
-            (processedUpdateData as any).endTime,
-          );
-        }
-        // Determine winner/status before validation to satisfy validators
-        const t1Score = (matchDoc as any).team1?.score;
-        const t2Score = (matchDoc as any).team2?.score;
-        const bothScored =
-          typeof t1Score === "number" && typeof t2Score === "number";
-
-        if (processedUpdateData.status) {
-          (matchDoc as any).status = processedUpdateData.status;
-          if (
-            processedUpdateData.status === "completed" &&
-            bothScored &&
-            t1Score !== t2Score
-          ) {
-            (matchDoc as any).winner = t1Score > t2Score ? "team1" : "team2";
-          }
-        } else if (bothScored && t1Score !== t2Score) {
-          (matchDoc as any).winner = t1Score > t2Score ? "team1" : "team2";
-          (matchDoc as any).status = "completed";
-        }
-
-        const match = await matchDoc.save();
-
-        // If match is completed, update tournament statistics
-        if (match.status === "completed") {
-          await this.updateTournamentStatistics(match as any);
-          // Trigger live stats update for real-time updates
-          await LiveStatsService.updateLiveStats(matchId);
-        }
-
-        const response: ApiResponse = {
-          success: true,
-          data: match,
-          message: "Match updated successfully",
-        };
-        // Emit match update and full live snapshot for clients
-        eventBus.emitTournament(match.tournamentId.toString(), "match:update", {
-          matchId,
-          update: processedUpdateData,
-        });
-        try {
-          const live = await this.buildLiveTournament(
-            match.tournamentId.toString(),
-          );
-          if (live)
-            eventBus.emitTournament(match.tournamentId.toString(), "snapshot", {
-              live,
-            });
-        } catch { }
-
-        res.status(200).json(response);
-      } catch (error) {
-        next(error);
+      // Load the match doc to leverage full document validation and pre-save logic
+      const matchDoc = await Match.findById(matchId).populate(
+        "team1.players team2.players",
+        "name",
+      );
+      if (!matchDoc) {
+        this.sendNotFound(res, "Match");
+        return;
       }
+
+      // Apply fields safely to the document
+      if (processedUpdateData["team1.playerScores"] !== undefined) {
+        (matchDoc as any).team1.playerScores =
+          processedUpdateData["team1.playerScores"];
+        matchDoc.markModified("team1.playerScores");
+      }
+      if (processedUpdateData["team2.playerScores"] !== undefined) {
+        (matchDoc as any).team2.playerScores =
+          processedUpdateData["team2.playerScores"];
+        matchDoc.markModified("team2.playerScores");
+      }
+      if (processedUpdateData["team1.score"] !== undefined) {
+        (matchDoc as any).team1.score = processedUpdateData["team1.score"];
+      }
+      if (processedUpdateData["team2.score"] !== undefined) {
+        (matchDoc as any).team2.score = processedUpdateData["team2.score"];
+      }
+      if (processedUpdateData.court !== undefined) {
+        (matchDoc as any).court = processedUpdateData.court;
+      }
+      if (processedUpdateData.notes !== undefined) {
+        (matchDoc as any).notes = processedUpdateData.notes;
+      }
+      // Map client times to model fields
+      if ((processedUpdateData as any).startTime) {
+        (matchDoc as any).scheduledDate = new Date(
+          (processedUpdateData as any).startTime,
+        );
+      }
+      if ((processedUpdateData as any).endTime) {
+        (matchDoc as any).completedDate = new Date(
+          (processedUpdateData as any).endTime,
+        );
+      }
+      // Determine winner/status before validation to satisfy validators
+      const t1Score = (matchDoc as any).team1?.score;
+      const t2Score = (matchDoc as any).team2?.score;
+      const bothScored =
+        typeof t1Score === "number" && typeof t2Score === "number";
+
+      if (processedUpdateData.status) {
+        (matchDoc as any).status = processedUpdateData.status;
+        if (
+          processedUpdateData.status === "completed" &&
+          bothScored &&
+          t1Score !== t2Score
+        ) {
+          (matchDoc as any).winner = t1Score > t2Score ? "team1" : "team2";
+        }
+      } else if (bothScored && t1Score !== t2Score) {
+        (matchDoc as any).winner = t1Score > t2Score ? "team1" : "team2";
+        (matchDoc as any).status = "completed";
+      }
+
+      const match = await matchDoc.save();
+
+      // If match is completed, update tournament statistics
+      if (match.status === "completed") {
+        await this.updateTournamentStatistics(match as any);
+        // Trigger live stats update for real-time updates
+        await LiveStatsService.updateLiveStats(matchId);
+      }
+
+      // Emit match update and full live snapshot for clients
+      eventBus.emitTournament(match.tournamentId.toString(), "match:update", {
+        matchId,
+        update: processedUpdateData,
+      });
+      try {
+        const live = await this.buildLiveTournament(
+          match.tournamentId.toString(),
+        );
+        if (live)
+          eventBus.emitTournament(match.tournamentId.toString(), "snapshot", {
+            live,
+          });
+      } catch { }
+
+      this.sendSuccess(res, match, "Match updated successfully");
     },
   );
 
   // Team check-in for tournaments
   checkInTeam = this.asyncHandler(
-    async (
-      req: RequestWithAuth,
-      res: Response,
-      next: NextFunction,
-    ): Promise<void> => {
+    async (req: RequestWithAuth, res: Response): Promise<void> => {
+      const { id } = req.params;
+      const { teamId, present = true } = req.body;
+
+      // This would typically update a check-in collection or tournament field
+      // For now, we'll return success - would need to implement proper check-in storage
+
+      eventBus.emitTournament(id, "team:checkin", { teamId, present });
       try {
-        const { id } = req.params;
-        const { teamId, present = true } = req.body;
+        const live = await this.buildLiveTournament(id);
+        if (live) eventBus.emitTournament(id, "snapshot", { live });
+      } catch { }
 
-        // This would typically update a check-in collection or tournament field
-        // For now, we'll return success - would need to implement proper check-in storage
-
-        const response: ApiResponse = {
-          success: true,
-          data: { teamId, present, checkInTime: new Date().toISOString() },
-          message: `Team ${present ? "checked in" : "marked absent"} successfully`,
-        };
-        eventBus.emitTournament(id, "team:checkin", { teamId, present });
-        try {
-          const live = await this.buildLiveTournament(id);
-          if (live) eventBus.emitTournament(id, "snapshot", { live });
-        } catch { }
-
-        res.status(200).json(response);
-      } catch (error) {
-        next(error);
-      }
+      this.sendSuccess(
+        res,
+        { teamId, present, checkInTime: new Date().toISOString() },
+        `Team ${present ? "checked in" : "marked absent"} successfully`,
+      );
     },
   );
 
   // Generate matches for a specific round
   generateMatches = this.asyncHandler(
-    async (
-      req: RequestWithAuth,
-      res: Response,
-      next: NextFunction,
-    ): Promise<void> => {
-      try {
-        const { id } = req.params;
-        const { round } = req.body;
+    async (req: RequestWithAuth, res: Response): Promise<void> => {
+      const { id } = req.params;
+      const { round } = req.body;
 
-        const tournament = await Tournament.findById(id);
-        if (!tournament) {
-          this.sendError(res, 404, "Tournament not found");
-          return;
-        }
-
-        let matches: IMatch[] = [] as any;
-
-        // Handle losers and grand-final rounds explicitly for double elimination
-        const isLosers = typeof round === "string" && round.startsWith("lbr-");
-        const isGrandFinal = round === "grand-final";
-        if (
-          (tournament as any).bracketType === "double_elimination" &&
-          (isLosers || isGrandFinal)
-        ) {
-          if (round === "lbr-round-1") {
-            const qfLosers = await this.getBracketLosingTeams(
-              tournament,
-              "quarterfinal",
-            );
-            matches = await this.generateLosersMatchesForRound(
-              tournament,
-              qfLosers,
-              "lbr-round-1",
-            );
-          } else if (round === "lbr-semifinal") {
-            const sfLosers = await this.getBracketLosingTeams(
-              tournament,
-              "semifinal",
-            );
-            const l1Winners = await this.getBracketAdvancingTeams(
-              tournament as any,
-              "lbr-round-1" as any,
-            );
-            const lsfTeams = [...sfLosers, ...l1Winners];
-            matches = await this.generateLosersMatchesForRound(
-              tournament,
-              lsfTeams,
-              "lbr-semifinal",
-            );
-          } else if (round === "lbr-final") {
-            const lsfWinners = await this.getBracketAdvancingTeams(
-              tournament as any,
-              "lbr-semifinal" as any,
-            );
-            matches = await this.generateLosersMatchesForRound(
-              tournament,
-              lsfWinners,
-              "lbr-final",
-            );
-          } else if (isGrandFinal) {
-            const wfWinner = await this.getBracketAdvancingTeams(
-              tournament,
-              "final",
-            );
-            const lfWinner = await this.getBracketAdvancingTeams(
-              tournament as any,
-              "lbr-final" as any,
-            );
-            const gfTeams = [...wfWinner, ...lfWinner];
-            matches = await this.generateLosersMatchesForRound(
-              tournament,
-              gfTeams,
-              "grand-final",
-            );
-          }
-        } else {
-          matches = await this.createMatchesForRound(tournament, round);
-        }
-
-        const response: ApiResponse = {
-          success: true,
-          data: matches,
-          message: `Matches generated for ${round}`,
-        };
-        eventBus.emitTournament(id, "matches:generated", {
-          round,
-          count: matches.length,
-        });
-        try {
-          const live = await this.buildLiveTournament(id);
-          if (live) eventBus.emitTournament(id, "snapshot", { live });
-        } catch { }
-
-        res.status(200).json(response);
-      } catch (error) {
-        next(error);
+      const tournament = await Tournament.findById(id);
+      if (!tournament) {
+        this.sendNotFound(res, "Tournament");
+        return;
       }
+
+      let matches: IMatch[] = [] as any;
+
+      // Handle losers and grand-final rounds explicitly for double elimination
+      const isLosers = typeof round === "string" && round.startsWith("lbr-");
+      const isGrandFinal = round === "grand-final";
+      if (
+        (tournament as any).bracketType === "double_elimination" &&
+        (isLosers || isGrandFinal)
+      ) {
+        if (round === "lbr-round-1") {
+          const qfLosers = await this.getBracketLosingTeams(
+            tournament,
+            "quarterfinal",
+          );
+          matches = await this.generateLosersMatchesForRound(
+            tournament,
+            qfLosers,
+            "lbr-round-1",
+          );
+        } else if (round === "lbr-semifinal") {
+          const sfLosers = await this.getBracketLosingTeams(
+            tournament,
+            "semifinal",
+          );
+          const l1Winners = await this.getBracketAdvancingTeams(
+            tournament as any,
+            "lbr-round-1" as any,
+          );
+          const lsfTeams = [...sfLosers, ...l1Winners];
+          matches = await this.generateLosersMatchesForRound(
+            tournament,
+            lsfTeams,
+            "lbr-semifinal",
+          );
+        } else if (round === "lbr-final") {
+          const lsfWinners = await this.getBracketAdvancingTeams(
+            tournament as any,
+            "lbr-semifinal" as any,
+          );
+          matches = await this.generateLosersMatchesForRound(
+            tournament,
+            lsfWinners,
+            "lbr-final",
+          );
+        } else if (isGrandFinal) {
+          const wfWinner = await this.getBracketAdvancingTeams(
+            tournament,
+            "final",
+          );
+          const lfWinner = await this.getBracketAdvancingTeams(
+            tournament as any,
+            "lbr-final" as any,
+          );
+          const gfTeams = [...wfWinner, ...lfWinner];
+          matches = await this.generateLosersMatchesForRound(
+            tournament,
+            gfTeams,
+            "grand-final",
+          );
+        }
+      } else {
+        matches = await this.createMatchesForRound(tournament, round);
+      }
+
+      eventBus.emitTournament(id, "matches:generated", {
+        round,
+        count: matches.length,
+      });
+      try {
+        const live = await this.buildLiveTournament(id);
+        if (live) eventBus.emitTournament(id, "snapshot", { live });
+      } catch { }
+
+      this.sendSuccess(res, matches, `Matches generated for ${round}`);
     },
   );
 
   // Get live tournament statistics
   getLiveStats = this.asyncHandler(
-    async (req: Request, res: Response, next: NextFunction): Promise<void> => {
-      try {
-        const { id } = req.params;
+    async (req: Request, res: Response): Promise<void> => {
+      const { id } = req.params;
 
-        // Use the LiveStatsService to get comprehensive statistics
-        const liveStats =
-          await LiveStatsService.calculateLiveTournamentStats(id);
+      // Use the LiveStatsService to get comprehensive statistics
+      const liveStats =
+        await LiveStatsService.calculateLiveTournamentStats(id);
 
-        if (!liveStats) {
-          this.sendError(
-            res,
-            404,
-            "Tournament not found or no statistics available",
-          );
-          return;
-        }
-
-        const response: ApiResponse<typeof liveStats> = {
-          success: true,
-          data: liveStats,
-          message: "Live tournament statistics retrieved successfully",
-        };
-
-        res.status(200).json(response);
-      } catch (error) {
-        next(error);
+      if (!liveStats) {
+        this.sendError(
+          res,
+          "Tournament not found or no statistics available",
+          404,
+        );
+        return;
       }
+
+      this.sendSuccess(
+        res,
+        liveStats,
+        "Live tournament statistics retrieved successfully",
+      );
     },
   );
 
   // Confirm all completed matches in a tournament (optionally by round)
   confirmCompletedMatches = this.asyncHandler(
-    async (
-      req: RequestWithAuth,
-      res: Response,
-      next: NextFunction,
-    ): Promise<void> => {
-      try {
-        const { id } = req.params;
-        const { round } = req.query as { round?: string };
+    async (req: RequestWithAuth, res: Response): Promise<void> => {
+      const { id } = req.params;
+      const { round } = req.query as { round?: string };
 
-        const filter: any = { tournamentId: id, status: "completed" };
-        if (round) filter.round = round;
+      const filter: any = { tournamentId: id, status: "completed" };
+      if (round) filter.round = round;
 
-        const matches = await Match.find(filter);
-        if (matches.length === 0) {
-          const response: ApiResponse = {
-            success: true,
-            data: { updated: 0 },
-            message: "No completed matches to confirm",
-          };
-          res.status(200).json(response);
-          return;
-        }
-
-        const ids = matches.map((m) => m._id);
-        await Match.updateMany(
-          { _id: { $in: ids } },
-          { $set: { status: "confirmed" } },
-        );
-
-        // Emit per-match updates and a snapshot
-        for (const m of matches) {
-          eventBus.emitTournament(
-            m.tournamentId.toString(),
-            "match:confirmed",
-            { matchId: m._id.toString() },
-          );
-        }
-        const live = await this.buildLiveTournament(id);
-        if (live) eventBus.emitTournament(id, "snapshot", { live });
-
-        const response: ApiResponse = {
-          success: true,
-          data: { updated: matches.length },
-          message: "Completed matches confirmed",
-        };
-        res.status(200).json(response);
-      } catch (error) {
-        next(error);
+      const matches = await Match.find(filter);
+      if (matches.length === 0) {
+        this.sendSuccess(res, { updated: 0 }, "No completed matches to confirm");
+        return;
       }
+
+      const ids = matches.map((m) => m._id);
+      await Match.updateMany(
+        { _id: { $in: ids } },
+        { $set: { status: "confirmed" } },
+      );
+
+      // Emit per-match updates and a snapshot
+      for (const m of matches) {
+        eventBus.emitTournament(
+          m.tournamentId.toString(),
+          "match:confirmed",
+          { matchId: m._id.toString() },
+        );
+      }
+      const live = await this.buildLiveTournament(id);
+      if (live) eventBus.emitTournament(id, "snapshot", { live });
+
+      this.sendSuccess(
+        res,
+        { updated: matches.length },
+        "Completed matches confirmed",
+      );
     },
   );
 
   // Per-player stats for a tournament (points, wins/losses based on playerScores)
   getTournamentPlayerStats = this.asyncHandler(
-    async (req: Request, res: Response, next: NextFunction): Promise<void> => {
-      try {
-        const { id } = req.params;
-        const playerStats =
-          await LiveStatsService.calculatePlayerStatsForTournament(id);
-        const response: ApiResponse<typeof playerStats> = {
-          success: true,
-          data: playerStats,
-          message: "Tournament player stats retrieved successfully",
-        };
-        res.status(200).json(response);
-      } catch (error) {
-        next(error);
-      }
+    async (req: Request, res: Response): Promise<void> => {
+      const { id } = req.params;
+      const playerStats =
+        await LiveStatsService.calculatePlayerStatsForTournament(id);
+      this.sendSuccess(
+        res,
+        playerStats,
+        "Tournament player stats retrieved successfully",
+      );
     },
   );
 
   // Server-Sent Events: stream live tournament updates
   streamTournamentEvents = this.asyncHandler(
-    async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    async (req: Request, res: Response): Promise<void> => {
+      const { id } = req.params;
+
+      res.status(200);
+      res.setHeader("Content-Type", "text/event-stream");
+      res.setHeader("Cache-Control", "no-cache");
+      res.setHeader("Connection", "keep-alive");
+      res.setHeader("X-Accel-Buffering", "no");
+
+      const send = (event: string, data: unknown) => {
+        res.write(`event: ${event}\n`);
+        res.write(`data: ${JSON.stringify(data)}\n\n`);
+      };
+
+      // Initial snapshot
       try {
-        const { id } = req.params;
-
-        res.status(200);
-        res.setHeader("Content-Type", "text/event-stream");
-        res.setHeader("Cache-Control", "no-cache");
-        res.setHeader("Connection", "keep-alive");
-        res.setHeader("X-Accel-Buffering", "no");
-
-        const send = (event: string, data: unknown) => {
-          res.write(`event: ${event}\n`);
-          res.write(`data: ${JSON.stringify(data)}\n\n`);
-        };
-
-        // Initial snapshot
-        try {
-          const live = await this.buildLiveTournament(id);
-          if (live) {
-            send("snapshot", { success: true, data: live });
-          } else {
-            send("error", { success: false, error: "Tournament not found" });
-          }
-        } catch (e) {
-          send("error", { success: false, error: "Failed to build snapshot" });
+        const live = await this.buildLiveTournament(id);
+        if (live) {
+          send("snapshot", { success: true, data: live });
+        } else {
+          send("error", { success: false, error: "Tournament not found" });
         }
-
-        const unsubscribe = eventBus.onTournament(id, (evt) => {
-          send("update", evt);
-        });
-
-        const heartbeat = setInterval(() => {
-          res.write(": ping\n\n");
-        }, 25000);
-
-        req.on("close", () => {
-          clearInterval(heartbeat);
-          unsubscribe();
-        });
-      } catch (error) {
-        next(error);
+      } catch (e) {
+        send("error", { success: false, error: "Failed to build snapshot" });
       }
+
+      const unsubscribe = eventBus.onTournament(id, (evt) => {
+        send("update", evt);
+      });
+
+      const heartbeat = setInterval(() => {
+        res.write(": ping\n\n");
+      }, 25000);
+
+      req.on("close", () => {
+        clearInterval(heartbeat);
+        unsubscribe();
+      });
     },
   );
 
@@ -1172,6 +1085,10 @@ export class LiveTournamentController extends BaseController<ITournament> {
   private async closeRegistration(
     tournament: ITournament,
   ): Promise<ITournament> {
+    // Copy registered players to main players array for match generation
+    if (tournament.registeredPlayers && tournament.registeredPlayers.length > 0) {
+      tournament.players = tournament.registeredPlayers.map((rp) => rp.playerId);
+    }
     tournament.status = "active";
     return await tournament.save();
   }
@@ -2682,4 +2599,4 @@ export class LiveTournamentController extends BaseController<ITournament> {
   }
 }
 
-export const liveTournamentController = new LiveTournamentController();
+export default new LiveTournamentController();

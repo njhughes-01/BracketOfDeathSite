@@ -15,39 +15,27 @@ import {
   TournamentDeletionError,
 } from "../services/TournamentDeletionService";
 
-export class TournamentAdminController extends BaseController<ITournament> {
+export class TournamentAdminController extends BaseController {
   constructor() {
-    super(Tournament, "Tournament");
+    super();
   }
 
   /**
    * Update tournament status with validation
    */
-  public updateStatus = async (
-    req: RequestWithAuth,
-    res: Response,
-    next: NextFunction,
-  ): Promise<void> => {
-    try {
+  public updateStatus = this.asyncHandler(
+    async (req: RequestWithAuth, res: Response): Promise<void> => {
       const { id } = req.params;
       const { status } = req.body as { status: TournamentStatus };
 
       if (!status) {
-        res.status(400).json({
-          success: false,
-          message: "Status is required",
-          data: null,
-        });
+        this.sendError(res, "Status is required", 400);
         return;
       }
 
       const tournament = await Tournament.findById(id);
       if (!tournament) {
-        res.status(404).json({
-          success: false,
-          message: "Tournament not found",
-          data: null,
-        });
+        this.sendNotFound(res, "Tournament");
         return;
       }
 
@@ -59,46 +47,30 @@ export class TournamentAdminController extends BaseController<ITournament> {
         await tournament.save();
       } catch (error: any) {
         if (error.message.includes("Invalid status transition")) {
-          res.status(400).json({
-            success: false,
-            message: `Cannot transition from ${oldStatus} to ${status}`,
-            data: null,
-          });
+          this.sendError(
+            res,
+            `Cannot transition from ${oldStatus} to ${status}`,
+            400,
+          );
           return;
         }
         throw error;
       }
 
-      const response: ApiResponse<ITournament> = {
-        success: true,
-        message: `Tournament status updated to ${status}`,
-        data: tournament,
-      };
-
-      res.status(200).json(response);
-    } catch (error) {
-      next(error);
-    }
-  };
+      this.sendSuccess(res, tournament, `Tournament status updated to ${status}`);
+    },
+  );
 
   /**
    * Add players to a tournament
    */
-  public addPlayers = async (
-    req: RequestWithAuth,
-    res: Response,
-    next: NextFunction,
-  ): Promise<void> => {
-    try {
+  public addPlayers = this.asyncHandler(
+    async (req: RequestWithAuth, res: Response): Promise<void> => {
       const { id } = req.params;
       const { playerIds } = req.body as { playerIds: string[] };
 
       if (!playerIds || !Array.isArray(playerIds)) {
-        res.status(400).json({
-          success: false,
-          message: "Player IDs array is required",
-          data: null,
-        });
+        this.sendError(res, "Player IDs array is required", 400);
         return;
       }
 
@@ -107,21 +79,17 @@ export class TournamentAdminController extends BaseController<ITournament> {
         "name",
       );
       if (!tournament) {
-        res.status(404).json({
-          success: false,
-          message: "Tournament not found",
-          data: null,
-        });
+        this.sendNotFound(res, "Tournament");
         return;
       }
 
       // Check if tournament allows player additions
       if (!["scheduled", "open"].includes(tournament.status)) {
-        res.status(400).json({
-          success: false,
-          message: "Players can only be added to scheduled or open tournaments",
-          data: null,
-        });
+        this.sendError(
+          res,
+          "Players can only be added to scheduled or open tournaments",
+          400,
+        );
         return;
       }
 
@@ -130,11 +98,7 @@ export class TournamentAdminController extends BaseController<ITournament> {
       const players = await Player.find({ _id: { $in: objectIds } });
 
       if (players.length !== playerIds.length) {
-        res.status(400).json({
-          success: false,
-          message: "One or more players not found",
-          data: null,
-        });
+        this.sendError(res, "One or more players not found", 400);
         return;
       }
 
@@ -146,11 +110,11 @@ export class TournamentAdminController extends BaseController<ITournament> {
       );
 
       if (newPlayerIds.length === 0) {
-        res.status(400).json({
-          success: false,
-          message: "All players are already registered for this tournament",
-          data: null,
-        });
+        this.sendError(
+          res,
+          "All players are already registered for this tournament",
+          400,
+        );
         return;
       }
 
@@ -161,11 +125,11 @@ export class TournamentAdminController extends BaseController<ITournament> {
         tournament.maxPlayers &&
         tournament.players.length > tournament.maxPlayers
       ) {
-        res.status(400).json({
-          success: false,
-          message: `Tournament is limited to ${tournament.maxPlayers} players`,
-          data: null,
-        });
+        this.sendError(
+          res,
+          `Tournament is limited to ${tournament.maxPlayers} players`,
+          400,
+        );
         return;
       }
 
@@ -176,61 +140,43 @@ export class TournamentAdminController extends BaseController<ITournament> {
         "name firstName lastName",
       );
 
-      const response: ApiResponse<ITournament> = {
-        success: true,
-        message: `Added ${newPlayerIds.length} players to tournament`,
-        data: updatedTournament!,
-      };
-
-      res.status(200).json(response);
-    } catch (error) {
-      next(error);
-    }
-  };
+      this.sendSuccess(
+        res,
+        updatedTournament!,
+        `Added ${newPlayerIds.length} players to tournament`,
+      );
+    },
+  );
 
   /**
    * Remove a player from a tournament
    */
-  public removePlayer = async (
-    req: RequestWithAuth,
-    res: Response,
-    next: NextFunction,
-  ): Promise<void> => {
-    try {
+  public removePlayer = this.asyncHandler(
+    async (req: RequestWithAuth, res: Response): Promise<void> => {
       const { id, playerId } = req.params;
 
       const tournament = await Tournament.findById(id);
       if (!tournament) {
-        res.status(404).json({
-          success: false,
-          message: "Tournament not found",
-          data: null,
-        });
+        this.sendNotFound(res, "Tournament");
         return;
       }
 
       // Check if tournament allows player removal
       if (!["scheduled", "open"].includes(tournament.status)) {
-        res.status(400).json({
-          success: false,
-          message:
-            "Players can only be removed from scheduled or open tournaments",
-          data: null,
-        });
+        this.sendError(
+          res,
+          "Players can only be removed from scheduled or open tournaments",
+          400,
+        );
         return;
       }
 
-      const playerObjectId = new Types.ObjectId(playerId);
       const playerIndex = tournament.players?.findIndex(
         (p) => p.toString() === playerId,
       );
 
       if (playerIndex === undefined || playerIndex === -1) {
-        res.status(404).json({
-          success: false,
-          message: "Player not found in this tournament",
-          data: null,
-        });
+        this.sendNotFound(res, "Player in this tournament");
         return;
       }
 
@@ -242,73 +188,50 @@ export class TournamentAdminController extends BaseController<ITournament> {
         "name firstName lastName",
       );
 
-      const response: ApiResponse<ITournament> = {
-        success: true,
-        message: "Player removed from tournament",
-        data: updatedTournament!,
-      };
-
-      res.status(200).json(response);
-    } catch (error) {
-      next(error);
-    }
-  };
+      this.sendSuccess(
+        res,
+        updatedTournament!,
+        "Player removed from tournament",
+      );
+    },
+  );
 
   /**
    * Generate matches for a tournament (create bracket)
    */
-  public generateMatches = async (
-    req: RequestWithAuth,
-    res: Response,
-    next: NextFunction,
-  ): Promise<void> => {
-    try {
+  public generateMatches = this.asyncHandler(
+    async (req: RequestWithAuth, res: Response): Promise<void> => {
       const { id } = req.params;
-      const { bracketType = "single-elimination" } = req.body as {
-        bracketType?: string;
-      };
 
       const tournament = await Tournament.findById(id).populate(
         "players",
         "name firstName lastName",
       );
       if (!tournament) {
-        res.status(404).json({
-          success: false,
-          message: "Tournament not found",
-          data: null,
-        });
+        this.sendNotFound(res, "Tournament");
         return;
       }
 
       // Check if tournament can start
       if (tournament.status !== "open") {
-        res.status(400).json({
-          success: false,
-          message: "Tournament must be open to generate matches",
-          data: null,
-        });
+        this.sendError(res, "Tournament must be open to generate matches", 400);
         return;
       }
 
       const playerCount = tournament.players?.length || 0;
       if (playerCount < 2) {
-        res.status(400).json({
-          success: false,
-          message: "Tournament needs at least 2 players to generate matches",
-          data: null,
-        });
+        this.sendError(
+          res,
+          "Tournament needs at least 2 players to generate matches",
+          400,
+        );
         return;
       }
 
       // Check if matches already exist
       const existingMatches = await Match.find({ tournamentId: id });
       if (existingMatches.length > 0) {
-        res.status(400).json({
-          success: false,
-          message: "Matches already exist for this tournament",
-          data: null,
-        });
+        this.sendError(res, "Matches already exist for this tournament", 400);
         return;
       }
 
@@ -317,11 +240,11 @@ export class TournamentAdminController extends BaseController<ITournament> {
         tournament.format,
       );
       if (isDoubles && playerCount % 2 !== 0) {
-        res.status(400).json({
-          success: false,
-          message: "Doubles tournaments require an even number of players",
-          data: null,
-        });
+        this.sendError(
+          res,
+          "Doubles tournaments require an even number of players",
+          400,
+        );
         return;
       }
 
@@ -335,30 +258,21 @@ export class TournamentAdminController extends BaseController<ITournament> {
       tournament.status = "active";
       await tournament.save();
 
-      const response: ApiResponse<{
-        tournament: ITournament;
-        matches: IMatch[];
-      }> = {
-        success: true,
-        message: `Generated ${matches.length} matches for tournament`,
-        data: { tournament, matches },
-      };
-
-      res.status(201).json(response);
-    } catch (error) {
-      next(error);
-    }
-  };
+      this.sendSuccess(
+        res,
+        { tournament, matches },
+        `Generated ${matches.length} matches for tournament`,
+        undefined,
+        201,
+      );
+    },
+  );
 
   /**
    * Update match score
    */
-  public updateMatchScore = async (
-    req: RequestWithAuth,
-    res: Response,
-    next: NextFunction,
-  ): Promise<void> => {
-    try {
+  public updateMatchScore = this.asyncHandler(
+    async (req: RequestWithAuth, res: Response): Promise<void> => {
       const { matchId } = req.params;
       const { team1Score, team2Score, notes } = req.body;
 
@@ -367,22 +281,14 @@ export class TournamentAdminController extends BaseController<ITournament> {
         "status",
       );
       if (!match) {
-        res.status(404).json({
-          success: false,
-          message: "Match not found",
-          data: null,
-        });
+        this.sendNotFound(res, "Match");
         return;
       }
 
       // Verify tournament is active
       const tournament = match.tournamentId as any;
       if (tournament.status !== "active") {
-        res.status(400).json({
-          success: false,
-          message: "Can only update scores for active tournaments",
-          data: null,
-        });
+        this.sendError(res, "Can only update scores for active tournaments", 400);
         return;
       }
 
@@ -399,45 +305,25 @@ export class TournamentAdminController extends BaseController<ITournament> {
         await this.updateTournamentResults(match);
       }
 
-      const response: ApiResponse<IMatch> = {
-        success: true,
-        message: "Match score updated",
-        data: match,
-      };
-
-      res.status(200).json(response);
-    } catch (error) {
-      next(error);
-    }
-  };
+      this.sendSuccess(res, match, "Match score updated");
+    },
+  );
 
   /**
    * Finalize tournament (mark as completed)
    */
-  public finalizeTournament = async (
-    req: RequestWithAuth,
-    res: Response,
-    next: NextFunction,
-  ): Promise<void> => {
-    try {
+  public finalizeTournament = this.asyncHandler(
+    async (req: RequestWithAuth, res: Response): Promise<void> => {
       const { id } = req.params;
 
       const tournament = await Tournament.findById(id);
       if (!tournament) {
-        res.status(404).json({
-          success: false,
-          message: "Tournament not found",
-          data: null,
-        });
+        this.sendNotFound(res, "Tournament");
         return;
       }
 
       if (tournament.status !== "active") {
-        res.status(400).json({
-          success: false,
-          message: "Only active tournaments can be finalized",
-          data: null,
-        });
+        this.sendError(res, "Only active tournaments can be finalized", 400);
         return;
       }
 
@@ -448,11 +334,11 @@ export class TournamentAdminController extends BaseController<ITournament> {
       });
 
       if (incompleteMatches.length > 0) {
-        res.status(400).json({
-          success: false,
-          message: `Tournament has ${incompleteMatches.length} incomplete matches`,
-          data: null,
-        });
+        this.sendError(
+          res,
+          `Tournament has ${incompleteMatches.length} incomplete matches`,
+          400,
+        );
         return;
       }
 
@@ -482,36 +368,20 @@ export class TournamentAdminController extends BaseController<ITournament> {
       // Update player statistics
       await this.updatePlayerStatistics(tournament);
 
-      const response: ApiResponse<ITournament> = {
-        success: true,
-        message: "Tournament finalized successfully",
-        data: tournament,
-      };
-
-      res.status(200).json(response);
-    } catch (error) {
-      next(error);
-    }
-  };
+      this.sendSuccess(res, tournament, "Tournament finalized successfully");
+    },
+  );
 
   /**
    * Register a player for a tournament
    */
-  public registerPlayer = async (
-    req: RequestWithAuth,
-    res: Response,
-    next: NextFunction,
-  ): Promise<void> => {
-    try {
+  public registerPlayer = this.asyncHandler(
+    async (req: RequestWithAuth, res: Response): Promise<void> => {
       const { id } = req.params; // tournament ID
       const { playerId } = req.body;
 
       if (!playerId) {
-        res.status(400).json({
-          success: false,
-          message: "Player ID is required",
-          data: null,
-        });
+        this.sendError(res, "Player ID is required", 400);
         return;
       }
 
@@ -521,38 +391,26 @@ export class TournamentAdminController extends BaseController<ITournament> {
       );
 
       if (!result.success) {
-        res.status(400).json({
-          success: false,
-          message: result.message,
-          data: null,
-        });
+        this.sendError(res, result.message, 400);
         return;
       }
 
-      const response: ApiResponse<any> = {
-        success: true,
-        message: result.message,
-        data: {
+      this.sendSuccess(
+        res,
+        {
           tournament: result.tournament,
           position: result.position,
         },
-      };
-
-      res.status(200).json(response);
-    } catch (error) {
-      next(error);
-    }
-  };
+        result.message,
+      );
+    },
+  );
 
   /**
    * Unregister a player from a tournament
    */
-  public unregisterPlayer = async (
-    req: RequestWithAuth,
-    res: Response,
-    next: NextFunction,
-  ): Promise<void> => {
-    try {
+  public unregisterPlayer = this.asyncHandler(
+    async (req: RequestWithAuth, res: Response): Promise<void> => {
       const { id, playerId } = req.params;
 
       const result = await TournamentRegistrationService.unregisterPlayer(
@@ -561,114 +419,62 @@ export class TournamentAdminController extends BaseController<ITournament> {
       );
 
       if (!result.success) {
-        res.status(400).json({
-          success: false,
-          message: result.message,
-          data: null,
-        });
+        this.sendError(res, result.message, 400);
         return;
       }
 
-      const response: ApiResponse<ITournament> = {
-        success: true,
-        message: result.message,
-        data: result.tournament!,
-      };
-
-      res.status(200).json(response);
-    } catch (error) {
-      next(error);
-    }
-  };
+      this.sendSuccess(res, result.tournament!, result.message);
+    },
+  );
 
   /**
    * Get tournament registration information
    */
-  public getRegistrationInfo = async (
-    req: Request,
-    res: Response,
-    next: NextFunction,
-  ): Promise<void> => {
-    try {
+  public getRegistrationInfo = this.asyncHandler(
+    async (req: Request, res: Response): Promise<void> => {
       const { id } = req.params;
 
       const result =
         await TournamentRegistrationService.getRegistrationInfo(id);
 
       if (!result.success) {
-        res.status(404).json({
-          success: false,
-          message: result.message,
-          data: null,
-        });
+        this.sendNotFound(res, "Registration info");
         return;
       }
 
-      const response: ApiResponse<any> = {
-        success: true,
-        message: "Registration info retrieved",
-        data: result.data,
-      };
-
-      res.status(200).json(response);
-    } catch (error) {
-      next(error);
-    }
-  };
+      this.sendSuccess(res, result.data, "Registration info retrieved");
+    },
+  );
 
   /**
    * Finalize tournament registration and move to player selection
    */
-  public finalizeRegistration = async (
-    req: RequestWithAuth,
-    res: Response,
-    next: NextFunction,
-  ): Promise<void> => {
-    try {
+  public finalizeRegistration = this.asyncHandler(
+    async (req: RequestWithAuth, res: Response): Promise<void> => {
       const { id } = req.params;
 
       const result =
         await TournamentRegistrationService.finalizeRegistration(id);
 
       if (!result.success) {
-        res.status(400).json({
-          success: false,
-          message: result.message,
-          data: null,
-        });
+        this.sendError(res, result.message, 400);
         return;
       }
 
-      const response: ApiResponse<ITournament> = {
-        success: true,
-        message: result.message,
-        data: result.tournament!,
-      };
-
-      res.status(200).json(response);
-    } catch (error) {
-      next(error);
-    }
-  };
+      this.sendSuccess(res, result.tournament!, result.message);
+    },
+  );
 
   /**
    * Get seeding preview for tournament
    */
-  public getSeedingPreview = async (
-    req: Request,
-    res: Response,
-    next: NextFunction,
-  ): Promise<void> => {
-    try {
+  public getSeedingPreview = this.asyncHandler(
+    async (req: Request, res: Response): Promise<void> => {
       const { id } = req.params;
 
       const tournament = await Tournament.findById(id);
       if (!tournament) {
-        res.status(404).json({
-          success: false,
-          message: "Tournament not found",
-          data: null,
-        });
+        this.sendNotFound(res, "Tournament");
         return;
       }
 
@@ -679,11 +485,7 @@ export class TournamentAdminController extends BaseController<ITournament> {
       ).map((p) => p.toString());
 
       if (playerIds.length === 0) {
-        res.status(400).json({
-          success: false,
-          message: "No players found for seeding",
-          data: null,
-        });
+        this.sendError(res, "No players found for seeding", 400);
         return;
       }
 
@@ -693,35 +495,19 @@ export class TournamentAdminController extends BaseController<ITournament> {
       );
 
       if (!result.success) {
-        res.status(400).json({
-          success: false,
-          message: result.message,
-          data: null,
-        });
+        this.sendError(res, result.message, 400);
         return;
       }
 
-      const response: ApiResponse<any> = {
-        success: true,
-        message: result.message,
-        data: result.preview,
-      };
-
-      res.status(200).json(response);
-    } catch (error) {
-      next(error);
-    }
-  };
+      this.sendSuccess(res, result.preview, result.message);
+    },
+  );
 
   /**
    * Get tournament with matches and results
    */
-  public getTournamentWithMatches = async (
-    req: Request,
-    res: Response,
-    next: NextFunction,
-  ): Promise<void> => {
-    try {
+  public getTournamentWithMatches = this.asyncHandler(
+    async (req: Request, res: Response): Promise<void> => {
       const { id } = req.params;
 
       const tournament = await Tournament.findById(id).populate(
@@ -729,11 +515,7 @@ export class TournamentAdminController extends BaseController<ITournament> {
         "name firstName lastName",
       );
       if (!tournament) {
-        res.status(404).json({
-          success: false,
-          message: "Tournament not found",
-          data: null,
-        });
+        this.sendNotFound(res, "Tournament");
         return;
       }
 
@@ -745,167 +527,121 @@ export class TournamentAdminController extends BaseController<ITournament> {
         tournamentId: id,
       }).populate("players", "name firstName lastName");
 
-      const response: ApiResponse<{
-        tournament: ITournament;
-        matches: IMatch[];
-        results: any[];
-      }> = {
-        success: true,
-        message: "Tournament details retrieved",
-        data: {
+      this.sendSuccess(
+        res,
+        {
           tournament,
           matches,
           results,
         },
-      };
+        "Tournament details retrieved",
+      );
+    },
+  );
 
-      res.status(200).json(response);
-    } catch (error) {
-      next(error);
-    }
-  };
 
   /**
    * Delete a scheduled tournament with enterprise-grade cascade deletion
    * Implements compensation patterns, audit trails, and robust error handling
    */
-  public deleteTournament = async (
-    req: RequestWithAuth,
-    res: Response,
-    next: NextFunction,
-  ): Promise<void> => {
-    const deletionService = new TournamentDeletionService();
-    const correlationId =
-      (req.headers["x-correlation-id"] as string) || undefined;
+  public deleteTournament = this.asyncHandler(
+    async (req: RequestWithAuth, res: Response): Promise<void> => {
+      const deletionService = new TournamentDeletionService();
+      const correlationId =
+        (req.headers["x-correlation-id"] as string) || undefined;
 
-    try {
       const { id } = req.params;
       const adminUserId = req.user?.id;
 
       if (!adminUserId) {
-        res.status(401).json({
-          success: false,
-          message: "Authentication required",
-          data: null,
-        });
+        this.sendUnauthorized(res, "Authentication required");
         return;
       }
 
-      // Use the enhanced deletion service
-      const result = await deletionService.deleteTournament(
-        id,
-        adminUserId,
-        correlationId,
-      );
+      try {
+        // Use the enhanced deletion service
+        const result = await deletionService.deleteTournament(
+          id,
+          adminUserId,
+          correlationId,
+        );
 
-      const response: ApiResponse<{
-        tournamentId: string;
-        operation: {
-          correlationId: string;
-          steps: Array<{
-            name: string;
-            status: string;
-            expectedCount?: number;
-            actualCount?: number;
-          }>;
-          duration: number;
-        };
-        tournamentInfo: {
-          format: string;
-          date: string;
-        };
-      }> = {
-        success: true,
-        message: `Tournament "${result.tournamentInfo?.format} - ${result.tournamentInfo?.date}" has been permanently deleted`,
-        data: {
-          tournamentId: id,
-          operation: {
-            correlationId: result.operation.correlationId,
-            steps: result.operation.steps.map((step) => ({
-              name: step.name,
-              status: step.status,
-              expectedCount: step.expectedCount,
-              actualCount: step.actualCount,
-            })),
-            duration: result.operation.endTime
-              ? result.operation.endTime.getTime() -
+        this.sendSuccess(
+          res,
+          {
+            tournamentId: id,
+            operation: {
+              correlationId: result.operation.correlationId,
+              steps: result.operation.steps.map((step) => ({
+                name: step.name,
+                status: step.status,
+                expectedCount: step.expectedCount,
+                actualCount: step.actualCount,
+              })),
+              duration: result.operation.endTime
+                ? result.operation.endTime.getTime() -
                 result.operation.startTime.getTime()
-              : 0,
+                : 0,
+            },
+            tournamentInfo: result.tournamentInfo!,
           },
-          tournamentInfo: result.tournamentInfo!,
-        },
-      };
+          `Tournament "${result.tournamentInfo?.format} - ${result.tournamentInfo?.date}" has been permanently deleted`,
+        );
+      } catch (error) {
+        // Handle different types of errors appropriately
+        if (error instanceof TournamentDeletionError) {
+          const deletionError = error;
 
-      res.status(200).json(response);
-    } catch (error) {
-      // Handle different types of errors appropriately
-      if (error instanceof TournamentDeletionError) {
-        const deletionError = error;
+          // Map deletion error codes to HTTP status codes
+          let statusCode = 500;
+          switch (deletionError.code) {
+            case "INVALID_ID":
+              statusCode = 400;
+              break;
+            case "NOT_FOUND":
+            case "TOURNAMENT_NOT_FOUND_FOR_DELETION":
+              statusCode = 404;
+              break;
+            case "INVALID_STATUS":
+              statusCode = 409;
+              break;
+            case "MATCHES_DELETION_FAILED":
+            case "RESULTS_DELETION_FAILED":
+            case "TOURNAMENT_DELETION_FAILED":
+              statusCode = 500;
+              break;
+          }
 
-        // Map deletion error codes to HTTP status codes
-        let statusCode = 500;
-        switch (deletionError.code) {
-          case "INVALID_ID":
-            statusCode = 400;
-            break;
-          case "NOT_FOUND":
-          case "TOURNAMENT_NOT_FOUND_FOR_DELETION":
-            statusCode = 404;
-            break;
-          case "INVALID_STATUS":
-            statusCode = 409;
-            break;
-          case "MATCHES_DELETION_FAILED":
-          case "RESULTS_DELETION_FAILED":
-          case "TOURNAMENT_DELETION_FAILED":
-            statusCode = 500;
-            break;
+          // Add retry information for retryable errors
+          if (deletionService.isRetryable(deletionError)) {
+            res.setHeader("Retry-After", "60"); // Suggest retry after 60 seconds
+            res.setHeader("X-Retryable", "true");
+          }
+
+          this.sendError(res, deletionError.message, statusCode);
+          return;
         }
 
-        // Add retry information for retryable errors
-        const responseHeaders: any = {};
-        if (deletionService.isRetryable(deletionError)) {
-          responseHeaders["Retry-After"] = "60"; // Suggest retry after 60 seconds
-          responseHeaders["X-Retryable"] = "true";
-        }
-
-        Object.entries(responseHeaders).forEach(([key, value]) => {
-          res.setHeader(key, String(value));
-        });
-
-        res.status(statusCode).json({
-          success: false,
-          message: deletionError.message,
-          data: {
-            code: deletionError.code,
-            retryable: deletionError.retryable,
-            operation: deletionError.operation
-              ? deletionService.getOperationSummary(deletionError.operation)
-              : null,
-          },
-        });
-        return;
-      }
-
-      // Log unexpected errors
-      console.error("Unexpected error in tournament deletion:", {
-        tournamentId: req.params.id,
-        adminUserId: req.user?.id,
-        correlationId,
-        error:
-          error instanceof Error
-            ? {
+        // Log unexpected errors
+        console.error("Unexpected error in tournament deletion:", {
+          tournamentId: req.params.id,
+          adminUserId: req.user?.id,
+          correlationId,
+          error:
+            error instanceof Error
+              ? {
                 name: error.name,
                 message: error.message,
                 stack: error.stack,
               }
-            : error,
-      });
+              : error,
+        });
 
-      // Let Express error handler deal with unexpected errors
-      next(error);
-    }
-  };
+        // Re-throw for asyncHandler to catch
+        throw error;
+      }
+    },
+  );
 
   // Private helper methods
 
@@ -1298,9 +1034,9 @@ export class TournamentAdminController extends BaseController<ITournament> {
               (existingPlayer.totalChampionships || 0) + (isChampion ? 1 : 0),
             bestResult: existingPlayer.bestResult
               ? Math.min(
-                  existingPlayer.bestResult,
-                  bodFinish || existingPlayer.bestResult,
-                )
+                existingPlayer.bestResult,
+                bodFinish || existingPlayer.bestResult,
+              )
               : bodFinish || 0,
             divisionChampionships: divisionChamps,
             individualChampionships: individualChamps,
@@ -1315,4 +1051,4 @@ export class TournamentAdminController extends BaseController<ITournament> {
   }
 }
 
-export default TournamentAdminController;
+export default new TournamentAdminController();

@@ -1,27 +1,17 @@
 import { Response } from "express";
-import { RequestWithAuth } from "./base";
-import { ApiResponse } from "../types/common";
+import { RequestWithAuth, BaseController } from "./base";
 import { Player } from "../models/Player";
 import { IPlayer } from "../types/player";
 import keycloakAdminService from "../services/keycloakAdminService";
 
-class ProfileController {
-  private handleError(res: Response, error: any, message: string): void {
-    console.error(message, error);
-    res.status(500).json({
-      success: false,
-      error: message,
-    });
-  }
-
+class ProfileController extends BaseController {
   // Get current user's profile which includes user data and linked player data
-  async getProfile(req: RequestWithAuth, res: Response): Promise<void> {
-    try {
+  getProfile = this.asyncHandler(
+    async (req: RequestWithAuth, res: Response): Promise<void> => {
       const userId = req.user?.id;
 
       if (!userId) {
-        res.status(401).json({ success: false, error: "Not authenticated" });
-        return;
+        return this.sendUnauthorized(res);
       }
 
       // Fetch user from Keycloak to get latest attributes (playerId)
@@ -34,8 +24,6 @@ class ProfileController {
       }
 
       // Determine if user should skip onboarding (isComplete)
-      // Super Admin (admin:admin123) OR any user with 'admin' role is considered complete automatically
-      // Check fresh Keycloak roles to avoid race conditions with token claims
       const userRoles = kcUser.realmRoles || [];
       const isSuperAdmin = userRoles.includes("superadmin");
       const isAdmin = userRoles.includes("admin") || req.user?.isAdmin || false;
@@ -60,31 +48,22 @@ class ProfileController {
         isComplete: isSuperAdmin || isAdmin || isPlayerComplete,
       };
 
-      const response: ApiResponse = {
-        success: true,
-        data: profileData,
-      };
-
-      res.json(response);
-    } catch (error) {
-      this.handleError(res, error, "Failed to retrieve profile");
-    }
-  }
+      this.sendSuccess(res, profileData);
+    },
+  );
 
   // Update current user's profile (specifically the player data)
-  async updateProfile(req: RequestWithAuth, res: Response): Promise<void> {
-    try {
+  updateProfile = this.asyncHandler(
+    async (req: RequestWithAuth, res: Response): Promise<void> => {
       const userId = req.user?.id;
       const { gender, bracketPreference } = req.body;
 
       if (!userId) {
-        res.status(401).json({ success: false, error: "Not authenticated" });
-        return;
+        return this.sendUnauthorized(res);
       }
 
       if (!gender) {
-        res.status(400).json({ success: false, error: "Gender is required" });
-        return;
+        return this.sendError(res, "Gender is required");
       }
 
       // 1. Get User
@@ -101,19 +80,11 @@ class ProfileController {
         );
       } else {
         // 2b. Create new player
-        // Use user's name or username for the player name
         const name =
           [kcUser.firstName, kcUser.lastName].filter(Boolean).join(" ") ||
           kcUser.username ||
           "Unknown Player";
 
-        // Check if name exists, append random if so? Or just try create and fail?
-        // Let's rely on unique constraint but maybe handle error gracefully?
-        // Actually, for now, let's just try to create.
-        // NOTE: In a real app we might ask user to confirm name if auto-generated one is taken.
-        // For Onboarding, we assume the user just registered, so they probably don't have a player yet.
-
-        // Simple logic: Try to create with user's name.
         try {
           player = await Player.create({
             name,
@@ -121,18 +92,15 @@ class ProfileController {
             bracketPreference,
             isActive: true,
           });
-          playerId = player.id; // Corrected: Use .id for string representation if needed, but _id is ObjectId
+          playerId = player.id;
 
           // Link to User
           await keycloakAdminService.updateUser(userId, {
-            attributes: { playerId: [player.id] }, // Use .id property from mongoose doc
+            attributes: { playerId: [player.id] },
           });
         } catch (creationError: any) {
           if (creationError.code === 11000) {
-            // Name duplicate.
-            // Fallback: append userId suffix or handle error.
-            // Sending error back to frontend to let them know might be better if we had a name field in onboarding.
-            // But since we don't, let's try to make it unique.
+            // Name duplicate fallback
             const uniqueName = `${name} (${userId.substring(0, 4)})`;
             player = await Player.create({
               name: uniqueName,
@@ -150,50 +118,32 @@ class ProfileController {
         }
       }
 
-      const response: ApiResponse = {
-        success: true,
-        data: player,
-        message: "Profile updated successfully",
-      };
-
-      res.json(response);
-    } catch (error) {
-      this.handleError(res, error, "Failed to update profile");
-    }
-  }
+      this.sendSuccess(res, player, "Profile updated successfully");
+    },
+  );
 
   // Change password for the current user
-  async changePassword(req: RequestWithAuth, res: Response): Promise<void> {
-    try {
+  changePassword = this.asyncHandler(
+    async (req: RequestWithAuth, res: Response): Promise<void> => {
       const userId = req.user?.id;
       const { currentPassword, newPassword } = req.body;
 
       if (!userId) {
-        res.status(401).json({ success: false, error: "Not authenticated" });
-        return;
+        return this.sendUnauthorized(res);
       }
 
       if (!currentPassword || !newPassword) {
-        res.status(400).json({
-          success: false,
-          error: "Current and new password are required",
-        });
-        return;
+        return this.sendError(res, "Current and new password are required");
       }
 
       if (newPassword.length < 8) {
-        res.status(400).json({
-          success: false,
-          error: "New password must be at least 8 characters",
-        });
-        return;
+        return this.sendError(res, "New password must be at least 8 characters");
       }
 
-      // 1. Verify current password by attempting a login
+      // 1. Verify current password
       const kcUser = await keycloakAdminService.getUser(userId);
       if (!kcUser.username) {
-        res.status(404).json({ success: false, error: "User not found" });
-        return;
+        return this.sendNotFound(res, "User");
       }
 
       const tokenUrl = `${process.env.KEYCLOAK_URL}/realms/${process.env.KEYCLOAK_REALM}/protocol/openid-connect/token`;
@@ -207,28 +157,21 @@ class ProfileController {
       }
 
       try {
-        // We use dynamic import for axios as seen in UserController
         await import("axios").then((a) =>
           a.default.post(tokenUrl, params, {
             headers: { "Content-Type": "application/x-www-form-urlencoded" },
           }),
         );
       } catch (authError) {
-        // If login fails, current password is wrong
-        res
-          .status(401)
-          .json({ success: false, error: "Invalid current password" });
-        return;
+        return this.sendUnauthorized(res, "Invalid current password");
       }
 
-      // 2. If verification successful, update password
+      // 2. Update password
       await keycloakAdminService.resetUserPassword(userId, newPassword, false);
 
-      res.json({ success: true, message: "Password updated successfully" });
-    } catch (error) {
-      this.handleError(res, error, "Failed to update password");
-    }
-  }
+      this.sendSuccess(res, null, "Password updated successfully");
+    },
+  );
 }
 
 export default new ProfileController();

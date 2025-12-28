@@ -1,48 +1,48 @@
 import { Router } from "express";
-import { tournamentResultController } from "../controllers/TournamentResultController";
+import TournamentResultController from "../controllers/TournamentResultController";
 import { requireAuth, requireAdmin } from "../middleware/auth";
 import { validateObjectId } from "../middleware/validation";
 
 const router = Router();
 
 // Public routes (read-only)
-router.get("/", tournamentResultController.getAll);
-router.get("/search", tournamentResultController.search);
-router.get("/stats", tournamentResultController.getStats);
-router.get("/years", tournamentResultController.getAvailableYears);
-router.get("/leaderboard", tournamentResultController.getLeaderboard);
+router.get("/", TournamentResultController.getAll);
+router.get("/search", TournamentResultController.search);
+router.get("/stats", TournamentResultController.getStats);
+router.get("/years", TournamentResultController.getAvailableYears);
+router.get("/leaderboard", TournamentResultController.getLeaderboard);
 router.get(
   "/tournament/:tournamentId",
   validateObjectId,
-  tournamentResultController.getByTournament,
+  TournamentResultController.getByTournament,
 );
 router.get(
   "/player/:playerId",
   validateObjectId,
-  tournamentResultController.getByPlayer,
+  TournamentResultController.getByPlayer,
 );
-router.get("/:id", validateObjectId, tournamentResultController.getById);
+router.get("/:id", validateObjectId, TournamentResultController.getById);
 
 // Protected routes (require admin)
-router.post("/", requireAdmin, tournamentResultController.create);
+router.post("/", requireAdmin, TournamentResultController.create);
 router.put(
   "/:id",
   requireAdmin,
   validateObjectId,
-  tournamentResultController.update,
+  TournamentResultController.update,
 );
 router.delete(
   "/:id",
   requireAdmin,
   validateObjectId,
-  tournamentResultController.delete,
+  TournamentResultController.delete,
 );
 
 // Admin routes
 router.post(
   "/bulk-import",
   requireAdmin,
-  tournamentResultController.bulkImport,
+  TournamentResultController.bulkImport,
 );
 
 export default router;

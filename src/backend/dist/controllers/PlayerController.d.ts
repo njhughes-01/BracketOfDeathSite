@@ -1,7 +1,7 @@
 import { Request, Response, NextFunction } from "express";
 import { IPlayer, IPlayerFilter } from "../types/player";
-import { BaseController, RequestWithAuth } from "./base";
-export declare class PlayerController extends BaseController<IPlayer> {
+import { BaseCrudController, RequestWithAuth } from "./base";
+export declare class PlayerController extends BaseCrudController<IPlayer> {
     constructor();
     protected buildFilter(query: any): IPlayerFilter;
     protected buildSearchFilter(searchTerm: string): any;
@@ -13,8 +13,9 @@ export declare class PlayerController extends BaseController<IPlayer> {
     bulkImport: (req: Request | RequestWithAuth, res: Response, next: NextFunction) => Promise<void>;
     private calculateConsistencyScore;
     private validatePlayerData;
-    create(req: RequestWithAuth, res: Response, next: NextFunction): Promise<void>;
-    update(req: RequestWithAuth, res: Response, next: NextFunction): Promise<void>;
+    create: (req: Request | RequestWithAuth, res: Response, next: NextFunction) => Promise<void>;
+    update: (req: Request | RequestWithAuth, res: Response, next: NextFunction) => Promise<void>;
 }
-export declare const playerController: PlayerController;
+declare const _default: PlayerController;
+export default _default;
 //# sourceMappingURL=PlayerController.d.ts.map

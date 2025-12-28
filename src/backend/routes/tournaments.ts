@@ -1,7 +1,7 @@
 import { Router } from "express";
-import { tournamentController } from "../controllers/TournamentController";
-import { TournamentAdminController } from "../controllers/TournamentAdminController";
-import { liveTournamentController } from "../controllers/LiveTournamentController";
+import TournamentController from "../controllers/TournamentController";
+import TournamentAdminController from "../controllers/TournamentAdminController";
+import LiveTournamentController from "../controllers/LiveTournamentController";
 import { requireAuth, requireAdmin } from "../middleware/auth";
 import {
   validateObjectId,
@@ -11,44 +11,43 @@ import {
 import { body, param } from "express-validator";
 
 const router = Router();
-const tournamentAdminController = new TournamentAdminController();
 
 // Public routes (read-only) - Order matters! Specific routes before parameterized ones
-router.get("/", validatePagination, tournamentController.getAll);
-router.get("/search", validatePagination, tournamentController.search);
-router.get("/stats", tournamentController.getStats);
-router.get("/upcoming", tournamentController.getUpcoming);
-router.get("/open", tournamentController.listOpen); // New Endpoint
-router.get("/recent", tournamentController.getRecent);
-router.get("/next-bod-number", tournamentController.getNextBodNumber);
-router.get("/year/:year", tournamentController.getByYear);
-router.get("/format/:format", tournamentController.getByFormat);
-router.get("/:id", validateObjectId, tournamentController.getById);
+router.get("/", validatePagination, TournamentController.getAll);
+router.get("/search", validatePagination, TournamentController.search);
+router.get("/stats", TournamentController.getStats);
+router.get("/upcoming", TournamentController.getUpcoming);
+router.get("/open", TournamentController.listOpen); // New Endpoint
+router.get("/recent", TournamentController.getRecent);
+router.get("/next-bod-number", TournamentController.getNextBodNumber);
+router.get("/year/:year", TournamentController.getByYear);
+router.get("/format/:format", TournamentController.getByFormat);
+router.get("/:id", validateObjectId, TournamentController.getById);
 router.get(
   "/:id/results",
   validateObjectId,
-  tournamentController.getWithResults,
+  TournamentController.getWithResults,
 );
 router.get(
   "/:id/registration",
   validateObjectId,
-  tournamentAdminController.getRegistrationInfo,
+  TournamentAdminController.getRegistrationInfo,
 );
 
 // Protected routes (require admin)
-router.post("/", requireAdmin, tournamentController.create);
+router.post("/", requireAdmin, TournamentController.create);
 // Match management routes (specific before generic :id)
 router.put(
   "/matches/:matchId",
   requireAdmin,
-  liveTournamentController.updateMatch,
+  LiveTournamentController.updateMatch,
 );
-router.put("/:id", requireAdmin, validateObjectId, tournamentController.update);
+router.put("/:id", requireAdmin, validateObjectId, TournamentController.update);
 router.delete(
   "/:id",
   requireAdmin,
   validateObjectId,
-  tournamentController.delete,
+  TournamentController.delete,
 );
 
 // Public registration routes (for self-registration)
@@ -60,7 +59,7 @@ router.post(
     body("playerId").isMongoId().withMessage("Invalid player ID"),
   ],
   validateRequest,
-  tournamentAdminController.registerPlayer,
+  TournamentAdminController.registerPlayer,
 );
 
 router.post(
@@ -71,7 +70,7 @@ router.post(
     body("playerId").isMongoId().withMessage("Invalid player ID"),
   ],
   validateRequest,
-  tournamentController.join,
+  TournamentController.join,
 );
 
 router.delete(
@@ -82,76 +81,76 @@ router.delete(
     param("playerId").isMongoId().withMessage("Invalid player ID"),
   ],
   validateRequest,
-  tournamentAdminController.unregisterPlayer,
+  TournamentAdminController.unregisterPlayer,
 );
 
 // Tournament management routes (Admin only)
 router.post(
   "/generate-seeds",
   requireAdmin,
-  tournamentController.generatePlayerSeeds,
+  TournamentController.generatePlayerSeeds,
 );
 router.post(
   "/generate-teams",
   requireAdmin,
-  tournamentController.generateTeams,
+  TournamentController.generateTeams,
 );
-router.post("/setup", requireAdmin, tournamentController.setupTournament);
+router.post("/setup", requireAdmin, TournamentController.setupTournament);
 
 // Live tournament management routes
 router.get(
   "/:id/live",
   validateObjectId,
-  liveTournamentController.getLiveTournament,
+  LiveTournamentController.getLiveTournament,
 );
 router.get(
   "/:id/live-stats",
   validateObjectId,
-  liveTournamentController.getLiveStats,
+  LiveTournamentController.getLiveStats,
 );
 router.get(
   "/:id/player-stats",
   validateObjectId,
-  liveTournamentController.getTournamentPlayerStats,
+  LiveTournamentController.getTournamentPlayerStats,
 );
 router.get(
   "/:id/stream",
   validateObjectId,
-  liveTournamentController.streamTournamentEvents,
+  LiveTournamentController.streamTournamentEvents,
 );
 router.post(
   "/:id/action",
   requireAdmin,
   validateObjectId,
-  liveTournamentController.executeTournamentAction,
+  LiveTournamentController.executeTournamentAction,
 );
 router.get(
   "/:id/matches",
   validateObjectId,
-  liveTournamentController.getTournamentMatches,
+  LiveTournamentController.getTournamentMatches,
 );
 router.post(
   "/:id/checkin",
   requireAdmin,
   validateObjectId,
-  liveTournamentController.checkInTeam,
+  LiveTournamentController.checkInTeam,
 );
 router.post(
   "/:id/generate-matches",
   requireAdmin,
   validateObjectId,
-  liveTournamentController.generateMatches,
+  LiveTournamentController.generateMatches,
 );
 router.post(
   "/:id/matches/confirm-completed",
   requireAdmin,
   validateObjectId,
-  liveTournamentController.confirmCompletedMatches,
+  LiveTournamentController.confirmCompletedMatches,
 );
 
 // Match management routes (create separate route file later if needed)
 
 // Admin routes
-router.post("/bulk-import", requireAdmin, tournamentController.bulkImport);
+router.post("/bulk-import", requireAdmin, TournamentController.bulkImport);
 
 export default router;

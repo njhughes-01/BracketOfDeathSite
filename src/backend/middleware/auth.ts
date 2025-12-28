@@ -137,6 +137,23 @@ export const requireAuth = async (
   res: Response,
   next: NextFunction,
 ): Promise<void> => {
+  // Test mode bypass - allows integration tests to run without Keycloak
+  if (
+    process.env.NODE_ENV === "test" &&
+    req.headers["x-test-mode"] === "true"
+  ) {
+    req.user = {
+      id: req.headers["x-test-user-id"]?.toString() || "test-user-id",
+      email: req.headers["x-test-user-email"]?.toString() || "test@example.com",
+      username: req.headers["x-test-username"]?.toString() || "testuser",
+      name: "Test User",
+      isAuthorized: true,
+      isAdmin: req.headers["x-test-is-admin"] === "true",
+      roles: (req.headers["x-test-roles"]?.toString() || "user").split(","),
+    };
+    return next();
+  }
+
   try {
     const authHeader = req.headers.authorization;
 

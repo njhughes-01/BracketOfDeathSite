@@ -1,47 +1,47 @@
 import { Router } from "express";
 import { requireAdmin } from "../middleware/auth";
-import { DataMigrationController } from "../controllers/DataMigrationController";
+import DataMigrationController from "../controllers/DataMigrationController";
 
 const router = Router();
 
 // All data routes require admin access
-const dataMigrationController = new DataMigrationController();
+// Using singleton instance
 
 // Migration endpoints
-router.post("/migrate", requireAdmin, dataMigrationController.migrateAll);
+router.post("/migrate", requireAdmin, DataMigrationController.migrateAll);
 router.post(
   "/migrate/players",
   requireAdmin,
-  dataMigrationController.migratePlayers,
+  DataMigrationController.migratePlayers,
 );
 router.post(
   "/migrate/tournaments",
   requireAdmin,
-  dataMigrationController.migrateTournaments,
+  DataMigrationController.migrateTournaments,
 );
 router.post(
   "/migrate/results",
   requireAdmin,
-  dataMigrationController.migrateResults,
+  DataMigrationController.migrateResults,
 );
 
 // Migration status and info
 router.get(
   "/migration/status",
   requireAdmin,
-  dataMigrationController.getMigrationStatus,
+  DataMigrationController.getMigrationStatus,
 );
 router.get(
   "/migration/preview",
   requireAdmin,
-  dataMigrationController.previewMigration,
+  DataMigrationController.previewMigration,
 );
 
 // Backup and restore
-router.post("/backup", requireAdmin, dataMigrationController.createBackup);
-router.post("/restore", requireAdmin, dataMigrationController.restoreBackup);
+router.post("/backup", requireAdmin, DataMigrationController.createBackup);
+router.post("/restore", requireAdmin, DataMigrationController.restoreBackup);
 
 // Validation
-router.post("/validate", requireAdmin, dataMigrationController.validateData);
+router.post("/validate", requireAdmin, DataMigrationController.validateData);
 
 export default router;

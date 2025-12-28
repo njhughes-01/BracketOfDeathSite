@@ -213,14 +213,26 @@ const tournamentSchema = new Schema<ITournament>(
     },
     registeredPlayers: [
       {
-        type: Schema.Types.ObjectId,
-        ref: "Player",
+        playerId: {
+          type: Schema.Types.ObjectId,
+          ref: "Player",
+        },
+        registeredAt: {
+          type: Date,
+          default: Date.now,
+        },
       },
     ],
     waitlistPlayers: [
       {
-        type: Schema.Types.ObjectId,
-        ref: "Player",
+        playerId: {
+          type: Schema.Types.ObjectId,
+          ref: "Player",
+        },
+        registeredAt: {
+          type: Date,
+          default: Date.now,
+        },
       },
     ],
     champion: {
@@ -523,7 +535,7 @@ tournamentSchema.index({
   advancementCriteria: "text",
 });
 
-export interface ITournamentModel extends BaseModelStatics<ITournament> {}
+export interface ITournamentModel extends BaseModelStatics<ITournament> { }
 
 export const Tournament = model<ITournament, ITournamentModel>(
   "Tournament",

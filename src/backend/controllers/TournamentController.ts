@@ -8,10 +8,10 @@ import {
   ITournamentFilter,
   TournamentFormats,
 } from "../types/tournament";
-import { BaseController, RequestWithAuth } from "./base";
+import { BaseCrudController, RequestWithAuth } from "./base";
 import { ApiResponse } from "../types/common";
 
-export class TournamentController extends BaseController<ITournament> {
+export class TournamentController extends BaseCrudController<ITournament> {
   constructor() {
     super(Tournament, "Tournament");
   }
@@ -89,12 +89,8 @@ export class TournamentController extends BaseController<ITournament> {
   }
 
   // Override getAll to include player counts from TournamentResults
-  override getAll = async (
-    req: Request,
-    res: Response,
-    next: NextFunction,
-  ): Promise<void> => {
-    try {
+  override getAll = this.asyncHandler(
+    async (req: Request, res: Response): Promise<void> => {
       const page = parseInt(req.query.page as string) || 1;
       const limit = parseInt(req.query.limit as string) || 10;
       const sortField = (req.query.sort as string) || "-date";
@@ -153,15 +149,6 @@ export class TournamentController extends BaseController<ITournament> {
 
       // Return in PaginatedResponse format expected by frontend
       const result = {
-        success: true,
-        data: docs,
-        pagination: {
-          current: page,
-          pages: totalPages,
-          count: docs.length,
-          total: totalDocs,
-        },
-        // Also include mongoose-paginate-v2 style fields for backward compatibility
         docs,
         totalDocs,
         limit,
@@ -172,21 +159,24 @@ export class TournamentController extends BaseController<ITournament> {
         nextPage: page < totalPages ? page + 1 : null,
         prevPage: page > 1 ? page - 1 : null,
         pagingCounter: skip + 1,
+        // Legacy fields
+        success: true,
+        data: docs,
+        pagination: {
+          current: page,
+          pages: totalPages,
+          count: docs.length,
+          total: totalDocs,
+        },
       };
 
       res.status(200).json(result);
-    } catch (error) {
-      next(error);
-    }
-  };
+    },
+  );
 
   // Override getById to include result player count for single tournament
-  override getById = async (
-    req: Request,
-    res: Response,
-    next: NextFunction,
-  ): Promise<void> => {
-    try {
+  override getById = this.asyncHandler(
+    async (req: Request, res: Response): Promise<void> => {
       const { id } = req.params;
 
       // Use aggregation to get tournament with result count
@@ -219,670 +209,520 @@ export class TournamentController extends BaseController<ITournament> {
       const [tournament] = await Tournament.aggregate(pipeline);
 
       if (!tournament) {
-        const response: ApiResponse = {
-          success: false,
-          error: "Tournament not found",
-        };
-        res.status(404).json(response);
+        this.sendNotFound(res, "Tournament");
         return;
       }
 
-      const response: ApiResponse = {
-        success: true,
-        data: tournament,
-      };
-
-      res.status(200).json(response);
-    } catch (error) {
-      next(error);
-    }
-  };
+      this.sendSuccess(res, tournament);
+    },
+  );
 
   // Get tournament statistics
   getStats = this.asyncHandler(
-    async (req: Request, res: Response, next: NextFunction): Promise<void> => {
-      try {
-        const stats = await Tournament.aggregate([
-          {
-            $group: {
-              _id: null,
-              totalTournaments: { $sum: 1 },
-              formats: { $addToSet: "$format" },
-              locations: { $addToSet: "$location" },
-              earliestDate: { $min: "$date" },
-              latestDate: { $max: "$date" },
-            },
+    async (req: Request, res: Response): Promise<void> => {
+      const stats = await Tournament.aggregate([
+        {
+          $group: {
+            _id: null,
+            totalTournaments: { $sum: 1 },
+            formats: { $addToSet: "$format" },
+            locations: { $addToSet: "$location" },
+            earliestDate: { $min: "$date" },
+            latestDate: { $max: "$date" },
           },
-        ]);
+        },
+      ]);
 
-        const formatStats = await Tournament.aggregate([
-          {
-            $group: {
-              _id: "$format",
-              count: { $sum: 1 },
-            },
+      const formatStats = await Tournament.aggregate([
+        {
+          $group: {
+            _id: "$format",
+            count: { $sum: 1 },
           },
-          {
-            $sort: { count: -1 },
-          },
-        ]);
+        },
+        {
+          $sort: { count: -1 },
+        },
+      ]);
 
-        const yearlyStats = await Tournament.aggregate([
-          {
-            $group: {
-              _id: { $year: "$date" },
-              count: { $sum: 1 },
-              formats: { $addToSet: "$format" },
-            },
+      const yearlyStats = await Tournament.aggregate([
+        {
+          $group: {
+            _id: { $year: "$date" },
+            count: { $sum: 1 },
+            formats: { $addToSet: "$format" },
           },
-          {
-            $sort: { _id: -1 },
-          },
-        ]);
+        },
+        {
+          $sort: { _id: -1 },
+        },
+      ]);
 
-        const response: ApiResponse = {
-          success: true,
-          data: {
-            overview: stats[0] || {},
-            formatBreakdown: formatStats,
-            yearlyBreakdown: yearlyStats,
-          },
-        };
-
-        res.status(200).json(response);
-      } catch (error) {
-        next(error);
-      }
+      this.sendSuccess(res, {
+        overview: stats[0] || {},
+        formatBreakdown: formatStats,
+        yearlyBreakdown: yearlyStats,
+      });
     },
   );
 
   // Get tournaments by year
   getByYear = this.asyncHandler(
-    async (req: Request, res: Response, next: NextFunction): Promise<void> => {
-      try {
-        const { year } = req.params;
-        const yearInt = parseInt(year);
+    async (req: Request, res: Response): Promise<void> => {
+      const { year } = req.params;
+      const yearInt = parseInt(year);
 
-        if (
-          isNaN(yearInt) ||
-          yearInt < 2009 ||
-          yearInt > new Date().getFullYear() + 10
-        ) {
-          this.sendError(res, 400, "Invalid year provided");
-          return;
-        }
-
-        const tournaments = await Tournament.find({
-          date: {
-            $gte: new Date(`${yearInt}-01-01`),
-            $lte: new Date(`${yearInt}-12-31`),
-          },
-        }).sort({ date: 1 });
-
-        const response: ApiResponse = {
-          success: true,
-          data: tournaments,
-        };
-
-        res.status(200).json(response);
-      } catch (error) {
-        next(error);
+      if (
+        isNaN(yearInt) ||
+        yearInt < 2009 ||
+        yearInt > new Date().getFullYear() + 10
+      ) {
+        this.sendError(res, "Invalid year provided", 400);
+        return;
       }
+
+      const tournaments = await Tournament.find({
+        date: {
+          $gte: new Date(`${yearInt}-01-01`),
+          $lte: new Date(`${yearInt}-12-31`),
+        },
+      }).sort({ date: 1 });
+
+      this.sendSuccess(res, tournaments);
     },
   );
 
   // Get tournaments by format
   getByFormat = this.asyncHandler(
-    async (req: Request, res: Response, next: NextFunction): Promise<void> => {
-      try {
-        const { format } = req.params;
+    async (req: Request, res: Response): Promise<void> => {
+      const { format } = req.params;
 
-        if (!TournamentFormats.includes(format as any)) {
-          this.sendError(
-            res,
-            400,
-            `Invalid format. Must be one of: ${TournamentFormats.join(", ")}`,
-          );
-          return;
-        }
-
-        const tournaments = await Tournament.find({ format }).sort({
-          date: -1,
-        });
-
-        const response: ApiResponse = {
-          success: true,
-          data: tournaments,
-        };
-
-        res.status(200).json(response);
-      } catch (error) {
-        next(error);
+      if (!TournamentFormats.includes(format as any)) {
+        this.sendError(
+          res,
+          `Invalid format. Must be one of: ${TournamentFormats.join(", ")}`,
+          400,
+        );
+        return;
       }
+
+      const tournaments = await Tournament.find({ format }).sort({
+        date: -1,
+      });
+
+      this.sendSuccess(res, tournaments);
     },
   );
 
   // Get tournament with results
   getWithResults = this.asyncHandler(
-    async (req: Request, res: Response, next: NextFunction): Promise<void> => {
-      try {
-        const { id } = req.params;
+    async (req: Request, res: Response): Promise<void> => {
+      const { id } = req.params;
 
-        const tournament = await Tournament.findById(id);
-        if (!tournament) {
-          this.sendError(res, 404, "Tournament not found");
-          return;
-        }
-
-        const results = await TournamentResult.find({ tournamentId: id })
-          .populate("players", "name")
-          .sort({ "totalStats.finalRank": 1, "totalStats.winPercentage": -1 });
-
-        const response: ApiResponse = {
-          success: true,
-          data: {
-            tournament,
-            results,
-            resultCount: results.length,
-          },
-        };
-
-        res.status(200).json(response);
-      } catch (error) {
-        next(error);
+      const tournament = await Tournament.findById(id);
+      if (!tournament) {
+        this.sendNotFound(res, "Tournament");
+        return;
       }
+
+      const results = await TournamentResult.find({ tournamentId: id })
+        .populate("players", "name")
+        .sort({ "totalStats.finalRank": 1, "totalStats.winPercentage": -1 });
+
+      this.sendSuccess(res, {
+        tournament,
+        results,
+        resultCount: results.length,
+      });
     },
   );
 
   // Get upcoming tournaments
   getUpcoming = this.asyncHandler(
-    async (req: Request, res: Response, next: NextFunction): Promise<void> => {
-      try {
-        const now = new Date();
-        const limit = parseInt(req.query.limit as string) || 10;
+    async (req: Request, res: Response): Promise<void> => {
+      const now = new Date();
+      const limit = parseInt(req.query.limit as string) || 10;
 
-        const upcomingTournaments = await Tournament.find({
-          date: { $gte: now },
-        })
-          .sort({ date: 1 })
-          .limit(limit);
+      const upcomingTournaments = await Tournament.find({
+        date: { $gte: now },
+      })
+        .sort({ date: 1 })
+        .limit(limit);
 
-        const response: ApiResponse = {
-          success: true,
-          data: upcomingTournaments,
-        };
-
-        res.status(200).json(response);
-      } catch (error) {
-        next(error);
-      }
+      this.sendSuccess(res, upcomingTournaments);
     },
   );
 
   // Get recent tournaments
   getRecent = this.asyncHandler(
-    async (req: Request, res: Response, next: NextFunction): Promise<void> => {
-      try {
-        const limit = parseInt(req.query.limit as string) || 10;
+    async (req: Request, res: Response): Promise<void> => {
+      const limit = parseInt(req.query.limit as string) || 10;
 
-        const recentTournaments = await Tournament.find({})
-          .sort({ date: -1 })
-          .limit(limit);
+      const recentTournaments = await Tournament.find({})
+        .sort({ date: -1 })
+        .limit(limit);
 
-        const response: ApiResponse = {
-          success: true,
-          data: recentTournaments,
-        };
-
-        res.status(200).json(response);
-      } catch (error) {
-        next(error);
-      }
+      this.sendSuccess(res, recentTournaments);
     },
   );
 
   // Get open tournaments for registration
   listOpen = this.asyncHandler(
-    async (req: Request, res: Response, next: NextFunction): Promise<void> => {
-      try {
-        const now = new Date();
+    async (req: Request, res: Response): Promise<void> => {
+      const now = new Date();
 
-        const openTournaments = await Tournament.find({
-          $or: [{ allowSelfRegistration: true }, { registrationType: "open" }],
-          status: { $in: ["scheduled", "open"] }, // Ensure tournament isn't completed or in progress (unless late join allowed?)
-          // Ensure registration window is valid if dates are set
-          $and: [
-            {
-              $or: [
-                { registrationOpensAt: { $exists: false } },
-                { registrationOpensAt: { $lte: now } },
-              ],
-            },
-            {
-              $or: [
-                { registrationDeadline: { $exists: false } },
-                { registrationDeadline: { $gte: now } },
-              ],
-            },
-          ],
-        }).sort({ date: 1 });
+      const openTournaments = await Tournament.find({
+        $or: [{ allowSelfRegistration: true }, { registrationType: "open" }],
+        status: { $in: ["scheduled", "open"] }, // Ensure tournament isn't completed or in progress (unless late join allowed?)
+        // Ensure registration window is valid if dates are set
+        $and: [
+          {
+            $or: [
+              { registrationOpensAt: { $exists: false } },
+              { registrationOpensAt: { $lte: now } },
+            ],
+          },
+          {
+            $or: [
+              { registrationDeadline: { $exists: false } },
+              { registrationDeadline: { $gte: now } },
+            ],
+          },
+        ],
+      }).sort({ date: 1 });
 
-        const response: ApiResponse = {
-          success: true,
-          data: openTournaments,
-        };
-
-        res.status(200).json(response);
-      } catch (error) {
-        next(error);
-      }
+      this.sendSuccess(res, openTournaments);
     },
   );
 
   // Join a tournament (Self-registration)
   join = this.asyncHandler(
-    async (
-      req: RequestWithAuth,
-      res: Response,
-      next: NextFunction,
-    ): Promise<void> => {
-      try {
-        const { id } = req.params;
-        const { playerId } = req.body;
-        const userId = req.user?.id; // Keycloak user ID
+    async (req: RequestWithAuth, res: Response): Promise<void> => {
+      const { id } = req.params;
+      const { playerId } = req.body;
+      const userId = req.user?.id; // Keycloak user ID
 
-        // 1. Validate Tournament
-        const tournament = await Tournament.findById(id);
-        if (!tournament) {
-          this.sendError(res, 404, "Tournament not found");
-          return;
-        }
-
-        // 2. Validate Registration Rules
-        if (
-          !tournament.allowSelfRegistration &&
-          tournament.registrationType !== "open"
-        ) {
-          this.sendError(
-            res,
-            403,
-            "Self-registration is not allowed for this tournament",
-          );
-          return;
-        }
-
-        const now = new Date();
-        if (
-          tournament.registrationOpensAt &&
-          now < new Date(tournament.registrationOpensAt)
-        ) {
-          this.sendError(res, 400, "Registration is not yet open");
-          return;
-        }
-        if (
-          tournament.registrationDeadline &&
-          now > new Date(tournament.registrationDeadline)
-        ) {
-          this.sendError(res, 400, "Registration deadline has passed");
-          return;
-        }
-
-        // 3. Find Player Profile
-        // If playerId is provided, verify it. If not, try to find linked player for user.
-        let player;
-
-        if (playerId) {
-          // Explicit playerId provided (verify user owns it or is admin?)
-          // For now, assuming if they provide it, we check if it's valid.
-          // ideally we should check if this Keycloak user is linked to this player.
-          // But for open simple registration, let's verify existence.
-          player = await Player.findById(playerId);
-        } else {
-          // TODO: Look up player by Keycloak ID (userId).
-          // For now, require playerId in body or fail.
-          // In ideal flow, the frontend passes the linked playerId.
-          this.sendError(res, 400, "Player ID is required for registration");
-          return;
-        }
-
-        if (!player) {
-          this.sendError(res, 404, "Player profile not found");
-          return;
-        }
-
-        // 4. Check Duplicate Registration
-        const isRegistered = tournament.registeredPlayers.some(
-          (p: any) =>
-            p.playerId?.toString() === playerId || p.toString() === playerId,
-        );
-        const isWaitlisted = tournament.waitlistPlayers.some(
-          (p: any) =>
-            p.playerId?.toString() === playerId || p.toString() === playerId,
-        );
-
-        if (isRegistered) {
-          this.sendError(res, 400, "Player already registered");
-          return;
-        }
-        if (isWaitlisted) {
-          this.sendError(res, 400, "Player already on waitlist");
-          return;
-        }
-
-        // 5. Add to Tournament (Register or Waitlist)
-        const maxPlayers = tournament.maxPlayers || 32; // Default if not set
-        const currentCount = tournament.registeredPlayers.length;
-
-        let status = "registered";
-        if (currentCount >= maxPlayers) {
-          // Add to waitlist
-          tournament.waitlistPlayers.push({
-            playerId: player._id,
-            registeredAt: now,
-          } as any);
-          status = "waitlisted";
-        } else {
-          // Register
-          tournament.registeredPlayers.push({
-            playerId: player._id,
-            registeredAt: now,
-          } as any);
-        }
-
-        await tournament.save();
-
-        const response: ApiResponse = {
-          success: true,
-          data: {
-            tournamentId: tournament._id,
-            playerId: player._id,
-            status,
-            message:
-              status === "registered"
-                ? "Successfully registered for tournament"
-                : "Tournament full. Added to waitlist.",
-          },
-        };
-
-        res.status(200).json(response);
-      } catch (error) {
-        next(error);
+      // 1. Validate Tournament
+      const tournament = await Tournament.findById(id);
+      if (!tournament) {
+        this.sendNotFound(res, "Tournament");
+        return;
       }
+
+      // 2. Validate Registration Rules
+      if (
+        !tournament.allowSelfRegistration &&
+        tournament.registrationType !== "open"
+      ) {
+        this.sendForbidden(
+          res,
+          "Self-registration is not allowed for this tournament",
+        );
+        return;
+      }
+
+      const now = new Date();
+      if (
+        tournament.registrationOpensAt &&
+        now < new Date(tournament.registrationOpensAt)
+      ) {
+        this.sendError(res, "Registration is not yet open", 400);
+        return;
+      }
+      if (
+        tournament.registrationDeadline &&
+        now > new Date(tournament.registrationDeadline)
+      ) {
+        this.sendError(res, "Registration deadline has passed", 400);
+        return;
+      }
+
+      // 3. Find Player Profile
+      let player;
+
+      if (playerId) {
+        player = await Player.findById(playerId);
+      } else {
+        this.sendError(res, "Player ID is required for registration", 400);
+        return;
+      }
+
+      if (!player) {
+        this.sendNotFound(res, "Player profile");
+        return;
+      }
+
+      // 4. Check Duplicate Registration
+      const isRegistered = tournament.registeredPlayers?.some(
+        (p) => p.playerId.toString() === playerId,
+      );
+      const isWaitlisted = tournament.waitlistPlayers?.some(
+        (p) => p.playerId.toString() === playerId,
+      );
+
+      if (isRegistered) {
+        this.sendError(res, "Player already registered", 400);
+        return;
+      }
+      if (isWaitlisted) {
+        this.sendError(res, "Player already on waitlist", 400);
+        return;
+      }
+
+      // 5. Add to Tournament (Register or Waitlist)
+      const maxPlayers = tournament.maxPlayers || 32; // Default if not set
+      const currentCount = tournament.registeredPlayers.length;
+
+      let status = "registered";
+      if (currentCount >= maxPlayers) {
+        // Add to waitlist
+        tournament.waitlistPlayers = tournament.waitlistPlayers || [];
+        tournament.waitlistPlayers.push({
+          playerId: player._id,
+          registeredAt: now,
+        });
+        status = "waitlisted";
+      } else {
+        // Register
+        tournament.registeredPlayers = tournament.registeredPlayers || [];
+        tournament.registeredPlayers.push({
+          playerId: player._id,
+          registeredAt: now,
+        });
+      }
+
+      await tournament.save();
+
+      this.sendSuccess(
+        res,
+        {
+          tournamentId: tournament._id,
+          playerId: player._id,
+          status,
+        },
+        status === "registered"
+          ? "Successfully registered for tournament"
+          : "Tournament full. Added to waitlist.",
+      );
     },
   );
 
   // Get next BOD number for tournament creation
   getNextBodNumber = this.asyncHandler(
-    async (req: Request, res: Response, next: NextFunction): Promise<void> => {
-      try {
-        // Find the highest BOD number currently in use
-        const latestTournament = await Tournament.findOne({})
-          .sort({ bodNumber: -1 })
-          .select("bodNumber");
+    async (req: Request, res: Response): Promise<void> => {
+      // Find the highest BOD number currently in use
+      const latestTournament = await Tournament.findOne({})
+        .sort({ bodNumber: -1 })
+        .select("bodNumber");
 
-        const nextBodNumber = latestTournament
-          ? latestTournament.bodNumber + 1
-          : 1;
+      const nextBodNumber = latestTournament ? latestTournament.bodNumber + 1 : 1;
 
-        const response: ApiResponse = {
-          success: true,
-          data: { nextBodNumber },
-        };
-
-        res.status(200).json(response);
-      } catch (error) {
-        next(error);
-      }
+      this.sendSuccess(res, { nextBodNumber });
     },
   );
 
   // Generate player seeds based on historical data
   generatePlayerSeeds = this.asyncHandler(
-    async (req: Request, res: Response, next: NextFunction): Promise<void> => {
-      try {
-        console.log("generatePlayerSeeds called with:", req.body);
-        const { method = "historical", parameters = {} } = req.body;
+    async (req: Request, res: Response): Promise<void> => {
+      console.log("generatePlayerSeeds called with:", req.body);
+      const { method = "historical", parameters = {} } = req.body;
 
-        // Get all players with their career statistics
-        const players = await this.getAllPlayersWithStats();
-        console.log(`Found ${players.length} players for seeding`);
+      // Get all players with their career statistics
+      const players = await this.getAllPlayersWithStats();
+      console.log(`Found ${players.length} players for seeding`);
 
-        if (players.length === 0) {
-          this.sendError(res, 404, "No players found for seeding");
-          return;
-        }
-
-        // Calculate seeds based on the selected method
-        let playerSeeds: any[] = [];
-
-        switch (method) {
-          case "historical":
-            playerSeeds = this.calculateHistoricalSeeds(players, parameters);
-            break;
-          case "recent_form":
-            playerSeeds = this.calculateRecentFormSeeds(players, parameters);
-            break;
-          case "elo":
-            playerSeeds = this.calculateEloSeeds(players, parameters);
-            break;
-          case "manual":
-            // Return players without automatic seeding
-            playerSeeds = players.map((player, index) => ({
-              playerId: player._id,
-              playerName: player.name,
-              seed: index + 1,
-              statistics: this.getPlayerStatistics(player),
-            }));
-            break;
-          default:
-            playerSeeds = this.calculateHistoricalSeeds(players, parameters);
-        }
-
-        console.log(`Generated ${playerSeeds.length} player seeds`);
-
-        const response: ApiResponse = {
-          success: true,
-          data: playerSeeds,
-        };
-
-        res.status(200).json(response);
-      } catch (error) {
-        console.error("Error in generatePlayerSeeds:", error);
-        next(error);
+      if (players.length === 0) {
+        this.sendNotFound(res, "Players for seeding");
+        return;
       }
+
+      // Calculate seeds based on the selected method
+      let playerSeeds: any[] = [];
+
+      switch (method) {
+        case "historical":
+          playerSeeds = this.calculateHistoricalSeeds(players, parameters);
+          break;
+        case "recent_form":
+          playerSeeds = this.calculateRecentFormSeeds(players, parameters);
+          break;
+        case "elo":
+          playerSeeds = this.calculateEloSeeds(players, parameters);
+          break;
+        case "manual":
+          // Return players without automatic seeding
+          playerSeeds = players.map((player, index) => ({
+            playerId: player._id,
+            playerName: player.name,
+            seed: index + 1,
+            statistics: this.getPlayerStatistics(player),
+          }));
+          break;
+        default:
+          playerSeeds = this.calculateHistoricalSeeds(players, parameters);
+      }
+
+      console.log(`Generated ${playerSeeds.length} player seeds`);
+
+      this.sendSuccess(res, playerSeeds);
     },
   );
 
   // Generate teams based on seeded players
   generateTeams = this.asyncHandler(
-    async (req: Request, res: Response, next: NextFunction): Promise<void> => {
-      try {
-        const { playerIds, config } = req.body;
+    async (req: Request, res: Response): Promise<void> => {
+      const { playerIds, config } = req.body;
 
-        if (!Array.isArray(playerIds) || playerIds.length === 0) {
-          this.sendError(res, 400, "Player IDs array is required");
-          return;
-        }
-
-        // Get player data for team formation
-        const players = await this.getPlayersById(playerIds);
-
-        if (players.length !== playerIds.length) {
-          this.sendError(res, 400, "Some players not found");
-          return;
-        }
-
-        // Generate teams based on configuration
-        const teams = await this.formTeams(players, config);
-
-        const response: ApiResponse = {
-          success: true,
-          data: teams,
-        };
-
-        res.status(200).json(response);
-      } catch (error) {
-        next(error);
+      if (!Array.isArray(playerIds) || playerIds.length === 0) {
+        this.sendError(res, "Player IDs array is required", 400);
+        return;
       }
+
+      // Get player data for team formation
+      const players = await this.getPlayersById(playerIds);
+
+      if (players.length !== playerIds.length) {
+        this.sendError(res, "Some players not found", 400);
+        return;
+      }
+
+      // Generate teams based on configuration
+      const teams = await this.formTeams(players, config);
+
+      this.sendSuccess(res, teams);
     },
   );
 
   // Setup complete tournament with all configurations
   setupTournament = this.asyncHandler(
-    async (
-      req: RequestWithAuth,
-      res: Response,
-      next: NextFunction,
-    ): Promise<void> => {
-      try {
-        console.log(
-          "setupTournament called with body:",
-          JSON.stringify(req.body, null, 2),
-        );
+    async (req: RequestWithAuth, res: Response): Promise<void> => {
+      console.log(
+        "setupTournament called with body:",
+        JSON.stringify(req.body, null, 2),
+      );
 
-        let {
-          basicInfo,
-          seedingConfig,
-          teamFormationConfig,
-          bracketType,
-          maxPlayers,
-          selectedPlayers,
-          generatedSeeds,
-          generatedTeams,
-        } = req.body;
+      let {
+        basicInfo,
+        seedingConfig,
+        teamFormationConfig,
+        bracketType,
+        maxPlayers,
+        selectedPlayers,
+        generatedSeeds,
+        generatedTeams,
+      } = req.body;
 
-        // Ensure bracketType has a default if not provided
-        if (!bracketType) {
-          bracketType = "round_robin_playoff"; // Default to standard format
-        }
-
-        // Validate basicInfo exists and has required fields
-        if (!basicInfo) {
-          this.sendError(res, 400, "basicInfo is required");
-          return;
-        }
-
-        const requiredFields = [
-          "date",
-          "bodNumber",
-          "format",
-          "location",
-          "advancementCriteria",
-        ];
-        const missingFields = requiredFields.filter(
-          (field) => !basicInfo[field],
-        );
-
-        if (missingFields.length > 0) {
-          this.sendError(
-            res,
-            400,
-            `Missing required fields in basicInfo: ${missingFields.join(", ")}`,
-          );
-          return;
-        }
-
-        console.log("Creating tournament with data:", {
-          ...basicInfo,
-          maxPlayers,
-          status: basicInfo.status || "scheduled",
-          players: selectedPlayers || [],
-          seedingConfig,
-          teamFormationConfig,
-          bracketType,
-          generatedSeeds: generatedSeeds || [],
-          generatedTeams: generatedTeams || [],
-        });
-
-        // Create the tournament record
-        const tournament = await Tournament.create({
-          ...basicInfo,
-          maxPlayers,
-          status: basicInfo.status || "scheduled",
-          players: selectedPlayers || [],
-          seedingConfig,
-          teamFormationConfig,
-          bracketType,
-          generatedSeeds: generatedSeeds || [],
-          generatedTeams: generatedTeams || [],
-        });
-
-        const response: ApiResponse = {
-          success: true,
-          data: tournament,
-          message: "Tournament setup completed successfully",
-        };
-
-        res.status(201).json(response);
-      } catch (error: any) {
-        console.error("Error in setupTournament:", error);
-        if (error.name === "ValidationError") {
-          const validationErrors = Object.values(error.errors)
-            .map((err: any) => err.message)
-            .join(", ");
-          this.sendError(res, 400, `Validation error: ${validationErrors}`);
-        } else {
-          next(error);
-        }
+      // Ensure bracketType has a default if not provided
+      if (!bracketType) {
+        bracketType = "round_robin_playoff"; // Default to standard format
       }
+
+      // Validate basicInfo exists and has required fields
+      if (!basicInfo) {
+        this.sendError(res, "basicInfo is required", 400);
+        return;
+      }
+
+      const requiredFields = [
+        "date",
+        "bodNumber",
+        "format",
+        "location",
+        "advancementCriteria",
+      ];
+      const missingFields = requiredFields.filter(
+        (field) => !basicInfo[field],
+      );
+
+      if (missingFields.length > 0) {
+        this.sendError(
+          res,
+          `Missing required fields in basicInfo: ${missingFields.join(", ")}`,
+          400,
+        );
+        return;
+      }
+
+      console.log("Creating tournament with data:", {
+        ...basicInfo,
+        maxPlayers,
+        status: basicInfo.status || "scheduled",
+        players: selectedPlayers || [],
+        seedingConfig,
+        teamFormationConfig,
+        bracketType,
+        generatedSeeds: generatedSeeds || [],
+        generatedTeams: generatedTeams || [],
+      });
+
+      // Create the tournament record
+      const tournament = await Tournament.create({
+        ...basicInfo,
+        maxPlayers,
+        status: basicInfo.status || "scheduled",
+        players: selectedPlayers || [],
+        seedingConfig,
+        teamFormationConfig,
+        bracketType,
+        generatedSeeds: generatedSeeds || [],
+        generatedTeams: generatedTeams || [],
+      });
+
+      this.sendSuccess(
+        res,
+        tournament,
+        "Tournament setup completed successfully",
+        undefined,
+        201,
+      );
     },
   );
 
   // Bulk import tournaments (for data migration)
   bulkImport = this.asyncHandler(
-    async (
-      req: RequestWithAuth,
-      res: Response,
-      next: NextFunction,
-    ): Promise<void> => {
-      try {
-        const { tournaments } = req.body;
+    async (req: RequestWithAuth, res: Response): Promise<void> => {
+      const { tournaments } = req.body;
 
-        if (!Array.isArray(tournaments) || tournaments.length === 0) {
-          this.sendError(res, 400, "Tournaments array is required");
-          return;
-        }
-
-        const results = {
-          created: 0,
-          updated: 0,
-          errors: [] as Array<{ bodNumber: number; error: string }>,
-        };
-
-        for (const tournamentData of tournaments) {
-          try {
-            const existingTournament = await Tournament.findOne({
-              bodNumber: tournamentData.bodNumber,
-            });
-
-            if (existingTournament) {
-              await Tournament.findByIdAndUpdateSafe(
-                existingTournament._id.toString(),
-                tournamentData,
-              );
-              results.updated++;
-            } else {
-              await Tournament.create(tournamentData);
-              results.created++;
-            }
-          } catch (error: any) {
-            results.errors.push({
-              bodNumber: tournamentData.bodNumber || 0,
-              error: error.message,
-            });
-          }
-        }
-
-        const response: ApiResponse = {
-          success: true,
-          data: results,
-          message: `Bulk import completed: ${results.created} created, ${results.updated} updated, ${results.errors.length} errors`,
-        };
-
-        res.status(200).json(response);
-      } catch (error) {
-        next(error);
+      if (!Array.isArray(tournaments) || tournaments.length === 0) {
+        this.sendError(res, "Tournaments array is required", 400);
+        return;
       }
+
+      const results = {
+        created: 0,
+        updated: 0,
+        errors: [] as Array<{ bodNumber: number; error: string }>,
+      };
+
+      for (const tournamentData of tournaments) {
+        try {
+          const existingTournament = await Tournament.findOne({
+            bodNumber: tournamentData.bodNumber,
+          });
+
+          if (existingTournament) {
+            await Tournament.findByIdAndUpdateSafe(
+              existingTournament._id.toString(),
+              tournamentData,
+            );
+            results.updated++;
+          } else {
+            await Tournament.create(tournamentData);
+            results.created++;
+          }
+        } catch (error: any) {
+          results.errors.push({
+            bodNumber: tournamentData.bodNumber || 0,
+            error: error.message,
+          });
+        }
+      }
+
+      this.sendSuccess(
+        res,
+        results,
+        `Bulk import completed: ${results.created} created, ${results.updated} updated, ${results.errors.length} errors`,
+      );
     },
   );
 
@@ -1183,60 +1023,54 @@ export class TournamentController extends BaseController<ITournament> {
   }
 
   // Override create method to add custom validation
-  override create = async (
-    req: RequestWithAuth,
-    res: Response,
-    next: NextFunction,
-  ): Promise<void> => {
-    try {
+  override create = this.asyncHandler(
+    async (req: Request, res: Response): Promise<void> => {
       const validationErrors = this.validateTournamentData(req.body);
 
       if (validationErrors.length > 0) {
-        this.sendError(res, 400, validationErrors.join(", "));
+        this.sendError(res, validationErrors.join(", "), 400);
         return;
       }
 
-      // Call parent create method
-      await super.create(req, res, next);
-    } catch (error) {
-      next(error);
-    }
-  };
+      const doc = await this.model.create(req.body);
+      this.sendSuccess(res, doc, "Tournament created successfully", undefined, 201);
+    },
+  );
 
   // Override update method to add custom validation
-  override update = async (
-    req: RequestWithAuth,
-    res: Response,
-    next: NextFunction,
-  ): Promise<void> => {
-    try {
+  override update = this.asyncHandler(
+    async (req: Request, res: Response): Promise<void> => {
+      const { id } = req.params;
       const validationErrors = this.validateTournamentData(req.body);
 
       if (validationErrors.length > 0) {
-        this.sendError(res, 400, validationErrors.join(", "));
+        this.sendError(res, validationErrors.join(", "), 400);
         return;
       }
 
-      // Call parent update method
-      await super.update(req, res, next);
-    } catch (error) {
-      next(error);
-    }
-  };
+      const doc = await this.model.findByIdAndUpdate(id, req.body, {
+        new: true,
+        runValidators: true,
+      });
+
+      if (!doc) {
+        this.sendNotFound(res, "Tournament");
+        return;
+      }
+
+      this.sendSuccess(res, doc, "Tournament updated successfully");
+    },
+  );
 
   // Delete tournament with cascade delete of results
-  override delete = async (
-    req: RequestWithAuth,
-    res: Response,
-    next: NextFunction,
-  ): Promise<void> => {
-    try {
+  override delete = this.asyncHandler(
+    async (req: Request, res: Response): Promise<void> => {
       const { id } = req.params;
       const { cascade } = req.query;
 
       const tournament = await Tournament.findById(id);
       if (!tournament) {
-        this.sendError(res, 404, "Tournament not found");
+        this.sendNotFound(res, "Tournament");
         return;
       }
 
@@ -1248,8 +1082,8 @@ export class TournamentController extends BaseController<ITournament> {
       if (resultsCount > 0 && cascade !== "true") {
         this.sendError(
           res,
-          400,
           `Tournament has ${resultsCount} results. Use ?cascade=true to delete tournament and all results.`,
+          400,
         );
         return;
       }
@@ -1262,19 +1096,15 @@ export class TournamentController extends BaseController<ITournament> {
       // Delete the tournament
       await Tournament.findByIdAndDelete(id);
 
-      const response: ApiResponse = {
-        success: true,
-        message:
-          cascade === "true" && resultsCount > 0
-            ? `Tournament and ${resultsCount} results deleted successfully`
-            : "Tournament deleted successfully",
-      };
-
-      res.status(200).json(response);
-    } catch (error) {
-      next(error);
-    }
-  };
+      this.sendSuccess(
+        res,
+        null,
+        cascade === "true" && resultsCount > 0
+          ? `Tournament and ${resultsCount} results deleted successfully`
+          : "Tournament deleted successfully",
+      );
+    },
+  );
 }
 
-export const tournamentController = new TournamentController();
+export default new TournamentController();

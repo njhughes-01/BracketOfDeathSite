@@ -1,62 +1,56 @@
-import { Response } from "express";
-import { RequestWithAuth } from "./base";
+import { Request, Response } from "express";
+import { BaseController } from "./base";
 import SystemSettings from "../models/SystemSettings";
-import { ApiResponse } from "../types/common";
 import emailService from "../services/EmailService";
 import { SUPPORTED_EMAIL_PROVIDERS } from "../services/email/IEmailProvider";
 
-export class SettingsController {
+class SettingsController extends BaseController {
+  constructor() {
+    super();
+  }
   // Get current settings (masked)
-  public getSettings = async (req: RequestWithAuth, res: Response) => {
-    try {
+  getSettings = this.asyncHandler(
+    async (req: Request, res: Response): Promise<void> => {
       const settings = await SystemSettings.findOne().select(
         "+mailjetApiKey +mailjetApiSecret +mailgunApiKey",
       );
 
-      const response: ApiResponse = {
-        success: true,
-        data: {
-          // Email Provider config
-          activeProvider: settings?.activeProvider || "mailjet",
-          senderEmail: settings?.senderEmail || "",
+      const data = {
+        // Email Provider config
+        activeProvider: settings?.activeProvider || "mailjet",
+        senderEmail: settings?.senderEmail || "",
 
-          // Mailjet config
-          mailjetConfigured: !!(
-            settings?.mailjetApiKey && settings?.mailjetApiSecret
-          ),
-          mailjetSenderEmail: settings?.mailjetSenderEmail || "",
-          hasApiKey: !!settings?.mailjetApiKey,
-          hasApiSecret: !!settings?.mailjetApiSecret,
+        // Mailjet config
+        mailjetConfigured: !!(
+          settings?.mailjetApiKey && settings?.mailjetApiSecret
+        ),
+        mailjetSenderEmail: settings?.mailjetSenderEmail || "",
+        hasApiKey: !!settings?.mailjetApiKey,
+        hasApiSecret: !!settings?.mailjetApiSecret,
 
-          // Mailgun config
-          mailgunConfigured: !!(
-            settings?.mailgunApiKey && settings?.mailgunDomain
-          ),
-          mailgunDomain: settings?.mailgunDomain || "",
-          hasMailgunApiKey: !!settings?.mailgunApiKey,
+        // Mailgun config
+        mailgunConfigured: !!(
+          settings?.mailgunApiKey && settings?.mailgunDomain
+        ),
+        mailgunDomain: settings?.mailgunDomain || "",
+        hasMailgunApiKey: !!settings?.mailgunApiKey,
 
-          // Branding config
-          siteLogo: settings?.siteLogo || "",
-          siteLogoUrl: settings?.siteLogoUrl || "",
-          favicon: settings?.favicon || "",
-          brandName: settings?.brandName || "Bracket of Death",
-          brandPrimaryColor: settings?.brandPrimaryColor || "#4CAF50",
-          brandSecondaryColor: settings?.brandSecondaryColor || "#008CBA",
-        },
+        // Branding config
+        siteLogo: settings?.siteLogo || "",
+        siteLogoUrl: settings?.siteLogoUrl || "",
+        favicon: settings?.favicon || "",
+        brandName: settings?.brandName || "Bracket of Death",
+        brandPrimaryColor: settings?.brandPrimaryColor || "#4CAF50",
+        brandSecondaryColor: settings?.brandSecondaryColor || "#008CBA",
       };
 
-      res.json(response);
-    } catch (error) {
-      console.error("Error fetching settings:", error);
-      res
-        .status(500)
-        .json({ success: false, error: "Failed to fetch settings" });
-    }
-  };
+      this.sendSuccess(res, data, "Settings retrieved successfully");
+    },
+  );
 
   // Update settings
-  public updateSettings = async (req: RequestWithAuth, res: Response) => {
-    try {
+  updateSettings = this.asyncHandler(
+    async (req: Request, res: Response): Promise<void> => {
       const {
         activeProvider,
         senderEmail,
@@ -73,9 +67,9 @@ export class SettingsController {
         brandSecondaryColor,
       } = req.body;
 
-      if (!req.user?.isAdmin) {
-        res.status(403).json({ success: false, error: "Unauthorized" });
-        return;
+      // requireAdmin middleware should handle this, but adding check for safety
+      if (!(req as any).user?.isAdmin) {
+        return this.sendForbidden(res, "Administrative privileges required");
       }
 
       // Input validation
@@ -152,18 +146,13 @@ export class SettingsController {
         }
       }
 
-      // Validate provider availability if switching
-      // Note: Validation is deferred to the service layer or handled by "configured" checks
-      // Removed unnecessary DB query per review feedback
-
       if (errors.length > 0) {
-        res.status(400).json({ success: false, error: errors.join(". ") });
-        return;
+        return this.sendValidationError(res, errors);
       }
 
       let settings = await SystemSettings.findOne();
       if (!settings) {
-        settings = new SystemSettings({ updatedBy: req.user.username });
+        settings = new SystemSettings({ updatedBy: (req as any).user.username });
       }
 
       // Sanitize text inputs by removing HTML tags (XSS prevention)
@@ -180,7 +169,9 @@ export class SettingsController {
         if (SUPPORTED_EMAIL_PROVIDERS.includes(activeProvider as any)) {
           settings.activeProvider = activeProvider;
         } else {
-          errors.push(`Invalid email provider specified: ${activeProvider}`);
+          return this.sendValidationError(res, [
+            `Invalid email provider specified: ${activeProvider}`,
+          ]);
         }
       }
 
@@ -204,21 +195,16 @@ export class SettingsController {
       if (brandSecondaryColor !== undefined)
         settings.brandSecondaryColor = brandSecondaryColor;
 
-      settings.updatedBy = req.user.username;
+      settings.updatedBy = (req as any).user.username;
       await settings.save();
 
-      res.json({ success: true, message: "Settings updated successfully" });
-    } catch (error) {
-      console.error("Error updating settings:", error);
-      res
-        .status(500)
-        .json({ success: false, error: "Failed to update settings" });
-    }
-  };
+      this.sendSuccess(res, undefined, "Settings updated successfully");
+    },
+  );
 
   // Test email configuration
-  public testEmail = async (req: RequestWithAuth, res: Response) => {
-    try {
+  testEmail = this.asyncHandler(
+    async (req: Request, res: Response): Promise<void> => {
       const {
         testEmail,
         activeProvider,
@@ -226,23 +212,17 @@ export class SettingsController {
         mailgunDomain,
         mailjetApiKey,
         mailjetApiSecret,
-        senderEmail
+        senderEmail,
       } = req.body;
 
       if (!testEmail) {
-        res
-          .status(400)
-          .json({ success: false, error: "Test email address is required" });
-        return;
+        return this.sendValidationError(res, ["Test email address is required"]);
       }
 
       // Validate email format
       const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
       if (!emailRegex.test(testEmail)) {
-        res
-          .status(400)
-          .json({ success: false, error: "Invalid email address format" });
-        return;
+        return this.sendValidationError(res, ["Invalid email address format"]);
       }
 
       // Use provided config for test, or fall back to database settings
@@ -252,69 +232,60 @@ export class SettingsController {
         mailgunDomain,
         mailjetApiKey,
         mailjetApiSecret,
-        senderEmail
+        senderEmail,
       };
 
       const success = await emailService.sendTestEmail(testEmail, config);
 
       if (success) {
-        res.json({ success: true, message: "Test email sent successfully" });
+        this.sendSuccess(res, undefined, "Test email sent successfully");
       } else {
-        res
-          .status(500)
-          .json({
-            success: false,
-            error:
-              "Failed to send test email. Check your provider configuration.",
-          });
+        this.sendError(
+          res,
+          "Failed to send test email. Check your provider configuration.",
+          500,
+        );
       }
-    } catch (error) {
-      console.error("Error sending test email:", error);
-      res
-        .status(500)
-        .json({ success: false, error: "Failed to send test email" });
-    }
-  };
+    },
+  );
 
   // Check if email is configured (public endpoint for banner)
-  public isEmailConfigured = async (_req: RequestWithAuth, res: Response) => {
-    try {
+  isEmailConfigured = this.asyncHandler(
+    async (_req: Request, res: Response): Promise<void> => {
       const settings = await SystemSettings.findOne();
-      const provider = settings?.activeProvider || 'mailjet';
-      const isMailgunConfigured = provider === 'mailgun' && !!(settings?.mailgunApiKey && settings?.mailgunDomain);
-      const isMailjetConfigured = provider === 'mailjet' && !!(settings?.mailjetApiKey && settings?.mailjetApiSecret);
+      const provider = settings?.activeProvider || "mailjet";
+      const isMailgunConfigured =
+        provider === "mailgun" && !!(settings?.mailgunApiKey && settings?.mailgunDomain);
+      const isMailjetConfigured =
+        provider === "mailjet" &&
+        !!(settings?.mailjetApiKey && settings?.mailjetApiSecret);
       const configured = isMailgunConfigured || isMailjetConfigured;
-      res.json({ success: true, data: { configured } });
-    } catch (error) {
-      res.json({ success: true, data: { configured: false } });
-    }
-  };
+      this.sendSuccess(res, { configured });
+    },
+  );
 
   // Verify provider credentials
-  public verifyCredentials = async (req: RequestWithAuth, res: Response) => {
-    try {
+  verifyCredentials = this.asyncHandler(
+    async (req: Request, res: Response): Promise<void> => {
       const { provider, ...config } = req.body;
 
       if (!provider || !SUPPORTED_EMAIL_PROVIDERS.includes(provider)) {
-        res.status(400).json({ success: false, error: "Invalid provider" });
-        return;
+        return this.sendValidationError(res, ["Invalid provider"]);
       }
 
       const verified = await emailService.verifyProvider(provider, config);
 
       if (verified) {
-        res.json({ success: true, message: "Credentials verified successfully" });
+        this.sendSuccess(res, undefined, "Credentials verified successfully");
       } else {
-        res.status(400).json({
-          success: false,
-          error: "Verification failed. Please check your credentials.",
-        });
+        this.sendError(
+          res,
+          "Verification failed. Please check your credentials.",
+          400,
+        );
       }
-    } catch (error) {
-      console.error("Error verifying credentials:", error);
-      res.status(500).json({ success: false, error: "Internal server error during verification" });
-    }
-  };
+    },
+  );
 }
 
 export default new SettingsController();
