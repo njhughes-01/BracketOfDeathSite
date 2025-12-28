@@ -33,7 +33,7 @@ describe("Player API (Integration)", () => {
             // Create a player directly in the database
             await Player.create({
                 name: "Test Player 1",
-                gender: "Male",
+                gender: "male",
                 isActive: true,
             });
 
@@ -52,7 +52,7 @@ describe("Player API (Integration)", () => {
         it("should create a new player", async () => {
             const newPlayer = {
                 name: "New Test Player",
-                gender: "Female",
+                gender: "female",
                 isActive: true,
             };
 
@@ -74,7 +74,7 @@ describe("Player API (Integration)", () => {
 
         it("should reject a player without a name", async () => {
             const invalidPlayer = {
-                gender: "Male",
+                gender: "male",
                 isActive: true,
             };
 
@@ -92,7 +92,7 @@ describe("Player API (Integration)", () => {
         it("should return a single player by ID", async () => {
             const player = await Player.create({
                 name: "Single Player",
-                gender: "Male",
+                gender: "male",
                 isActive: true,
             });
 
@@ -121,7 +121,7 @@ describe("Player API (Integration)", () => {
         it("should update an existing player", async () => {
             const player = await Player.create({
                 name: "Original Name",
-                gender: "Male",
+                gender: "male",
                 isActive: true,
             });
 
@@ -144,7 +144,7 @@ describe("Player API (Integration)", () => {
         it("should delete a player", async () => {
             const player = await Player.create({
                 name: "To Be Deleted",
-                gender: "Female",
+                gender: "female",
                 isActive: true,
             });
 
