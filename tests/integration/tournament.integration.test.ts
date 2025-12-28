@@ -188,7 +188,7 @@ describe("Tournament CRUD API Integration", () => {
                 bodNumber: 408,
                 format: "M",
                 location: "Original Location",
-                status: "draft",
+                status: "scheduled",
                 registrationType: "open",
                 advancementCriteria: "Top 2",
             });
