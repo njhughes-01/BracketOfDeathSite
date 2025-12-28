@@ -286,6 +286,81 @@ class SettingsController extends BaseController {
       }
     },
   );
+
+  // Get available email providers
+  getEmailProviders = this.asyncHandler(
+    async (_req: Request, res: Response): Promise<void> => {
+      const providers = SUPPORTED_EMAIL_PROVIDERS.map((provider) => ({
+        id: provider,
+        name: provider.charAt(0).toUpperCase() + provider.slice(1),
+        configured: false, // Will be checked below
+      }));
+
+      // Check which providers are configured
+      const settings = await SystemSettings.findOne().select(
+        "+mailjetApiKey +mailjetApiSecret +mailgunApiKey",
+      );
+
+      if (settings) {
+        providers.forEach((p) => {
+          if (p.id === "mailjet") {
+            p.configured = !!(settings.mailjetApiKey && settings.mailjetApiSecret);
+          } else if (p.id === "mailgun") {
+            p.configured = !!(settings.mailgunApiKey && settings.mailgunDomain);
+          }
+        });
+      }
+
+      this.sendSuccess(res, providers, "Email providers retrieved");
+    },
+  );
+
+  // Update email settings specifically
+  updateEmailSettings = this.asyncHandler(
+    async (req: Request, res: Response): Promise<void> => {
+      const {
+        activeProvider,
+        senderEmail,
+        mailjetApiKey,
+        mailjetApiSecret,
+        mailgunApiKey,
+        mailgunDomain,
+      } = req.body;
+
+      // Validate provider
+      if (activeProvider && !SUPPORTED_EMAIL_PROVIDERS.includes(activeProvider)) {
+        return this.sendValidationError(res, [
+          `Invalid email provider: ${activeProvider}. Supported: ${SUPPORTED_EMAIL_PROVIDERS.join(", ")}`,
+        ]);
+      }
+
+      let settings = await SystemSettings.findOne();
+      if (!settings) {
+        settings = new SystemSettings({ updatedBy: (req as any).user?.username || "system" });
+      }
+
+      // Update email-specific fields
+      if (activeProvider !== undefined) settings.activeProvider = activeProvider;
+      if (senderEmail !== undefined) settings.senderEmail = senderEmail;
+      if (mailjetApiKey) settings.mailjetApiKey = mailjetApiKey;
+      if (mailjetApiSecret) settings.mailjetApiSecret = mailjetApiSecret;
+      if (mailgunApiKey) settings.mailgunApiKey = mailgunApiKey;
+      if (mailgunDomain) settings.mailgunDomain = mailgunDomain;
+
+      settings.updatedBy = (req as any).user?.username || "system";
+      await settings.save();
+
+      // Return updated email settings (masked)
+      const data = {
+        activeProvider: settings.activeProvider,
+        senderEmail: settings.senderEmail,
+        mailjetConfigured: !!(settings.mailjetApiKey && settings.mailjetApiSecret),
+        mailgunConfigured: !!(settings.mailgunApiKey && settings.mailgunDomain),
+      };
+
+      this.sendSuccess(res, data, "Email settings updated successfully");
+    },
+  );
 }
 
 export default new SettingsController();
