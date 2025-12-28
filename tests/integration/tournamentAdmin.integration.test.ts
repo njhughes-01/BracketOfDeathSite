@@ -47,7 +47,7 @@ describe("TournamentAdmin API Integration", () => {
             status: "completed",
             maxPlayers: 16,
             advancementCriteria: "Top 2 teams advance",
-            registrationType: "admin",
+            registrationType: "preselected",
         });
         tournamentId = tournament._id.toString();
     });

@@ -2,7 +2,6 @@ import request from "supertest";
 import mongoose from "mongoose";
 import { default as app } from "../../src/backend/server";
 import { Player } from "../../src/backend/models/Player";
-import { Profile } from "../../src/backend/models/Profile";
 
 describe("Profile API Integration", () => {
     let playerId: string;
@@ -25,7 +24,6 @@ describe("Profile API Integration", () => {
 
     beforeAll(async () => {
         // Clear test data
-        await Profile.deleteMany({});
         await Player.deleteMany({});
 
         // Create test player
@@ -37,7 +35,6 @@ describe("Profile API Integration", () => {
     });
 
     afterAll(async () => {
-        await Profile.deleteMany({});
         await Player.deleteMany({});
     });
 

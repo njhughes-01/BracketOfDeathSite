@@ -44,7 +44,7 @@ describe("TournamentResult API Integration", () => {
             location: "Test Location",
             status: "completed",
             advancementCriteria: "Top 2 teams advance",
-            registrationType: "admin",
+            registrationType: "preselected",
         });
         tournamentId = tournament._id.toString();
     });
