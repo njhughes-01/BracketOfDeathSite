@@ -74,10 +74,13 @@ describe("Player API (Integration)", () => {
             expect(res.status).toBe(201);
             expect(res.body.success).toBe(true);
             expect(res.body.data.name).toBe(playerName);
-            expect(res.body.data._id).toBeDefined();
+
+            // API may return _id or id depending on Mongoose config
+            const playerId = res.body.data._id || res.body.data.id;
+            expect(playerId).toBeDefined();
 
             // Verify it was actually saved to the database
-            const savedPlayer = await Player.findById(res.body.data._id);
+            const savedPlayer = await Player.findById(playerId);
             expect(savedPlayer).not.toBeNull();
             expect(savedPlayer?.name).toBe(playerName);
         });

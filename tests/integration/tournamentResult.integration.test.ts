@@ -53,6 +53,7 @@ describe("TournamentResult API Integration", () => {
     describe("TournamentResult CRUD via Model", () => {
         it("should create a tournament result directly", async () => {
             // Create result directly using model to test schema
+            // winPercentage must be 0-1, not 0-100
             const result = await TournamentResult.create({
                 tournamentId: new mongoose.Types.ObjectId(tournamentId),
                 players: [player1Id, player2Id],
@@ -60,7 +61,7 @@ describe("TournamentResult API Integration", () => {
                     totalWon: 5,
                     totalLost: 2,
                     totalPlayed: 7,
-                    winPercentage: 71.43,
+                    winPercentage: 0.7143, // Must be 0-1, not 71.43
                 },
             });
 
@@ -86,10 +87,17 @@ describe("TournamentResult API Integration", () => {
         });
 
         it("should update a tournament result", async () => {
+            // totalPlayed must equal totalWon + totalLost
+            // Also update winPercentage to be consistent
             const result = await TournamentResult.findByIdAndUpdate(
                 createdResultId,
-                { "totalStats.totalWon": 6 },
-                { new: true }
+                {
+                    "totalStats.totalWon": 6,
+                    "totalStats.totalLost": 4,
+                    "totalStats.totalPlayed": 10,  // 6 + 4 = 10
+                    "totalStats.winPercentage": 0.6,  // 6/10 = 0.6
+                },
+                { new: true, runValidators: true }
             );
 
             expect(result!.totalStats.totalWon).toBe(6);

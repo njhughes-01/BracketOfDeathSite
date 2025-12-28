@@ -33,14 +33,14 @@ describe("TournamentRegistrationService Integration", () => {
     });
 
     describe("registerPlayer", () => {
-        it("should register a player to a tournament with registration status", async () => {
-            // Use 'registration' status which is valid for registration
+        it("should register a player to a tournament with open status", async () => {
+            // Use 'open' status which is valid for registration
             const tournament = await Tournament.create({
                 date: new Date("2025-06-15"),
                 bodNumber: 500,
                 format: "Mixed",
                 location: "Registration Test",
-                status: "registration",
+                status: "open", // Valid enum: scheduled, open, active, completed, cancelled
                 maxPlayers: 16,
                 registrationType: "open",
                 advancementCriteria: "Top 2",
@@ -65,7 +65,7 @@ describe("TournamentRegistrationService Integration", () => {
                 bodNumber: 501,
                 format: "Mixed",
                 location: "Full Tournament",
-                status: "registration",
+                status: "open",
                 maxPlayers: 2,
                 registrationType: "open",
                 advancementCriteria: "Top 2",
@@ -89,7 +89,7 @@ describe("TournamentRegistrationService Integration", () => {
                 bodNumber: 502,
                 format: "Mixed",
                 location: "Duplicate Test",
-                status: "registration",
+                status: "open",
                 maxPlayers: 16,
                 registrationType: "open",
                 advancementCriteria: "Top 2",
@@ -114,7 +114,7 @@ describe("TournamentRegistrationService Integration", () => {
                 bodNumber: 503,
                 format: "Mixed",
                 location: "Unregister Test",
-                status: "registration",
+                status: "open",
                 maxPlayers: 16,
                 registrationType: "open",
                 advancementCriteria: "Top 2",
@@ -142,7 +142,7 @@ describe("TournamentRegistrationService Integration", () => {
                 bodNumber: 504,
                 format: "Mixed",
                 location: "Info Test",
-                status: "registration",
+                status: "open",
                 maxPlayers: 8,
                 registrationType: "open",
                 advancementCriteria: "Top 2",
@@ -167,7 +167,7 @@ describe("TournamentRegistrationService Integration", () => {
                 bodNumber: 505,
                 format: "Mixed",
                 location: "Finalize Test",
-                status: "registration",
+                status: "open",
                 maxPlayers: 8,
                 registrationType: "open",
                 advancementCriteria: "Top 2",
