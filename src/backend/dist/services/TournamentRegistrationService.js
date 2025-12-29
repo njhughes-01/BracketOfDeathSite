@@ -36,8 +36,8 @@ class TournamentRegistrationService {
             }
             // Check if already registered
             const playerObjectId = new mongoose_1.Types.ObjectId(playerId);
-            const isAlreadyRegistered = tournament.registeredPlayers?.some((p) => p.toString() === playerId);
-            const isOnWaitlist = tournament.waitlistPlayers?.some((p) => p.toString() === playerId);
+            const isAlreadyRegistered = tournament.registeredPlayers?.some((p) => p.playerId.toString() === playerId);
+            const isOnWaitlist = tournament.waitlistPlayers?.some((p) => p.playerId.toString() === playerId);
             if (isAlreadyRegistered) {
                 return { success: false, message: "Player already registered" };
             }
@@ -50,7 +50,10 @@ class TournamentRegistrationService {
             if (currentRegistered < maxPlayers) {
                 // Add to registered players
                 tournament.registeredPlayers = tournament.registeredPlayers || [];
-                tournament.registeredPlayers.push(playerObjectId);
+                tournament.registeredPlayers.push({
+                    playerId: playerObjectId,
+                    registeredAt: new Date(),
+                });
                 await tournament.save();
                 return {
                     success: true,
@@ -62,7 +65,10 @@ class TournamentRegistrationService {
             else {
                 // Add to waitlist
                 tournament.waitlistPlayers = tournament.waitlistPlayers || [];
-                tournament.waitlistPlayers.push(playerObjectId);
+                tournament.waitlistPlayers.push({
+                    playerId: playerObjectId,
+                    registeredAt: new Date(),
+                });
                 await tournament.save();
                 return {
                     success: true,
@@ -97,7 +103,7 @@ class TournamentRegistrationService {
             let wasOnWaitlist = false;
             // Remove from registered players
             if (tournament.registeredPlayers) {
-                const registeredIndex = tournament.registeredPlayers.findIndex((p) => p.toString() === playerId);
+                const registeredIndex = tournament.registeredPlayers.findIndex((p) => p.playerId.toString() === playerId);
                 if (registeredIndex !== -1) {
                     tournament.registeredPlayers.splice(registeredIndex, 1);
                     wasRegistered = true;
@@ -105,7 +111,7 @@ class TournamentRegistrationService {
             }
             // Remove from waitlist
             if (tournament.waitlistPlayers) {
-                const waitlistIndex = tournament.waitlistPlayers.findIndex((p) => p.toString() === playerId);
+                const waitlistIndex = tournament.waitlistPlayers.findIndex((p) => p.playerId.toString() === playerId);
                 if (waitlistIndex !== -1) {
                     tournament.waitlistPlayers.splice(waitlistIndex, 1);
                     wasOnWaitlist = true;
@@ -162,7 +168,7 @@ class TournamentRegistrationService {
                 };
             }
             // Move registered players to main players array
-            tournament.players = [...(tournament.registeredPlayers || [])];
+            tournament.players = (tournament.registeredPlayers || []).map((rp) => rp.playerId);
             // Update status to ready for bracket generation
             // Note: Bracket generation will be handled separately by admin
             await tournament.save();

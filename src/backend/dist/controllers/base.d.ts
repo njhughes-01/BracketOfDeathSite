@@ -1,5 +1,6 @@
 import { Request, Response, NextFunction } from "express";
 import { Model, Document } from "mongoose";
+import { ApiResponse } from "../types/common";
 /**
  * RequestWithAuth extends the standard Express Request with user information
  */
@@ -26,7 +27,7 @@ export declare abstract class BaseController {
     /**
      * Send a success response
      */
-    protected sendSuccess<T>(res: Response, data?: T, message?: string, status?: number): void;
+    protected sendSuccess<T>(res: Response, data?: T, message?: string, pagination?: ApiResponse<T>["pagination"], status?: number): void;
     /**
      * Send a generic error response
      */

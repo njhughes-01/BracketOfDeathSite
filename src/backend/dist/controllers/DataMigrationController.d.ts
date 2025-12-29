@@ -1,14 +1,17 @@
-import { Response, NextFunction } from "express";
-import { RequestWithAuth } from "./base";
-export declare class DataMigrationController {
-    migrateAll: (_req: RequestWithAuth, res: Response, next: NextFunction) => Promise<void>;
-    migratePlayers: (_req: RequestWithAuth, res: Response, next: NextFunction) => Promise<void>;
-    migrateTournaments: (_req: RequestWithAuth, res: Response, next: NextFunction) => Promise<void>;
-    migrateResults: (_req: RequestWithAuth, res: Response, next: NextFunction) => Promise<void>;
-    getMigrationStatus: (_req: RequestWithAuth, res: Response, next: NextFunction) => Promise<void>;
-    previewMigration: (_req: RequestWithAuth, res: Response, next: NextFunction) => Promise<void>;
-    createBackup: (_req: RequestWithAuth, res: Response, next: NextFunction) => Promise<void>;
-    restoreBackup: (_req: RequestWithAuth, res: Response, next: NextFunction) => Promise<void>;
-    validateData: (_req: RequestWithAuth, res: Response, next: NextFunction) => Promise<void>;
+import { Request, Response } from "express";
+import { BaseController } from "./base";
+declare class DataMigrationController extends BaseController {
+    constructor();
+    migrateAll: (req: Request | import("./base").RequestWithAuth, res: Response, next: import("express").NextFunction) => Promise<void>;
+    migratePlayers: (req: Request | import("./base").RequestWithAuth, res: Response, next: import("express").NextFunction) => Promise<void>;
+    migrateTournaments: (req: Request | import("./base").RequestWithAuth, res: Response, next: import("express").NextFunction) => Promise<void>;
+    migrateResults: (req: Request | import("./base").RequestWithAuth, res: Response, next: import("express").NextFunction) => Promise<void>;
+    getMigrationStatus: (req: Request | import("./base").RequestWithAuth, res: Response, next: import("express").NextFunction) => Promise<void>;
+    previewMigration: (req: Request | import("./base").RequestWithAuth, res: Response, next: import("express").NextFunction) => Promise<void>;
+    createBackup: (req: Request | import("./base").RequestWithAuth, res: Response, next: import("express").NextFunction) => Promise<void>;
+    restoreBackup: (req: Request | import("./base").RequestWithAuth, res: Response, next: import("express").NextFunction) => Promise<void>;
+    validateData: (req: Request | import("./base").RequestWithAuth, res: Response, next: import("express").NextFunction) => Promise<void>;
 }
+declare const _default: DataMigrationController;
+export default _default;
 //# sourceMappingURL=DataMigrationController.d.ts.map

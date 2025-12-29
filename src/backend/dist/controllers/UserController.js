@@ -36,6 +36,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
+exports.UserController = void 0;
 const base_1 = require("./base");
 const user_1 = require("../types/user");
 const keycloakAdminService_1 = __importDefault(require("../services/keycloakAdminService"));
@@ -136,7 +137,7 @@ class UserController extends base_1.BaseController {
                 playerId: userData.playerId,
                 gender: userData.gender,
             };
-            this.sendSuccess(res, user, "User created successfully", 201);
+            this.sendSuccess(res, user, "User created successfully", undefined, 201);
         }
         catch (error) {
             if (error.response?.status === 409) {
@@ -441,7 +442,7 @@ class UserController extends base_1.BaseController {
                 id: createdUser.id,
                 username: createdUser.username,
                 email: createdUser.email,
-            }, "Registration successful. Please login.", 201);
+            }, "Registration successful. Please login.", undefined, 201);
         }
         catch (error) {
             if (error.response?.status === 409) {
@@ -554,5 +555,6 @@ class UserController extends base_1.BaseController {
         };
     }
 }
+exports.UserController = UserController;
 exports.default = new UserController();
 //# sourceMappingURL=UserController.js.map

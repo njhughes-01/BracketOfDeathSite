@@ -1,6 +1,6 @@
 import { Response } from "express";
 import { RequestWithAuth, BaseController } from "./base";
-declare class UserController extends BaseController {
+export declare class UserController extends BaseController {
     getUsers: (req: import("express").Request | RequestWithAuth, res: Response, next: import("express").NextFunction) => Promise<void>;
     getUser: (req: import("express").Request | RequestWithAuth, res: Response, next: import("express").NextFunction) => Promise<void>;
     createUser: (req: import("express").Request | RequestWithAuth, res: Response, next: import("express").NextFunction) => Promise<void>;

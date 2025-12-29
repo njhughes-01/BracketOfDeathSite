@@ -26,6 +26,12 @@ export interface ApiResponse<T = any> {
     message?: string;
     details?: string[];
     errors?: string[];
+    pagination?: {
+        current: number;
+        pages: number;
+        count: number;
+        total: number;
+    };
 }
 export interface PaginationOptions {
     page?: number;

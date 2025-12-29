@@ -357,8 +357,8 @@ class TournamentController extends base_1.BaseCrudController {
             return;
         }
         // 4. Check Duplicate Registration
-        const isRegistered = tournament.registeredPlayers.some((p) => p.playerId?.toString() === playerId || p.toString() === playerId);
-        const isWaitlisted = tournament.waitlistPlayers.some((p) => p.playerId?.toString() === playerId || p.toString() === playerId);
+        const isRegistered = tournament.registeredPlayers?.some((p) => p.playerId.toString() === playerId);
+        const isWaitlisted = tournament.waitlistPlayers?.some((p) => p.playerId.toString() === playerId);
         if (isRegistered) {
             this.sendError(res, "Player already registered", 400);
             return;
@@ -373,6 +373,7 @@ class TournamentController extends base_1.BaseCrudController {
         let status = "registered";
         if (currentCount >= maxPlayers) {
             // Add to waitlist
+            tournament.waitlistPlayers = tournament.waitlistPlayers || [];
             tournament.waitlistPlayers.push({
                 playerId: player._id,
                 registeredAt: now,
@@ -381,6 +382,7 @@ class TournamentController extends base_1.BaseCrudController {
         }
         else {
             // Register
+            tournament.registeredPlayers = tournament.registeredPlayers || [];
             tournament.registeredPlayers.push({
                 playerId: player._id,
                 registeredAt: now,
@@ -507,7 +509,7 @@ class TournamentController extends base_1.BaseCrudController {
             generatedSeeds: generatedSeeds || [],
             generatedTeams: generatedTeams || [],
         });
-        this.sendSuccess(res, tournament, "Tournament setup completed successfully", 201);
+        this.sendSuccess(res, tournament, "Tournament setup completed successfully", undefined, 201);
     });
     // Bulk import tournaments (for data migration)
     bulkImport = this.asyncHandler(async (req, res) => {
@@ -794,7 +796,7 @@ class TournamentController extends base_1.BaseCrudController {
             return;
         }
         const doc = await this.model.create(req.body);
-        this.sendSuccess(res, doc, "Tournament created successfully", 201);
+        this.sendSuccess(res, doc, "Tournament created successfully", undefined, 201);
     });
     // Override update method to add custom validation
     update = this.asyncHandler(async (req, res) => {

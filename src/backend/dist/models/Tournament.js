@@ -193,14 +193,26 @@ const tournamentSchema = new mongoose_1.Schema({
     },
     registeredPlayers: [
         {
-            type: mongoose_1.Schema.Types.ObjectId,
-            ref: "Player",
+            playerId: {
+                type: mongoose_1.Schema.Types.ObjectId,
+                ref: "Player",
+            },
+            registeredAt: {
+                type: Date,
+                default: Date.now,
+            },
         },
     ],
     waitlistPlayers: [
         {
-            type: mongoose_1.Schema.Types.ObjectId,
-            ref: "Player",
+            playerId: {
+                type: mongoose_1.Schema.Types.ObjectId,
+                ref: "Player",
+            },
+            registeredAt: {
+                type: Date,
+                default: Date.now,
+            },
         },
     ],
     champion: {

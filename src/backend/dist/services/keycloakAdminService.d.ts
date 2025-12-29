@@ -1,3 +1,4 @@
+import { AxiosInstance } from "axios";
 export interface KeycloakUser {
     id?: string;
     username: string;
@@ -33,11 +34,12 @@ interface UpdateUserRequest {
     roles?: string[];
     attributes?: Record<string, string[]>;
 }
-declare class KeycloakAdminService {
+export declare class KeycloakAdminService {
     private client;
+    private httpClient;
     private adminToken;
     private tokenExpiry;
-    constructor();
+    constructor(injectedClient?: AxiosInstance);
     private getAdminToken;
     private makeAuthenticatedRequest;
     private makeAuthenticatedRequestWithResponse;
