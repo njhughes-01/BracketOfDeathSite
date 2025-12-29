@@ -4,7 +4,9 @@
  */
 import mongoose from "mongoose";
 
+// CI sets MONGODB_URI, local dev uses MONGO_TEST_URI or default
 const MONGO_TEST_URI =
+    process.env.MONGODB_URI ||
     process.env.MONGO_TEST_URI ||
     "mongodb://testadmin:testpassword@localhost:27018/bracket_of_death_test?authSource=admin";
 
