@@ -17,8 +17,10 @@ module.exports = {
     forceExit: true,
     clearMocks: true,
     restoreMocks: true,
+    // Ensure Jest can find packages installed at root node_modules
+    modulePaths: ["<rootDir>/node_modules"],
     moduleNameMapper: {
-        "^mongoose$": "<rootDir>/src/backend/node_modules/mongoose",
+        // Note: mongoose is resolved from root node_modules, no mapping needed
         "^@/(.*)$": "<rootDir>/src/$1",
         "^@/models/(.*)$": "<rootDir>/src/models/$1",
         "^@/routes/(.*)$": "<rootDir>/src/routes/$1",
