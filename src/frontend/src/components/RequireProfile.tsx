@@ -7,10 +7,28 @@ const RequireProfile: React.FC = () => {
   const { isAuthenticated, user } = useAuth();
   const [isComplete, setIsComplete] = useState<boolean | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isSystemInitialized, setIsSystemInitialized] = useState<
+    boolean | null
+  >(null);
   const location = useLocation();
 
   // Admin and superadmin users don't need player profiles - bypass the check
   const isAdmin = user?.isAdmin === true;
+
+  // Check system initialization status first
+  useEffect(() => {
+    const checkSystemStatus = async () => {
+      try {
+        const status = await apiClient.getSystemStatus();
+        setIsSystemInitialized(status.data?.initialized ?? true);
+      } catch (error) {
+        console.error("Failed to check system status", error);
+        // Assume initialized on error to prevent redirect loops
+        setIsSystemInitialized(true);
+      }
+    };
+    checkSystemStatus();
+  }, []);
 
   useEffect(() => {
     const checkProfile = async () => {
@@ -48,6 +66,20 @@ const RequireProfile: React.FC = () => {
 
     checkProfile();
   }, [isAuthenticated, isAdmin]);
+
+  // Wait for system status check
+  if (isSystemInitialized === null) {
+    return (
+      <div className="flex h-screen items-center justify-center text-white">
+        Checking system status...
+      </div>
+    );
+  }
+
+  // If system is not initialized, redirect to setup
+  if (!isSystemInitialized) {
+    return <Navigate to="/setup" replace />;
+  }
 
   if (!isAuthenticated) {
     return <Navigate to="/login" state={{ from: location.pathname }} replace />;
