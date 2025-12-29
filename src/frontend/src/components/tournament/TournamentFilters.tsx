@@ -55,10 +55,14 @@ const TournamentFilters: React.FC<TournamentFiltersProps> = ({
     <div className="flex flex-wrap items-center gap-3 p-4 bg-surface-dark rounded-xl border border-white/5">
       {/* Year Filter */}
       <div className="flex items-center gap-2">
-        <label className="text-xs text-slate-500 uppercase font-bold">
+        <label
+          htmlFor="year-filter"
+          className="text-xs text-slate-500 uppercase font-bold"
+        >
           Year
         </label>
         <select
+          id="year-filter"
           value={yearFilter || ""}
           onChange={(e) =>
             onYearChange(e.target.value ? Number(e.target.value) : null)
@@ -76,10 +80,14 @@ const TournamentFilters: React.FC<TournamentFiltersProps> = ({
 
       {/* Format Filter */}
       <div className="flex items-center gap-2">
-        <label className="text-xs text-slate-500 uppercase font-bold">
+        <label
+          htmlFor="format-filter"
+          className="text-xs text-slate-500 uppercase font-bold"
+        >
           Format
         </label>
         <select
+          id="format-filter"
           value={formatFilter || ""}
           onChange={(e) => onFormatChange(e.target.value || null)}
           className="bg-background-dark border border-white/10 rounded-lg px-3 py-1.5 text-sm text-white focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all"
@@ -95,10 +103,14 @@ const TournamentFilters: React.FC<TournamentFiltersProps> = ({
 
       {/* Status Filter */}
       <div className="flex items-center gap-2">
-        <label className="text-xs text-slate-500 uppercase font-bold">
+        <label
+          htmlFor="status-filter"
+          className="text-xs text-slate-500 uppercase font-bold"
+        >
           Status
         </label>
         <select
+          id="status-filter"
           value={statusFilter || ""}
           onChange={(e) => onStatusChange(e.target.value || null)}
           className="bg-background-dark border border-white/10 rounded-lg px-3 py-1.5 text-sm text-white focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all"
@@ -117,10 +129,14 @@ const TournamentFilters: React.FC<TournamentFiltersProps> = ({
 
       {/* Sort Controls */}
       <div className="flex items-center gap-2">
-        <label className="text-xs text-slate-500 uppercase font-bold">
+        <label
+          htmlFor="sort-filter"
+          className="text-xs text-slate-500 uppercase font-bold"
+        >
           Sort
         </label>
         <select
+          id="sort-filter"
           value={sortField}
           onChange={(e) =>
             onSortChange(e.target.value as SortField, sortDirection)
@@ -153,11 +169,10 @@ const TournamentFilters: React.FC<TournamentFiltersProps> = ({
       <div className="flex items-center gap-1 bg-background-dark rounded-lg p-1 border border-white/10">
         <button
           onClick={() => onViewModeChange("table")}
-          className={`p-1.5 rounded transition-all ${
-            viewMode === "table"
+          className={`p-1.5 rounded transition-all ${viewMode === "table"
               ? "bg-primary text-white"
               : "text-slate-400 hover:text-white"
-          }`}
+            }`}
           title="Table View"
         >
           <span className="material-symbols-outlined text-[18px]">
@@ -166,11 +181,10 @@ const TournamentFilters: React.FC<TournamentFiltersProps> = ({
         </button>
         <button
           onClick={() => onViewModeChange("cards")}
-          className={`p-1.5 rounded transition-all ${
-            viewMode === "cards"
+          className={`p-1.5 rounded transition-all ${viewMode === "cards"
               ? "bg-primary text-white"
               : "text-slate-400 hover:text-white"
-          }`}
+            }`}
           title="Card View"
         >
           <span className="material-symbols-outlined text-[18px]">

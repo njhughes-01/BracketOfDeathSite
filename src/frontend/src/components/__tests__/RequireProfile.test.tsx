@@ -1,18 +1,7 @@
 import { render, screen, waitFor } from "@testing-library/react";
-import { BrowserRouter } from "react-router-dom";
+import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import RequireProfile from "../RequireProfile";
-
-// Mock useSystemStatus hook
-vi.mock("../../hooks/useSystemStatus", () => ({
-  useSystemStatus: vi.fn().mockReturnValue({
-    initialized: true,
-    loading: false,
-    error: null,
-    hasSuperAdmin: true,
-    refresh: vi.fn(),
-  }),
-}));
 
 // Mock AuthContext
 vi.mock("../../contexts/AuthContext", () => ({
@@ -23,6 +12,7 @@ vi.mock("../../contexts/AuthContext", () => ({
 vi.mock("../../services/api", () => ({
   apiClient: {
     getProfile: vi.fn(),
+    getSystemStatus: vi.fn(),
   },
 }));
 
@@ -31,14 +21,36 @@ import { apiClient } from "../../services/api";
 
 const mockUseAuth = useAuth as ReturnType<typeof vi.fn>;
 const mockGetProfile = apiClient.getProfile as ReturnType<typeof vi.fn>;
+const mockGetSystemStatus = apiClient.getSystemStatus as ReturnType<
+  typeof vi.fn
+>;
 
 describe("RequireProfile", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    // Default system to initialized
+    mockGetSystemStatus.mockResolvedValue({
+      success: true,
+      data: { initialized: true },
+    });
   });
 
-  const renderWithRouter = (component: React.ReactElement) => {
-    return render(<BrowserRouter>{component}</BrowserRouter>);
+  const renderWithRouter = (initialPath = "/") => {
+    return render(
+      <MemoryRouter initialEntries={[initialPath]}>
+        <Routes>
+          <Route element={<RequireProfile />}>
+            <Route
+              path="/"
+              element={<div data-testid="protected">Protected Content</div>}
+            />
+          </Route>
+          <Route path="/login" element={<div>Login Page</div>} />
+          <Route path="/onboarding" element={<div>Onboarding Page</div>} />
+          <Route path="/setup" element={<div>Setup Page</div>} />
+        </Routes>
+      </MemoryRouter>
+    );
   };
 
   it("should render children when profile is complete", async () => {
@@ -52,17 +64,13 @@ describe("RequireProfile", () => {
       data: { isComplete: true },
     });
 
-    renderWithRouter(
-      <RequireProfile>
-        <div data-testid="protected">Protected Content</div>
-      </RequireProfile>,
-    );
+    renderWithRouter();
 
     await waitFor(
       () => {
         expect(screen.getByTestId("protected")).toBeInTheDocument();
       },
-      { timeout: 3000 },
+      { timeout: 3000 }
     );
   });
 
@@ -78,17 +86,14 @@ describe("RequireProfile", () => {
       data: { isComplete: false },
     });
 
-    renderWithRouter(
-      <RequireProfile>
-        <div data-testid="protected">Protected Content</div>
-      </RequireProfile>,
-    );
+    renderWithRouter();
 
     await waitFor(
       () => {
         expect(screen.queryByTestId("protected")).not.toBeInTheDocument();
+        expect(screen.getByText("Onboarding Page")).toBeInTheDocument();
       },
-      { timeout: 3000 },
+      { timeout: 3000 }
     );
   });
 
@@ -99,17 +104,35 @@ describe("RequireProfile", () => {
       loading: false,
     });
 
-    renderWithRouter(
-      <RequireProfile>
-        <div data-testid="protected">Protected Content</div>
-      </RequireProfile>,
-    );
+    renderWithRouter();
 
     await waitFor(
       () => {
         expect(screen.queryByTestId("protected")).not.toBeInTheDocument();
+        expect(screen.getByText("Login Page")).toBeInTheDocument();
       },
-      { timeout: 3000 },
+      { timeout: 3000 }
+    );
+  });
+
+  it("should redirect to setup if system not initialized", async () => {
+    mockGetSystemStatus.mockResolvedValue({
+      success: true,
+      data: { initialized: false },
+    });
+    mockUseAuth.mockReturnValue({
+      user: null,
+      isAuthenticated: false,
+      loading: false,
+    });
+
+    renderWithRouter();
+
+    await waitFor(
+      () => {
+        expect(screen.getByText("Setup Page")).toBeInTheDocument();
+      },
+      { timeout: 3000 }
     );
   });
 });

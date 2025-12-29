@@ -1,18 +1,16 @@
-import { render, screen, fireEvent } from "@testing-library/react";
-import { BrowserRouter } from "react-router-dom";
+import { render, screen, waitFor } from "@testing-library/react";
+import { MemoryRouter } from "react-router-dom";
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import Setup from "../Setup";
 
-// Mock dependencies
-vi.mock("../../hooks/useSystemStatus", () => ({
-    useSystemStatus: vi.fn().mockReturnValue({
-        initialized: false,
-        hasSuperAdmin: false,
-        loading: false,
-        refresh: vi.fn(),
-    }),
+// Mock API
+vi.mock("../../services/api", () => ({
+    apiClient: {
+        getSystemStatus: vi.fn(),
+    },
 }));
 
+// Mock AuthContext
 vi.mock("../../contexts/AuthContext", () => ({
     useAuth: vi.fn().mockReturnValue({
         user: null,
@@ -20,9 +18,11 @@ vi.mock("../../contexts/AuthContext", () => ({
     }),
 }));
 
-import { useSystemStatus } from "../../hooks/useSystemStatus";
+import { apiClient } from "../../services/api";
 
-const mockUseSystemStatus = useSystemStatus as ReturnType<typeof vi.fn>;
+const mockGetSystemStatus = apiClient.getSystemStatus as ReturnType<
+    typeof vi.fn
+>;
 
 describe("Setup", () => {
     beforeEach(() => {
@@ -30,40 +30,43 @@ describe("Setup", () => {
     });
 
     const renderWithRouter = (component: React.ReactElement) => {
-        return render(<BrowserRouter>{component}</BrowserRouter>);
+        return render(<MemoryRouter>{component}</MemoryRouter>);
     };
 
-    it("should render setup page", () => {
-        renderWithRouter(<Setup />);
-
-        expect(screen.getByText(/setup|welcome|initialize/i)).toBeInTheDocument();
-    });
-
-    it("should show initialization prompt when not initialized", () => {
-        mockUseSystemStatus.mockReturnValue({
-            initialized: false,
-            hasSuperAdmin: false,
-            loading: false,
-            refresh: vi.fn(),
+    it("should render setup page", async () => {
+        mockGetSystemStatus.mockResolvedValue({
+            success: true,
+            data: { initialized: false },
         });
 
         renderWithRouter(<Setup />);
 
-        expect(screen.getByText(/setup|initialize|admin/i)).toBeInTheDocument();
+        await waitFor(() => {
+            expect(
+                screen.getByText(/System Not Initialized/i)
+            ).toBeInTheDocument();
+        });
     });
 
-    it("should show loading state", () => {
-        mockUseSystemStatus.mockReturnValue({
-            initialized: false,
-            hasSuperAdmin: false,
-            loading: true,
-            refresh: vi.fn(),
+    it("should show initialization prompt when not initialized", async () => {
+        mockGetSystemStatus.mockResolvedValue({
+            success: true,
+            data: { initialized: false },
         });
 
         renderWithRouter(<Setup />);
 
-        // Should show loading indicator or be in loading state
-        const content = document.body.textContent;
-        expect(content).toBeTruthy();
+        await waitFor(() => {
+            expect(screen.getByText(/Setup Required/i)).toBeInTheDocument();
+        });
+    });
+
+    it("should show loading spinner initially", () => {
+        mockGetSystemStatus.mockReturnValue(new Promise(() => { })); // Never resolves
+
+        renderWithRouter(<Setup />);
+
+        // Use role="status" as defined in LoadingSpinner.tsx
+        expect(screen.getByRole("status")).toBeInTheDocument();
     });
 });

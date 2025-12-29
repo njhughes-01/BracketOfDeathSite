@@ -99,6 +99,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
       {/* Desktop Sidebar - Hidden on Mobile and when not authenticated */}
       {showNav && (
         <aside
+          data-testid="navigation"
           className={`hidden md:flex flex-col w-64 border-r border-slate-200 dark:border-white/10 bg-background-dark h-screen sticky top-0 z-50 ${showEmailBanner ? "mt-10" : ""}`}
         >
           <div className="p-6">
@@ -112,21 +113,19 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
               <Link
                 key={item.path}
                 to={item.path}
-                className={`flex items-center gap-4 px-4 py-3 rounded-xl transition-all group ${
-                  (item.path === "/" && location.pathname === "/") ||
-                  (item.path !== "/" && location.pathname.startsWith(item.path))
+                className={`flex items-center gap-4 px-4 py-3 rounded-xl transition-all group ${(item.path === "/" && location.pathname === "/") ||
+                    (item.path !== "/" && location.pathname.startsWith(item.path))
                     ? "bg-primary/10 text-primary border border-primary/20"
                     : "text-slate-400 hover:bg-white/5 hover:text-white"
-                }`}
+                  }`}
               >
                 <span
-                  className={`material-symbols-outlined text-[24px] ${
-                    (item.path === "/" && location.pathname === "/") ||
-                    (item.path !== "/" &&
-                      location.pathname.startsWith(item.path))
+                  className={`material-symbols-outlined text-[24px] ${(item.path === "/" && location.pathname === "/") ||
+                      (item.path !== "/" &&
+                        location.pathname.startsWith(item.path))
                       ? "text-primary"
                       : "text-slate-400 group-hover:text-white"
-                  }`}
+                    }`}
                 >
                   {item.icon}
                 </span>
@@ -160,7 +159,10 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
 
       {/* Bottom Navigation - Fixed Mobile Tab Bar - Hidden on Desktop and when not authenticated */}
       {showNav && (
-        <nav className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-[#0f1115]/90 backdrop-blur-lg border-t border-white/5 w-full pb-6 pt-2 px-6">
+        <nav
+          data-testid="navigation"
+          className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-[#0f1115]/90 backdrop-blur-lg border-t border-white/5 w-full pb-6 pt-2 px-6"
+        >
           <div className="flex items-center justify-between max-w-md mx-auto">
             {/* Home Tab */}
             <Link

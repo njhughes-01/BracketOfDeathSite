@@ -6,20 +6,20 @@ import React from "react";
 
 // Mock api client
 vi.mock("../../services/api", () => ({
-  default: {
+  apiClient: {
     getSystemStatus: vi.fn(),
   },
 }));
 
-import apiClient from "../../services/api";
+import { apiClient } from "../../services/api";
 
-const mockApiClient = apiClient as {
-  getSystemStatus: ReturnType<typeof vi.fn>;
-};
+const mockGetSystemStatus = apiClient.getSystemStatus as ReturnType<
+  typeof vi.fn
+>;
 
 // Wrapper component that provides Router context
 const wrapper = ({ children }: { children: React.ReactNode }) => (
-  <BrowserRouter>{children} </BrowserRouter>
+  <BrowserRouter>{children}</BrowserRouter>
 );
 
 describe("useSystemStatus", () => {
@@ -32,16 +32,16 @@ describe("useSystemStatus", () => {
   });
 
   it("should return initial loading state", () => {
-    mockApiClient.getSystemStatus.mockReturnValue(new Promise(() => {})); // Never resolves
+    mockGetSystemStatus.mockReturnValue(new Promise(() => { })); // Never resolves
 
     const { result } = renderHook(() => useSystemStatus(), { wrapper });
 
-    expect(result.current.loading).toBe(true);
-    expect(result.current.initialized).toBe(false);
+    expect(result.current.isLoading).toBe(true);
+    expect(result.current.isInitialized).toBe(null);
   });
 
   it("should return initialized status on success", async () => {
-    mockApiClient.getSystemStatus.mockResolvedValue({
+    mockGetSystemStatus.mockResolvedValue({
       success: true,
       data: { initialized: true, hasSuperAdmin: true },
     });
@@ -49,15 +49,14 @@ describe("useSystemStatus", () => {
     const { result } = renderHook(() => useSystemStatus(), { wrapper });
 
     await waitFor(() => {
-      expect(result.current.loading).toBe(false);
+      expect(result.current.isLoading).toBe(false);
     });
 
-    expect(result.current.initialized).toBe(true);
-    expect(result.current.hasSuperAdmin).toBe(true);
+    expect(result.current.isInitialized).toBe(true);
   });
 
   it("should return not initialized when system is new", async () => {
-    mockApiClient.getSystemStatus.mockResolvedValue({
+    mockGetSystemStatus.mockResolvedValue({
       success: true,
       data: { initialized: false, hasSuperAdmin: false },
     });
@@ -65,27 +64,26 @@ describe("useSystemStatus", () => {
     const { result } = renderHook(() => useSystemStatus(), { wrapper });
 
     await waitFor(() => {
-      expect(result.current.loading).toBe(false);
+      expect(result.current.isLoading).toBe(false);
     });
 
-    expect(result.current.initialized).toBe(false);
-    expect(result.current.hasSuperAdmin).toBe(false);
+    expect(result.current.isInitialized).toBe(false);
   });
 
   it("should handle API errors gracefully", async () => {
-    mockApiClient.getSystemStatus.mockRejectedValue(new Error("Network error"));
+    mockGetSystemStatus.mockRejectedValue(new Error("Network error"));
 
     const { result } = renderHook(() => useSystemStatus(), { wrapper });
 
     await waitFor(() => {
-      expect(result.current.loading).toBe(false);
+      expect(result.current.isLoading).toBe(false);
     });
 
     expect(result.current.error).toBeTruthy();
   });
 
   it("should provide refresh function", async () => {
-    mockApiClient.getSystemStatus
+    mockGetSystemStatus
       .mockResolvedValueOnce({
         success: true,
         data: { initialized: false, hasSuperAdmin: false },
@@ -98,16 +96,16 @@ describe("useSystemStatus", () => {
     const { result } = renderHook(() => useSystemStatus(), { wrapper });
 
     await waitFor(() => {
-      expect(result.current.initialized).toBe(false);
+      expect(result.current.isInitialized).toBe(false);
     });
 
     // Trigger refresh
-    act(() => {
-      result.current.refresh();
+    await act(async () => {
+      await result.current.refresh();
     });
 
     await waitFor(() => {
-      expect(result.current.initialized).toBe(true);
+      expect(result.current.isInitialized).toBe(true);
     });
   });
 });

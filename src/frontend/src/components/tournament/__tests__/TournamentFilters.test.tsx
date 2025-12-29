@@ -1,71 +1,98 @@
 import { render, screen, fireEvent } from "@testing-library/react";
-import { BrowserRouter } from "react-router-dom";
+import { MemoryRouter } from "react-router-dom";
 import { describe, it, expect, vi } from "vitest";
 import TournamentFilters from "../TournamentFilters";
 
 describe("TournamentFilters", () => {
   const defaultProps = {
-    filters: { year: "", format: "", status: "" },
-    onFilterChange: vi.fn(),
-    onYearChange: vi.fn(), // Add missing onYearChange prop
-    yearRange: { minYear: 2020, maxYear: 2024 }, // Add year range
+    sortField: "date" as const,
+    sortDirection: "desc" as const,
+    onSortChange: vi.fn(),
+    yearFilter: null,
+    onYearChange: vi.fn(),
+    formatFilter: null,
+    onFormatChange: vi.fn(),
+    statusFilter: null,
+    onStatusChange: vi.fn(),
+    viewMode: "table" as const,
+    onViewModeChange: vi.fn(),
+    availableYears: [2023, 2024],
   };
 
-  const renderWithRouter = (component: React.ReactElement) => {
-    return render(<BrowserRouter>{component}</BrowserRouter>);
+  const renderWithRouter = (props = defaultProps) => {
+    return render(
+      <MemoryRouter>
+        <TournamentFilters {...props} />
+      </MemoryRouter>
+    );
   };
 
   it("should render filter controls", () => {
-    renderWithRouter(<TournamentFilters {...defaultProps} />);
-
-    expect(document.body).toBeInTheDocument();
+    renderWithRouter();
+    // Use exact match for labels with selector to avoid matching options
+    expect(screen.getByText(/^Year$/i, { selector: 'label' })).toBeInTheDocument();
+    expect(screen.getByText(/^Format$/i, { selector: 'label' })).toBeInTheDocument();
+    expect(screen.getByText(/^Status$/i, { selector: 'label' })).toBeInTheDocument();
+    expect(screen.getByText(/^Sort$/i, { selector: 'label' })).toBeInTheDocument();
   });
 
-  it("should have year filter", () => {
-    renderWithRouter(<TournamentFilters {...defaultProps} />);
+  it("should call onYearChange when year filter changes", () => {
+    const onYearChange = vi.fn();
+    renderWithRouter({ ...defaultProps, onYearChange });
 
-    expect(screen.getByText(/year/i)).toBeInTheDocument();
+    const yearSelect = screen.getByLabelText(/^Year$/i);
+    fireEvent.change(yearSelect, { target: { value: "2024" } });
+
+    expect(onYearChange).toHaveBeenCalledWith(2024);
   });
 
-  it("should have format filter", () => {
-    renderWithRouter(<TournamentFilters {...defaultProps} />);
+  it("should call onFormatChange when format filter changes", () => {
+    const onFormatChange = vi.fn();
+    renderWithRouter({ ...defaultProps, onFormatChange });
 
-    expect(screen.getByText(/format/i)).toBeInTheDocument();
+    const formatSelect = screen.getByLabelText(/^Format$/i);
+    fireEvent.change(formatSelect, { target: { value: "M" } });
+
+    expect(onFormatChange).toHaveBeenCalledWith("M");
   });
 
-  it("should have status filter", () => {
-    renderWithRouter(<TournamentFilters {...defaultProps} />);
+  it("should call onStatusChange when status filter changes", () => {
+    const onStatusChange = vi.fn();
+    renderWithRouter({ ...defaultProps, onStatusChange });
 
-    expect(screen.getByText(/status/i)).toBeInTheDocument();
+    const statusSelect = screen.getByLabelText(/^Status$/i);
+    fireEvent.change(statusSelect, { target: { value: "completed" } });
+
+    expect(onStatusChange).toHaveBeenCalledWith("completed");
   });
 
-  it("should call onFilterChange when filter changes", () => {
-    const mockOnFilterChange = vi.fn();
-    const mockOnYearChange = vi.fn();
-    renderWithRouter(
-      <TournamentFilters
-        {...defaultProps}
-        onFilterChange={mockOnFilterChange}
-        onYearChange={mockOnYearChange}
-      />,
-    );
+  it("should call onSortChange when sort field changes", () => {
+    const onSortChange = vi.fn();
+    renderWithRouter({ ...defaultProps, onSortChange });
 
-    const selects = screen.getAllByRole("combobox");
-    if (selects.length > 0) {
-      fireEvent.change(selects[0], { target: { value: "2024" } });
-      // Either onFilterChange or onYearChange could be called depending on which select
-      expect(
-        mockOnFilterChange.mock.calls.length +
-          mockOnYearChange.mock.calls.length,
-      ).toBeGreaterThanOrEqual(0);
-    }
+    const sortSelect = screen.getByLabelText(/^Sort$/i);
+    fireEvent.change(sortSelect, { target: { value: "playerCount" } });
+
+    expect(onSortChange).toHaveBeenCalledWith("playerCount", "desc");
   });
 
-  it("should have clear filters button", () => {
-    renderWithRouter(<TournamentFilters {...defaultProps} />);
+  it("should toggle sort direction when sort button clicked", () => {
+    const onSortChange = vi.fn();
+    renderWithRouter({ ...defaultProps, onSortChange, sortDirection: "desc" });
 
-    const clearButton = screen.queryByRole("button", { name: /clear|reset/i });
-    // Clear button may or may not be present
-    expect(document.body).toBeInTheDocument();
+    const sortButton = screen.getByTitle(/Descending/i);
+    fireEvent.click(sortButton);
+
+    expect(onSortChange).toHaveBeenCalledWith("date", "asc");
+  });
+
+  it("should call onViewModeChange when view mode button clicked", () => {
+    const onViewModeChange = vi.fn();
+    renderWithRouter({ ...defaultProps, onViewModeChange, viewMode: "table" });
+
+    const cardViewButton = screen.getByTitle(/Card View/i);
+    fireEvent.click(cardViewButton);
+
+    expect(onViewModeChange).toHaveBeenCalledWith("cards");
   });
 });

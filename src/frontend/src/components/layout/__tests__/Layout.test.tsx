@@ -1,5 +1,5 @@
 import { render, screen } from "@testing-library/react";
-import { BrowserRouter } from "react-router-dom";
+import { MemoryRouter } from "react-router-dom";
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import Layout from "../Layout";
 
@@ -12,18 +12,15 @@ vi.mock("../../../contexts/AuthContext", () => ({
     }),
 }));
 
-// Mock Navigation
-vi.mock("../Navigation", () => ({
-    default: () => <nav data-testid="navigation">Navigation</nav>,
-}));
-
 describe("Layout", () => {
     beforeEach(() => {
         vi.clearAllMocks();
     });
 
     const renderWithRouter = (component: React.ReactElement) => {
-        return render(<BrowserRouter>{component}</BrowserRouter>);
+        return render(
+            <MemoryRouter initialEntries={["/"]}>{component}</MemoryRouter>
+        );
     };
 
     it("should render children content", () => {
@@ -44,7 +41,8 @@ describe("Layout", () => {
             </Layout>
         );
 
-        expect(screen.getByTestId("navigation")).toBeInTheDocument();
+        // Use getAllByTestId because there's both desktop and mobile nav
+        expect(screen.getAllByTestId("navigation").length).toBeGreaterThan(0);
     });
 
     it("should have main content area", () => {
@@ -54,7 +52,9 @@ describe("Layout", () => {
             </Layout>
         );
 
-        expect(screen.getByRole("main") || document.querySelector("main")).toBeTruthy();
+        expect(
+            screen.getByRole("main") || document.querySelector("main")
+        ).toBeTruthy();
     });
 
     it("should render properly with complex children", () => {
