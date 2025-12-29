@@ -3,18 +3,25 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.keycloakAdminService = void 0;
+exports.keycloakAdminService = exports.KeycloakAdminService = void 0;
 const axios_1 = __importDefault(require("axios"));
-// ... (KeycloakAdminService class definition)
 class KeycloakAdminService {
     client;
+    httpClient; // Helper client for raw requests (token fetch)
     adminToken = null;
     tokenExpiry = 0;
-    constructor() {
-        this.client = axios_1.default.create({
-            baseURL: `${process.env.KEYCLOAK_URL}/admin/realms/${process.env.KEYCLOAK_REALM}`,
-            timeout: 10000,
-        });
+    constructor(injectedClient) {
+        if (injectedClient) {
+            this.client = injectedClient;
+            this.httpClient = injectedClient;
+        }
+        else {
+            this.client = axios_1.default.create({
+                baseURL: `${process.env.KEYCLOAK_URL}/admin/realms/${process.env.KEYCLOAK_REALM}`,
+                timeout: 10000,
+            });
+            this.httpClient = axios_1.default;
+        }
     }
     async getAdminToken() {
         const now = Date.now();
@@ -23,7 +30,7 @@ class KeycloakAdminService {
             return this.adminToken;
         }
         try {
-            const response = await axios_1.default.post(`${process.env.KEYCLOAK_URL}/realms/master/protocol/openid-connect/token`, new URLSearchParams({
+            const response = await this.httpClient.post(`${process.env.KEYCLOAK_URL}/realms/master/protocol/openid-connect/token`, new URLSearchParams({
                 username: process.env.KEYCLOAK_ADMIN_USER,
                 password: process.env.KEYCLOAK_ADMIN_PASSWORD,
                 grant_type: "password",
@@ -234,6 +241,7 @@ class KeycloakAdminService {
         return this.makeAuthenticatedRequest("GET", `/roles/${roleName}/users`);
     }
 }
+exports.KeycloakAdminService = KeycloakAdminService;
 exports.keycloakAdminService = new KeycloakAdminService();
 exports.default = exports.keycloakAdminService;
 //# sourceMappingURL=keycloakAdminService.js.map

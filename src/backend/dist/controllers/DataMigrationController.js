@@ -1,136 +1,58 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.DataMigrationController = void 0;
-class DataMigrationController {
+const base_1 = require("./base");
+class DataMigrationController extends base_1.BaseController {
+    constructor() {
+        super();
+    }
     // Migrate all data from JSON files
-    migrateAll = async (_req, res, next) => {
-        try {
-            // TODO: Implement full migration from JSON files
-            const response = {
-                success: false,
-                error: "Migration not yet implemented",
-            };
-            res.status(501).json(response);
-        }
-        catch (error) {
-            next(error);
-        }
-    };
+    migrateAll = this.asyncHandler(async (_req, res) => {
+        // TODO: Implement full migration from JSON files
+        this.sendError(res, "Migration not yet implemented", 501);
+    });
     // Migrate players from JSON
-    migratePlayers = async (_req, res, next) => {
-        try {
-            // TODO: Implement player migration
-            const response = {
-                success: false,
-                error: "Player migration not yet implemented",
-            };
-            res.status(501).json(response);
-        }
-        catch (error) {
-            next(error);
-        }
-    };
+    migratePlayers = this.asyncHandler(async (_req, res) => {
+        // TODO: Implement player migration
+        this.sendError(res, "Player migration not yet implemented", 501);
+    });
     // Migrate tournaments from JSON
-    migrateTournaments = async (_req, res, next) => {
-        try {
-            // TODO: Implement tournament migration
-            const response = {
-                success: false,
-                error: "Tournament migration not yet implemented",
-            };
-            res.status(501).json(response);
-        }
-        catch (error) {
-            next(error);
-        }
-    };
+    migrateTournaments = this.asyncHandler(async (_req, res) => {
+        // TODO: Implement tournament migration
+        this.sendError(res, "Tournament migration not yet implemented", 501);
+    });
     // Migrate results from JSON
-    migrateResults = async (_req, res, next) => {
-        try {
-            // TODO: Implement results migration
-            const response = {
-                success: false,
-                error: "Results migration not yet implemented",
-            };
-            res.status(501).json(response);
-        }
-        catch (error) {
-            next(error);
-        }
-    };
+    migrateResults = this.asyncHandler(async (_req, res) => {
+        // TODO: Implement results migration
+        this.sendError(res, "Results migration not yet implemented", 501);
+    });
     // Get migration status
-    getMigrationStatus = async (_req, res, next) => {
-        try {
-            // TODO: Implement migration status check
-            const response = {
-                success: true,
-                data: {
-                    status: "not_started",
-                    message: "Migration system not yet implemented",
-                },
-            };
-            res.status(200).json(response);
-        }
-        catch (error) {
-            next(error);
-        }
-    };
+    getMigrationStatus = this.asyncHandler(async (_req, res) => {
+        // TODO: Implement migration status check
+        this.sendSuccess(res, {
+            status: "not_started",
+            message: "Migration system not yet implemented",
+        }, "Migration status retrieved");
+    });
     // Preview migration data
-    previewMigration = async (_req, res, next) => {
-        try {
-            // TODO: Implement migration preview
-            const response = {
-                success: false,
-                error: "Migration preview not yet implemented",
-            };
-            res.status(501).json(response);
-        }
-        catch (error) {
-            next(error);
-        }
-    };
+    previewMigration = this.asyncHandler(async (_req, res) => {
+        // TODO: Implement migration preview
+        this.sendError(res, "Migration preview not yet implemented", 501);
+    });
     // Create backup
-    createBackup = async (_req, res, next) => {
-        try {
-            // TODO: Implement backup creation
-            const response = {
-                success: false,
-                error: "Backup system not yet implemented",
-            };
-            res.status(501).json(response);
-        }
-        catch (error) {
-            next(error);
-        }
-    };
+    createBackup = this.asyncHandler(async (_req, res) => {
+        // TODO: Implement backup creation
+        this.sendError(res, "Backup system not yet implemented", 501);
+    });
     // Restore backup
-    restoreBackup = async (_req, res, next) => {
-        try {
-            // TODO: Implement backup restoration
-            const response = {
-                success: false,
-                error: "Restore system not yet implemented",
-            };
-            res.status(501).json(response);
-        }
-        catch (error) {
-            next(error);
-        }
-    };
+    restoreBackup = this.asyncHandler(async (_req, res) => {
+        // TODO: Implement backup restoration
+        this.sendError(res, "Restore system not yet implemented", 501);
+    });
     // Validate data
-    validateData = async (_req, res, next) => {
-        try {
-            // TODO: Implement data validation
-            const response = {
-                success: false,
-                error: "Data validation not yet implemented",
-            };
-            res.status(501).json(response);
-        }
-        catch (error) {
-            next(error);
-        }
-    };
+    validateData = this.asyncHandler(async (_req, res) => {
+        // TODO: Implement data validation
+        this.sendError(res, "Data validation not yet implemented", 501);
+    });
 }
-exports.DataMigrationController = DataMigrationController;
+exports.default = new DataMigrationController();
 //# sourceMappingURL=DataMigrationController.js.map

@@ -262,7 +262,7 @@ class PlayerController extends base_1.BaseCrudController {
         }
         const item = new this.model(req.body);
         const savedItem = await item.save();
-        this.sendSuccess(res, savedItem, `${this.modelName} created successfully`, 201);
+        this.sendSuccess(res, savedItem, `${this.modelName} created successfully`, undefined, 201);
     });
     // Override update method to add custom validation
     update = this.asyncHandler(async (req, res) => {

@@ -12,614 +12,359 @@ const TournamentSeedingService_1 = require("../services/TournamentSeedingService
 const TournamentDeletionService_1 = require("../services/TournamentDeletionService");
 class TournamentAdminController extends base_1.BaseController {
     constructor() {
-        super(Tournament_1.Tournament, "Tournament");
+        super();
     }
     /**
      * Update tournament status with validation
      */
-    updateStatus = async (req, res, next) => {
+    updateStatus = this.asyncHandler(async (req, res) => {
+        const { id } = req.params;
+        const { status } = req.body;
+        if (!status) {
+            this.sendError(res, "Status is required", 400);
+            return;
+        }
+        const tournament = await Tournament_1.Tournament.findById(id);
+        if (!tournament) {
+            this.sendNotFound(res, "Tournament");
+            return;
+        }
+        // Validate status transition
+        const oldStatus = tournament.status;
+        tournament.status = status;
         try {
-            const { id } = req.params;
-            const { status } = req.body;
-            if (!status) {
-                res.status(400).json({
-                    success: false,
-                    message: "Status is required",
-                    data: null,
-                });
-                return;
-            }
-            const tournament = await Tournament_1.Tournament.findById(id);
-            if (!tournament) {
-                res.status(404).json({
-                    success: false,
-                    message: "Tournament not found",
-                    data: null,
-                });
-                return;
-            }
-            // Validate status transition
-            const oldStatus = tournament.status;
-            tournament.status = status;
-            try {
-                await tournament.save();
-            }
-            catch (error) {
-                if (error.message.includes("Invalid status transition")) {
-                    res.status(400).json({
-                        success: false,
-                        message: `Cannot transition from ${oldStatus} to ${status}`,
-                        data: null,
-                    });
-                    return;
-                }
-                throw error;
-            }
-            const response = {
-                success: true,
-                message: `Tournament status updated to ${status}`,
-                data: tournament,
-            };
-            res.status(200).json(response);
+            await tournament.save();
         }
         catch (error) {
-            next(error);
+            if (error.message.includes("Invalid status transition")) {
+                this.sendError(res, `Cannot transition from ${oldStatus} to ${status}`, 400);
+                return;
+            }
+            throw error;
         }
-    };
+        this.sendSuccess(res, tournament, `Tournament status updated to ${status}`);
+    });
     /**
      * Add players to a tournament
      */
-    addPlayers = async (req, res, next) => {
-        try {
-            const { id } = req.params;
-            const { playerIds } = req.body;
-            if (!playerIds || !Array.isArray(playerIds)) {
-                res.status(400).json({
-                    success: false,
-                    message: "Player IDs array is required",
-                    data: null,
-                });
-                return;
-            }
-            const tournament = await Tournament_1.Tournament.findById(id).populate("players", "name");
-            if (!tournament) {
-                res.status(404).json({
-                    success: false,
-                    message: "Tournament not found",
-                    data: null,
-                });
-                return;
-            }
-            // Check if tournament allows player additions
-            if (!["scheduled", "open"].includes(tournament.status)) {
-                res.status(400).json({
-                    success: false,
-                    message: "Players can only be added to scheduled or open tournaments",
-                    data: null,
-                });
-                return;
-            }
-            // Validate players exist
-            const objectIds = playerIds.map((id) => new mongoose_1.Types.ObjectId(id));
-            const players = await Player_1.Player.find({ _id: { $in: objectIds } });
-            if (players.length !== playerIds.length) {
-                res.status(400).json({
-                    success: false,
-                    message: "One or more players not found",
-                    data: null,
-                });
-                return;
-            }
-            // Add new players (avoid duplicates)
-            const existingPlayerIds = tournament.players?.map((p) => p.toString()) || [];
-            const newPlayerIds = objectIds.filter((id) => !existingPlayerIds.includes(id.toString()));
-            if (newPlayerIds.length === 0) {
-                res.status(400).json({
-                    success: false,
-                    message: "All players are already registered for this tournament",
-                    data: null,
-                });
-                return;
-            }
-            tournament.players = [...(tournament.players || []), ...newPlayerIds];
-            // Check max players limit
-            if (tournament.maxPlayers &&
-                tournament.players.length > tournament.maxPlayers) {
-                res.status(400).json({
-                    success: false,
-                    message: `Tournament is limited to ${tournament.maxPlayers} players`,
-                    data: null,
-                });
-                return;
-            }
-            await tournament.save();
-            const updatedTournament = await Tournament_1.Tournament.findById(id).populate("players", "name firstName lastName");
-            const response = {
-                success: true,
-                message: `Added ${newPlayerIds.length} players to tournament`,
-                data: updatedTournament,
-            };
-            res.status(200).json(response);
+    addPlayers = this.asyncHandler(async (req, res) => {
+        const { id } = req.params;
+        const { playerIds } = req.body;
+        if (!playerIds || !Array.isArray(playerIds)) {
+            this.sendError(res, "Player IDs array is required", 400);
+            return;
         }
-        catch (error) {
-            next(error);
+        const tournament = await Tournament_1.Tournament.findById(id).populate("players", "name");
+        if (!tournament) {
+            this.sendNotFound(res, "Tournament");
+            return;
         }
-    };
+        // Check if tournament allows player additions
+        if (!["scheduled", "open"].includes(tournament.status)) {
+            this.sendError(res, "Players can only be added to scheduled or open tournaments", 400);
+            return;
+        }
+        // Validate players exist
+        const objectIds = playerIds.map((id) => new mongoose_1.Types.ObjectId(id));
+        const players = await Player_1.Player.find({ _id: { $in: objectIds } });
+        if (players.length !== playerIds.length) {
+            this.sendError(res, "One or more players not found", 400);
+            return;
+        }
+        // Add new players (avoid duplicates)
+        const existingPlayerIds = tournament.players?.map((p) => p.toString()) || [];
+        const newPlayerIds = objectIds.filter((id) => !existingPlayerIds.includes(id.toString()));
+        if (newPlayerIds.length === 0) {
+            this.sendError(res, "All players are already registered for this tournament", 400);
+            return;
+        }
+        tournament.players = [...(tournament.players || []), ...newPlayerIds];
+        // Check max players limit
+        if (tournament.maxPlayers &&
+            tournament.players.length > tournament.maxPlayers) {
+            this.sendError(res, `Tournament is limited to ${tournament.maxPlayers} players`, 400);
+            return;
+        }
+        await tournament.save();
+        const updatedTournament = await Tournament_1.Tournament.findById(id).populate("players", "name firstName lastName");
+        this.sendSuccess(res, updatedTournament, `Added ${newPlayerIds.length} players to tournament`);
+    });
     /**
      * Remove a player from a tournament
      */
-    removePlayer = async (req, res, next) => {
-        try {
-            const { id, playerId } = req.params;
-            const tournament = await Tournament_1.Tournament.findById(id);
-            if (!tournament) {
-                res.status(404).json({
-                    success: false,
-                    message: "Tournament not found",
-                    data: null,
-                });
-                return;
-            }
-            // Check if tournament allows player removal
-            if (!["scheduled", "open"].includes(tournament.status)) {
-                res.status(400).json({
-                    success: false,
-                    message: "Players can only be removed from scheduled or open tournaments",
-                    data: null,
-                });
-                return;
-            }
-            const playerObjectId = new mongoose_1.Types.ObjectId(playerId);
-            const playerIndex = tournament.players?.findIndex((p) => p.toString() === playerId);
-            if (playerIndex === undefined || playerIndex === -1) {
-                res.status(404).json({
-                    success: false,
-                    message: "Player not found in this tournament",
-                    data: null,
-                });
-                return;
-            }
-            tournament.players?.splice(playerIndex, 1);
-            await tournament.save();
-            const updatedTournament = await Tournament_1.Tournament.findById(id).populate("players", "name firstName lastName");
-            const response = {
-                success: true,
-                message: "Player removed from tournament",
-                data: updatedTournament,
-            };
-            res.status(200).json(response);
+    removePlayer = this.asyncHandler(async (req, res) => {
+        const { id, playerId } = req.params;
+        const tournament = await Tournament_1.Tournament.findById(id);
+        if (!tournament) {
+            this.sendNotFound(res, "Tournament");
+            return;
         }
-        catch (error) {
-            next(error);
+        // Check if tournament allows player removal
+        if (!["scheduled", "open"].includes(tournament.status)) {
+            this.sendError(res, "Players can only be removed from scheduled or open tournaments", 400);
+            return;
         }
-    };
+        const playerIndex = tournament.players?.findIndex((p) => p.toString() === playerId);
+        if (playerIndex === undefined || playerIndex === -1) {
+            this.sendNotFound(res, "Player in this tournament");
+            return;
+        }
+        tournament.players?.splice(playerIndex, 1);
+        await tournament.save();
+        const updatedTournament = await Tournament_1.Tournament.findById(id).populate("players", "name firstName lastName");
+        this.sendSuccess(res, updatedTournament, "Player removed from tournament");
+    });
     /**
      * Generate matches for a tournament (create bracket)
      */
-    generateMatches = async (req, res, next) => {
-        try {
-            const { id } = req.params;
-            const { bracketType = "single-elimination" } = req.body;
-            const tournament = await Tournament_1.Tournament.findById(id).populate("players", "name firstName lastName");
-            if (!tournament) {
-                res.status(404).json({
-                    success: false,
-                    message: "Tournament not found",
-                    data: null,
-                });
-                return;
-            }
-            // Check if tournament can start
-            if (tournament.status !== "open") {
-                res.status(400).json({
-                    success: false,
-                    message: "Tournament must be open to generate matches",
-                    data: null,
-                });
-                return;
-            }
-            const playerCount = tournament.players?.length || 0;
-            if (playerCount < 2) {
-                res.status(400).json({
-                    success: false,
-                    message: "Tournament needs at least 2 players to generate matches",
-                    data: null,
-                });
-                return;
-            }
-            // Check if matches already exist
-            const existingMatches = await Match_1.Match.find({ tournamentId: id });
-            if (existingMatches.length > 0) {
-                res.status(400).json({
-                    success: false,
-                    message: "Matches already exist for this tournament",
-                    data: null,
-                });
-                return;
-            }
-            // For doubles tournaments, we need an even number of players (teams of 2)
-            const isDoubles = ["Mixed", "Men's Doubles", "Women's Doubles"].includes(tournament.format);
-            if (isDoubles && playerCount % 2 !== 0) {
-                res.status(400).json({
-                    success: false,
-                    message: "Doubles tournaments require an even number of players",
-                    data: null,
-                });
-                return;
-            }
-            // Generate seeded bracket matches
-            const matches = await this.createSeededBracketMatches(tournament, isDoubles);
-            // Update tournament status to active
-            tournament.status = "active";
-            await tournament.save();
-            const response = {
-                success: true,
-                message: `Generated ${matches.length} matches for tournament`,
-                data: { tournament, matches },
-            };
-            res.status(201).json(response);
+    generateMatches = this.asyncHandler(async (req, res) => {
+        const { id } = req.params;
+        const tournament = await Tournament_1.Tournament.findById(id).populate("players", "name firstName lastName");
+        if (!tournament) {
+            this.sendNotFound(res, "Tournament");
+            return;
         }
-        catch (error) {
-            next(error);
+        // Check if tournament can start
+        if (tournament.status !== "open") {
+            this.sendError(res, "Tournament must be open to generate matches", 400);
+            return;
         }
-    };
+        const playerCount = tournament.players?.length || 0;
+        if (playerCount < 2) {
+            this.sendError(res, "Tournament needs at least 2 players to generate matches", 400);
+            return;
+        }
+        // Check if matches already exist
+        const existingMatches = await Match_1.Match.find({ tournamentId: id });
+        if (existingMatches.length > 0) {
+            this.sendError(res, "Matches already exist for this tournament", 400);
+            return;
+        }
+        // For doubles tournaments, we need an even number of players (teams of 2)
+        const isDoubles = ["Mixed", "Men's Doubles", "Women's Doubles"].includes(tournament.format);
+        if (isDoubles && playerCount % 2 !== 0) {
+            this.sendError(res, "Doubles tournaments require an even number of players", 400);
+            return;
+        }
+        // Generate seeded bracket matches
+        const matches = await this.createSeededBracketMatches(tournament, isDoubles);
+        // Update tournament status to active
+        tournament.status = "active";
+        await tournament.save();
+        this.sendSuccess(res, { tournament, matches }, `Generated ${matches.length} matches for tournament`, undefined, 201);
+    });
     /**
      * Update match score
      */
-    updateMatchScore = async (req, res, next) => {
-        try {
-            const { matchId } = req.params;
-            const { team1Score, team2Score, notes } = req.body;
-            const match = await Match_1.Match.findById(matchId).populate("tournamentId", "status");
-            if (!match) {
-                res.status(404).json({
-                    success: false,
-                    message: "Match not found",
-                    data: null,
-                });
-                return;
-            }
-            // Verify tournament is active
-            const tournament = match.tournamentId;
-            if (tournament.status !== "active") {
-                res.status(400).json({
-                    success: false,
-                    message: "Can only update scores for active tournaments",
-                    data: null,
-                });
-                return;
-            }
-            // Update scores
-            if (team1Score !== undefined)
-                match.team1.score = team1Score;
-            if (team2Score !== undefined)
-                match.team2.score = team2Score;
-            if (notes !== undefined)
-                match.notes = notes;
-            // Save will trigger automatic winner calculation and status update
-            await match.save();
-            // If this match is completed, update tournament results
-            if (match.status === "completed") {
-                await this.updateTournamentResults(match);
-            }
-            const response = {
-                success: true,
-                message: "Match score updated",
-                data: match,
-            };
-            res.status(200).json(response);
+    updateMatchScore = this.asyncHandler(async (req, res) => {
+        const { matchId } = req.params;
+        const { team1Score, team2Score, notes } = req.body;
+        const match = await Match_1.Match.findById(matchId).populate("tournamentId", "status");
+        if (!match) {
+            this.sendNotFound(res, "Match");
+            return;
         }
-        catch (error) {
-            next(error);
+        // Verify tournament is active
+        const tournament = match.tournamentId;
+        if (tournament.status !== "active") {
+            this.sendError(res, "Can only update scores for active tournaments", 400);
+            return;
         }
-    };
+        // Update scores
+        if (team1Score !== undefined)
+            match.team1.score = team1Score;
+        if (team2Score !== undefined)
+            match.team2.score = team2Score;
+        if (notes !== undefined)
+            match.notes = notes;
+        // Save will trigger automatic winner calculation and status update
+        await match.save();
+        // If this match is completed, update tournament results
+        if (match.status === "completed") {
+            await this.updateTournamentResults(match);
+        }
+        this.sendSuccess(res, match, "Match score updated");
+    });
     /**
      * Finalize tournament (mark as completed)
      */
-    finalizeTournament = async (req, res, next) => {
-        try {
-            const { id } = req.params;
-            const tournament = await Tournament_1.Tournament.findById(id);
-            if (!tournament) {
-                res.status(404).json({
-                    success: false,
-                    message: "Tournament not found",
-                    data: null,
-                });
-                return;
-            }
-            if (tournament.status !== "active") {
-                res.status(400).json({
-                    success: false,
-                    message: "Only active tournaments can be finalized",
-                    data: null,
-                });
-                return;
-            }
-            // Check if all matches are completed
-            const incompleteMatches = await Match_1.Match.find({
-                tournamentId: id,
-                status: { $ne: "completed" },
-            });
-            if (incompleteMatches.length > 0) {
-                res.status(400).json({
-                    success: false,
-                    message: `Tournament has ${incompleteMatches.length} incomplete matches`,
-                    data: null,
-                });
-                return;
-            }
-            // Find the champion (winner of the final match)
-            const finalMatch = await Match_1.Match.findOne({
-                tournamentId: id,
-                round: "final",
-            }).populate("team1.players team2.players", "name firstName lastName");
-            if (finalMatch && finalMatch.winner) {
-                const winningTeam = finalMatch.winner === "team1" ? finalMatch.team1 : finalMatch.team2;
-                const championPlayer = winningTeam.players[0];
-                tournament.champion = {
-                    playerId: championPlayer._id,
-                    playerName: championPlayer.name ||
-                        `${championPlayer.firstName} ${championPlayer.lastName}`,
-                };
-            }
-            // Update status to completed
-            tournament.status = "completed";
-            await tournament.save();
-            // Update player statistics
-            await this.updatePlayerStatistics(tournament);
-            const response = {
-                success: true,
-                message: "Tournament finalized successfully",
-                data: tournament,
+    finalizeTournament = this.asyncHandler(async (req, res) => {
+        const { id } = req.params;
+        const tournament = await Tournament_1.Tournament.findById(id);
+        if (!tournament) {
+            this.sendNotFound(res, "Tournament");
+            return;
+        }
+        if (tournament.status !== "active") {
+            this.sendError(res, "Only active tournaments can be finalized", 400);
+            return;
+        }
+        // Check if all matches are completed
+        const incompleteMatches = await Match_1.Match.find({
+            tournamentId: id,
+            status: { $ne: "completed" },
+        });
+        if (incompleteMatches.length > 0) {
+            this.sendError(res, `Tournament has ${incompleteMatches.length} incomplete matches`, 400);
+            return;
+        }
+        // Find the champion (winner of the final match)
+        const finalMatch = await Match_1.Match.findOne({
+            tournamentId: id,
+            round: "final",
+        }).populate("team1.players team2.players", "name firstName lastName");
+        if (finalMatch && finalMatch.winner) {
+            const winningTeam = finalMatch.winner === "team1" ? finalMatch.team1 : finalMatch.team2;
+            const championPlayer = winningTeam.players[0];
+            tournament.champion = {
+                playerId: championPlayer._id,
+                playerName: championPlayer.name ||
+                    `${championPlayer.firstName} ${championPlayer.lastName}`,
             };
-            res.status(200).json(response);
         }
-        catch (error) {
-            next(error);
-        }
-    };
+        // Update status to completed
+        tournament.status = "completed";
+        await tournament.save();
+        // Update player statistics
+        await this.updatePlayerStatistics(tournament);
+        this.sendSuccess(res, tournament, "Tournament finalized successfully");
+    });
     /**
      * Register a player for a tournament
      */
-    registerPlayer = async (req, res, next) => {
-        try {
-            const { id } = req.params; // tournament ID
-            const { playerId } = req.body;
-            if (!playerId) {
-                res.status(400).json({
-                    success: false,
-                    message: "Player ID is required",
-                    data: null,
-                });
-                return;
-            }
-            const result = await TournamentRegistrationService_1.TournamentRegistrationService.registerPlayer(id, playerId);
-            if (!result.success) {
-                res.status(400).json({
-                    success: false,
-                    message: result.message,
-                    data: null,
-                });
-                return;
-            }
-            const response = {
-                success: true,
-                message: result.message,
-                data: {
-                    tournament: result.tournament,
-                    position: result.position,
-                },
-            };
-            res.status(200).json(response);
+    registerPlayer = this.asyncHandler(async (req, res) => {
+        const { id } = req.params; // tournament ID
+        const { playerId } = req.body;
+        if (!playerId) {
+            this.sendError(res, "Player ID is required", 400);
+            return;
         }
-        catch (error) {
-            next(error);
+        const result = await TournamentRegistrationService_1.TournamentRegistrationService.registerPlayer(id, playerId);
+        if (!result.success) {
+            this.sendError(res, result.message, 400);
+            return;
         }
-    };
+        this.sendSuccess(res, {
+            tournament: result.tournament,
+            position: result.position,
+        }, result.message);
+    });
     /**
      * Unregister a player from a tournament
      */
-    unregisterPlayer = async (req, res, next) => {
-        try {
-            const { id, playerId } = req.params;
-            const result = await TournamentRegistrationService_1.TournamentRegistrationService.unregisterPlayer(id, playerId);
-            if (!result.success) {
-                res.status(400).json({
-                    success: false,
-                    message: result.message,
-                    data: null,
-                });
-                return;
-            }
-            const response = {
-                success: true,
-                message: result.message,
-                data: result.tournament,
-            };
-            res.status(200).json(response);
+    unregisterPlayer = this.asyncHandler(async (req, res) => {
+        const { id, playerId } = req.params;
+        const result = await TournamentRegistrationService_1.TournamentRegistrationService.unregisterPlayer(id, playerId);
+        if (!result.success) {
+            this.sendError(res, result.message, 400);
+            return;
         }
-        catch (error) {
-            next(error);
-        }
-    };
+        this.sendSuccess(res, result.tournament, result.message);
+    });
     /**
      * Get tournament registration information
      */
-    getRegistrationInfo = async (req, res, next) => {
-        try {
-            const { id } = req.params;
-            const result = await TournamentRegistrationService_1.TournamentRegistrationService.getRegistrationInfo(id);
-            if (!result.success) {
-                res.status(404).json({
-                    success: false,
-                    message: result.message,
-                    data: null,
-                });
-                return;
-            }
-            const response = {
-                success: true,
-                message: "Registration info retrieved",
-                data: result.data,
-            };
-            res.status(200).json(response);
+    getRegistrationInfo = this.asyncHandler(async (req, res) => {
+        const { id } = req.params;
+        const result = await TournamentRegistrationService_1.TournamentRegistrationService.getRegistrationInfo(id);
+        if (!result.success) {
+            this.sendNotFound(res, "Registration info");
+            return;
         }
-        catch (error) {
-            next(error);
-        }
-    };
+        this.sendSuccess(res, result.data, "Registration info retrieved");
+    });
     /**
      * Finalize tournament registration and move to player selection
      */
-    finalizeRegistration = async (req, res, next) => {
-        try {
-            const { id } = req.params;
-            const result = await TournamentRegistrationService_1.TournamentRegistrationService.finalizeRegistration(id);
-            if (!result.success) {
-                res.status(400).json({
-                    success: false,
-                    message: result.message,
-                    data: null,
-                });
-                return;
-            }
-            const response = {
-                success: true,
-                message: result.message,
-                data: result.tournament,
-            };
-            res.status(200).json(response);
+    finalizeRegistration = this.asyncHandler(async (req, res) => {
+        const { id } = req.params;
+        const result = await TournamentRegistrationService_1.TournamentRegistrationService.finalizeRegistration(id);
+        if (!result.success) {
+            this.sendError(res, result.message, 400);
+            return;
         }
-        catch (error) {
-            next(error);
-        }
-    };
+        this.sendSuccess(res, result.tournament, result.message);
+    });
     /**
      * Get seeding preview for tournament
      */
-    getSeedingPreview = async (req, res, next) => {
-        try {
-            const { id } = req.params;
-            const tournament = await Tournament_1.Tournament.findById(id);
-            if (!tournament) {
-                res.status(404).json({
-                    success: false,
-                    message: "Tournament not found",
-                    data: null,
-                });
-                return;
-            }
-            const playerIds = (tournament.players ||
-                tournament.registeredPlayers ||
-                []).map((p) => p.toString());
-            if (playerIds.length === 0) {
-                res.status(400).json({
-                    success: false,
-                    message: "No players found for seeding",
-                    data: null,
-                });
-                return;
-            }
-            const result = await TournamentSeedingService_1.TournamentSeedingService.getSeedingPreview(playerIds, tournament.format);
-            if (!result.success) {
-                res.status(400).json({
-                    success: false,
-                    message: result.message,
-                    data: null,
-                });
-                return;
-            }
-            const response = {
-                success: true,
-                message: result.message,
-                data: result.preview,
-            };
-            res.status(200).json(response);
+    getSeedingPreview = this.asyncHandler(async (req, res) => {
+        const { id } = req.params;
+        const tournament = await Tournament_1.Tournament.findById(id);
+        if (!tournament) {
+            this.sendNotFound(res, "Tournament");
+            return;
         }
-        catch (error) {
-            next(error);
+        const playerIds = (tournament.players ||
+            tournament.registeredPlayers ||
+            []).map((p) => p.toString());
+        if (playerIds.length === 0) {
+            this.sendError(res, "No players found for seeding", 400);
+            return;
         }
-    };
+        const result = await TournamentSeedingService_1.TournamentSeedingService.getSeedingPreview(playerIds, tournament.format);
+        if (!result.success) {
+            this.sendError(res, result.message, 400);
+            return;
+        }
+        this.sendSuccess(res, result.preview, result.message);
+    });
     /**
      * Get tournament with matches and results
      */
-    getTournamentWithMatches = async (req, res, next) => {
-        try {
-            const { id } = req.params;
-            const tournament = await Tournament_1.Tournament.findById(id).populate("players", "name firstName lastName");
-            if (!tournament) {
-                res.status(404).json({
-                    success: false,
-                    message: "Tournament not found",
-                    data: null,
-                });
-                return;
-            }
-            const matches = await Match_1.Match.find({ tournamentId: id }).sort({
-                roundNumber: 1,
-                matchNumber: 1,
-            });
-            const results = await TournamentResult_1.TournamentResult.find({
-                tournamentId: id,
-            }).populate("players", "name firstName lastName");
-            const response = {
-                success: true,
-                message: "Tournament details retrieved",
-                data: {
-                    tournament,
-                    matches,
-                    results,
-                },
-            };
-            res.status(200).json(response);
+    getTournamentWithMatches = this.asyncHandler(async (req, res) => {
+        const { id } = req.params;
+        const tournament = await Tournament_1.Tournament.findById(id).populate("players", "name firstName lastName");
+        if (!tournament) {
+            this.sendNotFound(res, "Tournament");
+            return;
         }
-        catch (error) {
-            next(error);
-        }
-    };
+        const matches = await Match_1.Match.find({ tournamentId: id }).sort({
+            roundNumber: 1,
+            matchNumber: 1,
+        });
+        const results = await TournamentResult_1.TournamentResult.find({
+            tournamentId: id,
+        }).populate("players", "name firstName lastName");
+        this.sendSuccess(res, {
+            tournament,
+            matches,
+            results,
+        }, "Tournament details retrieved");
+    });
     /**
      * Delete a scheduled tournament with enterprise-grade cascade deletion
      * Implements compensation patterns, audit trails, and robust error handling
      */
-    deleteTournament = async (req, res, next) => {
+    deleteTournament = this.asyncHandler(async (req, res) => {
         const deletionService = new TournamentDeletionService_1.TournamentDeletionService();
         const correlationId = req.headers["x-correlation-id"] || undefined;
+        const { id } = req.params;
+        const adminUserId = req.user?.id;
+        if (!adminUserId) {
+            this.sendUnauthorized(res, "Authentication required");
+            return;
+        }
         try {
-            const { id } = req.params;
-            const adminUserId = req.user?.id;
-            if (!adminUserId) {
-                res.status(401).json({
-                    success: false,
-                    message: "Authentication required",
-                    data: null,
-                });
-                return;
-            }
             // Use the enhanced deletion service
             const result = await deletionService.deleteTournament(id, adminUserId, correlationId);
-            const response = {
-                success: true,
-                message: `Tournament "${result.tournamentInfo?.format} - ${result.tournamentInfo?.date}" has been permanently deleted`,
-                data: {
-                    tournamentId: id,
-                    operation: {
-                        correlationId: result.operation.correlationId,
-                        steps: result.operation.steps.map((step) => ({
-                            name: step.name,
-                            status: step.status,
-                            expectedCount: step.expectedCount,
-                            actualCount: step.actualCount,
-                        })),
-                        duration: result.operation.endTime
-                            ? result.operation.endTime.getTime() -
-                                result.operation.startTime.getTime()
-                            : 0,
-                    },
-                    tournamentInfo: result.tournamentInfo,
+            this.sendSuccess(res, {
+                tournamentId: id,
+                operation: {
+                    correlationId: result.operation.correlationId,
+                    steps: result.operation.steps.map((step) => ({
+                        name: step.name,
+                        status: step.status,
+                        expectedCount: step.expectedCount,
+                        actualCount: step.actualCount,
+                    })),
+                    duration: result.operation.endTime
+                        ? result.operation.endTime.getTime() -
+                            result.operation.startTime.getTime()
+                        : 0,
                 },
-            };
-            res.status(200).json(response);
+                tournamentInfo: result.tournamentInfo,
+            }, `Tournament "${result.tournamentInfo?.format} - ${result.tournamentInfo?.date}" has been permanently deleted`);
         }
         catch (error) {
             // Handle different types of errors appropriately
@@ -645,25 +390,11 @@ class TournamentAdminController extends base_1.BaseController {
                         break;
                 }
                 // Add retry information for retryable errors
-                const responseHeaders = {};
                 if (deletionService.isRetryable(deletionError)) {
-                    responseHeaders["Retry-After"] = "60"; // Suggest retry after 60 seconds
-                    responseHeaders["X-Retryable"] = "true";
+                    res.setHeader("Retry-After", "60"); // Suggest retry after 60 seconds
+                    res.setHeader("X-Retryable", "true");
                 }
-                Object.entries(responseHeaders).forEach(([key, value]) => {
-                    res.setHeader(key, String(value));
-                });
-                res.status(statusCode).json({
-                    success: false,
-                    message: deletionError.message,
-                    data: {
-                        code: deletionError.code,
-                        retryable: deletionError.retryable,
-                        operation: deletionError.operation
-                            ? deletionService.getOperationSummary(deletionError.operation)
-                            : null,
-                    },
-                });
+                this.sendError(res, deletionError.message, statusCode);
                 return;
             }
             // Log unexpected errors
@@ -679,10 +410,10 @@ class TournamentAdminController extends base_1.BaseController {
                     }
                     : error,
             });
-            // Let Express error handler deal with unexpected errors
-            next(error);
+            // Re-throw for asyncHandler to catch
+            throw error;
         }
-    };
+    });
     // Private helper methods
     async createSeededBracketMatches(tournament, isDoubles) {
         const players = tournament.players || [];
@@ -1024,5 +755,5 @@ class TournamentAdminController extends base_1.BaseController {
     }
 }
 exports.TournamentAdminController = TournamentAdminController;
-exports.default = TournamentAdminController;
+exports.default = new TournamentAdminController();
 //# sourceMappingURL=TournamentAdminController.js.map

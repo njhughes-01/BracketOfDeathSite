@@ -54,6 +54,23 @@ const buildAllowedIssuers = (): [string, ...string[]] => {
     issuers.add(process.env.KEYCLOAK_ISSUER);
   }
 
+  // APP_URL-based issuer (production domain like https://bod.lightmedia.club)
+  if (process.env.APP_URL) {
+    const appUrl = process.env.APP_URL.replace(/\/$/, ""); // Remove trailing slash
+    issuers.add(`${appUrl}/auth/realms/${realm}`);
+  }
+
+  // CORS_ORIGIN-based issuers (handles multiple allowed origins)
+  if (process.env.CORS_ORIGIN) {
+    const origins = process.env.CORS_ORIGIN.split(",");
+    for (const origin of origins) {
+      const trimmedOrigin = origin.trim().replace(/\/$/, "");
+      if (trimmedOrigin) {
+        issuers.add(`${trimmedOrigin}/auth/realms/${realm}`);
+      }
+    }
+  }
+
   // Internal container URL (for direct Keycloak access)
   issuers.add(`${keycloakUrl}/realms/${realm}`);
 

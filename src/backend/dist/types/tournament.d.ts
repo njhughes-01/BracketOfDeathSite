@@ -20,8 +20,14 @@ export interface ITournament extends BaseDocument {
     registrationOpensAt?: Date;
     registrationDeadline?: Date;
     allowSelfRegistration: boolean;
-    registeredPlayers?: Types.ObjectId[];
-    waitlistPlayers?: Types.ObjectId[];
+    registeredPlayers?: Array<{
+        playerId: Types.ObjectId;
+        registeredAt: Date;
+    }>;
+    waitlistPlayers?: Array<{
+        playerId: Types.ObjectId;
+        registeredAt: Date;
+    }>;
     champion?: {
         playerId: Types.ObjectId;
         playerName: string;
@@ -113,8 +119,14 @@ export interface ITournamentInput {
 export interface ITournamentUpdate extends Partial<ITournamentInput> {
     _id?: never;
     players?: Types.ObjectId[];
-    registeredPlayers?: Types.ObjectId[];
-    waitlistPlayers?: Types.ObjectId[];
+    registeredPlayers?: Array<{
+        playerId: Types.ObjectId;
+        registeredAt: Date;
+    }>;
+    waitlistPlayers?: Array<{
+        playerId: Types.ObjectId;
+        registeredAt: Date;
+    }>;
     champion?: {
         playerId: Types.ObjectId;
         playerName: string;
