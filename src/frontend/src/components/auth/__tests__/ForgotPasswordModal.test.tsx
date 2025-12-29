@@ -1,58 +1,75 @@
-import { render, screen, fireEvent } from "@testing-library/react";
+import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import ForgotPasswordModal from "../ForgotPasswordModal";
+import apiClient from "../../../services/api";
+
+// Mock API
+vi.mock("../../../services/api", () => ({
+    default: {
+        requestPasswordReset: vi.fn(),
+    },
+}));
 
 describe("ForgotPasswordModal", () => {
     const defaultProps = {
-        isOpen: true,
         onClose: vi.fn(),
-        onSubmit: vi.fn(),
     };
 
     beforeEach(() => {
         vi.clearAllMocks();
     });
 
-    it("should not render when closed", () => {
-        render(<ForgotPasswordModal {...defaultProps} isOpen={false} />);
-
-        expect(screen.queryByText(/forgot password|reset password/i)).not.toBeInTheDocument();
-    });
-
-    it("should render when open", () => {
+    it("should render forgot password title", () => {
         render(<ForgotPasswordModal {...defaultProps} />);
-
-        expect(screen.getByText(/forgot password|reset password/i)).toBeInTheDocument();
+        expect(screen.getByText(/Reset Password/i)).toBeInTheDocument();
     });
 
     it("should have email field", () => {
         render(<ForgotPasswordModal {...defaultProps} />);
-
-        const emailInput = screen.getByLabelText(/email/i) || screen.getByPlaceholderText(/email/i);
+        const emailInput = screen.getByPlaceholderText(/user@example.com/i);
         expect(emailInput).toBeInTheDocument();
+        expect(emailInput).toHaveAttribute("required");
     });
 
-    it("should call onClose when cancel clicked", () => {
+    it("should call onClose when close button clicked", () => {
         const mockOnClose = vi.fn();
-        render(<ForgotPasswordModal {...defaultProps} onClose={mockOnClose} />);
+        render(<ForgotPasswordModal onClose={mockOnClose} />);
 
-        const cancelButton = screen.getByRole("button", { name: /cancel|close/i });
-        fireEvent.click(cancelButton);
-
-        expect(mockOnClose).toHaveBeenCalled();
+        const closeButton = screen.getByText("close").closest("button");
+        if (closeButton) {
+            fireEvent.click(closeButton);
+            expect(mockOnClose).toHaveBeenCalled();
+        }
     });
 
-    it("should have submit button", () => {
+    it("should call API and show success message on submit", async () => {
+        vi.mocked(apiClient.requestPasswordReset).mockResolvedValue({ success: true } as any);
         render(<ForgotPasswordModal {...defaultProps} />);
 
-        const submitButton = screen.getByRole("button", { name: /send|reset|submit/i });
-        expect(submitButton).toBeInTheDocument();
+        const emailInput = screen.getByPlaceholderText(/user@example.com/i);
+        fireEvent.change(emailInput, { target: { value: "test@example.com" } });
+
+        const submitButton = screen.getByRole("button", { name: /Send Reset Link/i });
+        fireEvent.click(submitButton);
+
+        await waitFor(() => {
+            expect(apiClient.requestPasswordReset).toHaveBeenCalledWith("test@example.com");
+            expect(screen.getByText(/Check your email/i)).toBeInTheDocument();
+        });
     });
 
-    it("should show instructions", () => {
+    it("should show error message on API failure", async () => {
+        vi.mocked(apiClient.requestPasswordReset).mockRejectedValue(new Error("Network Error"));
         render(<ForgotPasswordModal {...defaultProps} />);
 
-        // Should have instructions about password reset
-        expect(screen.getByText(/link|email|reset/i)).toBeInTheDocument();
+        const emailInput = screen.getByPlaceholderText(/user@example.com/i);
+        fireEvent.change(emailInput, { target: { value: "test@example.com" } });
+
+        const submitButton = screen.getByRole("button", { name: /Send Reset Link/i });
+        fireEvent.click(submitButton);
+
+        await waitFor(() => {
+            expect(screen.getByText(/Failed to process request/i)).toBeInTheDocument();
+        });
     });
 });

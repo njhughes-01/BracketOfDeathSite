@@ -1,91 +1,86 @@
-import { render, screen } from "@testing-library/react";
-import { BrowserRouter } from "react-router-dom";
+import { render, screen, waitFor } from "@testing-library/react";
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import Settings from "../admin/Settings";
+import SettingsPage from "../admin/Settings";
+import apiClient from "../../services/api";
 
-// Mock dependencies
-vi.mock("../../hooks/useApi", () => ({
-    useApi: vi.fn(),
-    useMutation: vi.fn().mockReturnValue({
-        mutate: vi.fn(),
-        loading: false,
-        error: null,
-    }),
-}));
-
-vi.mock("../../contexts/AuthContext", () => ({
-    useAuth: vi.fn().mockReturnValue({
-        user: { username: "Admin", roles: ["admin", "superadmin"] },
-        isAdmin: true,
-    }),
-}));
-
+// Mock API
 vi.mock("../../services/api", () => ({
     default: {
-        getSettings: vi.fn().mockResolvedValue({ success: true, data: {} }),
-        updateSettings: vi.fn().mockResolvedValue({ success: true }),
+        getSystemSettings: vi.fn(),
+        updateSystemSettings: vi.fn(),
+        verifyEmailCredentials: vi.fn(),
+        testEmail: vi.fn(),
     },
 }));
 
-import { useApi } from "../../hooks/useApi";
-
-const mockUseApi = useApi as ReturnType<typeof vi.fn>;
-
-describe("Settings", () => {
+describe("SettingsPage", () => {
     beforeEach(() => {
         vi.clearAllMocks();
     });
 
-    const renderWithRouter = (component: React.ReactElement) => {
-        return render(<BrowserRouter>{component}</BrowserRouter>);
-    };
-
     it("should show loading state", () => {
-        mockUseApi.mockReturnValue({
-            data: null,
-            loading: true,
-            error: null,
-        });
-
-        renderWithRouter(<Settings />);
-
-        expect(document.querySelector(".animate-spin, .animate-pulse")).toBeInTheDocument();
+        vi.mocked(apiClient.getSystemSettings).mockReturnValue(new Promise(() => { })); // Never resolves
+        render(<SettingsPage />);
+        expect(screen.getByRole("status")).toBeInTheDocument();
     });
 
-    it("should render settings page", () => {
-        mockUseApi.mockReturnValue({
-            data: { data: {} },
-            loading: false,
-            error: null,
+    it("should render settings page title", async () => {
+        vi.mocked(apiClient.getSystemSettings).mockResolvedValue({
+            activeProvider: "mailjet",
+            mailjetConfigured: false,
+            mailgunConfigured: false,
+        } as any);
+
+        render(<SettingsPage />);
+
+        await waitFor(() => {
+            expect(screen.getByText((content, element) => {
+                return element?.tagName.toLowerCase() === 'h1' && /System.*Settings/i.test(element.textContent || '');
+            })).toBeInTheDocument();
         });
-
-        renderWithRouter(<Settings />);
-
-        expect(screen.getByText(/settings/i)).toBeInTheDocument();
     });
 
-    it("should have email settings section", () => {
-        mockUseApi.mockReturnValue({
-            data: { data: { emailProvider: "mailjet" } },
-            loading: false,
-            error: null,
+    it("should show Mailjet configuration by default", async () => {
+        vi.mocked(apiClient.getSystemSettings).mockResolvedValue({
+            activeProvider: "mailjet",
+            mailjetConfigured: false,
+            mailgunConfigured: false,
+        } as any);
+
+        render(<SettingsPage />);
+
+        await waitFor(() => {
+            expect(screen.getByText(/Mailjet Configuration/i)).toBeInTheDocument();
+            expect(screen.getByText(/API Key/i)).toBeInTheDocument();
         });
-
-        renderWithRouter(<Settings />);
-
-        expect(screen.getByText(/email/i)).toBeInTheDocument();
     });
 
-    it("should have save button", () => {
-        mockUseApi.mockReturnValue({
-            data: { data: {} },
-            loading: false,
-            error: null,
+    it("should show status as Not Configured when new", async () => {
+        vi.mocked(apiClient.getSystemSettings).mockResolvedValue({
+            activeProvider: "mailjet",
+            mailjetConfigured: false,
+            mailgunConfigured: false,
+        } as any);
+
+        render(<SettingsPage />);
+
+        await waitFor(() => {
+            expect(screen.getByText(/Not Configured/i)).toBeInTheDocument();
         });
+    });
 
-        renderWithRouter(<Settings />);
+    it("should show status as Active when configured", async () => {
+        vi.mocked(apiClient.getSystemSettings).mockResolvedValue({
+            activeProvider: "mailjet",
+            mailjetConfigured: true,
+            mailgunConfigured: false,
+        } as any);
 
-        const saveButton = screen.getByRole("button", { name: /save|update|apply/i });
-        expect(saveButton).toBeInTheDocument();
+        render(<SettingsPage />);
+
+        await waitFor(() => {
+            expect(screen.getByText(/Active/i)).toBeInTheDocument();
+            expect(screen.getByText(/Mailjet Configured/i)).toBeInTheDocument();
+        });
     });
 });

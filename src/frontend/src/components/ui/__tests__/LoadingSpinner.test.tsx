@@ -3,35 +3,28 @@ import { describe, it, expect } from "vitest";
 import LoadingSpinner from "../LoadingSpinner";
 
 describe("LoadingSpinner", () => {
-    it("should render spinner", () => {
+    it("should render spinner with correct role and label", () => {
         render(<LoadingSpinner />);
 
-        const spinner = document.querySelector(".animate-spin");
+        const spinner = screen.getByRole("status");
         expect(spinner).toBeInTheDocument();
+        expect(spinner).toHaveAttribute("aria-label", "Loading");
+        expect(screen.getByText("Loading...")).toBeInTheDocument();
     });
 
-    it("should apply size prop", () => {
-        render(<LoadingSpinner size="lg" />);
-
-        const spinner = document.querySelector(".animate-spin");
-        expect(spinner).toBeInTheDocument();
-    });
-
-    it("should render with custom className", () => {
-        render(<LoadingSpinner className="custom-spinner" />);
-
-        const spinner = document.querySelector(".custom-spinner");
-        expect(spinner).toBeInTheDocument();
-    });
-
-    it("should render different sizes", () => {
-        const { rerender } = render(<LoadingSpinner size="sm" />);
-        expect(document.querySelector(".animate-spin")).toBeInTheDocument();
-
-        rerender(<LoadingSpinner size="md" />);
-        expect(document.querySelector(".animate-spin")).toBeInTheDocument();
+    it("should apply size classes", () => {
+        const { rerender, container } = render(<LoadingSpinner size="sm" />);
+        expect(container.firstChild).toHaveClass("h-4", "w-4");
 
         rerender(<LoadingSpinner size="lg" />);
-        expect(document.querySelector(".animate-spin")).toBeInTheDocument();
+        expect(container.firstChild).toHaveClass("h-8", "w-8");
+    });
+
+    it("should apply color classes", () => {
+        const { rerender, container } = render(<LoadingSpinner color="white" />);
+        expect(container.firstChild).toHaveClass("border-white");
+
+        rerender(<LoadingSpinner color="gray" />);
+        expect(container.firstChild).toHaveClass("border-gray-400");
     });
 });

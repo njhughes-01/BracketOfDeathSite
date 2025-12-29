@@ -1,48 +1,76 @@
-import { render, screen, fireEvent } from "@testing-library/react";
-import { describe, it, expect, vi } from "vitest";
+import { render, screen, fireEvent, waitFor } from "@testing-library/react";
+import { describe, it, expect, vi, beforeEach } from "vitest";
+import React from "react";
 import EditableSelect from "../EditableSelect";
+import { useAuth } from "../../../contexts/AuthContext";
+
+// Mock useAuth
+vi.mock("../../../contexts/AuthContext", () => ({
+    useAuth: vi.fn(),
+}));
 
 describe("EditableSelect", () => {
-    const mockOptions = [
-        { value: "option1", label: "Option 1" },
-        { value: "option2", label: "Option 2" },
-        { value: "option3", label: "Option 3" },
+    const options = [
+        { value: "a", label: "Option A" },
+        { value: "b", label: "Option B" },
     ];
 
     const defaultProps = {
-        value: "option1",
-        options: mockOptions,
-        onChange: vi.fn(),
+        value: "a",
+        options,
+        onSave: vi.fn(),
     };
 
-    it("should render current selection", () => {
-        render(<EditableSelect {...defaultProps} />);
-
-        expect(screen.getByText("Option 1")).toBeInTheDocument();
+    beforeEach(() => {
+        vi.clearAllMocks();
+        vi.mocked(useAuth).mockReturnValue({ isAdmin: true } as any);
     });
 
-    it("should show dropdown when editing", () => {
-        render(<EditableSelect {...defaultProps} editing />);
+    it("should render current selection label", () => {
+        render(<EditableSelect {...defaultProps} />);
+        expect(screen.getByText("Option A")).toBeInTheDocument();
+    });
+
+    it("should show select when clicked", () => {
+        render(<EditableSelect {...defaultProps} />);
+
+        const display = screen.getByText("Option A");
+        fireEvent.click(display);
 
         const select = screen.getByRole("combobox");
         expect(select).toBeInTheDocument();
     });
 
-    it("should call onChange when selection changes", () => {
-        const mockOnChange = vi.fn();
-        render(<EditableSelect {...defaultProps} editing onChange={mockOnChange} />);
+    it("should call onSave when selection changes and save clicked", async () => {
+        const mockOnSave = vi.fn().mockResolvedValue(undefined);
+        render(<EditableSelect {...defaultProps} onSave={mockOnSave} />);
 
+        fireEvent.click(screen.getByText("Option A"));
         const select = screen.getByRole("combobox");
-        fireEvent.change(select, { target: { value: "option2" } });
 
-        expect(mockOnChange).toHaveBeenCalledWith("option2");
+        fireEvent.change(select, { target: { value: "b" } });
+
+        // Find and click the save button
+        const saveButton = screen.getByRole("button", { name: /save/i });
+        fireEvent.click(saveButton);
+
+        await waitFor(() => {
+            expect(mockOnSave).toHaveBeenCalledWith("b");
+        });
     });
 
-    it("should render all options", () => {
-        render(<EditableSelect {...defaultProps} editing />);
+    it("should call onSave on blur", async () => {
+        const mockOnSave = vi.fn().mockResolvedValue(undefined);
+        render(<EditableSelect {...defaultProps} onSave={mockOnSave} />);
 
-        expect(screen.getByText("Option 1")).toBeInTheDocument();
-        expect(screen.getByText("Option 2")).toBeInTheDocument();
-        expect(screen.getByText("Option 3")).toBeInTheDocument();
+        fireEvent.click(screen.getByText("Option A"));
+        const select = screen.getByRole("combobox");
+
+        fireEvent.change(select, { target: { value: "b" } });
+        fireEvent.blur(select);
+
+        await waitFor(() => {
+            expect(mockOnSave).toHaveBeenCalledWith("b");
+        });
     });
 });

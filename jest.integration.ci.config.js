@@ -20,7 +20,8 @@ module.exports = {
     // Ensure Jest can find packages installed at root node_modules
     modulePaths: ["<rootDir>/node_modules"],
     moduleNameMapper: {
-        // Note: mongoose is resolved from root node_modules, no mapping needed
+        // Force mongoose to the version in the root node_modules to avoid multiple instances
+        "^mongoose$": "<rootDir>/node_modules/mongoose",
         "^@/(.*)$": "<rootDir>/src/$1",
         "^@/models/(.*)$": "<rootDir>/src/models/$1",
         "^@/routes/(.*)$": "<rootDir>/src/routes/$1",

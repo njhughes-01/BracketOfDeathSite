@@ -103,10 +103,14 @@ const ChangePasswordModal: React.FC<ChangePasswordModalProps> = ({
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-1.5">
-            <label className="text-sm font-bold text-slate-400 ml-1">
+            <label
+              htmlFor="currentPassword"
+              className="text-sm font-bold text-slate-400 ml-1"
+            >
               CURRENT PASSWORD
             </label>
             <input
+              id="currentPassword"
               type="password"
               value={currentPassword}
               onChange={(e) => setCurrentPassword(e.target.value)}
@@ -116,10 +120,14 @@ const ChangePasswordModal: React.FC<ChangePasswordModalProps> = ({
           </div>
 
           <div className="space-y-1.5">
-            <label className="text-sm font-bold text-slate-400 ml-1">
+            <label
+              htmlFor="newPassword"
+              className="text-sm font-bold text-slate-400 ml-1"
+            >
               NEW PASSWORD
             </label>
             <input
+              id="newPassword"
               type="password"
               value={newPassword}
               onChange={(e) => setNewPassword(e.target.value)}
@@ -130,10 +138,14 @@ const ChangePasswordModal: React.FC<ChangePasswordModalProps> = ({
           </div>
 
           <div className="space-y-1.5">
-            <label className="text-sm font-bold text-slate-400 ml-1">
+            <label
+              htmlFor="confirmPassword"
+              className="text-sm font-bold text-slate-400 ml-1"
+            >
               CONFIRM NEW PASSWORD
             </label>
             <input
+              id="confirmPassword"
               type="password"
               value={confirmPassword}
               onChange={(e) => setConfirmPassword(e.target.value)}

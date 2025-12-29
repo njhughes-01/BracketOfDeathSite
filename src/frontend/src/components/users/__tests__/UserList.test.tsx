@@ -3,13 +3,6 @@ import { BrowserRouter } from "react-router-dom";
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import UserList from "../UserList";
 
-// Mock dependencies
-vi.mock("../../services/api", () => ({
-  default: {
-    getUsers: vi.fn().mockResolvedValue({ success: true, data: [] }),
-  },
-}));
-
 describe("UserList", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -19,87 +12,112 @@ describe("UserList", () => {
     return render(<BrowserRouter>{component}</BrowserRouter>);
   };
 
+  const mockUsers = [
+    {
+      id: "u1",
+      username: "user1",
+      email: "user1@test.com",
+      roles: ["user"],
+      enabled: true,
+      emailVerified: true,
+      fullName: "User One"
+    },
+    {
+      id: "u2",
+      username: "admin1",
+      email: "admin@test.com",
+      roles: ["admin", "superadmin"],
+      enabled: false,
+      emailVerified: false,
+      fullName: "Admin One"
+    },
+  ];
+
   it("should render empty state when no users", () => {
     renderWithRouter(
-      <UserList users={[]} onUserSelect={() => {}} loading={false} />,
+      <UserList users={[]} onSelectUser={() => { }} loading={false} />,
     );
 
-    expect(
-      screen.getByText(/no users|empty/i) || document.body.textContent,
-    ).toBeTruthy();
+    // Uses getAllByText because it might appear in both mobile and desktop empty states
+    expect(screen.getAllByText(/no users found/i).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/user database is empty/i).length).toBeGreaterThan(0);
   });
 
   it("should render user list", () => {
-    const mockUsers = [
-      { id: "u1", username: "user1", email: "user1@test.com", roles: ["user"] },
-      {
-        id: "u2",
-        username: "user2",
-        email: "user2@test.com",
-        roles: ["admin"],
-      },
-    ];
-
     renderWithRouter(
-      <UserList users={mockUsers} onUserSelect={() => {}} loading={false} />,
+      <UserList users={mockUsers} onSelectUser={() => { }} loading={false} />,
     );
 
-    expect(screen.getByText("user1")).toBeInTheDocument();
-    expect(screen.getByText("user2")).toBeInTheDocument();
+    // Check for User One
+    expect(screen.getAllByText(/User One/i).length).toBeGreaterThan(0);
+    // Check for Admin One
+    expect(screen.getAllByText(/Admin One/i).length).toBeGreaterThan(0);
   });
 
   it("should show loading state", () => {
     renderWithRouter(
-      <UserList users={[]} onUserSelect={() => {}} loading={true} />,
+      <UserList users={[]} onSelectUser={() => { }} loading={true} />,
     );
 
-    expect(
-      document.querySelector(".animate-pulse, .animate-spin"),
-    ).toBeInTheDocument();
+    expect(screen.getByText(/Loading users.../i)).toBeInTheDocument();
   });
 
   it("should display user roles", () => {
-    const mockUsers = [
-      {
-        id: "u1",
-        username: "admin1",
-        email: "admin@test.com",
-        roles: ["admin", "superadmin"],
-      },
-    ];
-
     renderWithRouter(
-      <UserList users={mockUsers} onUserSelect={() => {}} loading={false} />,
+      <UserList users={[mockUsers[1]]} onSelectUser={() => { }} loading={false} />,
     );
 
-    expect(screen.getByText(/admin/i)).toBeInTheDocument();
+    // roles appear in badges in both views
+    expect(screen.getAllByText(/admin/i).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/superadmin/i).length).toBeGreaterThan(0);
   });
 
-  it("should call onUserSelect when user clicked", () => {
+  it("should call onSelectUser when user clicked", () => {
     const mockOnSelect = vi.fn();
-    const mockUsers = [
-      {
-        id: "u1",
-        username: "clickable",
-        email: "click@test.com",
-        roles: ["user"],
-      },
-    ];
-
     renderWithRouter(
       <UserList
-        users={mockUsers}
-        onUserSelect={mockOnSelect}
+        users={[mockUsers[0]]}
+        onSelectUser={mockOnSelect}
         loading={false}
       />,
     );
 
-    const userRow = screen
-      .getByText("clickable")
-      .closest("button, tr, div[role='button']");
-    if (userRow) {
-      fireEvent.click(userRow);
+    // Click the first matching element (mobile or desktop)
+    const userElements = screen.getAllByText(/User One/i);
+    // Find the interactive parent (the <tr> or the mobile card <div>)
+    const interactiveElement = userElements[0].closest("tr, div[onClick]");
+
+    if (interactiveElement) {
+      fireEvent.click(interactiveElement);
+      expect(mockOnSelect).toHaveBeenCalledWith(mockUsers[0]);
+    } else {
+      // Fallback: click the element itself
+      fireEvent.click(userElements[0]);
       expect(mockOnSelect).toHaveBeenCalled();
     }
+  });
+
+  it("should filter users by search term", () => {
+    renderWithRouter(
+      <UserList users={mockUsers} onSelectUser={() => { }} loading={false} />,
+    );
+
+    const searchInput = screen.getByPlaceholderText(/Search by name/i);
+    fireEvent.change(searchInput, { target: { value: "Admin" } });
+
+    expect(screen.getAllByText(/Admin One/i).length).toBeGreaterThan(0);
+    expect(screen.queryByText(/User One/i)).not.toBeInTheDocument();
+  });
+
+  it("should filter users by role", () => {
+    renderWithRouter(
+      <UserList users={mockUsers} onSelectUser={() => { }} loading={false} />,
+    );
+
+    const roleSelect = screen.getByRole("combobox");
+    fireEvent.change(roleSelect, { target: { value: "superadmin" } });
+
+    expect(screen.getAllByText(/Admin One/i).length).toBeGreaterThan(0);
+    expect(screen.queryByText(/User One/i)).not.toBeInTheDocument();
   });
 });

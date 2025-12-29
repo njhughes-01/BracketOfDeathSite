@@ -13,19 +13,12 @@ describe("ConfirmationModal", () => {
 
     it("should not render when closed", () => {
         render(<ConfirmationModal {...defaultProps} isOpen={false} />);
-
         expect(screen.queryByText("Confirm Action")).not.toBeInTheDocument();
     });
 
-    it("should render title when open", () => {
+    it("should render title and message when open", () => {
         render(<ConfirmationModal {...defaultProps} />);
-
         expect(screen.getByText("Confirm Action")).toBeInTheDocument();
-    });
-
-    it("should render message", () => {
-        render(<ConfirmationModal {...defaultProps} />);
-
         expect(screen.getByText("Are you sure you want to proceed?")).toBeInTheDocument();
     });
 
@@ -33,9 +26,8 @@ describe("ConfirmationModal", () => {
         const mockOnClose = vi.fn();
         render(<ConfirmationModal {...defaultProps} onClose={mockOnClose} />);
 
-        const cancelButton = screen.getByRole("button", { name: /cancel|no/i });
+        const cancelButton = screen.getByRole("button", { name: /cancel/i });
         fireEvent.click(cancelButton);
-
         expect(mockOnClose).toHaveBeenCalled();
     });
 
@@ -43,16 +35,24 @@ describe("ConfirmationModal", () => {
         const mockOnConfirm = vi.fn();
         render(<ConfirmationModal {...defaultProps} onConfirm={mockOnConfirm} />);
 
-        const confirmButton = screen.getByRole("button", { name: /confirm|yes|ok|delete/i });
+        const confirmButton = screen.getByRole("button", { name: /confirm/i });
         fireEvent.click(confirmButton);
-
         expect(mockOnConfirm).toHaveBeenCalled();
     });
 
-    it("should show danger styling for destructive actions", () => {
-        render(<ConfirmationModal {...defaultProps} variant="danger" />);
+    it("should show danger styling when isDangerous is true", () => {
+        render(<ConfirmationModal {...defaultProps} isDangerous={true} />);
 
-        const confirmButton = screen.getByRole("button", { name: /confirm|yes|ok|delete/i });
-        expect(confirmButton).toHaveClass("bg-red-", "danger");
+        const confirmButton = screen.getByRole("button", { name: /confirm/i });
+        expect(confirmButton).toHaveClass("btn-danger");
+        expect(screen.getByText("⚠️")).toBeInTheDocument();
+    });
+
+    it("should show loading state", () => {
+        render(<ConfirmationModal {...defaultProps} isLoading={true} />);
+
+        expect(screen.getByText(/Processing.../i)).toBeInTheDocument();
+        expect(screen.getByRole("button", { name: /cancel/i })).toBeDisabled();
+        expect(screen.getByRole("button", { name: /processing/i })).toBeDisabled();
     });
 });

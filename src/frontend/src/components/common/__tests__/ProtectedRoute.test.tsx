@@ -1,16 +1,22 @@
 import { render, screen } from "@testing-library/react";
-import { BrowserRouter, MemoryRouter, Route, Routes } from "react-router-dom";
+import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import ProtectedRoute from "../ProtectedRoute";
 
-// Mock AuthContext
-vi.mock("../../contexts/AuthContext", () => ({
+// Mock AuthContext and usePermissions
+vi.mock("../../../contexts/AuthContext", () => ({
     useAuth: vi.fn(),
 }));
 
-import { useAuth } from "../../contexts/AuthContext";
+vi.mock("../../../hooks/usePermissions", () => ({
+    usePermissions: vi.fn(),
+}));
+
+import { useAuth } from "../../../contexts/AuthContext";
+import { usePermissions } from "../../../hooks/usePermissions";
 
 const mockUseAuth = useAuth as ReturnType<typeof vi.fn>;
+const mockUsePermissions = usePermissions as ReturnType<typeof vi.fn>;
 
 const TestChild = () => <div data-testid="protected-content">Protected Content</div>;
 
@@ -24,6 +30,11 @@ describe("ProtectedRoute", () => {
             isAuthenticated: true,
             loading: false,
             user: { username: "testUser", roles: ["user"] },
+        });
+        mockUsePermissions.mockReturnValue({
+            isAdmin: false,
+            hasPermission: vi.fn().mockReturnValue(true),
+            hasAnyPermission: vi.fn().mockReturnValue(true),
         });
 
         render(
@@ -49,6 +60,11 @@ describe("ProtectedRoute", () => {
             isAuthenticated: false,
             loading: false,
             user: null,
+        });
+        mockUsePermissions.mockReturnValue({
+            isAdmin: false,
+            hasPermission: vi.fn().mockReturnValue(false),
+            hasAnyPermission: vi.fn().mockReturnValue(false),
         });
 
         render(
@@ -77,6 +93,11 @@ describe("ProtectedRoute", () => {
             loading: true,
             user: null,
         });
+        mockUsePermissions.mockReturnValue({
+            isAdmin: false,
+            hasPermission: vi.fn().mockReturnValue(false),
+            hasAnyPermission: vi.fn().mockReturnValue(false),
+        });
 
         render(
             <MemoryRouter initialEntries={["/protected"]}>
@@ -93,15 +114,20 @@ describe("ProtectedRoute", () => {
             </MemoryRouter>
         );
 
-        // Should not show content while loading
+        // Component renders LoadingSpinner (which might contain "Loading...")
         expect(screen.queryByTestId("protected-content")).not.toBeInTheDocument();
     });
 
-    it("should enforce required roles", () => {
+    it("should enforce requireAdmin", () => {
         mockUseAuth.mockReturnValue({
             isAuthenticated: true,
             loading: false,
             user: { username: "testUser", roles: ["user"] },
+        });
+        mockUsePermissions.mockReturnValue({
+            isAdmin: false,
+            hasPermission: vi.fn().mockReturnValue(false),
+            hasAnyPermission: vi.fn().mockReturnValue(false),
         });
 
         render(
@@ -110,7 +136,7 @@ describe("ProtectedRoute", () => {
                     <Route
                         path="/admin"
                         element={
-                            <ProtectedRoute requiredRoles={["admin"]}>
+                            <ProtectedRoute requireAdmin={true}>
                                 <TestChild />
                             </ProtectedRoute>
                         }
@@ -120,15 +146,19 @@ describe("ProtectedRoute", () => {
             </MemoryRouter>
         );
 
-        // User without admin role should not see content
         expect(screen.queryByTestId("protected-content")).not.toBeInTheDocument();
     });
 
-    it("should allow access with matching roles", () => {
+    it("should allow access when requireAdmin is met", () => {
         mockUseAuth.mockReturnValue({
             isAuthenticated: true,
             loading: false,
-            user: { username: "admin", roles: ["admin", "user"] },
+            user: { username: "admin", roles: ["admin"] },
+        });
+        mockUsePermissions.mockReturnValue({
+            isAdmin: true,
+            hasPermission: vi.fn().mockReturnValue(true),
+            hasAnyPermission: vi.fn().mockReturnValue(true),
         });
 
         render(
@@ -137,7 +167,7 @@ describe("ProtectedRoute", () => {
                     <Route
                         path="/admin"
                         element={
-                            <ProtectedRoute requiredRoles={["admin"]}>
+                            <ProtectedRoute requireAdmin={true}>
                                 <TestChild />
                             </ProtectedRoute>
                         }

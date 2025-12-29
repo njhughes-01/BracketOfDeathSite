@@ -1,51 +1,69 @@
-import { render, screen } from "@testing-library/react";
-import { BrowserRouter } from "react-router-dom";
-import { describe, it, expect, vi } from "vitest";
+import { render, screen, waitFor } from "@testing-library/react";
+import { describe, it, expect, vi, beforeEach } from "vitest";
 import PlayerLeaderboard from "../PlayerLeaderboard";
+import apiClient from "../../../services/api";
+
+// Mock API
+vi.mock("../../../services/api", () => ({
+    default: {
+        getTournamentPlayerStats: vi.fn(),
+    },
+}));
 
 describe("PlayerLeaderboard", () => {
-    const mockPlayers = [
-        { playerId: "p1", name: "John Doe", wins: 10, losses: 2, winRate: 0.833 },
-        { playerId: "p2", name: "Jane Smith", wins: 8, losses: 3, winRate: 0.727 },
-        { playerId: "p3", name: "Bob Wilson", wins: 6, losses: 4, winRate: 0.600 },
-    ];
-
-    const renderWithRouter = (component: React.ReactElement) => {
-        return render(<BrowserRouter>{component}</BrowserRouter>);
-    };
+    beforeEach(() => {
+        vi.clearAllMocks();
+    });
 
     it("should render leaderboard header", () => {
-        renderWithRouter(<PlayerLeaderboard players={mockPlayers} />);
-
-        expect(screen.getByText(/leaderboard|rankings/i)).toBeInTheDocument();
+        // Mock to never resolve so we only see initial render
+        vi.mocked(apiClient.getTournamentPlayerStats).mockReturnValue(new Promise(() => { }));
+        render(<PlayerLeaderboard tournamentId="t1" />);
+        expect(screen.getByText("Player Leaderboard")).toBeInTheDocument();
     });
 
-    it("should display player names", () => {
-        renderWithRouter(<PlayerLeaderboard players={mockPlayers} />);
+    it("should display player names", async () => {
+        vi.mocked(apiClient.getTournamentPlayerStats).mockResolvedValue({
+            success: true,
+            data: [
+                { playerId: "p1", playerName: "Alice", totalPoints: 10, matchesWithPoints: 2, wins: 2, losses: 0 },
+                { playerId: "p2", playerName: "Bob", totalPoints: 5, matchesWithPoints: 1, wins: 1, losses: 0 },
+            ],
+        } as any);
 
-        expect(screen.getByText("John Doe")).toBeInTheDocument();
-        expect(screen.getByText("Jane Smith")).toBeInTheDocument();
-        expect(screen.getByText("Bob Wilson")).toBeInTheDocument();
+        render(<PlayerLeaderboard tournamentId="t1" />);
+
+        await waitFor(() => {
+            expect(screen.getByText("Alice")).toBeInTheDocument();
+            expect(screen.getByText("Bob")).toBeInTheDocument();
+        });
     });
 
-    it("should display wins", () => {
-        renderWithRouter(<PlayerLeaderboard players={mockPlayers} />);
+    it("should display wins", async () => {
+        vi.mocked(apiClient.getTournamentPlayerStats).mockResolvedValue({
+            success: true,
+            data: [
+                { playerId: "p1", playerName: "Alice", totalPoints: 10, matchesWithPoints: 2, wins: 5, losses: 0 },
+            ],
+        } as any);
 
-        expect(screen.getByText("10")).toBeInTheDocument();
-        expect(screen.getByText("8")).toBeInTheDocument();
+        render(<PlayerLeaderboard tournamentId="t1" />);
+
+        await waitFor(() => {
+            expect(screen.getByText("5")).toBeInTheDocument(); // Wins column
+        });
     });
 
-    it("should show empty state when no players", () => {
-        renderWithRouter(<PlayerLeaderboard players={[]} />);
+    it("should show empty state when no players", async () => {
+        vi.mocked(apiClient.getTournamentPlayerStats).mockResolvedValue({
+            success: true,
+            data: [],
+        } as any);
 
-        expect(screen.getByText(/no players|empty/i)).toBeInTheDocument();
-    });
+        render(<PlayerLeaderboard tournamentId="t1" />);
 
-    it("should show rank numbers", () => {
-        renderWithRouter(<PlayerLeaderboard players={mockPlayers} />);
-
-        expect(screen.getByText("1")).toBeInTheDocument();
-        expect(screen.getByText("2")).toBeInTheDocument();
-        expect(screen.getByText("3")).toBeInTheDocument();
+        await waitFor(() => {
+            expect(screen.getByText(/No stats available/i)).toBeInTheDocument();
+        });
     });
 });

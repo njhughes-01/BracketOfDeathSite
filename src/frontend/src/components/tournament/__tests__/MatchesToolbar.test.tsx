@@ -4,40 +4,61 @@ import MatchesToolbar from "../MatchesToolbar";
 
 describe("MatchesToolbar", () => {
     const defaultProps = {
-        onFilterChange: vi.fn(),
-        currentRound: "all",
+        matchCount: 10,
+        compactListView: false,
+        onToggleCompact: vi.fn(),
+        requirePerPlayerScores: false,
+        onToggleRequirePerPlayer: vi.fn(),
+        strictTotals: false,
+        onToggleStrictTotals: vi.fn(),
+        canConfirmAll: true,
+        onConfirmAll: vi.fn(),
     };
 
-    it("should render toolbar", () => {
+    it("should render toolbar with match count", () => {
         render(<MatchesToolbar {...defaultProps} />);
-
-        expect(document.body).toBeInTheDocument();
+        expect(screen.getByText(/10 matches in this round/i)).toBeInTheDocument();
     });
 
-    it("should show round filter options", () => {
-        render(<MatchesToolbar {...defaultProps} />);
+    it("should toggle compact view", () => {
+        const onToggleCompact = vi.fn();
+        render(<MatchesToolbar {...defaultProps} onToggleCompact={onToggleCompact} />);
 
-        // Should have some form of filter control
-        const selects = screen.queryAllByRole("combobox");
-        const buttons = screen.queryAllByRole("button");
-        expect(selects.length + buttons.length).toBeGreaterThan(0);
+        const checkbox = screen.getByLabelText(/List View/i);
+        fireEvent.click(checkbox);
+        expect(onToggleCompact).toHaveBeenCalledWith(true);
     });
 
-    it("should call onFilterChange when filter changes", () => {
-        const mockOnFilterChange = vi.fn();
-        render(<MatchesToolbar {...defaultProps} onFilterChange={mockOnFilterChange} />);
+    it("should toggle perloader scores", () => {
+        const onToggleRequirePerPlayer = vi.fn();
+        render(<MatchesToolbar {...defaultProps} onToggleRequirePerPlayer={onToggleRequirePerPlayer} />);
 
-        const controls = screen.queryAllByRole("combobox");
-        if (controls.length > 0) {
-            fireEvent.change(controls[0], { target: { value: "quarterfinal" } });
-            expect(mockOnFilterChange).toHaveBeenCalled();
-        }
+        const checkbox = screen.getByLabelText(/Require Per-Player/i);
+        fireEvent.click(checkbox);
+        expect(onToggleRequirePerPlayer).toHaveBeenCalledWith(true);
     });
 
-    it("should highlight current round selection", () => {
-        render(<MatchesToolbar currentRound="semifinal" onFilterChange={vi.fn()} />);
+    it("should toggle strict totals", () => {
+        const onToggleStrictTotals = vi.fn();
+        render(<MatchesToolbar {...defaultProps} onToggleStrictTotals={onToggleStrictTotals} />);
 
-        // Component should render with the current round
-        expect(document.body).toBeInTheDocument();
+        const checkbox = screen.getByLabelText(/Lock Totals/i);
+        fireEvent.click(checkbox);
+        expect(onToggleStrictTotals).toHaveBeenCalledWith(true);
+    });
+
+    it("should call onConfirmAll when button clicked", () => {
+        const onConfirmAll = vi.fn();
+        render(<MatchesToolbar {...defaultProps} onConfirmAll={onConfirmAll} />);
+
+        const button = screen.getByRole("button", { name: /Confirm All Completed/i });
+        fireEvent.click(button);
+        expect(onConfirmAll).toHaveBeenCalled();
+    });
+
+    it("should disable Confirm All button when loading", () => {
+        render(<MatchesToolbar {...defaultProps} loading={true} />);
+        const button = screen.getByRole("button", { name: /Confirm All Completed/i });
+        expect(button).toBeDisabled();
     });
 });

@@ -1,62 +1,82 @@
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import ChangePasswordModal from "../ChangePasswordModal";
+import apiClient from "../../../services/api";
+
+// Mock API
+vi.mock("../../../services/api", () => ({
+    default: {
+        changePassword: vi.fn(),
+    },
+}));
 
 describe("ChangePasswordModal", () => {
     const defaultProps = {
-        isOpen: true,
         onClose: vi.fn(),
-        onSubmit: vi.fn(),
     };
 
     beforeEach(() => {
         vi.clearAllMocks();
     });
 
-    it("should not render when closed", () => {
-        render(<ChangePasswordModal {...defaultProps} isOpen={false} />);
-
-        expect(screen.queryByText(/change password/i)).not.toBeInTheDocument();
+    it("should render change password title", () => {
+        render(<ChangePasswordModal {...defaultProps} />);
+        expect(screen.getByText(/Change Password/i)).toBeInTheDocument();
     });
 
-    it("should render when open", () => {
+    it("should have all required fields", () => {
         render(<ChangePasswordModal {...defaultProps} />);
 
-        expect(screen.getByText(/change password/i)).toBeInTheDocument();
+        expect(screen.getByLabelText(/^CURRENT PASSWORD$/i)).toBeInTheDocument();
+        expect(screen.getByLabelText(/^NEW PASSWORD$/i)).toBeInTheDocument();
+        expect(screen.getByLabelText(/^CONFIRM NEW PASSWORD$/i)).toBeInTheDocument();
     });
 
-    it("should have current password field", () => {
+    it("should show error if passwords do not match", async () => {
         render(<ChangePasswordModal {...defaultProps} />);
 
-        expect(screen.getByLabelText(/current password/i)).toBeInTheDocument();
+        fireEvent.change(screen.getByLabelText(/^CURRENT PASSWORD$/i), { target: { value: "old-pass" } });
+        fireEvent.change(screen.getByLabelText(/^NEW PASSWORD$/i), { target: { value: "new-pass-123" } });
+        fireEvent.change(screen.getByLabelText(/^CONFIRM NEW PASSWORD$/i), { target: { value: "mismatch" } });
+
+        fireEvent.click(screen.getByRole("button", { name: /Update Password/i }));
+
+        expect(screen.getByText(/New passwords do not match/i)).toBeInTheDocument();
     });
 
-    it("should have new password field", () => {
+    it("should call API and show success message on valid submit", async () => {
+        vi.mocked(apiClient.changePassword).mockResolvedValue({ success: true } as any);
         render(<ChangePasswordModal {...defaultProps} />);
 
-        expect(screen.getByLabelText(/new password/i)).toBeInTheDocument();
+        fireEvent.change(screen.getByLabelText(/^CURRENT PASSWORD$/i), { target: { value: "old-pass" } });
+        fireEvent.change(screen.getByLabelText(/^NEW PASSWORD$/i), { target: { value: "new-pass-123" } });
+        fireEvent.change(screen.getByLabelText(/^CONFIRM NEW PASSWORD$/i), { target: { value: "new-pass-123" } });
+
+        fireEvent.click(screen.getByRole("button", { name: /Update Password/i }));
+
+        await waitFor(() => {
+            expect(apiClient.changePassword).toHaveBeenCalledWith({
+                currentPassword: "old-pass",
+                newPassword: "new-pass-123",
+            });
+            expect(screen.getByText(/Password Updated/i)).toBeInTheDocument();
+        });
     });
 
-    it("should have confirm password field", () => {
+    it("should show error message on API failure", async () => {
+        vi.mocked(apiClient.changePassword).mockRejectedValue({
+            response: { data: { error: "Incorrect current password" } }
+        });
         render(<ChangePasswordModal {...defaultProps} />);
 
-        expect(screen.getByLabelText(/confirm/i)).toBeInTheDocument();
-    });
+        fireEvent.change(screen.getByLabelText(/^CURRENT PASSWORD$/i), { target: { value: "wrong-pass" } });
+        fireEvent.change(screen.getByLabelText(/^NEW PASSWORD$/i), { target: { value: "new-pass-123" } });
+        fireEvent.change(screen.getByLabelText(/^CONFIRM NEW PASSWORD$/i), { target: { value: "new-pass-123" } });
 
-    it("should call onClose when cancel clicked", () => {
-        const mockOnClose = vi.fn();
-        render(<ChangePasswordModal {...defaultProps} onClose={mockOnClose} />);
+        fireEvent.click(screen.getByRole("button", { name: /Update Password/i }));
 
-        const cancelButton = screen.getByRole("button", { name: /cancel/i });
-        fireEvent.click(cancelButton);
-
-        expect(mockOnClose).toHaveBeenCalled();
-    });
-
-    it("should have submit button", () => {
-        render(<ChangePasswordModal {...defaultProps} />);
-
-        const submitButton = screen.getByRole("button", { name: /change|save|update|submit/i });
-        expect(submitButton).toBeInTheDocument();
+        await waitFor(() => {
+            expect(screen.getByText(/Incorrect current password/i)).toBeInTheDocument();
+        });
     });
 });

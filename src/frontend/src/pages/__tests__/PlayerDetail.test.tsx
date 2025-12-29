@@ -1,47 +1,49 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
 import { BrowserRouter } from "react-router-dom";
 import { describe, it, expect, vi, beforeEach } from "vitest";
+import React from "react";
 import PlayerDetail from "../PlayerDetail";
+import apiClient from "../../services/api";
 
 // Mock dependencies
-vi.mock("react-router-dom", async () => {
-    const actual = await vi.importActual("react-router-dom");
-    return {
-        ...actual,
-        useParams: vi.fn().mockReturnValue({ id: "player-123" }),
-    };
-});
-
 vi.mock("../../hooks/useApi", () => ({
     useApi: vi.fn(),
+    useMutation: vi.fn(() => ({ mutate: vi.fn(), loading: false })),
 }));
 
 vi.mock("../../contexts/AuthContext", () => ({
-    useAuth: vi.fn().mockReturnValue({
-        user: { username: "TestUser", roles: ["user"] },
-        isAdmin: false,
-    }),
+    useAuth: vi.fn().mockReturnValue({ isAdmin: true }),
 }));
 
 vi.mock("../../services/api", () => ({
     default: {
-        getPlayer: vi.fn().mockResolvedValue({ success: true, data: {} }),
-        getPlayerStats: vi.fn().mockResolvedValue({ success: true, data: {} }),
+        getPlayer: vi.fn(),
+        getResultsByPlayer: vi.fn(),
+        getPlayerScoring: vi.fn(),
+        deletePlayer: vi.fn(),
     },
 }));
 
-import { useApi } from "../../hooks/useApi";
-import { useAuth } from "../../contexts/AuthContext";
+vi.mock("react-router-dom", async (importOriginal) => {
+    const actual = await importOriginal() as any;
+    return {
+        ...actual,
+        useParams: () => ({ id: "p1" }),
+        useNavigate: () => vi.fn(),
+    };
+});
 
-const mockUseApi = useApi as ReturnType<typeof vi.fn>;
-const mockUseAuth = useAuth as ReturnType<typeof vi.fn>;
+import { useApi } from "../../hooks/useApi";
 
 describe("PlayerDetail", () => {
     beforeEach(() => {
         vi.clearAllMocks();
-        mockUseAuth.mockReturnValue({
-            user: { username: "TestUser", roles: ["user"] },
-            isAdmin: false,
+        // Default mock for useApi
+        vi.mocked(useApi).mockImplementation((fn: any) => {
+            if (fn.name === "getPlayer") {
+                return { data: { name: "John Doe", winningPercentage: 0.6 }, loading: false, error: null };
+            }
+            return { data: null, loading: false, error: null };
         });
     });
 
@@ -50,97 +52,50 @@ describe("PlayerDetail", () => {
     };
 
     it("should show loading state", () => {
-        mockUseApi.mockReturnValue({
-            data: null,
-            loading: true,
-            error: null,
-        });
-
+        vi.mocked(useApi).mockReturnValue({ data: null, loading: true, error: null });
         renderWithRouter(<PlayerDetail />);
-
-        expect(document.querySelector(".animate-spin, .animate-pulse")).toBeInTheDocument();
+        // Look for the pulse animation container
+        expect(document.querySelector(".animate-pulse")).toBeInTheDocument();
     });
 
     it("should show error state", () => {
-        mockUseApi.mockReturnValue({
-            data: null,
-            loading: false,
-            error: "Player not found",
-        });
-
+        vi.mocked(useApi).mockReturnValue({ data: null, loading: false, error: "Not Found" });
         renderWithRouter(<PlayerDetail />);
-
-        expect(screen.getByText(/error|not found/i)).toBeInTheDocument();
+        expect(screen.getByText(/Player Not Found/i)).toBeInTheDocument();
     });
 
-    it("should render player name when data loads", () => {
-        const mockPlayer = {
-            id: "player-123",
-            firstName: "John",
-            lastName: "Doe",
-            gender: "male",
-            stats: { totalWins: 10, totalLosses: 5 },
-        };
-
-        mockUseApi.mockReturnValue({
-            data: { data: mockPlayer },
-            loading: false,
-            error: null,
+    it("should render player name when data loads", async () => {
+        vi.mocked(useApi).mockImplementation((fn: any) => {
+            if (fn.toString().includes("getPlayer")) {
+                return { data: { name: "John Doe", winningPercentage: 0.6 }, loading: false, error: null };
+            }
+            return { data: null, loading: false, error: null };
         });
 
         renderWithRouter(<PlayerDetail />);
 
-        expect(screen.getByText(/John/)).toBeInTheDocument();
-        expect(screen.getByText(/Doe/)).toBeInTheDocument();
+        await waitFor(() => {
+            expect(screen.getByText("John Doe")).toBeInTheDocument();
+        });
     });
 
-    it("should display player stats", () => {
-        const mockPlayer = {
-            id: "player-123",
-            firstName: "Jane",
-            lastName: "Smith",
-            gender: "female",
-            stats: {
-                totalWins: 25,
-                totalLosses: 10,
-                winPercentage: 71.4,
-            },
-        };
-
-        mockUseApi.mockReturnValue({
-            data: { data: mockPlayer },
-            loading: false,
-            error: null,
+    it("should display player stats", async () => {
+        vi.mocked(useApi).mockImplementation((fn: any) => {
+            if (fn.toString().includes("getPlayer")) {
+                return {
+                    data: { name: "John Doe", winningPercentage: 0.75, gamesPlayed: 20, totalChampionships: 2 },
+                    loading: false, error: null
+                };
+            }
+            return { data: null, loading: false, error: null };
         });
 
         renderWithRouter(<PlayerDetail />);
 
-        // Check for stats display
-        expect(screen.getByText("25") || screen.getByText(/25/)).toBeTruthy();
-    });
-
-    it("should show edit button for admin", () => {
-        mockUseAuth.mockReturnValue({
-            user: { username: "Admin", roles: ["admin"] },
-            isAdmin: true,
+        await waitFor(() => {
+            expect(screen.getByText("75%")).toBeInTheDocument();
+            expect(screen.getByText("20")).toBeInTheDocument();
+            expect(screen.getByText("2")).toBeInTheDocument();
         });
-
-        const mockPlayer = {
-            id: "player-123",
-            firstName: "Test",
-            lastName: "Player",
-        };
-
-        mockUseApi.mockReturnValue({
-            data: { data: mockPlayer },
-            loading: false,
-            error: null,
-        });
-
-        renderWithRouter(<PlayerDetail />);
-
-        // Admin should see edit functionality
-        const editElements = screen.queryAllByText(/edit/i);
-        expect(editElements.length >= 0).toBe(true); // May or may not have explicit edit text
     });
 });
