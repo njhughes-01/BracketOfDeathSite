@@ -14,6 +14,7 @@ const profile_1 = __importDefault(require("./profile"));
 const router = (0, express_1.Router)();
 const auth_1 = __importDefault(require("./auth"));
 const settings_1 = __importDefault(require("./settings"));
+const system_1 = __importDefault(require("./system"));
 // Mount all route modules
 router.use("/auth", auth_1.default);
 router.use("/players", players_1.default);
@@ -24,6 +25,7 @@ router.use("/admin", admin_1.default);
 router.use("/admin/users", users_1.default);
 router.use("/profile", profile_1.default);
 router.use("/settings", settings_1.default);
+router.use("/system", system_1.default);
 // API info endpoint
 router.get("/", (_req, res) => {
     res.json({

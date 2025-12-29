@@ -21,11 +21,12 @@ class BaseController {
     /**
      * Send a success response
      */
-    sendSuccess(res, data, message, status = 200) {
+    sendSuccess(res, data, message, pagination, status = 200) {
         const response = {
             success: true,
             ...(data !== undefined && { data }),
             ...(message && { message }),
+            ...(pagination && { pagination }),
         };
         res.status(status).json(response);
     }
@@ -164,7 +165,7 @@ class BaseCrudController extends BaseController {
         try {
             const item = new this.model(req.body);
             const savedItem = await item.save();
-            this.sendSuccess(res, savedItem, `${this.modelName} created successfully`, 201);
+            this.sendSuccess(res, savedItem, `${this.modelName} created successfully`, undefined, 201);
         }
         catch (error) {
             next(error);
