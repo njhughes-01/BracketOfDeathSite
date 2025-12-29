@@ -9,16 +9,16 @@ import {
   ITournamentResultInput,
   ITournamentResultFilter,
 } from "../types/tournamentResult";
-import { BaseController, RequestWithAuth } from "./base";
+import { BaseCrudController, RequestWithAuth } from "./base";
 import { ApiResponse } from "../types/common";
 
-export class TournamentResultController extends BaseController<ITournamentResult> {
+export class TournamentResultController extends BaseCrudController<ITournamentResult> {
   constructor() {
     super(TournamentResult, "TournamentResult");
   }
 
   // Override buildFilter for tournament result-specific filtering
-  protected override buildFilter(query: any): ITournamentResultFilter {
+  protected override buildFilter = (query: any): ITournamentResultFilter => {
     const filter: ITournamentResultFilter = {};
     const { page, limit, sort, select, populate, q, year, ...filterParams } =
       query;
@@ -112,12 +112,8 @@ export class TournamentResultController extends BaseController<ITournamentResult
   }
 
   // Override getAll to include default population
-  override getAll = async (
-    req: Request,
-    res: Response,
-    next: NextFunction,
-  ): Promise<void> => {
-    try {
+  override getAll = this.asyncHandler(
+    async (req: Request, res: Response): Promise<void> => {
       const options = {
         page: parseInt(req.query.page as string) || 1,
         limit: parseInt(req.query.limit as string) || 10,
@@ -230,412 +226,345 @@ export class TournamentResultController extends BaseController<ITournamentResult
       ]);
 
       const total = totalResult.length > 0 ? totalResult[0].total : 0;
-
       const pages = Math.ceil(total / options.limit);
 
-      const response = {
-        success: true,
-        data: results,
-        pagination: {
-          current: options.page,
-          pages,
-          count: results.length,
-          total,
-        },
-      };
-
-      res.status(200).json(response);
-    } catch (error) {
-      next(error);
-    }
-  };
+      this.sendSuccess(res, results, undefined, {
+        current: options.page,
+        pages,
+        count: results.length,
+        total,
+      });
+    },
+  );
 
   // Get results by tournament
   getByTournament = this.asyncHandler(
-    async (req: Request, res: Response, next: NextFunction): Promise<void> => {
-      try {
-        const { tournamentId } = req.params;
+    async (req: Request, res: Response): Promise<void> => {
+      const { tournamentId } = req.params;
 
-        const tournament = await Tournament.findById(tournamentId);
-        if (!tournament) {
-          this.sendError(res, 404, "Tournament not found");
-          return;
-        }
-
-        const results = await TournamentResult.find({ tournamentId })
-          .populate("players", "name")
-          .sort({ "totalStats.finalRank": 1, "totalStats.winPercentage": -1 });
-
-        const response: ApiResponse = {
-          success: true,
-          data: {
-            tournament,
-            results,
-            resultCount: results.length,
-          },
-        };
-
-        res.status(200).json(response);
-      } catch (error) {
-        next(error);
+      const tournament = await Tournament.findById(tournamentId);
+      if (!tournament) {
+        this.sendNotFound(res, "Tournament");
+        return;
       }
+
+      const results = await TournamentResult.find({ tournamentId })
+        .populate("players", "name")
+        .sort({ "totalStats.finalRank": 1, "totalStats.winPercentage": -1 });
+
+      this.sendSuccess(res, {
+        tournament,
+        results,
+        resultCount: results.length,
+      });
     },
   );
 
   // Get results by player
   getByPlayer = this.asyncHandler(
-    async (req: Request, res: Response, next: NextFunction): Promise<void> => {
-      try {
-        const { playerId } = req.params;
+    async (req: Request, res: Response): Promise<void> => {
+      const { playerId } = req.params;
 
-        const player = await Player.findById(playerId);
-        if (!player) {
-          this.sendError(res, 404, "Player not found");
-          return;
-        }
-
-        const results = await TournamentResult.find({
-          players: { $in: [playerId] },
-        })
-          .populate("tournamentId")
-          .populate("players", "name")
-          .sort({ "tournament.date": -1 });
-
-        // Calculate player statistics across all tournaments
-        const stats = this.calculatePlayerStats(results);
-
-        const response: ApiResponse = {
-          success: true,
-          data: {
-            player,
-            results,
-            stats,
-            resultCount: results.length,
-          },
-        };
-
-        res.status(200).json(response);
-      } catch (error) {
-        next(error);
+      const player = await Player.findById(playerId);
+      if (!player) {
+        this.sendNotFound(res, "Player");
+        return;
       }
+
+      const results = await TournamentResult.find({
+        players: { $in: [playerId] },
+      })
+        .populate("tournamentId")
+        .populate("players", "name")
+        .sort({ "tournament.date": -1 });
+
+      // Calculate player statistics across all tournaments
+      const stats = this.calculatePlayerStats(results);
+
+      this.sendSuccess(res, {
+        player,
+        results,
+        stats,
+        resultCount: results.length,
+      });
     },
   );
 
   // Get leaderboard/rankings
   getLeaderboard = this.asyncHandler(
-    async (req: Request, res: Response, next: NextFunction): Promise<void> => {
-      try {
-        const { tournamentId, format, year } = req.query;
-        const limit = parseInt(req.query.limit as string) || 50;
-        const sort = (req.query.sort as string) || "-points"; // Default sort by points
+    async (req: Request, res: Response): Promise<void> => {
+      const { tournamentId, format, year } = req.query;
+      const limit = parseInt(req.query.limit as string) || 50;
+      const sort = (req.query.sort as string) || "-points"; // Default sort by points
 
-        let matchStage: any = {};
+      const matchStage: any = {};
 
-        // Filter by tournament
-        if (tournamentId) {
-          matchStage.tournamentId = new Types.ObjectId(tournamentId as string);
-        }
+      // Filter by tournament
+      if (tournamentId) {
+        matchStage.tournamentId = new Types.ObjectId(tournamentId as string);
+      }
 
-        // Build aggregation pipeline
-        const pipeline: any[] = [
-          { $match: matchStage },
-          {
-            $lookup: {
-              from: "tournaments",
-              localField: "tournamentId",
-              foreignField: "_id",
-              as: "tournament",
-            },
+      // Build aggregation pipeline
+      const pipeline: any[] = [
+        { $match: matchStage },
+        {
+          $lookup: {
+            from: "tournaments",
+            localField: "tournamentId",
+            foreignField: "_id",
+            as: "tournament",
           },
-          {
-            $unwind: "$tournament",
-          },
-        ];
+        },
+        {
+          $unwind: "$tournament",
+        },
+      ];
 
-        // Add format filtering if specified
-        if (format) {
-          pipeline.push({
-            $match: { "tournament.format": format },
+      // Add format filtering if specified
+      if (format) {
+        pipeline.push({
+          $match: { "tournament.format": format },
+        });
+      }
+
+      // Add year filtering if specified
+      if (year) {
+        const { years, ranges } = parseYearFilter(year as string);
+        const yearOrConditions: any[] = [];
+
+        // Condition 1: Specific years
+        if (years.length > 0) {
+          years.forEach((y) => {
+            yearOrConditions.push({
+              "tournament.date": {
+                $gte: new Date(`${y}-01-01`),
+                $lte: new Date(`${y}-12-31`),
+              },
+            });
           });
         }
 
-        // Add year filtering if specified
-        if (year) {
-          const { years, ranges } = parseYearFilter(year as string);
-          const yearOrConditions: any[] = [];
-
-          // Condition 1: Specific years
-          if (years.length > 0) {
-            // Optimization: if we just have years, we can check date ranges for each year
-            // Or use $expr with $year if performance allows.
-            // Given the index on tournament.date, ranges are better.
-            years.forEach((y) => {
-              yearOrConditions.push({
-                "tournament.date": {
-                  $gte: new Date(`${y}-01-01`),
-                  $lte: new Date(`${y}-12-31`),
-                },
-              });
-            });
-          }
-
-          // Condition 2: Ranges
-          if (ranges.length > 0) {
-            ranges.forEach((r) => {
-              yearOrConditions.push({
-                "tournament.date": {
-                  $gte: new Date(`${r.start}-01-01`),
-                  $lte: new Date(`${r.end}-12-31`),
-                },
-              });
-            });
-          }
-
-          // Only add match stage if we have valid filters
-          if (yearOrConditions.length > 0) {
-            pipeline.push({
-              $match: {
-                $or: yearOrConditions,
+        // Condition 2: Ranges
+        if (ranges.length > 0) {
+          ranges.forEach((r) => {
+            yearOrConditions.push({
+              "tournament.date": {
+                $gte: new Date(`${r.start}-01-01`),
+                $lte: new Date(`${r.end}-12-31`),
               },
             });
-          } else {
-            // If year was provided but parsed to no valid conditions (e.g. "1990" or "abc"),
-            // return no results instead of All Time.
-            pipeline.push({
-              $match: {
-                _id: null, // Impossible match
-              },
-            });
-          }
+          });
         }
 
-        // Unwind players to rank individuals instead of teams
-        pipeline.push({
-          $unwind: "$players",
-        });
-
-        // Group by individual player and calculate aggregate stats
-        pipeline.push(
-          {
-            $group: {
-              _id: "$players",
-              totalTournaments: { $sum: 1 },
-              totalWins: { $sum: "$totalStats.totalWon" },
-              totalLosses: { $sum: "$totalStats.totalLost" },
-              totalGames: { $sum: "$totalStats.totalPlayed" },
-              avgWinPercentage: { $avg: "$totalStats.winPercentage" },
-              bestFinish: { $min: "$totalStats.finalRank" },
-              avgFinish: { $avg: "$totalStats.finalRank" },
-              // Calculate championships (1st place)
-              totalChampionships: {
-                $sum: {
-                  $cond: [{ $eq: ["$totalStats.finalRank", 1] }, 1, 0],
-                },
-              },
-              // Calculate Runner-ups (2nd place)
-              totalRunnerUps: {
-                $sum: {
-                  $cond: [{ $eq: ["$totalStats.finalRank", 2] }, 1, 0],
-                },
-              },
-              // Calculate Final Four (Semi-finals)
-              totalFinalFours: {
-                $sum: {
-                  $cond: [{ $in: ["$totalStats.finalRank", [3, 4]] }, 1, 0],
-                },
-              },
+        // Only add match stage if we have valid filters
+        if (yearOrConditions.length > 0) {
+          pipeline.push({
+            $match: {
+              $or: yearOrConditions,
             },
-          },
-          {
-            $lookup: {
-              from: "players",
-              localField: "_id",
-              foreignField: "_id",
-              as: "playerDetails",
+          });
+        } else {
+          pipeline.push({
+            $match: {
+              _id: null, // Impossible match
             },
-          },
-          {
-            $addFields: {
-              name: { $arrayElemAt: ["$playerDetails.name", 0] },
-              winningPercentage: {
-                $cond: [
-                  { $gt: ["$totalGames", 0] },
-                  { $divide: ["$totalWins", "$totalGames"] },
-                  0,
-                ],
-              },
-              // Calculate arbitrary points:
-              // Championship = 1000, RunnerUp = 500, FinalFour = 250, Win = 10
-              points: {
-                $add: [
-                  { $multiply: ["$totalChampionships", 1000] },
-                  { $multiply: ["$totalRunnerUps", 500] },
-                  { $multiply: ["$totalFinalFours", 250] },
-                  { $multiply: ["$totalWins", 10] },
-                ],
-              },
-            },
-          },
-          {
-            $project: {
-              playerDetails: 0, // Remove raw lookup array
-            },
-          },
-          {
-            $sort: this.parseSortString(sort),
-          },
-          { $limit: limit },
-        );
-
-        const leaderboard = await TournamentResult.aggregate(pipeline);
-
-        const response: ApiResponse = {
-          success: true,
-          data: leaderboard,
-        };
-
-        res.status(200).json(response);
-      } catch (error) {
-        next(error);
+          });
+        }
       }
+
+      // Unwind players to rank individuals instead of teams
+      pipeline.push({
+        $unwind: "$players",
+      });
+
+      // Group by individual player and calculate aggregate stats
+      pipeline.push(
+        {
+          $group: {
+            _id: "$players",
+            totalTournaments: { $sum: 1 },
+            totalWins: { $sum: "$totalStats.totalWon" },
+            totalLosses: { $sum: "$totalStats.totalLost" },
+            totalGames: { $sum: "$totalStats.totalPlayed" },
+            avgWinPercentage: { $avg: "$totalStats.winPercentage" },
+            bestFinish: { $min: "$totalStats.finalRank" },
+            avgFinish: { $avg: "$totalStats.finalRank" },
+            totalChampionships: {
+              $sum: {
+                $cond: [{ $eq: ["$totalStats.finalRank", 1] }, 1, 0],
+              },
+            },
+            totalRunnerUps: {
+              $sum: {
+                $cond: [{ $eq: ["$totalStats.finalRank", 2] }, 1, 0],
+              },
+            },
+            totalFinalFours: {
+              $sum: {
+                $cond: [{ $in: ["$totalStats.finalRank", [3, 4]] }, 1, 0],
+              },
+            },
+          },
+        },
+        {
+          $lookup: {
+            from: "players",
+            localField: "_id",
+            foreignField: "_id",
+            as: "playerDetails",
+          },
+        },
+        {
+          $addFields: {
+            name: { $arrayElemAt: ["$playerDetails.name", 0] },
+            winningPercentage: {
+              $cond: [
+                { $gt: ["$totalGames", 0] },
+                { $divide: ["$totalWins", "$totalGames"] },
+                0,
+              ],
+            },
+            points: {
+              $add: [
+                { $multiply: ["$totalChampionships", 1000] },
+                { $multiply: ["$totalRunnerUps", 500] },
+                { $multiply: ["$totalFinalFours", 250] },
+                { $multiply: ["$totalWins", 10] },
+              ],
+            },
+          },
+        },
+        {
+          $project: {
+            playerDetails: 0,
+          },
+        },
+        {
+          $sort: this.parseSortString(sort),
+        },
+        { $limit: limit },
+      );
+
+      const leaderboard = await TournamentResult.aggregate(pipeline);
+
+      this.sendSuccess(res, leaderboard);
     },
   );
 
   // Get tournament result statistics
   getStats = this.asyncHandler(
-    async (req: Request, res: Response, next: NextFunction): Promise<void> => {
-      try {
-        const stats = await TournamentResult.aggregate([
-          {
-            $group: {
-              _id: null,
-              totalResults: { $sum: 1 },
-              avgWinPercentage: { $avg: "$totalStats.winPercentage" },
-              avgGamesPlayed: { $avg: "$totalStats.totalPlayed" },
-              highestWinPercentage: { $max: "$totalStats.winPercentage" },
-              lowestWinPercentage: { $min: "$totalStats.winPercentage" },
+    async (req: Request, res: Response): Promise<void> => {
+      const stats = await TournamentResult.aggregate([
+        {
+          $group: {
+            _id: null,
+            totalResults: { $sum: 1 },
+            avgWinPercentage: { $avg: "$totalStats.winPercentage" },
+            avgGamesPlayed: { $avg: "$totalStats.totalPlayed" },
+            highestWinPercentage: { $max: "$totalStats.winPercentage" },
+            lowestWinPercentage: { $min: "$totalStats.winPercentage" },
+          },
+        },
+      ]);
+
+      const performanceDistribution = await TournamentResult.aggregate([
+        {
+          $bucket: {
+            groupBy: "$totalStats.winPercentage",
+            boundaries: [0, 0.2, 0.4, 0.6, 0.8, 1.0],
+            default: "Other",
+            output: {
+              count: { $sum: 1 },
+              avgRank: { $avg: "$totalStats.finalRank" },
             },
           },
-        ]);
+        },
+      ]);
 
-        const performanceDistribution = await TournamentResult.aggregate([
-          {
-            $bucket: {
-              groupBy: "$totalStats.winPercentage",
-              boundaries: [0, 0.2, 0.4, 0.6, 0.8, 1.0],
-              default: "Other",
-              output: {
-                count: { $sum: 1 },
-                avgRank: { $avg: "$totalStats.finalRank" },
-              },
-            },
-          },
-        ]);
-
-        const response: ApiResponse = {
-          success: true,
-          data: {
-            overview: stats[0] || {},
-            performanceDistribution,
-          },
-        };
-
-        res.status(200).json(response);
-      } catch (error) {
-        next(error);
-      }
+      this.sendSuccess(res, {
+        overview: stats[0] || {},
+        performanceDistribution,
+      });
     },
   );
 
   // Bulk import tournament results (for data migration)
   bulkImport = this.asyncHandler(
-    async (
-      req: RequestWithAuth,
-      res: Response,
-      next: NextFunction,
-    ): Promise<void> => {
-      try {
-        const { results } = req.body;
+    async (req: RequestWithAuth, res: Response): Promise<void> => {
+      const { results } = req.body;
 
-        if (!Array.isArray(results) || results.length === 0) {
-          this.sendError(res, 400, "Results array is required");
-          return;
-        }
-
-        const importResults = {
-          created: 0,
-          updated: 0,
-          errors: [] as Array<{
-            tournament: string;
-            players: string[];
-            error: string;
-          }>,
-        };
-
-        for (const resultData of results) {
-          try {
-            // Validate tournament exists
-            const tournament = await Tournament.findById(
-              resultData.tournamentId,
-            );
-            if (!tournament) {
-              importResults.errors.push({
-                tournament: resultData.tournamentId,
-                players: resultData.players || [],
-                error: "Tournament not found",
-              });
-              continue;
-            }
-
-            // Validate players exist
-            const playerIds = Array.isArray(resultData.players)
-              ? resultData.players
-              : [resultData.players];
-            const players = await Player.find({ _id: { $in: playerIds } });
-            if (players.length !== playerIds.length) {
-              importResults.errors.push({
-                tournament: resultData.tournamentId,
-                players: playerIds,
-                error: "One or more players not found",
-              });
-              continue;
-            }
-
-            // Check if result already exists
-            const existingResult = await TournamentResult.findOne({
-              tournamentId: resultData.tournamentId,
-              players: { $all: playerIds },
-            });
-
-            if (existingResult) {
-              await TournamentResult.findByIdAndUpdateSafe(
-                existingResult._id.toString(),
-                resultData,
-              );
-              importResults.updated++;
-            } else {
-              await TournamentResult.create(resultData);
-              importResults.created++;
-            }
-          } catch (error: any) {
-            importResults.errors.push({
-              tournament: resultData.tournamentId || "Unknown",
-              players: resultData.players || [],
-              error: error.message,
-            });
-          }
-        }
-
-        const response: ApiResponse = {
-          success: true,
-          data: importResults,
-          message: `Bulk import completed: ${importResults.created} created, ${importResults.updated} updated, ${importResults.errors.length} errors`,
-        };
-
-        res.status(200).json(response);
-      } catch (error) {
-        next(error);
+      if (!Array.isArray(results) || results.length === 0) {
+        this.sendError(res, "Results array is required", 400);
+        return;
       }
+
+      const importResults = {
+        created: 0,
+        updated: 0,
+        errors: [] as Array<{
+          tournament: string;
+          players: string[];
+          error: string;
+        }>,
+      };
+
+      for (const resultData of results) {
+        try {
+          // Validate tournament exists
+          const tournament = await Tournament.findById(resultData.tournamentId);
+          if (!tournament) {
+            importResults.errors.push({
+              tournament: resultData.tournamentId,
+              players: resultData.players || [],
+              error: "Tournament not found",
+            });
+            continue;
+          }
+
+          // Validate players exist
+          const playerIds = Array.isArray(resultData.players)
+            ? resultData.players
+            : [resultData.players];
+          const players = await Player.find({ _id: { $in: playerIds } });
+          if (players.length !== playerIds.length) {
+            importResults.errors.push({
+              tournament: resultData.tournamentId,
+              players: playerIds,
+              error: "One or more players not found",
+            });
+            continue;
+          }
+
+          // Check if result already exists
+          const existingResult = await TournamentResult.findOne({
+            tournamentId: resultData.tournamentId,
+            players: { $all: playerIds },
+          });
+
+          if (existingResult) {
+            await TournamentResult.findByIdAndUpdateSafe(
+              existingResult._id.toString(),
+              resultData,
+            );
+            importResults.updated++;
+          } else {
+            await TournamentResult.create(resultData);
+            importResults.created++;
+          }
+        } catch (error: any) {
+          importResults.errors.push({
+            tournament: resultData.tournamentId || "Unknown",
+            players: resultData.players || [],
+            error: error.message,
+          });
+        }
+      }
+
+      this.sendSuccess(
+        res,
+        importResults,
+        `Bulk import completed: ${importResults.created} created, ${importResults.updated} updated, ${importResults.errors.length} errors`,
+      );
     },
   );
 
@@ -740,55 +669,49 @@ export class TournamentResultController extends BaseController<ITournamentResult
   }
 
   // Override create method to add custom validation
-  override async create(
-    req: RequestWithAuth,
-    res: Response,
-    next: NextFunction,
-  ): Promise<void> {
-    try {
+  override create = this.asyncHandler(
+    async (req: RequestWithAuth, res: Response): Promise<void> => {
       const validationErrors = this.validateTournamentResultData(req.body);
 
       if (validationErrors.length > 0) {
-        this.sendError(res, 400, validationErrors.join(", "));
+        this.sendError(res, validationErrors.join(", "), 400);
         return;
       }
 
-      // Call parent create method
-      await super.create(req, res, next);
-    } catch (error) {
-      next(error);
-    }
-  }
+      // Use model directly instead of super because it's a field property now
+      const result = await TournamentResult.create(req.body);
+      this.sendSuccess(res, result, "Tournament Result created successfully", undefined, 201);
+    },
+  );
 
   // Override update method to add custom validation
-  override async update(
-    req: RequestWithAuth,
-    res: Response,
-    next: NextFunction,
-  ): Promise<void> {
-    try {
+  override update = this.asyncHandler(
+    async (req: RequestWithAuth, res: Response): Promise<void> => {
       const validationErrors = this.validateTournamentResultData(req.body);
 
       if (validationErrors.length > 0) {
-        this.sendError(res, 400, validationErrors.join(", "));
+        this.sendError(res, validationErrors.join(", "), 400);
         return;
       }
 
-      // Call parent update method
-      await super.update(req, res, next);
-    } catch (error) {
-      next(error);
-    }
-  }
+      const result = await TournamentResult.findByIdAndUpdateSafe(
+        req.params.id,
+        req.body,
+      );
+
+      if (!result) {
+        this.sendNotFound(res, "Tournament Result");
+        return;
+      }
+
+      this.sendSuccess(res, result, "Tournament Result updated successfully");
+    },
+  );
   /**
    * Get the range of available years from tournament data
    */
-  public getAvailableYears = async (
-    req: Request,
-    res: Response,
-    next: NextFunction,
-  ): Promise<void> => {
-    try {
+  public getAvailableYears = this.asyncHandler(
+    async (req: Request, res: Response): Promise<void> => {
       const DEFAULT_MIN_YEAR = 2008;
       const currentYear = new Date().getFullYear();
 
@@ -814,10 +737,8 @@ export class TournamentResultController extends BaseController<ITournamentResult
         min: isNaN(minYear) ? DEFAULT_MIN_YEAR : minYear,
         max: isNaN(maxYear) ? currentYear : maxYear,
       });
-    } catch (error) {
-      next(error);
-    }
-  };
+    },
+  );
 }
 
-export const tournamentResultController = new TournamentResultController();
+export default new TournamentResultController();

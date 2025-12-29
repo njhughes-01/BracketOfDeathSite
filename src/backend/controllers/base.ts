@@ -2,6 +2,9 @@ import { Request, Response, NextFunction } from "express";
 import { Model, Document } from "mongoose";
 import { ApiResponse, PaginationOptions } from "../types/common";
 
+/**
+ * RequestWithAuth extends the standard Express Request with user information
+ */
 export interface RequestWithAuth extends Request {
   user?: {
     id: string;
@@ -14,11 +17,136 @@ export interface RequestWithAuth extends Request {
   };
 }
 
-export class BaseController<T extends Document> {
+/**
+ * BaseController provides shared utility methods for all controllers,
+ * specifically for standardized response formatting and error handling.
+ */
+export abstract class BaseController {
+  /**
+   * Handle errors consistently across all controllers
+   */
+  protected handleError(
+    res: Response,
+    error: unknown,
+    message: string,
+    statusCode: number = 500,
+  ): void {
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    console.error(`${message}:`, error);
+
+    const response: ApiResponse = {
+      success: false,
+      error: errorMessage || message,
+    };
+
+    res.status(statusCode).json(response);
+  }
+
+  /**
+   * Send a success response
+   */
+  protected sendSuccess<T>(
+    res: Response,
+    data?: T,
+    message?: string,
+    pagination?: ApiResponse<T>["pagination"],
+    status: number = 200,
+  ): void {
+    const response: ApiResponse<T> = {
+      success: true,
+      ...(data !== undefined && { data }),
+      ...(message && { message }),
+      ...(pagination && { pagination }),
+    };
+
+    res.status(status).json(response);
+  }
+
+  /**
+   * Send a generic error response
+   */
+  protected sendError(
+    res: Response,
+    error: string,
+    statusCode: number = 400,
+  ): void {
+    const response: ApiResponse = {
+      success: false,
+      error,
+    };
+
+    res.status(statusCode).json(response);
+  }
+
+  /**
+   * Send a not found response
+   */
+  protected sendNotFound(res: Response, resource: string = "Resource"): void {
+    this.sendError(res, `${resource} not found`, 404);
+  }
+
+  /**
+   * Send an unauthorized response
+   */
+  protected sendUnauthorized(
+    res: Response,
+    message: string = "Unauthorized",
+  ): void {
+    this.sendError(res, message, 401);
+  }
+
+  /**
+   * Send a forbidden response
+   */
+  protected sendForbidden(
+    res: Response,
+    message: string = "Access denied",
+  ): void {
+    this.sendError(res, message, 403);
+  }
+
+  /**
+   * Send a validation error response
+   */
+  protected sendValidationError(res: Response, errors: string[]): void {
+    const response: ApiResponse = {
+      success: false,
+      error: "Validation failed",
+      errors,
+    };
+
+    res.status(400).json(response);
+  }
+
+  /**
+   * Async wrapper for better error handling in route handlers
+   */
+  protected asyncHandler = (
+    fn: (
+      req: Request | RequestWithAuth,
+      res: Response,
+      next: NextFunction,
+    ) => Promise<void>,
+  ) => {
+    return (
+      req: Request | RequestWithAuth,
+      res: Response,
+      next: NextFunction,
+    ): Promise<void> => {
+      return Promise.resolve(fn(req, res, next)).catch(next);
+    };
+  };
+}
+
+/**
+ * BaseCrudController extends BaseController with generic CRUD operations for Mongoose models.
+ */
+export class BaseCrudController<T extends Document> extends BaseController {
   protected model: Model<T>;
   protected modelName: string;
 
   constructor(model: Model<T>, modelName: string) {
+    super();
     this.model = model;
     this.modelName = modelName;
   }
@@ -37,15 +165,12 @@ export class BaseController<T extends Document> {
         select: req.query.select as string,
       };
 
-      // Build filter from query parameters
       const filter = this.buildFilter(req.query);
 
-      // Check if the model has paginate method, otherwise use regular find
       if (typeof (this.model as any).paginate === "function") {
         const result = await (this.model as any).paginate(filter, options);
         res.status(200).json(result);
       } else {
-        // Fallback for models without pagination
         const skip = (options.page - 1) * options.limit;
         let query = this.model.find(filter);
 
@@ -106,82 +231,57 @@ export class BaseController<T extends Document> {
       const item = await query.exec();
 
       if (!item) {
-        const response: ApiResponse = {
-          success: false,
-          error: `${this.modelName} not found`,
-        };
-        res.status(404).json(response);
+        this.sendNotFound(res, this.modelName);
         return;
       }
 
-      const response: ApiResponse<T> = {
-        success: true,
-        data: item,
-      };
-
-      res.status(200).json(response);
+      this.sendSuccess(res, item);
     } catch (error) {
       next(error);
     }
   };
 
   // Create new item
-  async create(
+  create = async (
     req: RequestWithAuth,
     res: Response,
     next: NextFunction,
-  ): Promise<void> {
+  ): Promise<void> => {
     try {
       const item = new this.model(req.body);
       const savedItem = await item.save();
 
-      const response: ApiResponse<T> = {
-        success: true,
-        data: savedItem,
-        message: `${this.modelName} created successfully`,
-      };
-
-      res.status(201).json(response);
+      this.sendSuccess(res, savedItem, `${this.modelName} created successfully`, undefined, 201);
     } catch (error) {
       next(error);
     }
-  }
+  };
 
   // Update item by ID
-  async update(
+  update = async (
     req: RequestWithAuth,
     res: Response,
     next: NextFunction,
-  ): Promise<void> {
+  ): Promise<void> => {
     try {
       const { id } = req.params;
 
       const updatedItem = await (this.model as any).findByIdAndUpdateSafe(
         id,
         req.body,
-        { new: true },
+        { new: true, runValidators: true },
       );
 
       if (!updatedItem) {
-        const response: ApiResponse = {
-          success: false,
-          error: `${this.modelName} not found`,
-        };
-        res.status(404).json(response);
+        this.sendNotFound(res, this.modelName);
         return;
       }
 
-      const response: ApiResponse<T> = {
-        success: true,
-        data: updatedItem,
-        message: `${this.modelName} updated successfully`,
-      };
-
-      res.status(200).json(response);
+      this.sendSuccess(res, updatedItem, `${this.modelName} updated successfully`);
     } catch (error) {
       next(error);
     }
-  }
+  };
 
   // Delete item by ID
   delete = async (
@@ -195,20 +295,11 @@ export class BaseController<T extends Document> {
       const deletedItem = await this.model.findByIdAndDelete(id);
 
       if (!deletedItem) {
-        const response: ApiResponse = {
-          success: false,
-          error: `${this.modelName} not found`,
-        };
-        res.status(404).json(response);
+        this.sendNotFound(res, this.modelName);
         return;
       }
 
-      const response: ApiResponse = {
-        success: true,
-        message: `${this.modelName} deleted successfully`,
-      };
-
-      res.status(200).json(response);
+      this.sendSuccess(res, null, `${this.modelName} deleted successfully`);
     } catch (error) {
       next(error);
     }
@@ -224,11 +315,7 @@ export class BaseController<T extends Document> {
       const { q } = req.query;
 
       if (!q || typeof q !== "string") {
-        const response: ApiResponse = {
-          success: false,
-          error: "Search query is required",
-        };
-        res.status(400).json(response);
+        this.sendError(res, "Search query is required");
         return;
       }
 
@@ -240,22 +327,16 @@ export class BaseController<T extends Document> {
       };
 
       const result = await (this.model as any).paginate(searchFilter, options);
-
       res.status(200).json(result);
     } catch (error) {
       next(error);
     }
   };
 
-  // Protected method to build filter from query parameters
   protected buildFilter(query: any): any {
-    // Override in child classes for model-specific filtering
     const filter: any = {};
-
-    // Remove pagination and other non-filter parameters
     const { page, limit, sort, select, populate, q, ...filterParams } = query;
 
-    // Add simple equality filters
     Object.keys(filterParams).forEach((key) => {
       if (filterParams[key] !== undefined && filterParams[key] !== "") {
         filter[key] = filterParams[key];
@@ -265,13 +346,10 @@ export class BaseController<T extends Document> {
     return filter;
   }
 
-  // Protected method to build search filter
   protected buildSearchFilter(searchTerm: string): any {
-    // Override in child classes for model-specific search
     return { $text: { $search: searchTerm } };
   }
 
-  // Validation helper
   protected validateRequired(fields: string[], body: any): string[] {
     const missing: string[] = [];
 
@@ -286,45 +364,4 @@ export class BaseController<T extends Document> {
 
     return missing;
   }
-
-  // Error response helper
-  protected sendError(res: Response, status: number, message: string): void {
-    const response: ApiResponse = {
-      success: false,
-      error: message,
-    };
-    res.status(status).json(response);
-  }
-
-  // Success response helper
-  protected sendSuccess<T>(
-    res: Response,
-    data?: T,
-    message?: string,
-    status: number = 200,
-  ): void {
-    const response: ApiResponse<T> = {
-      success: true,
-      ...(data && { data }),
-      ...(message && { message }),
-    };
-    res.status(status).json(response);
-  }
-
-  // Async wrapper for better error handling
-  protected asyncHandler = (
-    fn: (
-      req: Request | RequestWithAuth,
-      res: Response,
-      next: NextFunction,
-    ) => Promise<void>,
-  ) => {
-    return (
-      req: Request | RequestWithAuth,
-      res: Response,
-      next: NextFunction,
-    ): Promise<void> => {
-      return Promise.resolve(fn(req, res, next)).catch(next);
-    };
-  };
 }

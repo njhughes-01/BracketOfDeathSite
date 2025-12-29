@@ -240,13 +240,6 @@ class ApiClient {
     return this.get<ApiResponse<Player>>(`/players/${id}`);
   }
 
-  async getPlayerScoring(
-    id: string,
-  ): Promise<ApiResponse<{ matchesWithPoints: number; totalPoints: number }>> {
-    return this.get<
-      ApiResponse<{ matchesWithPoints: number; totalPoints: number }>
-    >(`/players/${id}/scoring`);
-  }
 
   async createPlayer(data: PlayerInput): Promise<ApiResponse<Player>> {
     return this.post<ApiResponse<Player>>("/players", data);
@@ -263,15 +256,6 @@ class ApiClient {
     return this.delete<ApiResponse>(`/players/${id}`);
   }
 
-  async getPlayerStats(): Promise<ApiResponse> {
-    return this.get<ApiResponse>("/players/stats");
-  }
-
-  async getChampions(minChampionships = 1): Promise<ApiResponse<Player[]>> {
-    return this.get<ApiResponse<Player[]>>(
-      `/players/champions?min=${minChampionships}`,
-    );
-  }
 
   async searchPlayers(
     query: string,
@@ -328,19 +312,6 @@ class ApiClient {
     return this.delete<ApiResponse>(`/tournaments/${id}?cascade=${cascade}`);
   }
 
-  async getTournamentStats(): Promise<ApiResponse> {
-    return this.get<ApiResponse>("/tournaments/stats");
-  }
-
-  async getTournamentsByYear(year: number): Promise<ApiResponse<Tournament[]>> {
-    return this.get<ApiResponse<Tournament[]>>(`/tournaments/year/${year}`);
-  }
-
-  async getTournamentsByFormat(
-    format: string,
-  ): Promise<ApiResponse<Tournament[]>> {
-    return this.get<ApiResponse<Tournament[]>>(`/tournaments/format/${format}`);
-  }
 
   async getUpcomingTournaments(limit = 10): Promise<ApiResponse<Tournament[]>> {
     return this.get<ApiResponse<Tournament[]>>(
@@ -459,13 +430,6 @@ class ApiClient {
     );
   }
 
-  async calculateStandings(
-    tournamentId: string,
-  ): Promise<ApiResponse<TournamentResult[]>> {
-    return this.get<ApiResponse<TournamentResult[]>>(
-      `/tournaments/${tournamentId}/standings`,
-    );
-  }
 
   async getLiveStats(
     tournamentId: string,
@@ -475,13 +439,6 @@ class ApiClient {
     );
   }
 
-  async getTournamentPlayerStats(
-    tournamentId: string,
-  ): Promise<ApiResponse<any>> {
-    return this.get<ApiResponse<any>>(
-      `/tournaments/${tournamentId}/player-stats`,
-    );
-  }
 
   // Tournament Result API methods
   async getTournamentResults(
@@ -652,9 +609,6 @@ class ApiClient {
     >(`/admin/tournaments/${id}/details`);
   }
 
-  async deleteTournamentAdmin(id: string): Promise<ApiResponse<null>> {
-    return this.delete<ApiResponse<null>>(`/admin/tournaments/${id}`);
-  }
 
   // User Management API methods
   async getUsers(filters?: UserFilters): Promise<ApiResponse<User[]>> {

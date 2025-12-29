@@ -147,9 +147,10 @@ describe("PlayerController", () => {
       expect(statusMock).toHaveBeenCalledWith(400);
       expect(jsonMock).toHaveBeenCalledWith(
         expect.objectContaining({
-          error: expect.stringContaining(
-            "Games won cannot exceed games played",
-          ),
+          error: "Validation failed",
+          errors: expect.arrayContaining([
+            expect.stringContaining("Games won cannot exceed games played"),
+          ]),
         }),
       );
     });
@@ -171,9 +172,10 @@ describe("PlayerController", () => {
       expect(statusMock).toHaveBeenCalledWith(400);
       expect(jsonMock).toHaveBeenCalledWith(
         expect.objectContaining({
-          error: expect.stringContaining(
-            "Winning percentage must be between 0 and 1",
-          ),
+          error: "Validation failed",
+          errors: expect.arrayContaining([
+            expect.stringContaining("Winning percentage must be between 0 and 1"),
+          ]),
         }),
       );
     });
@@ -227,9 +229,12 @@ describe("PlayerController", () => {
       expect(statusMock).toHaveBeenCalledWith(400);
       expect(jsonMock).toHaveBeenCalledWith(
         expect.objectContaining({
-          error: expect.stringContaining(
-            "Best result cannot be worse than average finish",
-          ),
+          error: "Validation failed",
+          errors: expect.arrayContaining([
+            expect.stringContaining(
+              "Best result cannot be worse than average finish",
+            ),
+          ]),
         }),
       );
     });

@@ -1,170 +1,88 @@
-import { Response, NextFunction } from "express";
-import { RequestWithAuth } from "./base";
-import { ApiResponse } from "../types/common";
+import { Request, Response } from "express";
+import { BaseController } from "./base";
 
-export class DataMigrationController {
+class DataMigrationController extends BaseController {
+  constructor() {
+    super();
+  }
   // Migrate all data from JSON files
-  migrateAll = async (
-    _req: RequestWithAuth,
-    res: Response,
-    next: NextFunction,
-  ): Promise<void> => {
-    try {
+  migrateAll = this.asyncHandler(
+    async (_req: Request, res: Response): Promise<void> => {
       // TODO: Implement full migration from JSON files
-      const response: ApiResponse = {
-        success: false,
-        error: "Migration not yet implemented",
-      };
-      res.status(501).json(response);
-    } catch (error) {
-      next(error);
-    }
-  };
+      this.sendError(res, "Migration not yet implemented", 501);
+    },
+  );
 
   // Migrate players from JSON
-  migratePlayers = async (
-    _req: RequestWithAuth,
-    res: Response,
-    next: NextFunction,
-  ): Promise<void> => {
-    try {
+  migratePlayers = this.asyncHandler(
+    async (_req: Request, res: Response): Promise<void> => {
       // TODO: Implement player migration
-      const response: ApiResponse = {
-        success: false,
-        error: "Player migration not yet implemented",
-      };
-      res.status(501).json(response);
-    } catch (error) {
-      next(error);
-    }
-  };
+      this.sendError(res, "Player migration not yet implemented", 501);
+    },
+  );
 
   // Migrate tournaments from JSON
-  migrateTournaments = async (
-    _req: RequestWithAuth,
-    res: Response,
-    next: NextFunction,
-  ): Promise<void> => {
-    try {
+  migrateTournaments = this.asyncHandler(
+    async (_req: Request, res: Response): Promise<void> => {
       // TODO: Implement tournament migration
-      const response: ApiResponse = {
-        success: false,
-        error: "Tournament migration not yet implemented",
-      };
-      res.status(501).json(response);
-    } catch (error) {
-      next(error);
-    }
-  };
+      this.sendError(res, "Tournament migration not yet implemented", 501);
+    },
+  );
 
   // Migrate results from JSON
-  migrateResults = async (
-    _req: RequestWithAuth,
-    res: Response,
-    next: NextFunction,
-  ): Promise<void> => {
-    try {
+  migrateResults = this.asyncHandler(
+    async (_req: Request, res: Response): Promise<void> => {
       // TODO: Implement results migration
-      const response: ApiResponse = {
-        success: false,
-        error: "Results migration not yet implemented",
-      };
-      res.status(501).json(response);
-    } catch (error) {
-      next(error);
-    }
-  };
+      this.sendError(res, "Results migration not yet implemented", 501);
+    },
+  );
 
   // Get migration status
-  getMigrationStatus = async (
-    _req: RequestWithAuth,
-    res: Response,
-    next: NextFunction,
-  ): Promise<void> => {
-    try {
+  getMigrationStatus = this.asyncHandler(
+    async (_req: Request, res: Response): Promise<void> => {
       // TODO: Implement migration status check
-      const response: ApiResponse = {
-        success: true,
-        data: {
+      this.sendSuccess(
+        res,
+        {
           status: "not_started",
           message: "Migration system not yet implemented",
         },
-      };
-      res.status(200).json(response);
-    } catch (error) {
-      next(error);
-    }
-  };
+        "Migration status retrieved",
+      );
+    },
+  );
 
   // Preview migration data
-  previewMigration = async (
-    _req: RequestWithAuth,
-    res: Response,
-    next: NextFunction,
-  ): Promise<void> => {
-    try {
+  previewMigration = this.asyncHandler(
+    async (_req: Request, res: Response): Promise<void> => {
       // TODO: Implement migration preview
-      const response: ApiResponse = {
-        success: false,
-        error: "Migration preview not yet implemented",
-      };
-      res.status(501).json(response);
-    } catch (error) {
-      next(error);
-    }
-  };
+      this.sendError(res, "Migration preview not yet implemented", 501);
+    },
+  );
 
   // Create backup
-  createBackup = async (
-    _req: RequestWithAuth,
-    res: Response,
-    next: NextFunction,
-  ): Promise<void> => {
-    try {
+  createBackup = this.asyncHandler(
+    async (_req: Request, res: Response): Promise<void> => {
       // TODO: Implement backup creation
-      const response: ApiResponse = {
-        success: false,
-        error: "Backup system not yet implemented",
-      };
-      res.status(501).json(response);
-    } catch (error) {
-      next(error);
-    }
-  };
+      this.sendError(res, "Backup system not yet implemented", 501);
+    },
+  );
 
   // Restore backup
-  restoreBackup = async (
-    _req: RequestWithAuth,
-    res: Response,
-    next: NextFunction,
-  ): Promise<void> => {
-    try {
+  restoreBackup = this.asyncHandler(
+    async (_req: Request, res: Response): Promise<void> => {
       // TODO: Implement backup restoration
-      const response: ApiResponse = {
-        success: false,
-        error: "Restore system not yet implemented",
-      };
-      res.status(501).json(response);
-    } catch (error) {
-      next(error);
-    }
-  };
+      this.sendError(res, "Restore system not yet implemented", 501);
+    },
+  );
 
   // Validate data
-  validateData = async (
-    _req: RequestWithAuth,
-    res: Response,
-    next: NextFunction,
-  ): Promise<void> => {
-    try {
+  validateData = this.asyncHandler(
+    async (_req: Request, res: Response): Promise<void> => {
       // TODO: Implement data validation
-      const response: ApiResponse = {
-        success: false,
-        error: "Data validation not yet implemented",
-      };
-      res.status(501).json(response);
-    } catch (error) {
-      next(error);
-    }
-  };
+      this.sendError(res, "Data validation not yet implemented", 501);
+    },
+  );
 }
+
+export default new DataMigrationController();

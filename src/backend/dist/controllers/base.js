@@ -1,10 +1,91 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.BaseController = void 0;
+exports.BaseCrudController = exports.BaseController = void 0;
+/**
+ * BaseController provides shared utility methods for all controllers,
+ * specifically for standardized response formatting and error handling.
+ */
 class BaseController {
+    /**
+     * Handle errors consistently across all controllers
+     */
+    handleError(res, error, message, statusCode = 500) {
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        console.error(`${message}:`, error);
+        const response = {
+            success: false,
+            error: errorMessage || message,
+        };
+        res.status(statusCode).json(response);
+    }
+    /**
+     * Send a success response
+     */
+    sendSuccess(res, data, message, status = 200) {
+        const response = {
+            success: true,
+            ...(data !== undefined && { data }),
+            ...(message && { message }),
+        };
+        res.status(status).json(response);
+    }
+    /**
+     * Send a generic error response
+     */
+    sendError(res, error, statusCode = 400) {
+        const response = {
+            success: false,
+            error,
+        };
+        res.status(statusCode).json(response);
+    }
+    /**
+     * Send a not found response
+     */
+    sendNotFound(res, resource = "Resource") {
+        this.sendError(res, `${resource} not found`, 404);
+    }
+    /**
+     * Send an unauthorized response
+     */
+    sendUnauthorized(res, message = "Unauthorized") {
+        this.sendError(res, message, 401);
+    }
+    /**
+     * Send a forbidden response
+     */
+    sendForbidden(res, message = "Access denied") {
+        this.sendError(res, message, 403);
+    }
+    /**
+     * Send a validation error response
+     */
+    sendValidationError(res, errors) {
+        const response = {
+            success: false,
+            error: "Validation failed",
+            errors,
+        };
+        res.status(400).json(response);
+    }
+    /**
+     * Async wrapper for better error handling in route handlers
+     */
+    asyncHandler = (fn) => {
+        return (req, res, next) => {
+            return Promise.resolve(fn(req, res, next)).catch(next);
+        };
+    };
+}
+exports.BaseController = BaseController;
+/**
+ * BaseCrudController extends BaseController with generic CRUD operations for Mongoose models.
+ */
+class BaseCrudController extends BaseController {
     model;
     modelName;
     constructor(model, modelName) {
+        super();
         this.model = model;
         this.modelName = modelName;
     }
@@ -17,15 +98,12 @@ class BaseController {
                 sort: req.query.sort || "-createdAt",
                 select: req.query.select,
             };
-            // Build filter from query parameters
             const filter = this.buildFilter(req.query);
-            // Check if the model has paginate method, otherwise use regular find
             if (typeof this.model.paginate === "function") {
                 const result = await this.model.paginate(filter, options);
                 res.status(200).json(result);
             }
             else {
-                // Fallback for models without pagination
                 const skip = (options.page - 1) * options.limit;
                 let query = this.model.find(filter);
                 if (options.select) {
@@ -72,81 +150,51 @@ class BaseController {
             }
             const item = await query.exec();
             if (!item) {
-                const response = {
-                    success: false,
-                    error: `${this.modelName} not found`,
-                };
-                res.status(404).json(response);
+                this.sendNotFound(res, this.modelName);
                 return;
             }
-            const response = {
-                success: true,
-                data: item,
-            };
-            res.status(200).json(response);
+            this.sendSuccess(res, item);
         }
         catch (error) {
             next(error);
         }
     };
     // Create new item
-    async create(req, res, next) {
+    create = async (req, res, next) => {
         try {
             const item = new this.model(req.body);
             const savedItem = await item.save();
-            const response = {
-                success: true,
-                data: savedItem,
-                message: `${this.modelName} created successfully`,
-            };
-            res.status(201).json(response);
+            this.sendSuccess(res, savedItem, `${this.modelName} created successfully`, 201);
         }
         catch (error) {
             next(error);
         }
-    }
+    };
     // Update item by ID
-    async update(req, res, next) {
+    update = async (req, res, next) => {
         try {
             const { id } = req.params;
-            const updatedItem = await this.model.findByIdAndUpdateSafe(id, req.body, { new: true });
+            const updatedItem = await this.model.findByIdAndUpdateSafe(id, req.body, { new: true, runValidators: true });
             if (!updatedItem) {
-                const response = {
-                    success: false,
-                    error: `${this.modelName} not found`,
-                };
-                res.status(404).json(response);
+                this.sendNotFound(res, this.modelName);
                 return;
             }
-            const response = {
-                success: true,
-                data: updatedItem,
-                message: `${this.modelName} updated successfully`,
-            };
-            res.status(200).json(response);
+            this.sendSuccess(res, updatedItem, `${this.modelName} updated successfully`);
         }
         catch (error) {
             next(error);
         }
-    }
+    };
     // Delete item by ID
     delete = async (req, res, next) => {
         try {
             const { id } = req.params;
             const deletedItem = await this.model.findByIdAndDelete(id);
             if (!deletedItem) {
-                const response = {
-                    success: false,
-                    error: `${this.modelName} not found`,
-                };
-                res.status(404).json(response);
+                this.sendNotFound(res, this.modelName);
                 return;
             }
-            const response = {
-                success: true,
-                message: `${this.modelName} deleted successfully`,
-            };
-            res.status(200).json(response);
+            this.sendSuccess(res, null, `${this.modelName} deleted successfully`);
         }
         catch (error) {
             next(error);
@@ -157,11 +205,7 @@ class BaseController {
         try {
             const { q } = req.query;
             if (!q || typeof q !== "string") {
-                const response = {
-                    success: false,
-                    error: "Search query is required",
-                };
-                res.status(400).json(response);
+                this.sendError(res, "Search query is required");
                 return;
             }
             const searchFilter = this.buildSearchFilter(q);
@@ -177,13 +221,9 @@ class BaseController {
             next(error);
         }
     };
-    // Protected method to build filter from query parameters
     buildFilter(query) {
-        // Override in child classes for model-specific filtering
         const filter = {};
-        // Remove pagination and other non-filter parameters
         const { page, limit, sort, select, populate, q, ...filterParams } = query;
-        // Add simple equality filters
         Object.keys(filterParams).forEach((key) => {
             if (filterParams[key] !== undefined && filterParams[key] !== "") {
                 filter[key] = filterParams[key];
@@ -191,12 +231,9 @@ class BaseController {
         });
         return filter;
     }
-    // Protected method to build search filter
     buildSearchFilter(searchTerm) {
-        // Override in child classes for model-specific search
         return { $text: { $search: searchTerm } };
     }
-    // Validation helper
     validateRequired(fields, body) {
         const missing = [];
         fields.forEach((field) => {
@@ -207,29 +244,6 @@ class BaseController {
         });
         return missing;
     }
-    // Error response helper
-    sendError(res, status, message) {
-        const response = {
-            success: false,
-            error: message,
-        };
-        res.status(status).json(response);
-    }
-    // Success response helper
-    sendSuccess(res, data, message, status = 200) {
-        const response = {
-            success: true,
-            ...(data && { data }),
-            ...(message && { message }),
-        };
-        res.status(status).json(response);
-    }
-    // Async wrapper for better error handling
-    asyncHandler = (fn) => {
-        return (req, res, next) => {
-            return Promise.resolve(fn(req, res, next)).catch(next);
-        };
-    };
 }
-exports.BaseController = BaseController;
+exports.BaseCrudController = BaseCrudController;
 //# sourceMappingURL=base.js.map

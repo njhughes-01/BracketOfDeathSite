@@ -5,11 +5,11 @@ export declare class TournamentResultController extends BaseController<ITourname
     constructor();
     protected buildFilter(query: any): ITournamentResultFilter;
     getAll: (req: Request, res: Response, next: NextFunction) => Promise<void>;
-    getByTournament: (req: Request | RequestWithAuth, res: Response, next: NextFunction) => Promise<void>;
-    getByPlayer: (req: Request | RequestWithAuth, res: Response, next: NextFunction) => Promise<void>;
-    getLeaderboard: (req: Request | RequestWithAuth, res: Response, next: NextFunction) => Promise<void>;
-    getStats: (req: Request | RequestWithAuth, res: Response, next: NextFunction) => Promise<void>;
-    bulkImport: (req: Request | RequestWithAuth, res: Response, next: NextFunction) => Promise<void>;
+    getByTournament: any;
+    getByPlayer: any;
+    getLeaderboard: any;
+    getStats: any;
+    bulkImport: any;
     private parseSortString;
     private calculatePlayerStats;
     private validateTournamentResultData;

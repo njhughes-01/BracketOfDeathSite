@@ -60,7 +60,7 @@ describe("ProfileController", () => {
       };
       (Player.findById as jest.Mock).mockResolvedValue(mockPlayer);
 
-      await ProfileController.getProfile(req as any, res as Response);
+      await ProfileController.getProfile(req as any, res as Response, jest.fn());
 
       expect(keycloakAdminService.getUser).toHaveBeenCalledWith("user-123");
       expect(Player.findById).toHaveBeenCalledWith("player-123");
@@ -87,7 +87,7 @@ describe("ProfileController", () => {
       };
       (keycloakAdminService.getUser as jest.Mock).mockResolvedValue(mockKcUser);
 
-      await ProfileController.getProfile(req as any, res as Response);
+      await ProfileController.getProfile(req as any, res as Response, jest.fn());
 
       expect(keycloakAdminService.getUser).toHaveBeenCalledWith("user-123");
       expect(Player.findById).not.toHaveBeenCalled();
@@ -118,7 +118,7 @@ describe("ProfileController", () => {
       // Even if req.user doesn't have the role (simulating stale token)
       req.user = { id: "user-admin", roles: ["user"], isAdmin: false } as any;
 
-      await ProfileController.getProfile(req as any, res as Response);
+      await ProfileController.getProfile(req as any, res as Response, jest.fn());
 
       expect(keycloakAdminService.getUser).toHaveBeenCalledWith("user-admin");
       expect(res.json).toHaveBeenCalledWith({
@@ -142,7 +142,7 @@ describe("ProfileController", () => {
 
       req.user = { id: "user-admin", roles: ["user"], isAdmin: false } as any;
 
-      await ProfileController.getProfile(req as any, res as Response);
+      await ProfileController.getProfile(req as any, res as Response, jest.fn());
 
       expect(keycloakAdminService.getUser).toHaveBeenCalledWith("user-admin");
       expect(res.json).toHaveBeenCalledWith({
@@ -156,11 +156,11 @@ describe("ProfileController", () => {
 
     it("should return 401 if user is not authenticated", async () => {
       req.user = undefined;
-      await ProfileController.getProfile(req as any, res as Response);
+      await ProfileController.getProfile(req as any, res as Response, jest.fn());
       expect(res.status).toHaveBeenCalledWith(401);
       expect(json).toHaveBeenCalledWith({
         success: false,
-        error: "Not authenticated",
+        error: "Unauthorized",
       });
     });
   });
@@ -192,7 +192,7 @@ describe("ProfileController", () => {
       };
       (Player.create as jest.Mock).mockResolvedValue(mockCreatedPlayer);
 
-      await ProfileController.updateProfile(req as any, res as Response);
+      await ProfileController.updateProfile(req as any, res as Response, jest.fn());
 
       expect(Player.create).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -234,7 +234,7 @@ describe("ProfileController", () => {
         mockUpdatedPlayer,
       );
 
-      await ProfileController.updateProfile(req as any, res as Response);
+      await ProfileController.updateProfile(req as any, res as Response, jest.fn());
 
       expect(Player.findByIdAndUpdate).toHaveBeenCalledWith(
         "player-123",
@@ -250,7 +250,7 @@ describe("ProfileController", () => {
 
     it("should return 400 if gender is missing", async () => {
       req.body = {}; // Missing gender
-      await ProfileController.updateProfile(req as any, res as Response);
+      await ProfileController.updateProfile(req as any, res as Response, jest.fn());
       expect(res.status).toHaveBeenCalledWith(400);
       expect(json).toHaveBeenCalledWith({
         success: false,

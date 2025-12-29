@@ -10,6 +10,7 @@ import profileRoutes from "./profile";
 const router = Router();
 import authRoutes from "./auth";
 import settingsRoutes from "./settings";
+import systemRoutes from "./system";
 
 // Mount all route modules
 router.use("/auth", authRoutes);
@@ -21,6 +22,7 @@ router.use("/admin", adminRoutes);
 router.use("/admin/users", usersRoutes);
 router.use("/profile", profileRoutes);
 router.use("/settings", settingsRoutes);
+router.use("/system", systemRoutes);
 
 // API info endpoint
 router.get("/", (_req, res) => {

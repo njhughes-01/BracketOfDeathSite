@@ -1,23 +1,23 @@
 import { Response } from "express";
-import { RequestWithAuth } from "./base";
-declare class UserController {
-    protected handleError(res: Response, error: any, message: string): void;
-    getUsers(req: RequestWithAuth, res: Response): Promise<void>;
-    getUser(req: RequestWithAuth, res: Response): Promise<void>;
-    createUser(req: RequestWithAuth, res: Response): Promise<void>;
-    updateUser(req: RequestWithAuth, res: Response): Promise<void>;
-    deleteUser(req: RequestWithAuth, res: Response): Promise<void>;
-    resetPassword(req: RequestWithAuth, res: Response): Promise<void>;
-    updateUserRoles(req: RequestWithAuth, res: Response): Promise<void>;
-    getAvailableRoles(req: RequestWithAuth, res: Response): Promise<void>;
-    linkPlayerToSelf(req: RequestWithAuth, res: Response): Promise<void>;
-    claimUser(req: RequestWithAuth, res: Response): Promise<void>;
-    login(req: RequestWithAuth, res: Response): Promise<void>;
-    register(req: RequestWithAuth, res: Response): Promise<void>;
-    requestEmailVerification(req: RequestWithAuth, res: Response): Promise<void>;
-    publicRequestPasswordReset(req: RequestWithAuth, res: Response): Promise<void>;
+import { RequestWithAuth, BaseController } from "./base";
+declare class UserController extends BaseController {
+    getUsers: (req: import("express").Request | RequestWithAuth, res: Response, next: import("express").NextFunction) => Promise<void>;
+    getUser: (req: import("express").Request | RequestWithAuth, res: Response, next: import("express").NextFunction) => Promise<void>;
+    createUser: (req: import("express").Request | RequestWithAuth, res: Response, next: import("express").NextFunction) => Promise<void>;
+    updateUser: (req: import("express").Request | RequestWithAuth, res: Response, next: import("express").NextFunction) => Promise<void>;
+    deleteUser: (req: import("express").Request | RequestWithAuth, res: Response, next: import("express").NextFunction) => Promise<void>;
+    resetPassword: (req: import("express").Request | RequestWithAuth, res: Response, next: import("express").NextFunction) => Promise<void>;
+    updateUserRoles: (req: import("express").Request | RequestWithAuth, res: Response, next: import("express").NextFunction) => Promise<void>;
+    getAvailableRoles: (req: import("express").Request | RequestWithAuth, res: Response, next: import("express").NextFunction) => Promise<void>;
+    linkPlayerToSelf: (req: import("express").Request | RequestWithAuth, res: Response, next: import("express").NextFunction) => Promise<void>;
+    claimUser: (req: import("express").Request | RequestWithAuth, res: Response, next: import("express").NextFunction) => Promise<void>;
+    login: (req: import("express").Request | RequestWithAuth, res: Response, next: import("express").NextFunction) => Promise<void>;
+    register: (req: import("express").Request | RequestWithAuth, res: Response, next: import("express").NextFunction) => Promise<void>;
+    requestEmailVerification: (req: import("express").Request | RequestWithAuth, res: Response, next: import("express").NextFunction) => Promise<void>;
+    publicRequestPasswordReset: (req: import("express").Request | RequestWithAuth, res: Response, next: import("express").NextFunction) => Promise<void>;
     private validateCreateUser;
     private validateUpdateUser;
 }
-export default UserController;
+declare const _default: UserController;
+export default _default;
 //# sourceMappingURL=UserController.d.ts.map

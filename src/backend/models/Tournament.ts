@@ -127,6 +127,25 @@ const tournamentSchema = new Schema<ITournament>(
         message: "Photo albums must be a valid URL when provided",
       },
     },
+    // Historical tournament statistics
+    tiebreakers: {
+      type: Number,
+      min: [0, "Tiebreakers cannot be negative"],
+    },
+    avgRRGames: {
+      type: Number,
+      min: [0, "Average RR games cannot be negative"],
+    },
+    avgGames: {
+      type: Number,
+      min: [0, "Average games cannot be negative"],
+    },
+    championSufferingScore: {
+      type: Number,
+    },
+    finalistSufferingScore: {
+      type: Number,
+    },
     status: {
       type: String,
       enum: {
@@ -194,14 +213,26 @@ const tournamentSchema = new Schema<ITournament>(
     },
     registeredPlayers: [
       {
-        type: Schema.Types.ObjectId,
-        ref: "Player",
+        playerId: {
+          type: Schema.Types.ObjectId,
+          ref: "Player",
+        },
+        registeredAt: {
+          type: Date,
+          default: Date.now,
+        },
       },
     ],
     waitlistPlayers: [
       {
-        type: Schema.Types.ObjectId,
-        ref: "Player",
+        playerId: {
+          type: Schema.Types.ObjectId,
+          ref: "Player",
+        },
+        registeredAt: {
+          type: Date,
+          default: Date.now,
+        },
       },
     ],
     champion: {
@@ -504,7 +535,7 @@ tournamentSchema.index({
   advancementCriteria: "text",
 });
 
-export interface ITournamentModel extends BaseModelStatics<ITournament> {}
+export interface ITournamentModel extends BaseModelStatics<ITournament> { }
 
 export const Tournament = model<ITournament, ITournamentModel>(
   "Tournament",

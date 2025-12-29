@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { useApi } from "../hooks/useApi";
 import apiClient from "../services/api";
 import { Link } from "react-router-dom";
+import type { LeaderboardEntry } from "../types/api";
 import LoadingSpinner from "../components/ui/LoadingSpinner";
 import YearRangeInput from "../components/YearRangeInput";
 
@@ -50,18 +51,14 @@ const Rankings: React.FC = () => {
     dependencies: [year, format, sort],
   });
 
-  const rankings = (response as any[]) || [];
+  const rankings = (response as LeaderboardEntry[]) || [];
 
   return (
     <div className="flex flex-col min-h-screen bg-background-dark pb-20">
       {/* Hero Header */}
       <div className="relative h-[250px] w-full bg-surface-dark overflow-hidden shrink-0">
         <div
-          className="absolute inset-0 bg-cover bg-center opacity-40 mix-blend-overlay"
-          style={{
-            backgroundImage:
-              'url("https://images.unsplash.com/photo-1551091316-654fe8e0e566?q=80&w=2070&auto=format&fit=crop")',
-          }}
+          className="absolute inset-0 bg-cover bg-center opacity-40 mix-blend-overlay rankings-hero-bg"
         ></div>
         <div className="absolute inset-0 bg-gradient-to-t from-background-dark via-transparent to-black/60"></div>
 
@@ -95,6 +92,7 @@ const Rankings: React.FC = () => {
             <select
               value={format}
               onChange={(e) => setFormat(e.target.value)}
+              title="Filter by Format"
               className="bg-[#1c2230] text-white text-sm rounded-xl px-4 py-2 border border-white/10 focus:outline-none focus:border-primary"
             >
               <option value="">All Formats</option>
@@ -114,11 +112,10 @@ const Rankings: React.FC = () => {
               <button
                 key={option.value}
                 onClick={() => setSort(option.value)}
-                className={`px-3 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap transition-colors ${
-                  sort === option.value
-                    ? "bg-primary text-white"
-                    : "bg-white/5 text-slate-400 hover:bg-white/10 hover:text-white"
-                }`}
+                className={`px-3 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap transition-colors ${sort === option.value
+                  ? "bg-primary text-white"
+                  : "bg-white/5 text-slate-400 hover:bg-white/10 hover:text-white"
+                  }`}
               >
                 {option.label}
               </button>
@@ -138,7 +135,7 @@ const Rankings: React.FC = () => {
             Failed to load rankings
           </div>
         ) : rankings.length > 0 ? (
-          rankings.map((player: any, index: number) => (
+          rankings.map((player: LeaderboardEntry, index: number) => (
             <Link
               to={`/players/${player._id}`}
               key={player._id}
@@ -146,26 +143,24 @@ const Rankings: React.FC = () => {
             >
               {index < 3 && (
                 <div
-                  className={`absolute top-0 right-0 p-8 opacity-5 -translate-y-1/3 translate-x-1/3 rounded-full blur-2xl ${
-                    index === 0
-                      ? "bg-yellow-500"
-                      : index === 1
-                        ? "bg-slate-300"
-                        : "bg-amber-700"
-                  }`}
+                  className={`absolute top-0 right-0 p-8 opacity-5 -translate-y-1/3 translate-x-1/3 rounded-full blur-2xl ${index === 0
+                    ? "bg-yellow-500"
+                    : index === 1
+                      ? "bg-slate-300"
+                      : "bg-amber-700"
+                    }`}
                 ></div>
               )}
 
               <div
-                className={`size-8 flex items-center justify-center font-bold text-lg ${
-                  index === 0
-                    ? "text-yellow-500"
-                    : index === 1
-                      ? "text-slate-300"
-                      : index === 2
-                        ? "text-amber-600"
-                        : "text-slate-500"
-                }`}
+                className={`size-8 flex items-center justify-center font-bold text-lg ${index === 0
+                  ? "text-yellow-500"
+                  : index === 1
+                    ? "text-slate-300"
+                    : index === 2
+                      ? "text-amber-600"
+                      : "text-slate-500"
+                  }`}
               >
                 #{index + 1}
               </div>

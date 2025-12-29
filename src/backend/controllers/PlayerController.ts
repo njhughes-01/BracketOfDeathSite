@@ -1,10 +1,10 @@
 import { Request, Response, NextFunction } from "express";
 import { Player } from "../models/Player";
 import { IPlayer, IPlayerInput, IPlayerFilter } from "../types/player";
-import { BaseController, RequestWithAuth } from "./base";
+import { BaseCrudController, RequestWithAuth } from "./base";
 import { ApiResponse } from "../types/common";
 
-export class PlayerController extends BaseController<IPlayer> {
+export class PlayerController extends BaseCrudController<IPlayer> {
   constructor() {
     super(Player, "Player");
   }
@@ -76,278 +76,219 @@ export class PlayerController extends BaseController<IPlayer> {
 
   // Get player statistics
   getStats = this.asyncHandler(
-    async (_req: Request, res: Response, next: NextFunction): Promise<void> => {
-      try {
-        const stats = await Player.aggregate([
-          {
-            $group: {
-              _id: null,
-              totalPlayers: { $sum: 1 },
-              avgWinningPercentage: { $avg: "$winningPercentage" },
-              avgBodsPlayed: { $avg: "$bodsPlayed" },
-              totalChampionships: { $sum: "$totalChampionships" },
-              maxWinningPercentage: { $max: "$winningPercentage" },
-              minWinningPercentage: { $min: "$winningPercentage" },
-            },
+    async (_req: Request, res: Response): Promise<void> => {
+      const stats = await Player.aggregate([
+        {
+          $group: {
+            _id: null,
+            totalPlayers: { $sum: 1 },
+            avgWinningPercentage: { $avg: "$winningPercentage" },
+            avgBodsPlayed: { $avg: "$bodsPlayed" },
+            totalChampionships: { $sum: "$totalChampionships" },
+            maxWinningPercentage: { $max: "$winningPercentage" },
+            minWinningPercentage: { $min: "$winningPercentage" },
           },
-        ]);
+        },
+      ]);
 
-        const topPlayers = await Player.find({})
-          .sort({ winningPercentage: -1, totalChampionships: -1 })
-          .limit(10)
-          .select("name winningPercentage totalChampionships bodsPlayed");
+      const topPlayers = await Player.find({})
+        .sort({ winningPercentage: -1, totalChampionships: -1 })
+        .limit(10)
+        .select("name winningPercentage totalChampionships bodsPlayed");
 
-        const response: ApiResponse = {
-          success: true,
-          data: {
-            overview: stats[0] || {},
-            topPlayers,
-          },
-        };
-
-        res.status(200).json(response);
-      } catch (error) {
-        next(error);
-      }
+      this.sendSuccess(res, {
+        overview: stats[0] || {},
+        topPlayers,
+      });
     },
   );
 
   // Aggregate per-player scoring from matches
   getScoringSummary = this.asyncHandler(
-    async (req: Request, res: Response, next: NextFunction): Promise<void> => {
-      try {
-        const { id } = req.params;
+    async (req: Request, res: Response): Promise<void> => {
+      const { id } = req.params;
 
-        // Aggregate from Match collection team1.playerScores / team2.playerScores
-        const summary = await (this.model as any).db.model("Match").aggregate([
-          {
-            $match: {
-              $or: [
-                {
-                  "team1.playerScores.playerId":
-                    new (require("mongoose").Types.ObjectId)(id),
-                },
-                {
-                  "team2.playerScores.playerId":
-                    new (require("mongoose").Types.ObjectId)(id),
-                },
+      // Aggregate from Match collection team1.playerScores / team2.playerScores
+      const summary = await (this.model as any).db.model("Match").aggregate([
+        {
+          $match: {
+            $or: [
+              {
+                "team1.playerScores.playerId":
+                  new (require("mongoose").Types.ObjectId)(id),
+              },
+              {
+                "team2.playerScores.playerId":
+                  new (require("mongoose").Types.ObjectId)(id),
+              },
+            ],
+          },
+        },
+        {
+          $project: {
+            _id: 1,
+            tournamentId: 1,
+            round: 1,
+            status: 1,
+            team1: 1,
+            team2: 1,
+            scores: {
+              $concatArrays: [
+                { $ifNull: ["$team1.playerScores", []] },
+                { $ifNull: ["$team2.playerScores", []] },
               ],
             },
           },
-          {
-            $project: {
-              _id: 1,
-              tournamentId: 1,
-              round: 1,
-              status: 1,
-              team1: 1,
-              team2: 1,
-              scores: {
-                $concatArrays: [
-                  { $ifNull: ["$team1.playerScores", []] },
-                  { $ifNull: ["$team2.playerScores", []] },
-                ],
-              },
-            },
+        },
+        { $unwind: "$scores" },
+        {
+          $match: {
+            "scores.playerId": new (require("mongoose").Types.ObjectId)(id),
           },
-          { $unwind: "$scores" },
-          {
-            $match: {
-              "scores.playerId": new (require("mongoose").Types.ObjectId)(id),
-            },
+        },
+        {
+          $group: {
+            _id: "$scores.playerId",
+            matchesWithPoints: { $sum: 1 },
+            totalPoints: { $sum: { $ifNull: ["$scores.score", 0] } },
           },
-          {
-            $group: {
-              _id: "$scores.playerId",
-              matchesWithPoints: { $sum: 1 },
-              totalPoints: { $sum: { $ifNull: ["$scores.score", 0] } },
-            },
-          },
-        ]);
+        },
+      ]);
 
-        const data = summary[0] || { matchesWithPoints: 0, totalPoints: 0 };
-
-        const response: ApiResponse = {
-          success: true,
-          data,
-        };
-
-        res.status(200).json(response);
-      } catch (error) {
-        next(error);
-      }
+      const data = summary[0] || { matchesWithPoints: 0, totalPoints: 0 };
+      this.sendSuccess(res, data);
     },
   );
 
   // Get players by championship count
   getChampions = this.asyncHandler(
-    async (req: Request, res: Response, next: NextFunction): Promise<void> => {
-      try {
-        const minChampionships = parseInt(req.query.min as string) || 1;
+    async (req: Request, res: Response): Promise<void> => {
+      const minChampionships = parseInt(req.query.min as string) || 1;
 
-        const champions = await Player.find({
-          totalChampionships: { $gte: minChampionships },
-        })
-          .sort({ totalChampionships: -1, winningPercentage: -1 })
-          .select(
-            "name totalChampionships individualChampionships divisionChampionships winningPercentage bodsPlayed",
-          );
+      const champions = await Player.find({
+        totalChampionships: { $gte: minChampionships },
+      })
+        .sort({ totalChampionships: -1, winningPercentage: -1 })
+        .select(
+          "name totalChampionships individualChampionships divisionChampionships winningPercentage bodsPlayed",
+        );
 
-        const response: ApiResponse = {
-          success: true,
-          data: champions,
-        };
-
-        res.status(200).json(response);
-      } catch (error) {
-        next(error);
-      }
+      this.sendSuccess(res, champions);
     },
   );
 
   // Get player performance trends
   getPerformanceTrends = this.asyncHandler(
-    async (req: Request, res: Response, next: NextFunction): Promise<void> => {
-      try {
-        const { id } = req.params;
+    async (req: Request, res: Response): Promise<void> => {
+      const { id } = req.params;
 
-        const player = await Player.findById(id);
-        if (!player) {
-          this.sendError(res, 404, "Player not found");
-          return;
-        }
-
-        // This would ideally query tournament results for trend analysis
-        // For now, we'll return basic performance metrics
-        const performanceData = {
-          currentWinningPercentage: player.winningPercentage,
-          championshipRatio:
-            player.bodsPlayed > 0
-              ? player.totalChampionships / player.bodsPlayed
-              : 0,
-          gamesPerBod:
-            player.bodsPlayed > 0 ? player.gamesPlayed / player.bodsPlayed : 0,
-          consistencyScore: this.calculateConsistencyScore(player),
-        };
-
-        const response: ApiResponse = {
-          success: true,
-          data: performanceData,
-        };
-
-        res.status(200).json(response);
-      } catch (error) {
-        next(error);
+      const player = await Player.findById(id);
+      if (!player) {
+        this.sendNotFound(res, "Player");
+        return;
       }
+
+      // This would ideally query tournament results for trend analysis
+      // For now, we'll return basic performance metrics
+      const performanceData = {
+        currentWinningPercentage: player.winningPercentage,
+        championshipRatio:
+          player.bodsPlayed > 0
+            ? player.totalChampionships / player.bodsPlayed
+            : 0,
+        gamesPerBod:
+          player.bodsPlayed > 0 ? player.gamesPlayed / player.bodsPlayed : 0,
+        consistencyScore: this.calculateConsistencyScore(player),
+      };
+
+      this.sendSuccess(res, performanceData);
     },
   );
 
   // Update player statistics (for data migration/admin use)
   updateStats = this.asyncHandler(
-    async (
-      req: RequestWithAuth,
-      res: Response,
-      next: NextFunction,
-    ): Promise<void> => {
-      try {
-        const { id } = req.params;
-        const statsUpdate = req.body;
+    async (req: RequestWithAuth, res: Response): Promise<void> => {
+      const { id } = req.params;
+      const statsUpdate = req.body;
 
-        // Validate that required stats are provided
-        const requiredStats = ["gamesPlayed", "gamesWon"];
-        const missing = this.validateRequired(requiredStats, statsUpdate);
+      // Validate that required stats are provided
+      const requiredStats = ["gamesPlayed", "gamesWon"];
+      const missing = this.validateRequired(requiredStats, statsUpdate);
 
-        if (missing.length > 0) {
-          this.sendError(
-            res,
-            400,
-            `Missing required fields: ${missing.join(", ")}`,
-          );
-          return;
-        }
-
-        // Ensure games won doesn't exceed games played
-        if (statsUpdate.gamesWon > statsUpdate.gamesPlayed) {
-          this.sendError(res, 400, "Games won cannot exceed games played");
-          return;
-        }
-
-        const updatedPlayer = await Player.findByIdAndUpdateSafe(
-          id,
-          statsUpdate,
-        );
-
-        if (!updatedPlayer) {
-          this.sendError(res, 404, "Player not found");
-          return;
-        }
-
-        this.sendSuccess(
-          res,
-          updatedPlayer,
-          "Player statistics updated successfully",
-        );
-      } catch (error) {
-        next(error);
+      if (missing.length > 0) {
+        this.sendError(res, `Missing required fields: ${missing.join(", ")}`);
+        return;
       }
+
+      // Ensure games won doesn't exceed games played
+      if (statsUpdate.gamesWon > statsUpdate.gamesPlayed) {
+        this.sendError(res, "Games won cannot exceed games played");
+        return;
+      }
+
+      const updatedPlayer = await (this.model as any).findByIdAndUpdateSafe(
+        id,
+        statsUpdate,
+      );
+
+      if (!updatedPlayer) {
+        this.sendNotFound(res, "Player");
+        return;
+      }
+
+      this.sendSuccess(
+        res,
+        updatedPlayer,
+        "Player statistics updated successfully",
+      );
     },
   );
 
   // Bulk import players (for data migration)
   bulkImport = this.asyncHandler(
-    async (
-      req: RequestWithAuth,
-      res: Response,
-      next: NextFunction,
-    ): Promise<void> => {
-      try {
-        const { players } = req.body;
+    async (req: RequestWithAuth, res: Response): Promise<void> => {
+      const { players } = req.body;
 
-        if (!Array.isArray(players) || players.length === 0) {
-          this.sendError(res, 400, "Players array is required");
-          return;
-        }
-
-        const results = {
-          created: 0,
-          updated: 0,
-          errors: [] as Array<{ name: string; error: string }>,
-        };
-
-        for (const playerData of players) {
-          try {
-            const existingPlayer = await Player.findOne({
-              name: playerData.name,
-            });
-
-            if (existingPlayer) {
-              await Player.findByIdAndUpdateSafe(
-                existingPlayer._id.toString(),
-                playerData,
-              );
-              results.updated++;
-            } else {
-              await Player.create(playerData);
-              results.created++;
-            }
-          } catch (error: any) {
-            results.errors.push({
-              name: playerData.name || "Unknown",
-              error: error.message,
-            });
-          }
-        }
-
-        const response: ApiResponse = {
-          success: true,
-          data: results,
-          message: `Bulk import completed: ${results.created} created, ${results.updated} updated, ${results.errors.length} errors`,
-        };
-
-        res.status(200).json(response);
-      } catch (error) {
-        next(error);
+      if (!Array.isArray(players) || players.length === 0) {
+        this.sendError(res, "Players array is required");
+        return;
       }
+
+      const results = {
+        created: 0,
+        updated: 0,
+        errors: [] as Array<{ name: string; error: string }>,
+      };
+
+      for (const playerData of players) {
+        try {
+          const existingPlayer = await Player.findOne({
+            name: playerData.name,
+          });
+
+          if (existingPlayer) {
+            await (Player as any).findByIdAndUpdateSafe(
+              existingPlayer._id.toString(),
+              playerData,
+            );
+            results.updated++;
+          } else {
+            await Player.create(playerData);
+            results.created++;
+          }
+        } catch (error: any) {
+          results.errors.push({
+            name: playerData.name || "Unknown",
+            error: error.message,
+          });
+        }
+      }
+
+      this.sendSuccess(
+        res,
+        results,
+        `Bulk import completed: ${results.created} created, ${results.updated} updated, ${results.errors.length} errors`,
+      );
     },
   );
 
@@ -389,46 +330,56 @@ export class PlayerController extends BaseController<IPlayer> {
   }
 
   // Override create method to add custom validation
-  override async create(
-    req: RequestWithAuth,
-    res: Response,
-    next: NextFunction,
-  ): Promise<void> {
-    try {
+  override create = this.asyncHandler(
+    async (req: RequestWithAuth, res: Response): Promise<void> => {
       const validationErrors = this.validatePlayerData(req.body);
 
       if (validationErrors.length > 0) {
-        this.sendError(res, 400, validationErrors.join(", "));
+        this.sendValidationError(res, validationErrors);
         return;
       }
 
-      // Call parent create method
-      await super.create(req, res, next);
-    } catch (error) {
-      next(error);
-    }
-  }
+      const item = new this.model(req.body);
+      const savedItem = await item.save();
+      this.sendSuccess(
+        res,
+        savedItem,
+        `${this.modelName} created successfully`,
+        undefined,
+        201,
+      );
+    },
+  );
 
   // Override update method to add custom validation
-  override async update(
-    req: RequestWithAuth,
-    res: Response,
-    next: NextFunction,
-  ): Promise<void> {
-    try {
+  override update = this.asyncHandler(
+    async (req: RequestWithAuth, res: Response): Promise<void> => {
+      const { id } = req.params;
       const validationErrors = this.validatePlayerData(req.body);
 
       if (validationErrors.length > 0) {
-        this.sendError(res, 400, validationErrors.join(", "));
+        this.sendValidationError(res, validationErrors);
         return;
       }
 
-      // Call parent update method
-      await super.update(req, res, next);
-    } catch (error) {
-      next(error);
-    }
-  }
+      const updatedItem = await (this.model as any).findByIdAndUpdateSafe(
+        id,
+        req.body,
+        { new: true, runValidators: true },
+      );
+
+      if (!updatedItem) {
+        this.sendNotFound(res, this.modelName);
+        return;
+      }
+
+      this.sendSuccess(
+        res,
+        updatedItem,
+        `${this.modelName} updated successfully`,
+      );
+    },
+  );
 }
 
-export const playerController = new PlayerController();
+export default new PlayerController();

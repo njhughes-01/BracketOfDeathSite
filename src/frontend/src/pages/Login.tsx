@@ -110,8 +110,7 @@ const Login: React.FC = () => {
       sessionStorage.setItem("redirectAfterLogin", from);
 
       // Use Keycloak direct grant flow
-      const tokenUrl =
-        "/auth/realms/bracketofdeathsite/protocol/openid-connect/token";
+      const tokenUrl = `/auth/realms/${import.meta.env.VITE_KEYCLOAK_REALM || "bracketofdeathsite"}/protocol/openid-connect/token`;
       const response = await fetch(tokenUrl, {
         method: "POST",
         headers: { "Content-Type": "application/x-www-form-urlencoded" },

@@ -63,22 +63,28 @@ export interface Tournament {
   date: string;
   bodNumber: number;
   format:
-    | "M"
-    | "W"
-    | "Mixed"
-    | "Men's Singles"
-    | "Men's Doubles"
-    | "Women's Doubles"
-    | "Mixed Doubles";
+  | "M"
+  | "W"
+  | "Mixed"
+  | "Men's Singles"
+  | "Men's Doubles"
+  | "Women's Doubles"
+  | "Mixed Doubles";
   // Bracket/play structure selected during setup. Optional for legacy data.
   bracketType?:
-    | "single_elimination"
-    | "double_elimination"
-    | "round_robin_playoff";
+  | "single_elimination"
+  | "double_elimination"
+  | "round_robin_playoff";
   location: string;
   advancementCriteria: string;
   notes?: string;
   photoAlbums?: string;
+  // Historical tournament statistics
+  tiebreakers?: number;
+  avgRRGames?: number;
+  avgGames?: number;
+  championSufferingScore?: number;
+  finalistSufferingScore?: number;
   status: "scheduled" | "open" | "active" | "completed" | "cancelled";
   players?: Array<{ _id: string; name: string }>;
   maxPlayers?: number;
@@ -93,6 +99,63 @@ export interface Tournament {
     playerId: string;
     playerName: string;
     tournamentResult?: string;
+  };
+  // Configuration fields
+  seedingConfig?: {
+    method: "historical" | "recent_form" | "elo" | "manual";
+    parameters?: {
+      recentTournamentCount?: number;
+      championshipWeight?: number;
+      winPercentageWeight?: number;
+      avgFinishWeight?: number;
+    };
+  };
+  teamFormationConfig?: {
+    method: "preformed" | "draft" | "statistical_pairing" | "random" | "manual";
+    parameters?: {
+      skillBalancing?: boolean;
+      avoidRecentPartners?: boolean;
+      maxTimesPartnered?: number;
+    };
+  };
+  // Generated tournament data
+  generatedSeeds?: Array<{
+    playerId: string;
+    playerName: string;
+    seed: number;
+    statistics?: {
+      avgFinish?: number;
+      winningPercentage?: number;
+      totalChampionships?: number;
+      bodsPlayed?: number;
+      recentForm?: number;
+    };
+  }>;
+  generatedTeams?: Array<{
+    teamId: string;
+    players: Array<{
+      playerId: string;
+      playerName: string;
+      seed?: number;
+      statistics?: {
+        avgFinish?: number;
+        winningPercentage?: number;
+        totalChampionships?: number;
+        bodsPlayed?: number;
+        recentForm?: number;
+      };
+    }>;
+    combinedSeed?: number;
+    teamName: string;
+    combinedStatistics?: {
+      avgFinish?: number;
+      combinedWinPercentage?: number;
+      totalChampionships?: number;
+      combinedBodsPlayed?: number;
+    };
+  }>;
+  managementState?: {
+    currentRound?: string;
   };
   // Virtuals from backend
   formattedDate?: string;
@@ -113,13 +176,13 @@ export interface TournamentInput {
   date: string | Date;
   bodNumber?: number; // Now optional, will auto-generate
   format:
-    | "M"
-    | "W"
-    | "Mixed"
-    | "Men's Singles"
-    | "Men's Doubles"
-    | "Women's Doubles"
-    | "Mixed Doubles";
+  | "M"
+  | "W"
+  | "Mixed"
+  | "Men's Singles"
+  | "Men's Doubles"
+  | "Women's Doubles"
+  | "Mixed Doubles";
   location: string;
   advancementCriteria: string;
   notes?: string;
@@ -186,6 +249,7 @@ export interface RoundRobinScores {
 export interface BracketScores {
   r16Won?: number;
   r16Lost?: number;
+  r16Matchup?: string;
   qfWon?: number;
   qfLost?: number;
   sfWon?: number;
@@ -222,6 +286,16 @@ export interface TournamentResult {
   performanceGrade?: "A" | "B" | "C" | "D" | "F";
   createdAt: string;
   updatedAt: string;
+}
+
+export interface LeaderboardEntry {
+  _id: string;
+  name: string;
+  points: number;
+  totalWins: number;
+  totalLosses: number;
+  winningPercentage: number;
+  totalChampionships: number;
 }
 
 export interface TournamentResultInput {
@@ -264,9 +338,9 @@ export interface TournamentSetup {
   seedingConfig: SeedingConfig;
   teamFormationConfig: TeamFormationConfig;
   bracketType:
-    | "single_elimination"
-    | "double_elimination"
-    | "round_robin_playoff";
+  | "single_elimination"
+  | "double_elimination"
+  | "round_robin_playoff";
   registrationDeadline?: string;
   maxPlayers: number;
 }
@@ -329,11 +403,11 @@ export interface Match {
     }>;
   };
   status:
-    | "scheduled"
-    | "in-progress"
-    | "in_progress"
-    | "completed"
-    | "confirmed";
+  | "scheduled"
+  | "in-progress"
+  | "in_progress"
+  | "completed"
+  | "confirmed";
   startTime?: string;
   endTime?: string;
   court?: string;
@@ -349,19 +423,23 @@ export interface Match {
 
 export interface TournamentPhase {
   phase:
-    | "setup"
-    | "registration"
-    | "check_in"
-    | "round_robin"
-    | "bracket"
-    | "completed";
+  | "setup"
+  | "registration"
+  | "check_in"
+  | "round_robin"
+  | "bracket"
+  | "completed";
   currentRound?:
-    | "RR_R1"
-    | "RR_R2"
-    | "RR_R3"
-    | "quarterfinal"
-    | "semifinal"
-    | "final";
+  | "RR_R1"
+  | "RR_R2"
+  | "RR_R3"
+  | "quarterfinal"
+  | "semifinal"
+  | "final"
+  | "lbr-round-1"
+  | "lbr-semifinal"
+  | "lbr-final"
+  | "grand-final";
   roundStatus: "not_started" | "in_progress" | "in-progress" | "completed";
   totalMatches: number;
   completedMatches: number;
@@ -419,15 +497,15 @@ export interface MatchUpdate {
 
 export interface TournamentAction {
   action:
-    | "start_registration"
-    | "close_registration"
-    | "start_checkin"
-    | "start_round_robin"
-    | "advance_round"
-    | "start_bracket"
-    | "complete_tournament"
-    | "reset_tournament"
-    | "set_round";
+  | "start_registration"
+  | "close_registration"
+  | "start_checkin"
+  | "start_round_robin"
+  | "advance_round"
+  | "start_bracket"
+  | "complete_tournament"
+  | "reset_tournament"
+  | "set_round";
   parameters?: {
     targetRound?: string;
     resetToPhase?: string;

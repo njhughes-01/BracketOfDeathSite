@@ -9,6 +9,12 @@ export interface ITournament extends BaseDocument {
   advancementCriteria: string;
   notes?: string;
   photoAlbums?: string;
+  // Historical tournament statistics
+  tiebreakers?: number;
+  avgRRGames?: number;
+  avgGames?: number;
+  championSufferingScore?: number;
+  finalistSufferingScore?: number;
   status: TournamentStatus;
   players?: Types.ObjectId[];
   maxPlayers?: number;
@@ -16,8 +22,8 @@ export interface ITournament extends BaseDocument {
   registrationOpensAt?: Date;
   registrationDeadline?: Date;
   allowSelfRegistration: boolean;
-  registeredPlayers?: Types.ObjectId[];
-  waitlistPlayers?: Types.ObjectId[];
+  registeredPlayers?: Array<{ playerId: Types.ObjectId; registeredAt: Date }>;
+  waitlistPlayers?: Array<{ playerId: Types.ObjectId; registeredAt: Date }>;
   champion?: {
     playerId: Types.ObjectId;
     playerName: string;
@@ -55,9 +61,9 @@ export interface ITournament extends BaseDocument {
     };
   };
   bracketType?:
-    | "single_elimination"
-    | "double_elimination"
-    | "round_robin_playoff";
+  | "single_elimination"
+  | "double_elimination"
+  | "round_robin_playoff";
   // Generated tournament data
   generatedSeeds?: Array<{
     playerId: Types.ObjectId;
@@ -119,8 +125,8 @@ export interface ITournamentInput {
 export interface ITournamentUpdate extends Partial<ITournamentInput> {
   _id?: never;
   players?: Types.ObjectId[];
-  registeredPlayers?: Types.ObjectId[];
-  waitlistPlayers?: Types.ObjectId[];
+  registeredPlayers?: Array<{ playerId: Types.ObjectId; registeredAt: Date }>;
+  waitlistPlayers?: Array<{ playerId: Types.ObjectId; registeredAt: Date }>;
   champion?: {
     playerId: Types.ObjectId;
     playerName: string;

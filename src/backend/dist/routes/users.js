@@ -7,19 +7,18 @@ const express_1 = require("express");
 const UserController_1 = __importDefault(require("../controllers/UserController"));
 const auth_1 = require("../middleware/auth");
 const router = (0, express_1.Router)();
-const userController = new UserController_1.default();
 // All user management routes require admin privileges
 router.use(auth_1.requireAdmin);
 // User CRUD operations
-router.get("/", userController.getUsers.bind(userController));
-router.get("/roles", userController.getAvailableRoles.bind(userController));
-router.get("/:id", userController.getUser.bind(userController));
-router.post("/", userController.createUser.bind(userController));
-router.put("/:id", userController.updateUser.bind(userController));
-router.delete("/:id", userController.deleteUser.bind(userController));
-router.post("/claim", userController.claimUser.bind(userController));
+router.get("/", UserController_1.default.getUsers);
+router.get("/roles", UserController_1.default.getAvailableRoles);
+router.get("/:id", UserController_1.default.getUser);
+router.post("/", UserController_1.default.createUser);
+router.put("/:id", UserController_1.default.updateUser);
+router.delete("/:id", UserController_1.default.deleteUser);
+router.post("/claim", UserController_1.default.claimUser);
 // User-specific operations
-router.put("/:id/roles", userController.updateUserRoles.bind(userController));
-router.post("/:id/password", userController.resetPassword.bind(userController));
+router.put("/:id/roles", UserController_1.default.updateUserRoles);
+router.post("/:id/password", UserController_1.default.resetPassword);
 exports.default = router;
 //# sourceMappingURL=users.js.map

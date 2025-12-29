@@ -46,16 +46,33 @@ const Register: React.FC = () => {
     });
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setError("");
 
-    if (formData.password !== formData.confirmPassword) {
+    // Read values directly from form inputs to handle browser autofill
+    const form = e.currentTarget;
+    const passwordInput = form.querySelector<HTMLInputElement>("#password");
+    const confirmPasswordInput =
+      form.querySelector<HTMLInputElement>("#confirmPassword");
+
+    const password = passwordInput?.value || formData.password;
+    const confirmPassword =
+      confirmPasswordInput?.value || formData.confirmPassword;
+
+    // Update formData with actual values from inputs (in case autofill didn't trigger onChange)
+    const actualFormData = {
+      ...formData,
+      password,
+      confirmPassword,
+    };
+
+    if (actualFormData.password !== actualFormData.confirmPassword) {
       setError("Passwords don't match");
       return;
     }
 
-    if (formData.password.length < 8) {
+    if (actualFormData.password.length < 8) {
       setError("Password must be at least 8 characters long");
       return;
     }
@@ -67,7 +84,7 @@ const Register: React.FC = () => {
         email: formData.email,
         firstName: formData.firstName,
         lastName: formData.lastName,
-        password: formData.password,
+        password: actualFormData.password,
         claimToken: claimToken || undefined,
       });
 
@@ -75,8 +92,7 @@ const Register: React.FC = () => {
       if (isSetupMode) {
         try {
           // Use Keycloak direct grant flow to get tokens
-          const tokenUrl =
-            "/auth/realms/bracketofdeathsite/protocol/openid-connect/token";
+          const tokenUrl = `/auth/realms/${import.meta.env.VITE_KEYCLOAK_REALM || "bracketofdeathsite"}/protocol/openid-connect/token`;
           const response = await fetch(tokenUrl, {
             method: "POST",
             headers: { "Content-Type": "application/x-www-form-urlencoded" },
@@ -84,7 +100,7 @@ const Register: React.FC = () => {
               grant_type: "password",
               client_id: "bod-app",
               username: formData.username,
-              password: formData.password,
+              password: actualFormData.password,
             }),
           });
 
@@ -97,6 +113,9 @@ const Register: React.FC = () => {
               id_token: tokenData.id_token,
             });
             localStorage.setItem("hasLoggedInBefore", "true");
+            // Small delay to allow React state to propagate before navigation
+            // This prevents ProtectedRoute from seeing stale isAuthenticated=false
+            await new Promise((resolve) => setTimeout(resolve, 100));
             // Navigate directly to onboarding to claim superadmin
             navigate("/onboarding", { replace: true });
             return;

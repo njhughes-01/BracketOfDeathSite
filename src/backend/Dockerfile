@@ -44,5 +44,9 @@ EXPOSE 3000
 HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
     CMD curl -f http://localhost:3000/api/health || exit 1
 
-# Start the application
-CMD ["node", "dist/server.js"]
+# Copy entrypoint script
+COPY --chown=backend:nodejs entrypoint.sh /app/entrypoint.sh
+RUN chmod +x /app/entrypoint.sh
+
+# Start the application via entrypoint
+ENTRYPOINT ["/bin/sh", "/app/entrypoint.sh"]

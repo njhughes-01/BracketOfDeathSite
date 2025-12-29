@@ -269,7 +269,7 @@ const SettingsPage: React.FC = () => {
     } catch (err: any) {
       setError(
         err.response?.data?.error ||
-          `Failed to remove ${providerName} configuration`,
+        `Failed to remove ${providerName} configuration`,
       );
     } finally {
       setSaving(false);
@@ -427,7 +427,7 @@ const SettingsPage: React.FC = () => {
             </p>
           </div>
           {(activeProvider === "mailjet" && settings?.mailjetConfigured) ||
-          (activeProvider === "mailgun" && settings?.mailgunConfigured) ? (
+            (activeProvider === "mailgun" && settings?.mailgunConfigured) ? (
             <span className="ml-auto px-3 py-1 bg-green-500/20 text-green-500 text-xs font-bold rounded-full border border-green-500/20">
               Active
             </span>
@@ -491,10 +491,14 @@ const SettingsPage: React.FC = () => {
           <form onSubmit={handleSubmit} className="space-y-6">
             {/* General Settings */}
             <div className="space-y-2">
-              <label className="text-sm font-bold text-slate-400 uppercase tracking-wider">
+              <label
+                htmlFor="senderEmail"
+                className="text-sm font-bold text-slate-400 uppercase tracking-wider"
+              >
                 Default Sender Email
               </label>
               <input
+                id="senderEmail"
                 type="email"
                 value={senderEmail}
                 onChange={(e) => setSenderEmail(e.target.value)}
@@ -514,10 +518,14 @@ const SettingsPage: React.FC = () => {
               /* Mailjet Fields */
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="space-y-2">
-                  <label className="text-sm font-bold text-slate-400 uppercase tracking-wider">
+                  <label
+                    htmlFor="mailjetApiKey"
+                    className="text-sm font-bold text-slate-400 uppercase tracking-wider"
+                  >
                     API Key
                   </label>
                   <input
+                    id="mailjetApiKey"
                     type="password"
                     value={apiKey}
                     onChange={(e) => setApiKey(e.target.value)}
@@ -527,10 +535,14 @@ const SettingsPage: React.FC = () => {
                 </div>
 
                 <div className="space-y-2">
-                  <label className="text-sm font-bold text-slate-400 uppercase tracking-wider">
+                  <label
+                    htmlFor="mailjetApiSecret"
+                    className="text-sm font-bold text-slate-400 uppercase tracking-wider"
+                  >
                     API Secret
                   </label>
                   <input
+                    id="mailjetApiSecret"
                     type="password"
                     value={apiSecret}
                     onChange={(e) => setApiSecret(e.target.value)}

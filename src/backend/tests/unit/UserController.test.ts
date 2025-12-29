@@ -1,5 +1,5 @@
 import { Request, Response } from "express";
-import UserController from "../../controllers/UserController";
+import { UserController } from "../../controllers/UserController";
 import keycloakAdminService from "../../services/keycloakAdminService";
 import jwt from "jsonwebtoken";
 
@@ -61,6 +61,7 @@ describe("UserController", () => {
   let mockRes: Partial<Response>;
   let jsonMock: jest.Mock;
   let statusMock: jest.Mock;
+  let nextMock: jest.Mock;
 
   beforeEach(() => {
     userController = new UserController();
@@ -72,6 +73,7 @@ describe("UserController", () => {
       json: jsonMock,
       send: sendMock,
     };
+    nextMock = jest.fn();
     jest.clearAllMocks();
   });
 
@@ -89,19 +91,21 @@ describe("UserController", () => {
         },
       });
 
-      await userController.login(mockReq as Request, mockRes as Response);
+      await userController.login(mockReq as Request, mockRes as Response, nextMock);
 
       expect(jsonMock).toHaveBeenCalledWith({
         success: true,
-        token: "fake-token",
-        refreshToken: "fake-refresh-token",
-        expiresIn: 300,
+        data: {
+          token: "fake-token",
+          refreshToken: "fake-refresh-token",
+          expiresIn: 300,
+        },
       });
     });
 
     it("should return 400 if username/password missing", async () => {
       mockReq = { body: {} };
-      await userController.login(mockReq as Request, mockRes as Response);
+      await userController.login(mockReq as Request, mockRes as Response, nextMock);
       expect(statusMock).toHaveBeenCalledWith(400);
     });
 
@@ -114,7 +118,7 @@ describe("UserController", () => {
         response: { data: { error: "invalid_grant" } },
       });
 
-      await userController.login(mockReq as Request, mockRes as Response);
+      await userController.login(mockReq as Request, mockRes as Response, nextMock);
       expect(statusMock).toHaveBeenCalledWith(401);
     });
   });
@@ -139,7 +143,7 @@ describe("UserController", () => {
         emailVerified: false,
       });
 
-      await userController.register(mockReq as Request, mockRes as Response);
+      await userController.register(mockReq as Request, mockRes as Response, nextMock);
 
       expect(statusMock).toHaveBeenCalledWith(201);
       expect(jsonMock).toHaveBeenCalledWith(
@@ -152,7 +156,7 @@ describe("UserController", () => {
 
     it("should fail with missing fields", async () => {
       mockReq = { body: { userData: { username: "user" } } }; // Missing email/pass
-      await userController.register(mockReq as Request, mockRes as Response);
+      await userController.register(mockReq as Request, mockRes as Response, nextMock);
       expect(statusMock).toHaveBeenCalledWith(400);
       expect(jsonMock).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -168,7 +172,7 @@ describe("UserController", () => {
         response: { status: 409 },
       });
 
-      await userController.register(mockReq as Request, mockRes as Response);
+      await userController.register(mockReq as Request, mockRes as Response, nextMock);
       expect(statusMock).toHaveBeenCalledWith(409);
     });
   });
@@ -191,6 +195,7 @@ describe("UserController", () => {
       await userController.linkPlayerToSelf(
         mockReq as Request,
         mockRes as Response,
+        nextMock
       );
 
       expect(keycloakAdminService.updateUser).toHaveBeenCalledWith("user-1", {
@@ -209,6 +214,7 @@ describe("UserController", () => {
       await userController.linkPlayerToSelf(
         mockReq as Request,
         mockRes as Response,
+        nextMock
       );
       expect(statusMock).toHaveBeenCalledWith(401);
     });
@@ -224,6 +230,7 @@ describe("UserController", () => {
       await userController.resetPassword(
         mockReq as Request,
         mockRes as Response,
+        nextMock
       );
 
       expect(keycloakAdminService.resetUserPassword).toHaveBeenCalledWith(
@@ -247,6 +254,7 @@ describe("UserController", () => {
       await userController.resetPassword(
         mockReq as Request,
         mockRes as Response,
+        nextMock
       );
       expect(statusMock).toHaveBeenCalledWith(400);
     });
@@ -264,7 +272,7 @@ describe("UserController", () => {
         attributes: { playerId: ["player-123"] },
       });
 
-      await userController.deleteUser(mockReq as Request, mockRes as Response);
+      await userController.deleteUser(mockReq as Request, mockRes as Response, nextMock);
 
       expect(keycloakAdminService.deleteUser).toHaveBeenCalledWith("user-1");
       expect(Player.findByIdAndDelete).toHaveBeenCalledWith("player-123");
@@ -287,7 +295,7 @@ describe("UserController", () => {
         attributes: {},
       });
 
-      await userController.deleteUser(mockReq as Request, mockRes as Response);
+      await userController.deleteUser(mockReq as Request, mockRes as Response, nextMock);
 
       expect(keycloakAdminService.deleteUser).toHaveBeenCalledWith("user-1");
       expect(Player.findByIdAndDelete).not.toHaveBeenCalled();

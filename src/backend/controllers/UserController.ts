@@ -1,11 +1,10 @@
 import { Response } from "express";
-import { RequestWithAuth } from "./base";
+import { RequestWithAuth, BaseController } from "./base";
 import { ApiResponse } from "../types/common";
 import {
   User,
   CreateUserInput,
   UpdateUserInput,
-  UserFilters,
   ResetPasswordInput,
   UserRole,
   CreateUserValidation,
@@ -16,18 +15,9 @@ import mailjetService from "../services/MailjetService";
 import jwt from "jsonwebtoken";
 import { Player } from "../models/Player";
 
-class UserController {
-  protected handleError(res: Response, error: any, message: string): void {
-    console.error(message, error);
-    const response: ApiResponse = {
-      success: false,
-      error: error.message || message,
-    };
-    res.status(500).json(response);
-  }
-
-  async getUsers(req: RequestWithAuth, res: Response): Promise<void> {
-    try {
+export class UserController extends BaseController {
+  getUsers = this.asyncHandler(
+    async (req: RequestWithAuth, res: Response): Promise<void> => {
       const { search, max = "100" } = req.query as {
         search?: string;
         max?: string;
@@ -58,87 +48,59 @@ class UserController {
         gender: kcUser.attributes?.gender?.[0],
       }));
 
-      const response: ApiResponse<User[]> = {
-        success: true,
-        data: users,
-        message: `Retrieved ${users.length} users`,
-      };
+      this.sendSuccess(res, users, `Retrieved ${users.length} users`);
+    },
+  );
 
-      res.json(response);
-    } catch (error) {
-      this.handleError(res, error, "Failed to retrieve users");
-    }
-  }
-
-  async getUser(req: RequestWithAuth, res: Response): Promise<void> {
-    try {
+  getUser = this.asyncHandler(
+    async (req: RequestWithAuth, res: Response): Promise<void> => {
       const { id } = req.params;
 
       if (!id) {
-        const response: ApiResponse = {
-          success: false,
-          error: "User ID is required",
-        };
-        res.status(400).json(response);
-        return;
+        return this.sendError(res, "User ID is required", 400);
       }
 
-      const kcUser = await keycloakAdminService.getUser(id);
+      try {
+        const kcUser = await keycloakAdminService.getUser(id);
 
-      const user: User = {
-        id: kcUser.id!,
-        username: kcUser.username,
-        email: kcUser.email,
-        firstName: kcUser.firstName,
-        lastName: kcUser.lastName,
-        fullName:
-          [kcUser.firstName, kcUser.lastName].filter(Boolean).join(" ") ||
-          kcUser.username,
-        enabled: kcUser.enabled,
-        emailVerified: kcUser.emailVerified,
-        roles: kcUser.realmRoles || [],
-        isAdmin:
-          (kcUser.realmRoles || []).includes("admin") ||
-          (kcUser.realmRoles || []).includes("superadmin"),
-        isSuperAdmin: (kcUser.realmRoles || []).includes("superadmin"),
-        playerId: kcUser.attributes?.playerId?.[0],
-        gender: kcUser.attributes?.gender?.[0],
-      };
-
-      const response: ApiResponse<User> = {
-        success: true,
-        data: user,
-      };
-
-      res.json(response);
-    } catch (error: any) {
-      if (error.response?.status === 404) {
-        const response: ApiResponse = {
-          success: false,
-          error: "User not found",
+        const user: User = {
+          id: kcUser.id!,
+          username: kcUser.username,
+          email: kcUser.email,
+          firstName: kcUser.firstName,
+          lastName: kcUser.lastName,
+          fullName:
+            [kcUser.firstName, kcUser.lastName].filter(Boolean).join(" ") ||
+            kcUser.username,
+          enabled: kcUser.enabled,
+          emailVerified: kcUser.emailVerified,
+          roles: kcUser.realmRoles || [],
+          isAdmin:
+            (kcUser.realmRoles || []).includes("admin") ||
+            (kcUser.realmRoles || []).includes("superadmin"),
+          isSuperAdmin: (kcUser.realmRoles || []).includes("superadmin"),
+          playerId: kcUser.attributes?.playerId?.[0],
+          gender: kcUser.attributes?.gender?.[0],
         };
-        res.status(404).json(response);
-        return;
+
+        this.sendSuccess(res, user);
+      } catch (error: any) {
+        if (error.response?.status === 404) {
+          return this.sendNotFound(res, "User");
+        }
+        throw error;
       }
+    },
+  );
 
-      this.handleError(res, error, "Failed to retrieve user");
-    }
-  }
-
-  async createUser(req: RequestWithAuth, res: Response): Promise<void> {
-    try {
+  createUser = this.asyncHandler(
+    async (req: RequestWithAuth, res: Response): Promise<void> => {
       const userData: CreateUserInput = req.body;
 
       // Validate input
       const validation = this.validateCreateUser(userData);
       if (!validation.isValid) {
-        const response: ApiResponse = {
-          success: false,
-          error: "Validation failed",
-          details: validation.errors,
-        };
-        res.status(400).json(response);
-        return;
+        return this.sendValidationError(res, validation.errors || []);
       }
 
       // Ensure default role if none provided
@@ -156,308 +118,226 @@ class UserController {
         },
       };
 
-      const kcUser = await keycloakAdminService.createUser(serviceRequest);
+      try {
+        const kcUser = await keycloakAdminService.createUser(serviceRequest);
 
-      const user: User = {
-        id: kcUser.id!,
-        username: kcUser.username,
-        email: kcUser.email,
-        firstName: kcUser.firstName,
-        lastName: kcUser.lastName,
-        fullName:
-          [kcUser.firstName, kcUser.lastName].filter(Boolean).join(" ") ||
-          kcUser.username,
-        enabled: kcUser.enabled,
-        emailVerified: kcUser.emailVerified,
-        roles: userData.roles,
-        isAdmin:
-          userData.roles.includes("admin") ||
-          userData.roles.includes("superadmin"),
-        isSuperAdmin: userData.roles.includes("superadmin"),
-        playerId: userData.playerId,
-        gender: userData.gender,
-      };
-
-      const response: ApiResponse<User> = {
-        success: true,
-        data: user,
-        message: "User created successfully",
-      };
-
-      res.status(201).json(response);
-    } catch (error: any) {
-      if (error.response?.status === 409) {
-        const response: ApiResponse = {
-          success: false,
-          error: "User with this username or email already exists",
+        const user: User = {
+          id: kcUser.id!,
+          username: kcUser.username,
+          email: kcUser.email,
+          firstName: kcUser.firstName,
+          lastName: kcUser.lastName,
+          fullName:
+            [kcUser.firstName, kcUser.lastName].filter(Boolean).join(" ") ||
+            kcUser.username,
+          enabled: kcUser.enabled,
+          emailVerified: kcUser.emailVerified,
+          roles: userData.roles,
+          isAdmin:
+            userData.roles.includes("admin") ||
+            userData.roles.includes("superadmin"),
+          isSuperAdmin: userData.roles.includes("superadmin"),
+          playerId: userData.playerId,
+          gender: userData.gender,
         };
-        res.status(409).json(response);
-        return;
+
+        this.sendSuccess(res, user, "User created successfully", undefined, 201);
+      } catch (error: any) {
+        if (error.response?.status === 409) {
+          return this.sendError(
+            res,
+            "User with this username or email already exists",
+            409,
+          );
+        }
+        throw error;
       }
+    },
+  );
 
-      this.handleError(res, error, "Failed to create user");
-    }
-  }
-
-  async updateUser(req: RequestWithAuth, res: Response): Promise<void> {
-    try {
+  updateUser = this.asyncHandler(
+    async (req: RequestWithAuth, res: Response): Promise<void> => {
       const { id } = req.params;
       const userData: UpdateUserInput = req.body;
 
       if (!id) {
-        const response: ApiResponse = {
-          success: false,
-          error: "User ID is required",
-        };
-        res.status(400).json(response);
-        return;
+        return this.sendError(res, "User ID is required", 400);
       }
 
       // Validate input
       const validation = this.validateUpdateUser(userData);
       if (!validation.isValid) {
-        const response: ApiResponse = {
-          success: false,
-          error: "Validation failed",
-          details: validation.errors,
-        };
-        res.status(400).json(response);
-        return;
+        return this.sendValidationError(res, validation.errors || []);
       }
 
-      // Fetch existing user to get current attributes
-      const existingUser = await keycloakAdminService.getUser(id);
+      try {
+        // Fetch existing user to get current attributes
+        const existingUser = await keycloakAdminService.getUser(id);
 
-      const { playerId, gender, ...keycloakUpdateData } = userData;
+        const { playerId, gender, ...keycloakUpdateData } = userData;
 
-      const serviceRequest = {
-        ...keycloakUpdateData,
-        attributes: {
-          ...existingUser.attributes, // Preserve existing attributes
-          ...(playerId ? { playerId: [playerId] } : {}),
-          ...(gender ? { gender: [gender] } : {}),
-        },
-      };
-
-      const kcUser = await keycloakAdminService.updateUser(id, serviceRequest);
-
-      const user: User = {
-        id: kcUser.id!,
-        username: kcUser.username,
-        email: kcUser.email,
-        firstName: kcUser.firstName,
-        lastName: kcUser.lastName,
-        fullName:
-          [kcUser.firstName, kcUser.lastName].filter(Boolean).join(" ") ||
-          kcUser.username,
-        enabled: kcUser.enabled,
-        emailVerified: kcUser.emailVerified,
-        roles: kcUser.realmRoles || [],
-        isAdmin:
-          (kcUser.realmRoles || []).includes("admin") ||
-          (kcUser.realmRoles || []).includes("superadmin"),
-        isSuperAdmin: (kcUser.realmRoles || []).includes("superadmin"),
-        playerId: kcUser.attributes?.playerId?.[0],
-        gender: kcUser.attributes?.gender?.[0],
-      };
-
-      const response: ApiResponse<User> = {
-        success: true,
-        data: user,
-        message: "User updated successfully",
-      };
-
-      res.json(response);
-    } catch (error: any) {
-      if (error.response?.status === 404) {
-        const response: ApiResponse = {
-          success: false,
-          error: "User not found",
+        const serviceRequest = {
+          ...keycloakUpdateData,
+          attributes: {
+            ...existingUser.attributes, // Preserve existing attributes
+            ...(playerId ? { playerId: [playerId] } : {}),
+            ...(gender ? { gender: [gender] } : {}),
+          },
         };
-        res.status(404).json(response);
-        return;
+
+        const kcUser = await keycloakAdminService.updateUser(id, serviceRequest);
+
+        const user: User = {
+          id: kcUser.id!,
+          username: kcUser.username,
+          email: kcUser.email,
+          firstName: kcUser.firstName,
+          lastName: kcUser.lastName,
+          fullName:
+            [kcUser.firstName, kcUser.lastName].filter(Boolean).join(" ") ||
+            kcUser.username,
+          enabled: kcUser.enabled,
+          emailVerified: kcUser.emailVerified,
+          roles: kcUser.realmRoles || [],
+          isAdmin:
+            (kcUser.realmRoles || []).includes("admin") ||
+            (kcUser.realmRoles || []).includes("superadmin"),
+          isSuperAdmin: (kcUser.realmRoles || []).includes("superadmin"),
+          playerId: kcUser.attributes?.playerId?.[0],
+          gender: kcUser.attributes?.gender?.[0],
+        };
+
+        this.sendSuccess(res, user, "User updated successfully");
+      } catch (error: any) {
+        if (error.response?.status === 404) {
+          return this.sendNotFound(res, "User");
+        }
+        throw error;
       }
+    },
+  );
 
-      this.handleError(res, error, "Failed to update user");
-    }
-  }
-
-  async deleteUser(req: RequestWithAuth, res: Response): Promise<void> {
-    try {
+  deleteUser = this.asyncHandler(
+    async (req: RequestWithAuth, res: Response): Promise<void> => {
       const { id } = req.params;
 
       if (!id) {
-        const response: ApiResponse = {
-          success: false,
-          error: "User ID is required",
-        };
-        res.status(400).json(response);
-        return;
+        return this.sendError(res, "User ID is required", 400);
       }
 
       // Prevent self-deletion
       if (req.user && req.user.id === id) {
-        const response: ApiResponse = {
-          success: false,
-          error: "Cannot delete your own account",
-        };
-        res.status(403).json(response);
-        return;
+        return this.sendForbidden(res, "Cannot delete your own account");
       }
 
-      // 1. Get user to find linked player
-      const kcUser = await keycloakAdminService.getUser(id);
-      const playerId = kcUser.attributes?.playerId?.[0];
+      try {
+        // 1. Get user to find linked player
+        const kcUser = await keycloakAdminService.getUser(id);
+        const playerId = kcUser.attributes?.playerId?.[0];
 
-      // 2. Delete Keycloak User
-      await keycloakAdminService.deleteUser(id);
+        // 2. Delete Keycloak User
+        await keycloakAdminService.deleteUser(id);
 
-      // 3. Delete Linked Player if exists
-      if (playerId) {
-        try {
-          await Player.findByIdAndDelete(playerId);
-          console.log(`Deleted linked player ${playerId} for user ${id}`);
-        } catch (err) {
-          console.error(`Failed to delete linked player ${playerId}:`, err);
+        // 3. Delete Linked Player if exists
+        if (playerId) {
+          try {
+            await Player.findByIdAndDelete(playerId);
+            console.log(`Deleted linked player ${playerId} for user ${id}`);
+          } catch (err) {
+            console.error(`Failed to delete linked player ${playerId}:`, err);
+          }
         }
+
+        this.sendSuccess(res, null, "User deleted successfully");
+      } catch (error: any) {
+        if (error.response?.status === 404) {
+          return this.sendNotFound(res, "User");
+        }
+        throw error;
       }
+    },
+  );
 
-      const response: ApiResponse = {
-        success: true,
-        message: "User deleted successfully",
-      };
-
-      res.json(response);
-    } catch (error: any) {
-      if (error.response?.status === 404) {
-        const response: ApiResponse = {
-          success: false,
-          error: "User not found",
-        };
-        res.status(404).json(response);
-        return;
-      }
-
-      this.handleError(res, error, "Failed to delete user");
-    }
-  }
-
-  async resetPassword(req: RequestWithAuth, res: Response): Promise<void> {
-    try {
+  resetPassword = this.asyncHandler(
+    async (req: RequestWithAuth, res: Response): Promise<void> => {
       const { id } = req.params;
       const { newPassword, temporary = false }: ResetPasswordInput = req.body;
 
       if (!id) {
-        const response: ApiResponse = {
-          success: false,
-          error: "User ID is required",
-        };
-        res.status(400).json(response);
-        return;
+        return this.sendError(res, "User ID is required", 400);
       }
 
       if (!newPassword || newPassword.length < 8) {
-        const response: ApiResponse = {
-          success: false,
-          error: "Password must be at least 8 characters long",
-        };
-        res.status(400).json(response);
-        return;
+        return this.sendError(
+          res,
+          "Password must be at least 8 characters long",
+          400,
+        );
       }
 
-      await keycloakAdminService.resetUserPassword(id, newPassword, temporary);
+      try {
+        await keycloakAdminService.resetUserPassword(id, newPassword, temporary);
 
-      // Clear required actions to ensure user can login immediately
-      if (!temporary) {
-        try {
-          await keycloakAdminService.clearUserRequiredActions(id);
-        } catch (error) {
-          console.warn(
-            "Could not clear required actions after password reset:",
-            error,
-          );
+        // Clear required actions to ensure user can login immediately
+        if (!temporary) {
+          try {
+            await keycloakAdminService.clearUserRequiredActions(id);
+          } catch (error) {
+            console.warn(
+              "Could not clear required actions after password reset:",
+              error,
+            );
+          }
         }
+
+        this.sendSuccess(
+          res,
+          null,
+          `Password ${temporary ? "reset" : "updated"} successfully`,
+        );
+      } catch (error: any) {
+        if (error.response?.status === 404) {
+          return this.sendNotFound(res, "User");
+        }
+        throw error;
       }
+    },
+  );
 
-      const response: ApiResponse = {
-        success: true,
-        message: `Password ${temporary ? "reset" : "updated"} successfully`,
-      };
-
-      res.json(response);
-    } catch (error: any) {
-      if (error.response?.status === 404) {
-        const response: ApiResponse = {
-          success: false,
-          error: "User not found",
-        };
-        res.status(404).json(response);
-        return;
-      }
-
-      this.handleError(res, error, "Failed to reset password");
-    }
-  }
-
-  async updateUserRoles(req: RequestWithAuth, res: Response): Promise<void> {
-    try {
+  updateUserRoles = this.asyncHandler(
+    async (req: RequestWithAuth, res: Response): Promise<void> => {
       const { id } = req.params;
       const { roles }: { roles: string[] } = req.body;
 
       if (!id) {
-        const response: ApiResponse = {
-          success: false,
-          error: "User ID is required",
-        };
-        res.status(400).json(response);
-        return;
+        return this.sendError(res, "User ID is required", 400);
       }
 
       if (!roles || !Array.isArray(roles)) {
-        const response: ApiResponse = {
-          success: false,
-          error: "Roles array is required",
-        };
-        res.status(400).json(response);
-        return;
+        return this.sendError(res, "Roles array is required", 400);
       }
 
       // Validate roles
       const validRoles = ["superadmin", "admin", "user"];
       const invalidRoles = roles.filter((role) => !validRoles.includes(role));
       if (invalidRoles.length > 0) {
-        const response: ApiResponse = {
-          success: false,
-          error: `Invalid roles: ${invalidRoles.join(", ")}`,
-        };
-        res.status(400).json(response);
-        return;
+        return this.sendError(res, `Invalid roles: ${invalidRoles.join(", ")}`, 400);
       }
 
-      await keycloakAdminService.setUserRoles(id, roles);
-
-      const response: ApiResponse = {
-        success: true,
-        message: "User roles updated successfully",
-      };
-
-      res.json(response);
-    } catch (error: any) {
-      if (error.response?.status === 404) {
-        const response: ApiResponse = {
-          success: false,
-          error: "User not found",
-        };
-        res.status(404).json(response);
-        return;
+      try {
+        await keycloakAdminService.setUserRoles(id, roles);
+        this.sendSuccess(res, null, "User roles updated successfully");
+      } catch (error: any) {
+        if (error.response?.status === 404) {
+          return this.sendNotFound(res, "User");
+        }
+        throw error;
       }
+    },
+  );
 
-      this.handleError(res, error, "Failed to update user roles");
-    }
-  }
-
-  async getAvailableRoles(req: RequestWithAuth, res: Response): Promise<void> {
-    try {
+  getAvailableRoles = this.asyncHandler(
+    async (req: RequestWithAuth, res: Response): Promise<void> => {
       const kcRoles = await keycloakAdminService.getAvailableRoles();
 
       const roles: UserRole[] = kcRoles.map((role) => ({
@@ -466,37 +346,21 @@ class UserController {
         description: role.description,
       }));
 
-      const response: ApiResponse<UserRole[]> = {
-        success: true,
-        data: roles,
-      };
+      this.sendSuccess(res, roles);
+    },
+  );
 
-      res.json(response);
-    } catch (error) {
-      this.handleError(res, error, "Failed to retrieve available roles");
-    }
-  }
-  async linkPlayerToSelf(req: RequestWithAuth, res: Response): Promise<void> {
-    try {
+  linkPlayerToSelf = this.asyncHandler(
+    async (req: RequestWithAuth, res: Response): Promise<void> => {
       const userId = req.user?.id;
       const { playerId } = req.body;
 
       if (!userId) {
-        const response: ApiResponse = {
-          success: false,
-          error: "User not authenticated",
-        };
-        res.status(401).json(response);
-        return;
+        return this.sendUnauthorized(res);
       }
 
       if (!playerId) {
-        const response: ApiResponse = {
-          success: false,
-          error: "Player ID is required",
-        };
-        res.status(400).json(response);
-        return;
+        return this.sendError(res, "Player ID is required", 400);
       }
 
       // Update the user's attributes
@@ -529,34 +393,22 @@ class UserController {
         gender: kcUser.attributes?.gender?.[0],
       };
 
-      const response: ApiResponse<User> = {
-        success: true,
-        data: user,
-        message: "Player profile linked successfully",
-      };
+      this.sendSuccess(res, user, "Player profile linked successfully");
+    },
+  );
 
-      res.json(response);
-    } catch (error: any) {
-      this.handleError(res, error, "Failed to link player profile");
-    }
-  }
-
-  async claimUser(req: RequestWithAuth, res: Response): Promise<void> {
-    try {
+  claimUser = this.asyncHandler(
+    async (req: RequestWithAuth, res: Response): Promise<void> => {
       const { email, playerId } = req.body;
 
       if (!email || !playerId) {
-        res
-          .status(400)
-          .json({ success: false, error: "Email and Player ID are required" });
-        return;
+        return this.sendError(res, "Email and Player ID are required", 400);
       }
 
       // 1. Verify player exists
       const player = await Player.findById(playerId);
       if (!player) {
-        res.status(404).json({ success: false, error: "Player not found" });
-        return;
+        return this.sendNotFound(res, "Player");
       }
 
       // 2. Generate Claim Token
@@ -569,23 +421,17 @@ class UserController {
       // 3. Send Email
       await mailjetService.sendClaimInvitation(email, token, player.name);
 
-      res.json({ success: true, message: "Invitation sent successfully" });
-    } catch (error: any) {
-      this.handleError(res, error, "Failed to send claim invitation");
-    }
-  }
+      this.sendSuccess(res, null, "Invitation sent successfully");
+    },
+  );
 
   // Public Login endpoint (proxy to Keycloak for scripts/testing)
-  async login(req: RequestWithAuth, res: Response): Promise<void> {
-    try {
+  login = this.asyncHandler(
+    async (req: RequestWithAuth, res: Response): Promise<void> => {
       const { username, password } = req.body;
 
       if (!username || !password) {
-        res.status(400).json({
-          success: false,
-          error: "Username and password are required",
-        });
-        return;
+        return this.sendError(res, "Username and password are required", 400);
       }
 
       const tokenUrl = `${process.env.KEYCLOAK_URL}/realms/${process.env.KEYCLOAK_REALM}/protocol/openid-connect/token`;
@@ -606,8 +452,7 @@ class UserController {
           }),
         );
 
-        res.json({
-          success: true,
+        this.sendSuccess(res, {
           token: response.data.access_token,
           refreshToken: response.data.refresh_token,
           expiresIn: response.data.expires_in,
@@ -617,16 +462,14 @@ class UserController {
           "Keycloak login failed:",
           authError.response?.data || authError.message,
         );
-        res.status(401).json({ success: false, error: "Invalid credentials" });
+        return this.sendUnauthorized(res, "Invalid credentials");
       }
-    } catch (error) {
-      this.handleError(res, error, "Login failed");
-    }
-  }
+    },
+  );
 
   // Public Registration endpoint (moved logic from routes/auth.ts to controller for better organization)
-  async register(req: RequestWithAuth, res: Response): Promise<void> {
-    try {
+  register = this.asyncHandler(
+    async (req: RequestWithAuth, res: Response): Promise<void> => {
       let { userData, claimToken } = req.body;
 
       // Handle flat request body (frontend sends flat data)
@@ -654,23 +497,17 @@ class UserController {
           }
         } catch (e) {
           console.error("Invalid claim token", e);
-          // Proceed without linking if token is invalid? Or fail?
-          // For now, let's fail to prevent security issues if someone thinks they are claiming but aren't
-          res
-            .status(400)
-            .json({ success: false, error: "Invalid or expired claim token" });
-          return;
+          return this.sendError(res, "Invalid or expired claim token", 400);
         }
       }
 
       // Validate required fields
       if (!userData.username || !userData.email || !userData.password) {
-        const response: ApiResponse = {
-          success: false,
-          error: "Missing required fields: username, email, password",
-        };
-        res.status(400).json(response);
-        return;
+        return this.sendError(
+          res,
+          "Missing required fields: username, email, password",
+          400,
+        );
       }
 
       // Validate username
@@ -679,32 +516,21 @@ class UserController {
         userData.username.length > CreateUserValidation.username.maxLength ||
         !CreateUserValidation.username.pattern.test(userData.username)
       ) {
-        const response: ApiResponse = {
-          success: false,
-          error: "Invalid username format",
-        };
-        res.status(400).json(response);
-        return;
+        return this.sendError(res, "Invalid username format", 400);
       }
 
       // Validate email
       if (!CreateUserValidation.email.pattern.test(userData.email)) {
-        const response: ApiResponse = {
-          success: false,
-          error: "Invalid email format",
-        };
-        res.status(400).json(response);
-        return;
+        return this.sendError(res, "Invalid email format", 400);
       }
 
       // Validate password
       if (userData.password.length < CreateUserValidation.password.minLength) {
-        const response: ApiResponse = {
-          success: false,
-          error: `Password must be at least ${CreateUserValidation.password.minLength} characters`,
-        };
-        res.status(400).json(response);
-        return;
+        return this.sendError(
+          res,
+          `Password must be at least ${CreateUserValidation.password.minLength} characters`,
+          400,
+        );
       }
 
       // Force safe roles for public registration
@@ -722,104 +548,94 @@ class UserController {
         emailVerified: false,
         attributes: {
           ...(linkedPlayerId ? { playerId: [linkedPlayerId] } : {}),
-          // Default gender not set for public registration unless passed?
-          // Assuming we just leave it undefined for now as it wasn't in CreateUserInput before
         },
       };
 
-      // Create user in Keycloak
-      const createdUser = await keycloakAdminService.createUser(safeUserData);
+      try {
+        // Create user in Keycloak
+        const createdUser = await keycloakAdminService.createUser(safeUserData);
 
-      const response: ApiResponse = {
-        success: true,
-        data: {
-          id: createdUser.id,
-          username: createdUser.username,
-          email: createdUser.email,
-          message: "Registration successful. Please login.",
-        },
-      };
-
-      res.status(201).json(response);
-    } catch (error: any) {
-      if (error.response?.status === 409) {
-        const response: ApiResponse = {
-          success: false,
-          error: "User with this username or email already exists",
-        };
-        res.status(409).json(response);
-        return;
+        this.sendSuccess(
+          res,
+          {
+            id: createdUser.id,
+            username: createdUser.username,
+            email: createdUser.email,
+          },
+          "Registration successful. Please login.",
+          undefined,
+          201,
+        );
+      } catch (error: any) {
+        if (error.response?.status === 409) {
+          return this.sendError(
+            res,
+            "User with this username or email already exists",
+            409,
+          );
+        }
+        throw error;
       }
-      this.handleError(res, error, "Registration failed");
-    }
-  }
+    },
+  );
 
-  async requestEmailVerification(
-    req: RequestWithAuth,
-    res: Response,
-  ): Promise<void> {
-    try {
+  requestEmailVerification = this.asyncHandler(
+    async (req: RequestWithAuth, res: Response): Promise<void> => {
       const userId = req.user?.id;
       if (!userId) {
-        res.status(401).json({ success: false, error: "Not authenticated" });
-        return;
+        return this.sendUnauthorized(res);
       }
 
       const kcUser = await keycloakAdminService.getUser(userId);
       if (kcUser.emailVerified) {
-        res
-          .status(400)
-          .json({ success: false, error: "Email already verified" });
-        return;
+        return this.sendError(res, "Email already verified", 400);
       }
 
       await keycloakAdminService.executeActionsEmail(userId, ["VERIFY_EMAIL"]);
 
-      res.json({ success: true, message: "Verification email sent" });
-    } catch (error) {
-      this.handleError(res, error, "Failed to send verification email");
-    }
-  }
+      this.sendSuccess(res, null, "Verification email sent");
+    },
+  );
 
-  async publicRequestPasswordReset(
-    req: RequestWithAuth,
-    res: Response,
-  ): Promise<void> {
-    try {
-      const { email } = req.body;
-      if (!email) {
-        res.status(400).json({ success: false, error: "Email is required" });
-        return;
+  publicRequestPasswordReset = this.asyncHandler(
+    async (req: RequestWithAuth, res: Response): Promise<void> => {
+      try {
+        const { email } = req.body;
+        if (!email) {
+          return this.sendError(res, "Email is required", 400);
+        }
+
+        // Find user by email
+        const users = await keycloakAdminService.getUsers(email);
+        // Keycloak search is fuzzy, so filter exact match
+        const user = users.find(
+          (u) => u.email.toLowerCase() === email.toLowerCase(),
+        );
+
+        if (user && user.id) {
+          // Trigger Keycloak reset email
+          await keycloakAdminService.executeActionsEmail(user.id, [
+            "UPDATE_PASSWORD",
+          ]);
+        }
+
+        // Always return success to prevent user enumeration
+        this.sendSuccess(
+          res,
+          null,
+          "If an account exists, a password reset email has been sent.",
+        );
+      } catch (error: any) {
+        // Log but return success
+        console.error("Password reset request error:", error);
+        this.sendSuccess(
+          res,
+          null,
+          "If an account exists, a password reset email has been sent.",
+        );
       }
-
-      // Find user by email
-      const users = await keycloakAdminService.getUsers(email);
-      // Keycloak search is fuzzy, so filter exact match
-      const user = users.find(
-        (u) => u.email.toLowerCase() === email.toLowerCase(),
-      );
-
-      if (user && user.id) {
-        // Trigger Keycloak reset email
-        await keycloakAdminService.executeActionsEmail(user.id, [
-          "UPDATE_PASSWORD",
-        ]);
-      }
-
-      // Always return success to prevent user enumeration
-      res.json({
-        success: true,
-        message: "If an account exists, a password reset email has been sent.",
-      });
-    } catch (error: any) {
-      // Log but return success
-      console.error("Password reset request error:", error);
-      res.json({
-        success: true,
-        message: "If an account exists, a password reset email has been sent.",
-      });
-    }
-  }
+    },
+  );
 
   private validateCreateUser(userData: CreateUserInput): {
     isValid: boolean;
@@ -902,15 +718,12 @@ class UserController {
       );
       if (invalidRoles.length > 0) {
         errors.push(`Invalid roles: ${invalidRoles.join(", ")}`);
-        errors.push(`Invalid roles: ${invalidRoles.join(", ")}`);
       }
     }
 
     // Gender validation
     if (userData.gender) {
-      // @ts-ignore - CreateUserValidation has gender but TS might not see it yet if types file update wasn't flushed or context issue
-      // actually UpdateUserValidation should have gender, let's check what I added to types
-      // I added gender to UpdateUserValidation in previous tool call
+      // @ts-ignore
       if (
         UpdateUserValidation.gender &&
         !UpdateUserValidation.gender.validOptions.includes(userData.gender)
@@ -926,4 +739,4 @@ class UserController {
   }
 }
 
-export default UserController;
+export default new UserController();

@@ -16,7 +16,7 @@ services:
     image: quay.io/keycloak/keycloak:23.0
     container_name: bod-keycloak
     restart: unless-stopped
-    command: [ "start-dev" ]
+    entrypoint: [ "/bin/sh", "/scripts/keycloak-entrypoint.sh", "start-dev" ]
     depends_on:
       secrets-init:
         condition: service_completed_successfully
@@ -24,24 +24,26 @@ services:
         condition: service_healthy
     volumes:
       - secrets-data:/secrets:ro
+      - ./scripts/keycloak-entrypoint.sh:/scripts/keycloak-entrypoint.sh:ro
     environment:
-      KEYCLOAK_ADMIN: admin
-      KEYCLOAK_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD:-keycloak123}
+      KEYCLOAK_ADMIN: ${KEYCLOAK_ADMIN_USER:-admin}
       KC_DB: postgres
       KC_DB_URL: jdbc:postgresql://keycloak-db:5432/keycloak
-      KC_DB_USERNAME: keycloak
+      KC_DB_USERNAME: ${KEYCLOAK_DB_USER:-keycloak}
       KC_DB_PASSWORD: ${KEYCLOAK_DB_PASSWORD:-keycloak123}
       KC_HOSTNAME_STRICT: false
       KC_HOSTNAME_STRICT_HTTPS: false
       KC_HTTP_ENABLED: true
-      KC_HOSTNAME_URL: http://localhost:5173/auth
+      KC_HOSTNAME_URL: http://localhost:8081
+    ports:
+      - "8081:8080"
     networks:
       - bod-network
     healthcheck:
       test: [ "CMD-SHELL", "echo > /dev/tcp/localhost/8080" ]
-      interval: 15s
-      timeout: 5s
-      retries: 3
+      interval: 10s
+      timeout: 10s
+      retries: 20
 
   # Keycloak Database
   keycloak-db:
@@ -56,7 +58,7 @@ services:
       - secrets-data:/secrets:ro
     environment:
       POSTGRES_DB: keycloak
-      POSTGRES_USER: keycloak
+      POSTGRES_USER: ${KEYCLOAK_DB_USER:-keycloak}
       POSTGRES_PASSWORD: ${KEYCLOAK_DB_PASSWORD:-keycloak123}
     networks:
       - bod-network
@@ -72,6 +74,8 @@ services:
     container_name: bod-mongodb
     restart: unless-stopped
     command: [ "mongod", "--logpath", "/var/log/mongodb/mongod.log", "--logappend", "--quiet" ]
+    ports:
+      - "27017:27017"
     depends_on:
       secrets-init:
         condition: service_completed_successfully
@@ -81,9 +85,9 @@ services:
       - secrets-data:/secrets:ro
       - ./scripts/init-mongo.js:/docker-entrypoint-initdb.d/init-mongo.js:ro
     environment:
-      MONGO_INITDB_ROOT_USERNAME: bodadmin
-      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_PASSWORD:-bodpassword123}
-      MONGO_INITDB_DATABASE: bracket_of_death
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_INITDB_ROOT_USERNAME:-bodadmin}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_INITDB_ROOT_PASSWORD:-bodpassword123}
+      MONGO_INITDB_DATABASE: ${MONGO_INITDB_DATABASE:-bracket_of_death}
     networks:
       - bod-network
     healthcheck:
@@ -105,11 +109,11 @@ services:
       - ./scripts:/scripts:ro
       - secrets-data:/secrets:ro
     environment:
-      KEYCLOAK_ADMIN_USER: admin
+      KEYCLOAK_ADMIN_USER: ${KEYCLOAK_ADMIN_USER:-admin}
       KEYCLOAK_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD:-keycloak123}
       KEYCLOAK_CLIENT_SECRET: ${KEYCLOAK_CLIENT_SECRET:-bodclient123}
-      KEYCLOAK_REALM: bracketofdeathsite
-      KEYCLOAK_CLIENT_ID: bod-app
+      KEYCLOAK_REALM: ${KEYCLOAK_REALM:-bracketofdeathsite}
+      KEYCLOAK_CLIENT_ID: ${KEYCLOAK_CLIENT_ID:-bod-app}
     networks:
       - bod-network
     restart: "no"
@@ -129,7 +133,7 @@ services:
       - data-init-status:/app/status
       - secrets-data:/secrets:ro
     environment:
-      MONGODB_URI: mongodb://bodadmin:${MONGO_PASSWORD:-bodpassword123}@mongodb:27017/bracket_of_death?authSource=admin
+      MONGODB_URI: mongodb://${MONGO_INITDB_ROOT_USERNAME:-bodadmin}:${MONGO_INITDB_ROOT_PASSWORD:-bodpassword123}@mongodb:27017/${MONGO_INITDB_DATABASE:-bracket_of_death}?authSource=admin
     networks:
       - bod-network
     restart: "no"
@@ -154,16 +158,16 @@ services:
     environment:
       NODE_ENV: ${NODE_ENV:-development}
       PORT: 3000
-      MONGODB_URI: mongodb://bodadmin:${MONGO_PASSWORD:-bodpassword123}@mongodb:27017/bracket_of_death?authSource=admin
+      MONGODB_URI: mongodb://${MONGO_INITDB_ROOT_USERNAME:-bodadmin}:${MONGO_INITDB_ROOT_PASSWORD:-bodpassword123}@mongodb:27017/${MONGO_INITDB_DATABASE:-bracket_of_death}?authSource=admin
       JWT_SECRET: ${JWT_SECRET:-bracket-of-death-jwt-secret-key-2024}
-      CORS_ORIGIN: ${CORS_ORIGIN:-http://localhost:5173,http://127.0.0.1:5173}
-      KEYCLOAK_URL: http://keycloak:8080
-      KEYCLOAK_REALM: bracketofdeathsite
-      KEYCLOAK_CLIENT_ID: bod-app
+      CORS_ORIGIN: http://localhost:${VITE_PORT:-5173},http://127.0.0.1:${VITE_PORT:-5173}
+      KEYCLOAK_URL: ${KEYCLOAK_URL:-http://keycloak:8080}
+      KEYCLOAK_REALM: ${KEYCLOAK_REALM:-bracketofdeathsite}
+      KEYCLOAK_CLIENT_ID: ${KEYCLOAK_CLIENT_ID:-bod-app}
       KEYCLOAK_CLIENT_SECRET: ${KEYCLOAK_CLIENT_SECRET:-bodclient123}
-      KEYCLOAK_ISSUER: http://keycloak:8080/realms/bracketofdeathsite
-      KEYCLOAK_ADMIN_USER: ${KEYCLOAK_ADMIN_USER}
-      KEYCLOAK_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD}
+      KEYCLOAK_ISSUER: http://localhost:${VITE_PORT:-5173}/auth/realms/${KEYCLOAK_REALM:-bracketofdeathsite}
+      KEYCLOAK_ADMIN_USER: ${KEYCLOAK_ADMIN_USER:-admin}
+      KEYCLOAK_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD:-keycloak123}
       # Mailjet email configuration (optional - can also configure in admin UI)
       MAILJET_API_KEY: ${MAILJET_API_KEY:-}
       MAILJET_API_SECRET: ${MAILJET_API_SECRET:-}
@@ -189,15 +193,15 @@ services:
     volumes:
       - secrets-data:/secrets:ro
     environment:
-      VITE_API_URL: /api
-      VITE_KEYCLOAK_URL: /auth
-      VITE_KEYCLOAK_REALM: bracketofdeathsite
+      VITE_API_URL: ${VITE_API_URL:-/api}
+      VITE_KEYCLOAK_URL: ${VITE_KEYCLOAK_URL:-/auth}
+      VITE_KEYCLOAK_REALM: ${KEYCLOAK_REALM:-bracketofdeathsite}
       VITE_ALLOWED_HOSTS: ${CORS_ORIGIN:-localhost,bod.lightmedia.club}
-      VITE_KEYCLOAK_CLIENT_ID: bod-app
+      VITE_KEYCLOAK_CLIENT_ID: ${KEYCLOAK_CLIENT_ID:-bod-app}
       PROXY_TARGET: http://backend:3000
       KEYCLOAK_PROXY_TARGET: http://keycloak:8080
     ports:
-      - "${PORT:-5173}:5173"
+      - "${VITE_PORT:-5173}:5173"
     networks:
       - bod-network
     healthcheck:

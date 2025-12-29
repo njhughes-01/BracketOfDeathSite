@@ -1,0 +1,24 @@
+# Docker Compose for Integration Tests
+# Provides a minimal test environment with MongoDB only
+
+services:
+  mongodb-test:
+    image: mongo:7.0
+    container_name: bod-mongodb-test
+    ports:
+      - "27018:27017"
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: testadmin
+      MONGO_INITDB_ROOT_PASSWORD: testpassword
+      MONGO_INITDB_DATABASE: bracket_of_death_test
+    networks:
+      - test-network
+    healthcheck:
+      test: [ "CMD", "mongosh", "--eval", "db.adminCommand('ping')" ]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+networks:
+  test-network:
+    driver: bridge

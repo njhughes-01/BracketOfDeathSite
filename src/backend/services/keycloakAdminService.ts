@@ -38,18 +38,23 @@ interface UpdateUserRequest {
   attributes?: Record<string, string[]>;
 }
 
-// ... (KeycloakAdminService class definition)
-
-class KeycloakAdminService {
+export class KeycloakAdminService {
   private client: AxiosInstance;
+  private httpClient: AxiosInstance | typeof axios; // Helper client for raw requests (token fetch)
   private adminToken: string | null = null;
   private tokenExpiry: number = 0;
 
-  constructor() {
-    this.client = axios.create({
-      baseURL: `${process.env.KEYCLOAK_URL}/admin/realms/${process.env.KEYCLOAK_REALM}`,
-      timeout: 10000,
-    });
+  constructor(injectedClient?: AxiosInstance) {
+    if (injectedClient) {
+      this.client = injectedClient;
+      this.httpClient = injectedClient;
+    } else {
+      this.client = axios.create({
+        baseURL: `${process.env.KEYCLOAK_URL}/admin/realms/${process.env.KEYCLOAK_REALM}`,
+        timeout: 10000,
+      });
+      this.httpClient = axios;
+    }
   }
 
   private async getAdminToken(): Promise<string> {
@@ -61,7 +66,7 @@ class KeycloakAdminService {
     }
 
     try {
-      const response = await axios.post(
+      const response = await this.httpClient.post(
         `${process.env.KEYCLOAK_URL}/realms/master/protocol/openid-connect/token`,
         new URLSearchParams({
           username: process.env.KEYCLOAK_ADMIN_USER!,

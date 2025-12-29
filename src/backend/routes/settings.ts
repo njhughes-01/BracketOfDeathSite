@@ -7,11 +7,17 @@ const router = express.Router();
 // GET /api/settings/email/status - Check if email is configured (any authenticated user)
 router.get("/email/status", requireAuth, SettingsController.isEmailConfigured);
 
+// GET /api/settings/email-providers - List available email providers
+router.get("/email-providers", requireSuperAdmin, SettingsController.getEmailProviders);
+
 // GET /api/settings - Fetch current settings (masked)
 router.get("/", requireSuperAdmin, SettingsController.getSettings);
 
 // PUT /api/settings - Update settings
 router.put("/", requireSuperAdmin, SettingsController.updateSettings);
+
+// PUT /api/settings/email - Update email settings specifically
+router.put("/email", requireSuperAdmin, SettingsController.updateEmailSettings);
 
 // POST /api/settings/email/test - Send test email
 router.post("/email/test", requireSuperAdmin, SettingsController.testEmail);
@@ -20,3 +26,4 @@ router.post("/email/test", requireSuperAdmin, SettingsController.testEmail);
 router.post("/email/verify", requireSuperAdmin, SettingsController.verifyCredentials);
 
 export default router;
+

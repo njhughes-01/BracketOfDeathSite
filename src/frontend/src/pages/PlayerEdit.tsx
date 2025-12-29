@@ -108,10 +108,14 @@ const PlayerEdit: React.FC = () => {
             </h3>
             <div className="space-y-3">
               <div>
-                <label className="block text-sm text-slate-400 mb-1 ml-1">
+                <label
+                  htmlFor="name"
+                  className="block text-sm text-slate-400 mb-1 ml-1"
+                >
                   Name
                 </label>
                 <input
+                  id="name"
                   type="text"
                   name="name"
                   value={formData.name}
@@ -121,10 +125,14 @@ const PlayerEdit: React.FC = () => {
                 />
               </div>
               <div>
-                <label className="block text-sm text-slate-400 mb-1 ml-1">
+                <label
+                  htmlFor="pairing"
+                  className="block text-sm text-slate-400 mb-1 ml-1"
+                >
                   Usual Partner
                 </label>
                 <input
+                  id="pairing"
                   type="text"
                   name="pairing"
                   value={formData.pairing}
@@ -174,10 +182,14 @@ const PlayerEdit: React.FC = () => {
 
             <div className="grid grid-cols-2 gap-3">
               <div className="bg-[#1c2230] p-3 rounded-xl border border-white/5">
-                <label className="block text-xs text-slate-500 mb-1">
+                <label
+                  htmlFor="winningPercentage"
+                  className="block text-xs text-slate-500 mb-1"
+                >
                   Win %
                 </label>
                 <input
+                  id="winningPercentage"
                   type="number"
                   name="winningPercentage"
                   value={formData.winningPercentage}
@@ -189,10 +201,14 @@ const PlayerEdit: React.FC = () => {
                 />
               </div>
               <div className="bg-[#1c2230] p-3 rounded-xl border border-white/5">
-                <label className="block text-xs text-slate-500 mb-1">
+                <label
+                  htmlFor="totalChampionships"
+                  className="block text-xs text-slate-500 mb-1"
+                >
                   Titles
                 </label>
                 <input
+                  id="totalChampionships"
                   type="number"
                   name="totalChampionships"
                   value={formData.totalChampionships}
@@ -202,10 +218,14 @@ const PlayerEdit: React.FC = () => {
                 />
               </div>
               <div className="bg-[#1c2230] p-3 rounded-xl border border-white/5">
-                <label className="block text-xs text-slate-500 mb-1">
+                <label
+                  htmlFor="gamesPlayed"
+                  className="block text-xs text-slate-500 mb-1"
+                >
                   Games Played
                 </label>
                 <input
+                  id="gamesPlayed"
                   type="number"
                   name="gamesPlayed"
                   value={formData.gamesPlayed}
@@ -215,10 +235,14 @@ const PlayerEdit: React.FC = () => {
                 />
               </div>
               <div className="bg-[#1c2230] p-3 rounded-xl border border-white/5">
-                <label className="block text-xs text-slate-500 mb-1">
+                <label
+                  htmlFor="bodsPlayed"
+                  className="block text-xs text-slate-500 mb-1"
+                >
                   BODs Played
                 </label>
                 <input
+                  id="bodsPlayed"
                   type="number"
                   name="bodsPlayed"
                   value={formData.bodsPlayed}
