@@ -41,35 +41,62 @@ const getKey = (header: any, callback: any) => {
   });
 };
 
+// Build allowed issuers dynamically from environment variables
+const buildAllowedIssuers = (): [string, ...string[]] => {
+  const realm = process.env.KEYCLOAK_REALM || "bracketofdeathsite";
+  const keycloakUrl = process.env.KEYCLOAK_URL || "http://keycloak:8080";
+  const vitePort = process.env.VITE_PORT || "5173";
+
+  const issuers = new Set<string>();
+
+  // Primary issuer from env (external-facing via proxy)
+  if (process.env.KEYCLOAK_ISSUER) {
+    issuers.add(process.env.KEYCLOAK_ISSUER);
+  }
+
+  // Internal container URL (for direct Keycloak access)
+  issuers.add(`${keycloakUrl}/realms/${realm}`);
+
+  // External Keycloak URL via exposed port 8081 (for dev/direct access)
+  issuers.add(`http://localhost:8081/realms/${realm}`);
+
+  // Frontend proxy paths (tokens obtained via frontend proxy)
+  issuers.add(`http://localhost:${vitePort}/auth/realms/${realm}`);
+  issuers.add(`http://127.0.0.1:${vitePort}/auth/realms/${realm}`);
+
+  const result = Array.from(issuers).filter(Boolean) as string[];
+  // Ensure at least one issuer exists to satisfy jwt.verify's type requirement
+  if (result.length === 0) {
+    return [`${keycloakUrl}/realms/${realm}`] as [string, ...string[]];
+  }
+  return result as [string, ...string[]];
+};
+
 // Verify Keycloak JWT token
 export const verifyKeycloakToken = async (
   token: string,
 ): Promise<KeycloakToken> => {
   return new Promise((resolve, reject) => {
-    // First, let's decode the token to see what audience it has
+    // Decode the token to see its claims for debugging
     const decoded = jwt.decode(token, { complete: true });
-    // Force log for debugging
-    console.log(
-      "DEBUG: Token decoded:",
-      JSON.stringify((decoded as any)?.payload, null, 2),
-    );
+    if (process.env.NODE_ENV !== "production") {
+      console.log(
+        "DEBUG: Token decoded:",
+        JSON.stringify((decoded as any)?.payload, null, 2),
+      );
+    }
+
+    const allowedIssuers = buildAllowedIssuers();
+    if (process.env.NODE_ENV !== "production") {
+      console.log("DEBUG: Allowed issuers:", allowedIssuers);
+    }
 
     jwt.verify(
       token,
       getKey,
       {
         // Don't validate audience since Keycloak uses 'azp' (authorized party) instead of 'aud'
-        issuer: [
-          process.env.KEYCLOAK_ISSUER,
-          `${process.env.KEYCLOAK_URL}/realms/${process.env.KEYCLOAK_REALM}`,
-          `http://localhost:8080/realms/${process.env.KEYCLOAK_REALM}`,
-          `http://localhost:8080/auth/realms/${process.env.KEYCLOAK_REALM}`,
-          // Allow issuers from frontend proxy (vite) which happens in some local configs
-          `http://127.0.0.1:5173/auth/realms/bracketofdeathsite`,
-          `http://localhost:5173/auth/realms/bracketofdeathsite`,
-          `http://localhost:5175/auth/realms/bracketofdeathsite`,
-          `http://localhost:8080/realms/bracketofdeathsite`,
-        ],
+        issuer: allowedIssuers,
         algorithms: ["RS256"],
         clockTolerance: 120, // Tolerate 2 minutes of clock skew
       },

@@ -23,7 +23,9 @@ const PORT = process.env.PORT || 3000;
 app.use(helmet());
 app.use(
   cors({
-    origin: process.env.CORS_ORIGIN?.split(",") || ["http://localhost:8080"],
+    origin: process.env.CORS_ORIGIN?.split(",") || [
+      `http://localhost:${process.env.VITE_PORT || "5173"}`,
+    ],
     credentials: true,
   }),
 );

@@ -1,114 +1,137 @@
-import { IEmailProvider, EmailParams, BrandingConfig, EmailProviderType } from "./email/IEmailProvider";
+import {
+  IEmailProvider,
+  EmailParams,
+  BrandingConfig,
+  EmailProviderType,
+} from "./email/IEmailProvider";
 import { MailjetProvider } from "./email/MailjetProvider";
 import { MailgunProvider } from "./email/MailgunProvider";
 import SystemSettings, { ISystemSettings } from "../models/SystemSettings";
 
 export interface EmailConfig extends BrandingConfig {
-    activeProvider: EmailProviderType;
+  activeProvider: EmailProviderType;
 }
 
 export class EmailService {
-    private fallbackProvider: IEmailProvider;
+  private fallbackProvider: IEmailProvider;
 
-    // Defaults (from env)
-    private defaultMailjetKey = process.env.MAILJET_API_KEY || "";
-    private defaultMailjetSecret = process.env.MAILJET_API_SECRET || "";
-    private defaultSenderEmail = process.env.MAILJET_SENDER_EMAIL || "noreply@bracketofdeath.com";
+  // Defaults (from env)
+  private defaultMailjetKey = process.env.MAILJET_API_KEY || "";
+  private defaultMailjetSecret = process.env.MAILJET_API_SECRET || "";
+  private defaultSenderEmail =
+    process.env.MAILJET_SENDER_EMAIL || "noreply@bracketofdeath.com";
 
-    private defaultMailgunKey = process.env.MAILGUN_API_KEY || "";
-    private defaultMailgunDomain = process.env.MAILGUN_DOMAIN || "";
+  private defaultMailgunKey = process.env.MAILGUN_API_KEY || "";
+  private defaultMailgunDomain = process.env.MAILGUN_DOMAIN || "";
 
-    constructor() {
-        // Default fallback is Mailjet (legacy behavior)
-        this.fallbackProvider = new MailjetProvider(
-            this.defaultMailjetKey,
-            this.defaultMailjetSecret
-        );
-    }
+  constructor() {
+    // Default fallback is Mailjet (legacy behavior)
+    this.fallbackProvider = new MailjetProvider(
+      this.defaultMailjetKey,
+      this.defaultMailjetSecret,
+    );
+  }
 
-    private createProvider(type: EmailProviderType, config: Partial<ISystemSettings>): IEmailProvider | null {
-        switch (type) {
-            case "mailjet":
-                if (config.mailjetApiKey && config.mailjetApiSecret) {
-                    return new MailjetProvider(config.mailjetApiKey, config.mailjetApiSecret);
-                }
-                break;
-            case "mailgun":
-                if (config.mailgunApiKey && config.mailgunDomain) {
-                    return new MailgunProvider(config.mailgunApiKey, config.mailgunDomain);
-                }
-                break;
+  private createProvider(
+    type: EmailProviderType,
+    config: Partial<ISystemSettings>,
+  ): IEmailProvider | null {
+    switch (type) {
+      case "mailjet":
+        if (config.mailjetApiKey && config.mailjetApiSecret) {
+          return new MailjetProvider(
+            config.mailjetApiKey,
+            config.mailjetApiSecret,
+          );
         }
-        return null;
-    }
-
-    async verifyProvider(type: EmailProviderType, config: any): Promise<boolean> {
-        const provider = this.createProvider(type, config);
-        if (!provider) return false;
-        return provider.verifyCredentials();
-    }
-
-    private async getConfig(): Promise<EmailConfig & { provider: IEmailProvider }> {
-        try {
-            // Need to include new fields in selection
-            const settings = await SystemSettings.findOne().select(
-                "+mailjetApiKey +mailjetApiSecret +mailgunApiKey"
-            );
-
-            const activeProvider = settings?.activeProvider || "mailjet";
-
-            let provider: IEmailProvider;
-
-            if (activeProvider === "mailgun") {
-                const apiKey = settings?.mailgunApiKey || this.defaultMailgunKey;
-                const domain = settings?.mailgunDomain || this.defaultMailgunDomain;
-                provider = new MailgunProvider(apiKey, domain);
-            } else {
-                // Default to Mailjet
-                const apiKey = settings?.mailjetApiKey || this.defaultMailjetKey;
-                const apiSecret = settings?.mailjetApiSecret || this.defaultMailjetSecret;
-                provider = new MailjetProvider(apiKey, apiSecret);
-            }
-
-            return {
-                activeProvider,
-                provider,
-
-                // Use generic sender if available, then legacy specific, then fallback
-                senderEmail: settings?.senderEmail || settings?.mailjetSenderEmail ||
-                    (activeProvider === "mailgun"
-                        ? `noreply@${settings?.mailgunDomain || this.defaultMailgunDomain}`
-                        : this.defaultSenderEmail),
-                siteLogo: settings?.siteLogo,
-                siteLogoUrl: settings?.siteLogoUrl,
-                brandName: settings?.brandName || "Bracket of Death",
-                brandPrimaryColor: settings?.brandPrimaryColor || "#4CAF50",
-                brandSecondaryColor: settings?.brandSecondaryColor || "#008CBA",
-            };
-        } catch (error) {
-            console.warn("Failed to fetch system settings, falling back to env:", error);
-            return {
-                activeProvider: "mailjet",
-                provider: this.fallbackProvider,
-                senderEmail: this.defaultSenderEmail,
-                brandName: "Bracket of Death",
-                brandPrimaryColor: "#4CAF50",
-                brandSecondaryColor: "#008CBA",
-            };
+        break;
+      case "mailgun":
+        if (config.mailgunApiKey && config.mailgunDomain) {
+          return new MailgunProvider(
+            config.mailgunApiKey,
+            config.mailgunDomain,
+          );
         }
+        break;
     }
+    return null;
+  }
 
-    // Reuse the template builder logic
-    private buildBrandedTemplate(
-        content: string,
-        config: BrandingConfig,
-    ): string {
-        const logoHtml =
-            config.siteLogo || config.siteLogoUrl
-                ? `<img src="${config.siteLogo || config.siteLogoUrl}" alt="${config.brandName}" style="height:50px;width:auto;display:block;" />`
-                : `<span style="font-size:24px;font-weight:bold;color:${config.brandPrimaryColor};">${config.brandName}</span>`;
+  async verifyProvider(type: EmailProviderType, config: any): Promise<boolean> {
+    const provider = this.createProvider(type, config);
+    if (!provider) return false;
+    return provider.verifyCredentials();
+  }
 
-        return `
+  private async getConfig(): Promise<
+    EmailConfig & { provider: IEmailProvider }
+  > {
+    try {
+      // Need to include new fields in selection
+      const settings = await SystemSettings.findOne().select(
+        "+mailjetApiKey +mailjetApiSecret +mailgunApiKey",
+      );
+
+      const activeProvider = settings?.activeProvider || "mailjet";
+
+      let provider: IEmailProvider;
+
+      if (activeProvider === "mailgun") {
+        const apiKey = settings?.mailgunApiKey || this.defaultMailgunKey;
+        const domain = settings?.mailgunDomain || this.defaultMailgunDomain;
+        provider = new MailgunProvider(apiKey, domain);
+      } else {
+        // Default to Mailjet
+        const apiKey = settings?.mailjetApiKey || this.defaultMailjetKey;
+        const apiSecret =
+          settings?.mailjetApiSecret || this.defaultMailjetSecret;
+        provider = new MailjetProvider(apiKey, apiSecret);
+      }
+
+      return {
+        activeProvider,
+        provider,
+
+        // Use generic sender if available, then legacy specific, then fallback
+        senderEmail:
+          settings?.senderEmail ||
+          settings?.mailjetSenderEmail ||
+          (activeProvider === "mailgun"
+            ? `noreply@${settings?.mailgunDomain || this.defaultMailgunDomain}`
+            : this.defaultSenderEmail),
+        siteLogo: settings?.siteLogo,
+        siteLogoUrl: settings?.siteLogoUrl,
+        brandName: settings?.brandName || "Bracket of Death",
+        brandPrimaryColor: settings?.brandPrimaryColor || "#4CAF50",
+        brandSecondaryColor: settings?.brandSecondaryColor || "#008CBA",
+      };
+    } catch (error) {
+      console.warn(
+        "Failed to fetch system settings, falling back to env:",
+        error,
+      );
+      return {
+        activeProvider: "mailjet",
+        provider: this.fallbackProvider,
+        senderEmail: this.defaultSenderEmail,
+        brandName: "Bracket of Death",
+        brandPrimaryColor: "#4CAF50",
+        brandSecondaryColor: "#008CBA",
+      };
+    }
+  }
+
+  // Reuse the template builder logic
+  private buildBrandedTemplate(
+    content: string,
+    config: BrandingConfig,
+  ): string {
+    const logoHtml =
+      config.siteLogo || config.siteLogoUrl
+        ? `<img src="${config.siteLogo || config.siteLogoUrl}" alt="${config.brandName}" style="height:50px;width:auto;display:block;" />`
+        : `<span style="font-size:24px;font-weight:bold;color:${config.brandPrimaryColor};">${config.brandName}</span>`;
+
+    return `
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -147,10 +170,10 @@ export class EmailService {
     </table>
 </body>
 </html>`;
-    }
+  }
 
-    private createButton(text: string, href: string, color: string): string {
-        return `
+  private createButton(text: string, href: string, color: string): string {
+    return `
             <table role="presentation" cellpadding="0" cellspacing="0" style="margin:15px 0;">
                 <tr>
                     <td style="background-color:${color};border-radius:5px;">
@@ -160,22 +183,22 @@ export class EmailService {
                     </td>
                 </tr>
             </table>`;
-    }
+  }
 
-    async sendEmail(params: EmailParams): Promise<boolean> {
-        const config = await this.getConfig();
-        return config.provider.sendEmail(params, config);
-    }
+  async sendEmail(params: EmailParams): Promise<boolean> {
+    const config = await this.getConfig();
+    return config.provider.sendEmail(params, config);
+  }
 
-    async sendClaimInvitation(
-        email: string,
-        token: string,
-        playerName: string,
-    ): Promise<boolean> {
-        const config = await this.getConfig();
-        const claimLink = `${process.env.FRONTEND_URL || process.env.CORS_ORIGIN?.split(",")[0] || "http://localhost:8080"}/register?claimToken=${token}`;
+  async sendClaimInvitation(
+    email: string,
+    token: string,
+    playerName: string,
+  ): Promise<boolean> {
+    const config = await this.getConfig();
+    const claimLink = `${process.env.FRONTEND_URL || process.env.CORS_ORIGIN?.split(",")[0] || `http://localhost:${process.env.VITE_PORT || "5173"}`}/register?claimToken=${token}`;
 
-        const content = `
+    const content = `
             <h2 style="margin:0 0 20px 0;color:#1a1a2e;">Claim your Player Profile</h2>
             <p>Hello!</p>
             <p>You have been invited to claim your player profile <strong>${playerName}</strong> on ${config.brandName}.</p>
@@ -184,98 +207,111 @@ export class EmailService {
             <p style="margin-top:20px;font-size:12px;color:#888888;">Or copy this link: <a href="${claimLink}" style="color:${config.brandSecondaryColor};">${claimLink}</a></p>
         `;
 
-        return this.sendEmail({
-            to: email,
-            subject: `Claim your ${config.brandName} Profile`,
-            text: `Hello! You have been invited to claim your player profile (${playerName}) on ${config.brandName}. Click here to register: ${claimLink}`,
-            html: this.buildBrandedTemplate(content, config),
-        });
-    }
+    return this.sendEmail({
+      to: email,
+      subject: `Claim your ${config.brandName} Profile`,
+      text: `Hello! You have been invited to claim your player profile (${playerName}) on ${config.brandName}. Click here to register: ${claimLink}`,
+      html: this.buildBrandedTemplate(content, config),
+    });
+  }
 
-    async sendPasswordReset(email: string, link: string): Promise<boolean> {
-        const config = await this.getConfig();
+  async sendPasswordReset(email: string, link: string): Promise<boolean> {
+    const config = await this.getConfig();
 
-        const content = `
+    const content = `
             <h2 style="margin:0 0 20px 0;color:#1a1a2e;">Reset Password</h2>
             <p>You requested a password reset for your ${config.brandName} account.</p>
             ${this.createButton("Reset Password", link, config.brandSecondaryColor)}
             <p>If you didn't ask for this, you can ignore this email.</p>
         `;
 
-        return this.sendEmail({
-            to: email,
-            subject: `Reset your ${config.brandName} Password`,
-            text: `You requested a password reset. Click here to reset: ${link}`,
-            html: this.buildBrandedTemplate(content, config),
-        });
+    return this.sendEmail({
+      to: email,
+      subject: `Reset your ${config.brandName} Password`,
+      text: `You requested a password reset. Click here to reset: ${link}`,
+      html: this.buildBrandedTemplate(content, config),
+    });
+  }
+
+  async sendTestEmail(
+    email: string,
+    testConfig?: Partial<ISystemSettings>,
+  ): Promise<boolean> {
+    // If test config provided, use it; otherwise load from database
+    let config: EmailConfig & { provider: IEmailProvider };
+
+    if (testConfig?.activeProvider) {
+      // Validate credentials are provided
+      if (testConfig.activeProvider === "mailgun") {
+        const apiKey = testConfig.mailgunApiKey || this.defaultMailgunKey;
+        const domain = testConfig.mailgunDomain || this.defaultMailgunDomain;
+        if (!apiKey || !domain) {
+          throw new Error(
+            "Mailgun credentials missing. Please enter API Key and Domain.",
+          );
+        }
+      } else if (testConfig.activeProvider === "mailjet") {
+        const apiKey = testConfig.mailjetApiKey || this.defaultMailjetKey;
+        const apiSecret =
+          testConfig.mailjetApiSecret || this.defaultMailjetSecret;
+        if (!apiKey || !apiSecret) {
+          throw new Error(
+            "Mailjet credentials missing. Please enter API Key and API Secret.",
+          );
+        }
+      }
+
+      // Use provided test configuration
+      const provider =
+        testConfig.activeProvider === "mailgun"
+          ? new MailgunProvider(
+              testConfig.mailgunApiKey || this.defaultMailgunKey,
+              testConfig.mailgunDomain || this.defaultMailgunDomain,
+            )
+          : new MailjetProvider(
+              testConfig.mailjetApiKey || this.defaultMailjetKey,
+              testConfig.mailjetApiSecret || this.defaultMailjetSecret,
+            );
+
+      config = {
+        activeProvider: testConfig.activeProvider,
+        provider,
+        senderEmail:
+          testConfig.senderEmail ||
+          (testConfig.activeProvider === "mailgun"
+            ? `noreply@${testConfig.mailgunDomain || this.defaultMailgunDomain}`
+            : this.defaultSenderEmail),
+        brandName: testConfig.brandName || "Bracket of Death",
+        brandPrimaryColor: testConfig.brandPrimaryColor || "#4CAF50",
+        brandSecondaryColor: testConfig.brandSecondaryColor || "#008CBA",
+      };
+    } else {
+      // Load from database
+      config = await this.getConfig();
     }
 
-    async sendTestEmail(email: string, testConfig?: Partial<ISystemSettings>): Promise<boolean> {
-        // If test config provided, use it; otherwise load from database
-        let config: EmailConfig & { provider: IEmailProvider };
+    const providerName = config.provider.getName();
 
-        if (testConfig?.activeProvider) {
-            // Validate credentials are provided
-            if (testConfig.activeProvider === 'mailgun') {
-                const apiKey = testConfig.mailgunApiKey || this.defaultMailgunKey;
-                const domain = testConfig.mailgunDomain || this.defaultMailgunDomain;
-                if (!apiKey || !domain) {
-                    throw new Error('Mailgun credentials missing. Please enter API Key and Domain.');
-                }
-            } else if (testConfig.activeProvider === 'mailjet') {
-                const apiKey = testConfig.mailjetApiKey || this.defaultMailjetKey;
-                const apiSecret = testConfig.mailjetApiSecret || this.defaultMailjetSecret;
-                if (!apiKey || !apiSecret) {
-                    throw new Error('Mailjet credentials missing. Please enter API Key and API Secret.');
-                }
-            }
-
-            // Use provided test configuration
-            const provider = testConfig.activeProvider === 'mailgun'
-                ? new MailgunProvider(
-                    testConfig.mailgunApiKey || this.defaultMailgunKey,
-                    testConfig.mailgunDomain || this.defaultMailgunDomain
-                  )
-                : new MailjetProvider(
-                    testConfig.mailjetApiKey || this.defaultMailjetKey,
-                    testConfig.mailjetApiSecret || this.defaultMailjetSecret
-                  );
-
-            config = {
-                activeProvider: testConfig.activeProvider,
-                provider,
-                senderEmail: testConfig.senderEmail ||
-                    (testConfig.activeProvider === 'mailgun'
-                        ? `noreply@${testConfig.mailgunDomain || this.defaultMailgunDomain}`
-                        : this.defaultSenderEmail),
-                brandName: testConfig.brandName || "Bracket of Death",
-                brandPrimaryColor: testConfig.brandPrimaryColor || "#4CAF50",
-                brandSecondaryColor: testConfig.brandSecondaryColor || "#008CBA",
-            };
-        } else {
-            // Load from database
-            config = await this.getConfig();
-        }
-
-        const providerName = config.provider.getName();
-
-        const content = `
+    const content = `
             <h2 style="margin:0 0 20px 0;color:#1a1a2e;">🎾 Email Configuration Test</h2>
             <p>This is a test email from <strong>${config.brandName}</strong>.</p>
             <p>Sent using provider: <strong>${providerName}</strong></p>
             <p>If you received this, your email configuration is working correctly!</p>
-            ${this.createButton("Visit Site", process.env.FRONTEND_URL || "http://localhost:8080", config.brandPrimaryColor)}
+            ${this.createButton("Visit Site", process.env.FRONTEND_URL || `http://localhost:${process.env.VITE_PORT || "5173"}`, config.brandPrimaryColor)}
         `;
 
-        // Call provider.sendEmail directly to use the test config
-        // (not this.sendEmail which would load from database)
-        return config.provider.sendEmail({
-            to: email,
-            subject: `${config.brandName} - Test Email (${providerName})`,
-            text: `This is a test email from ${config.brandName} via ${providerName}. If you received this, email configuration is working!`,
-            html: this.buildBrandedTemplate(content, config),
-        }, config);
-    }
+    // Call provider.sendEmail directly to use the test config
+    // (not this.sendEmail which would load from database)
+    return config.provider.sendEmail(
+      {
+        to: email,
+        subject: `${config.brandName} - Test Email (${providerName})`,
+        text: `This is a test email from ${config.brandName} via ${providerName}. If you received this, email configuration is working!`,
+        html: this.buildBrandedTemplate(content, config),
+      },
+      config,
+    );
+  }
 }
 
 export const emailService = new EmailService();
