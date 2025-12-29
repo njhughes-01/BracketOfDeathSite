@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
 import { BrowserRouter } from "react-router-dom";
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import RequireProfile from "../RequireProfile";
@@ -8,9 +8,18 @@ vi.mock("../../contexts/AuthContext", () => ({
     useAuth: vi.fn(),
 }));
 
+// Mock API
+vi.mock("../../services/api", () => ({
+    apiClient: {
+        getProfile: vi.fn(),
+    },
+}));
+
 import { useAuth } from "../../contexts/AuthContext";
+import { apiClient } from "../../services/api";
 
 const mockUseAuth = useAuth as ReturnType<typeof vi.fn>;
+const mockGetProfile = apiClient.getProfile as ReturnType<typeof vi.fn>;
 
 describe("RequireProfile", () => {
     beforeEach(() => {
@@ -21,15 +30,12 @@ describe("RequireProfile", () => {
         return render(<BrowserRouter>{component}</BrowserRouter>);
     };
 
-    it("should render children when profile is complete", () => {
+    it("should render children when profile is complete", async () => {
         mockUseAuth.mockReturnValue({
-            user: {
-                username: "testUser",
-                profileComplete: true,
-                gender: "male",
-            },
+            user: { username: "testUser" },
             isAuthenticated: true,
         });
+        mockGetProfile.mockResolvedValue({ success: true, data: { isComplete: true } });
 
         renderWithRouter(
             <RequireProfile>
@@ -37,17 +43,18 @@ describe("RequireProfile", () => {
             </RequireProfile>
         );
 
-        expect(screen.getByTestId("protected")).toBeInTheDocument();
+        await waitFor(() => {
+            expect(screen.getByTestId("protected")).toBeInTheDocument();
+        });
     });
 
-    it("should redirect when profile is incomplete", () => {
+    it("should redirect when profile is incomplete", async () => {
         mockUseAuth.mockReturnValue({
-            user: {
-                username: "testUser",
-                profileComplete: false,
-            },
+            user: { username: "testUser" },
             isAuthenticated: true,
         });
+        // Mock API returning incomplete
+        mockGetProfile.mockResolvedValue({ success: true, data: { isComplete: false } });
 
         renderWithRouter(
             <RequireProfile>
@@ -55,10 +62,12 @@ describe("RequireProfile", () => {
             </RequireProfile>
         );
 
-        expect(screen.queryByTestId("protected")).not.toBeInTheDocument();
+        await waitFor(() => {
+            expect(screen.queryByTestId("protected")).not.toBeInTheDocument();
+        });
     });
 
-    it("should handle null user", () => {
+    it("should handle null user / initialization", async () => {
         mockUseAuth.mockReturnValue({
             user: null,
             isAuthenticated: false,
@@ -70,6 +79,8 @@ describe("RequireProfile", () => {
             </RequireProfile>
         );
 
-        expect(screen.queryByTestId("protected")).not.toBeInTheDocument();
+        await waitFor(() => {
+            expect(screen.queryByTestId("protected")).not.toBeInTheDocument();
+        });
     });
 });

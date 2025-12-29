@@ -5,7 +5,7 @@
   "main": "dist/server.js",
   "scripts": {
     "start": "node dist/server.js",
-    "dev": "tsx watch src/server.ts",
+    "dev": "tsx watch server.ts",
     "build": "tsc",
     "test": "jest",
     "test:watch": "jest --watch",
@@ -76,9 +76,12 @@
       "**/?(*.)+(spec|test).ts"
     ],
     "collectCoverageFrom": [
-      "src/**/*.ts",
-      "!src/**/*.d.ts",
-      "!src/server.ts"
+      "services/**/*.ts",
+      "controllers/**/*.ts",
+      "middleware/**/*.ts",
+      "models/**/*.ts",
+      "utils/**/*.ts",
+      "routes/**/*.ts"
     ]
   }
 }

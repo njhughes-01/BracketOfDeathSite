@@ -40,9 +40,11 @@ describe("SystemController", () => {
       // Mock empty superadmin list
       (keycloakAdminService.getUsersInRole as jest.Mock).mockResolvedValue([]);
 
+      const nextMock = jest.fn();
       await systemController.getStatus(
         mockReq as RequestWithAuth,
         mockRes as Response,
+        nextMock
       );
 
       expect(keycloakAdminService.getUsersInRole).toHaveBeenCalledWith(
@@ -60,11 +62,16 @@ describe("SystemController", () => {
         { id: "admin-1", username: "admin" } as any,
       ]);
 
+      const nextMock = jest.fn();
       await systemController.getStatus(
         mockReq as RequestWithAuth,
         mockRes as Response,
+        nextMock
       );
 
+      expect(keycloakAdminService.getUsersInRole).toHaveBeenCalledWith(
+        "superadmin",
+      );
       expect(jsonSpy).toHaveBeenCalledWith({
         success: true,
         data: { initialized: true },
@@ -80,9 +87,11 @@ describe("SystemController", () => {
         undefined,
       );
 
+      const nextMock = jest.fn();
       await systemController.claimSuperadmin(
         mockReq as RequestWithAuth,
         mockRes as Response,
+        nextMock
       );
 
       expect(keycloakAdminService.getUsersInRole).toHaveBeenCalledWith(
@@ -104,9 +113,11 @@ describe("SystemController", () => {
         { id: "other-admin", username: "admin" } as any,
       ]);
 
+      const nextMock = jest.fn();
       await systemController.claimSuperadmin(
         mockReq as RequestWithAuth,
         mockRes as Response,
+        nextMock
       );
 
       expect(statusSpy).toHaveBeenCalledWith(403);
@@ -125,17 +136,16 @@ describe("SystemController", () => {
         new Error("Keycloak failure"),
       );
 
+      const nextMock = jest.fn();
       await systemController.getStatus(
         mockReq as RequestWithAuth,
         mockRes as Response,
+        nextMock
       );
 
-      expect(statusSpy).toHaveBeenCalledWith(500);
-      expect(jsonSpy).toHaveBeenCalledWith(
-        expect.objectContaining({
-          success: false,
-        }),
-      );
+      expect(nextMock).toHaveBeenCalledWith(expect.any(Error));
+      expect(statusSpy).not.toHaveBeenCalled();
+      expect(jsonSpy).not.toHaveBeenCalled();
     });
   });
 });

@@ -5,7 +5,7 @@ import React, {
   useRef,
   useMemo,
 } from "react";
-import { useParams, useNavigate, useLocation, Link } from "react-router-dom";
+import { useParams, useLocation, Link } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
 import apiClient from "../services/api";
 // import Card from '../components/ui/Card'; // Replaced
@@ -28,41 +28,62 @@ import type {
   MatchUpdate,
 } from "../types/api";
 
+type RoundName =
+  | "RR_R1"
+  | "RR_R2"
+  | "RR_R3"
+  | "quarterfinal"
+  | "semifinal"
+  | "final"
+  | "lbr-round-1"
+  | "lbr-semifinal"
+  | "lbr-final"
+  | "grand-final";
+
 const TournamentManage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
-  const navigate = useNavigate();
   const location = useLocation();
   const { isAdmin } = useAuth();
 
   // Helpers for persistence
-  function storageKey(suffix: string) {
+  const storageKey = useCallback((suffix: string) => {
     return `tm:${id}:${suffix}`;
-  }
-  function persistSelectedRound(round: string) {
+  }, [id]);
+
+  const persistSelectedRound = useCallback((round: string) => {
     try {
       localStorage.setItem(storageKey("selectedRound"), round);
-    } catch {}
-  }
-  function readPersistedRound(): string | null {
+    } catch (e) {
+      console.error("Storage error:", e);
+    }
+  }, [storageKey]);
+
+  const readPersistedRound = useCallback((): string | null => {
     try {
       return localStorage.getItem(storageKey("selectedRound"));
-    } catch {
+    } catch (e) {
+      console.error("Storage error:", e);
       return null;
     }
-  }
-  function persistToggle(key: string, val: boolean) {
+  }, [storageKey]);
+
+  const persistToggle = useCallback((key: string, val: boolean) => {
     try {
       localStorage.setItem(storageKey(key), String(val));
-    } catch {}
-  }
-  function readToggle(key: string, fallback: boolean): boolean {
+    } catch (e) {
+      console.error("Storage error:", e);
+    }
+  }, [storageKey]);
+
+  const readToggle = useCallback((key: string, fallback: boolean): boolean => {
     try {
       const v = localStorage.getItem(storageKey(key));
       return v === null ? fallback : v === "true";
-    } catch {
+    } catch (e) {
+      console.error("Storage error:", e);
       return fallback;
     }
-  }
+  }, [storageKey]);
 
   const [liveTournament, setLiveTournament] = useState<LiveTournament | null>(
     null,
@@ -70,15 +91,15 @@ const TournamentManage: React.FC = () => {
   const [currentMatches, setCurrentMatches] = useState<Match[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [selectedRound, setSelectedRound] = useState<string>("");
-  const [compactListView, setCompactListView] = useState<boolean>(
+  const [selectedRound, setSelectedRound] = useState<RoundName | "">("");
+  const [compactListView, setCompactListView] = useState<boolean>(() =>
     readToggle("compact", true),
   );
-  const [strictTotals, setStrictTotals] = useState<boolean>(
+  const [strictTotals, setStrictTotals] = useState<boolean>(() =>
     readToggle("strictTotals", true),
   );
   const [requirePerPlayerScores, setRequirePerPlayerScores] = useState<boolean>(
-    readToggle("requirePerPlayerScores", true),
+    () => readToggle("requirePerPlayerScores", true),
   );
   const eventSourceRef = useRef<EventSource | null>(null);
   const streamConnectedRef = useRef(false);
@@ -87,12 +108,12 @@ const TournamentManage: React.FC = () => {
   // Deduplicate matches by stable key to avoid duplicates in UI
   const uniqueMatches = useMemo(() => {
     const seen = new Set<string>();
-    const result: Match[] = [] as any;
+    const result: Match[] = [];
     for (const m of currentMatches) {
       const key =
-        (m as any)._id ||
-        (m as any).id ||
-        `${(m as any).tournamentId}-${(m as any).round}-${(m as any).matchNumber}`;
+        m._id ||
+        m.id ||
+        `${m.tournamentId}-${m.round}-${m.matchNumber}`;
       if (seen.has(key)) continue;
       seen.add(key);
       result.push(m);
@@ -116,14 +137,12 @@ const TournamentManage: React.FC = () => {
         const options = getRoundOptions(bt).map((o) => o.value);
         let nextRound =
           response.data.phase.currentRound || getDefaultRoundFor(bt);
-        const serverRound = (response.data as any).managementState
-          ?.currentRound as string | undefined;
-        if (serverRound && options.includes(serverRound))
-          nextRound = serverRound as any;
-        if (urlRound && options.includes(urlRound)) nextRound = urlRound as any;
-        const persisted = readPersistedRound();
+        const serverRound = response.data.managementState?.currentRound as RoundName | undefined;
+        if (serverRound && options.includes(serverRound)) nextRound = serverRound;
+        if (urlRound && options.includes(urlRound)) nextRound = urlRound as RoundName;
+        const persisted = readPersistedRound() as RoundName | null;
         if (!urlRound && persisted && options.includes(persisted))
-          nextRound = persisted as any;
+          nextRound = persisted;
         setSelectedRound(nextRound);
         initializedRoundRef.current = true;
 
@@ -138,16 +157,16 @@ const TournamentManage: React.FC = () => {
           }
         }
       }
-    } catch (err) {
+    } catch (err: unknown) {
       setError("Failed to load tournament data");
       console.error(err);
     } finally {
       setLoading(false);
     }
-  }, [id, location.search]);
+  }, [id, location.search, readPersistedRound]);
 
   useEffect(() => {
-    let pollInterval: any;
+    let pollInterval: NodeJS.Timeout;
     loadTournamentData();
 
     // Establish SSE stream for realtime updates
@@ -178,7 +197,7 @@ const TournamentManage: React.FC = () => {
             }
 
             const matches = (liveData.matches || []).filter(
-              (m: any) => m.round === round,
+              (m: Match) => m.round === round,
             );
             setCurrentMatches(matches);
           } else {
@@ -197,8 +216,8 @@ const TournamentManage: React.FC = () => {
         streamConnectedRef.current = false;
       });
       // Listen for both snapshot and update (snapshot logic is similar to update usually)
-      es.addEventListener("snapshot", handleUpdate as any);
-      es.addEventListener("update", handleUpdate as any);
+      es.addEventListener("snapshot", handleUpdate as EventListener);
+      es.addEventListener("update", handleUpdate as EventListener);
 
       // Poll as a safety net if stream drops
       pollInterval = setInterval(() => {
@@ -210,7 +229,9 @@ const TournamentManage: React.FC = () => {
         streamConnectedRef.current = false;
         try {
           es.close();
-        } catch {}
+        } catch (e) {
+          console.error("SSE close error:", e);
+        }
         eventSourceRef.current = null;
       };
     }
@@ -231,17 +252,18 @@ const TournamentManage: React.FC = () => {
         setLiveTournament(response.data);
         await loadTournamentData(); // Refresh all data
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
+      const errorObj = err as { response?: { data?: { error?: string; message?: string } }; message?: string };
       const backendMsg =
-        err?.response?.data?.error ||
-        err?.response?.data?.message ||
-        err?.message;
+        errorObj.response?.data?.error ||
+        errorObj.response?.data?.message ||
+        errorObj.message;
       setError(
         backendMsg
           ? `Failed to ${action.action.replace("_", " ")}: ${backendMsg}`
           : `Failed to ${action.action.replace("_", " ")}`,
       );
-      console.error("Execute action error:", err?.response?.data || err);
+      console.error("Execute action error:", errorObj.response?.data || err);
     } finally {
       setLoading(false);
     }
@@ -259,17 +281,18 @@ const TournamentManage: React.FC = () => {
           await loadTournamentData();
         }
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
+      const errorObj = err as { response?: { data?: { error?: string; message?: string } }; message?: string };
       const backendMsg =
-        err?.response?.data?.error ||
-        err?.response?.data?.message ||
-        err?.message;
+        errorObj.response?.data?.error ||
+        errorObj.response?.data?.message ||
+        errorObj.message;
       setError(
         backendMsg
           ? `Failed to update match: ${backendMsg}`
           : "Failed to update match score",
       );
-      console.error("Update match error:", err?.response?.data || err);
+      console.error("Update match error:", errorObj.response?.data || err);
     } finally {
       setLoading(false);
     }
@@ -284,17 +307,18 @@ const TournamentManage: React.FC = () => {
       if (res.success) {
         await loadTournamentData();
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
+      const errorObj = err as { response?: { data?: { error?: string; message?: string } }; message?: string };
       const backendMsg =
-        err?.response?.data?.error ||
-        err?.response?.data?.message ||
-        err?.message;
+        errorObj.response?.data?.error ||
+        errorObj.response?.data?.message ||
+        errorObj.message;
       setError(
         backendMsg
           ? `Failed to generate matches: ${backendMsg}`
           : "Failed to generate matches for this round",
       );
-      console.error("Generate matches error:", err?.response?.data || err);
+      console.error("Generate matches error:", errorObj.response?.data || err);
     } finally {
       setLoading(false);
     }
@@ -306,7 +330,7 @@ const TournamentManage: React.FC = () => {
     try {
       setLoading(true);
       const completed = currentMatches.filter(
-        (m) => (m.status as any) === "completed",
+        (m) => m.status === "completed",
       );
       if (completed.length === 0) return;
 
@@ -499,10 +523,10 @@ const TournamentManage: React.FC = () => {
             </div>
             <div className="h-1 bg-white/5 rounded-full overflow-hidden">
               <div
-                className="h-full bg-primary transition-all duration-500"
+                className="h-full bg-primary transition-all duration-500 progress-bar-fill"
                 style={{
-                  width: `${(liveTournament.phase.completedMatches / Math.max(1, liveTournament.phase.totalMatches)) * 100}%`,
-                }}
+                  "--progress-width": `${(liveTournament.phase.completedMatches / Math.max(1, liveTournament.phase.totalMatches)) * 100}%`,
+                } as React.CSSProperties}
               ></div>
             </div>
           </div>
@@ -594,7 +618,7 @@ const TournamentManage: React.FC = () => {
                     executeTournamentAction({
                       action: isRoundRobin(liveTournament.bracketType)
                         ? "start_round_robin"
-                        : ("start_bracket" as any),
+                        : "start_bracket",
                     })
                   }
                   className="px-4 py-2 rounded-lg bg-accent text-background-dark font-bold hover:brightness-110 text-sm shadow-glow-accent"
@@ -607,54 +631,54 @@ const TournamentManage: React.FC = () => {
               )}
               {(liveTournament.phase.phase === "round_robin" ||
                 liveTournament.phase.phase === "bracket") && (
-                <>
-                  {liveTournament.phase.canAdvance && (
-                    <button
-                      onClick={() =>
-                        executeTournamentAction({
-                          action:
-                            liveTournament.phase.currentRound === "final"
-                              ? "complete_tournament"
-                              : "advance_round",
-                        })
-                      }
-                      className="px-4 py-2 rounded-lg bg-accent text-background-dark font-bold hover:brightness-110 text-sm shadow-glow-accent"
-                      disabled={loading}
-                    >
-                      {liveTournament.phase.currentRound === "final"
-                        ? "Complete Tournament"
-                        : "Advance to Next Round"}
-                    </button>
-                  )}
-                  {liveTournament.phase.phase === "bracket" &&
-                    liveTournament.phase.totalMatches === 0 && (
-                      <button
-                        onClick={() =>
-                          executeTournamentAction({ action: "start_bracket" })
-                        }
-                        className="px-4 py-2 rounded-lg bg-primary text-white font-bold hover:bg-primary-hover text-sm"
-                        disabled={loading}
-                      >
-                        Start Bracket
-                      </button>
-                    )}
-                  {liveTournament.phase.phase === "round_robin" &&
-                    liveTournament.phase.totalMatches === 0 && (
+                  <>
+                    {liveTournament.phase.canAdvance && (
                       <button
                         onClick={() =>
                           executeTournamentAction({
-                            action: "start_round_robin",
+                            action:
+                              liveTournament.phase.currentRound === "final"
+                                ? "complete_tournament"
+                                : "advance_round",
                           })
                         }
-                        className="px-4 py-2 rounded-lg bg-primary text-white font-bold hover:bg-primary-hover text-sm"
+                        className="px-4 py-2 rounded-lg bg-accent text-background-dark font-bold hover:brightness-110 text-sm shadow-glow-accent"
                         disabled={loading}
                       >
-                        Start Round Robin
+                        {liveTournament.phase.currentRound === "final"
+                          ? "Complete Tournament"
+                          : "Advance to Next Round"}
                       </button>
                     )}
-                  {/* Removed redundant/harmful Start Bracket Play button for RR_R3 - advance_round handles this correctly */}
-                </>
-              )}
+                    {liveTournament.phase.phase === "bracket" &&
+                      liveTournament.phase.totalMatches === 0 && (
+                        <button
+                          onClick={() =>
+                            executeTournamentAction({ action: "start_bracket" })
+                          }
+                          className="px-4 py-2 rounded-lg bg-primary text-white font-bold hover:bg-primary-hover text-sm"
+                          disabled={loading}
+                        >
+                          Start Bracket
+                        </button>
+                      )}
+                    {liveTournament.phase.phase === "round_robin" &&
+                      liveTournament.phase.totalMatches === 0 && (
+                        <button
+                          onClick={() =>
+                            executeTournamentAction({
+                              action: "start_round_robin",
+                            })
+                          }
+                          className="px-4 py-2 rounded-lg bg-primary text-white font-bold hover:bg-primary-hover text-sm"
+                          disabled={loading}
+                        >
+                          Start Round Robin
+                        </button>
+                      )}
+                    {/* Removed redundant/harmful Start Bracket Play button for RR_R3 - advance_round handles this correctly */}
+                  </>
+                )}
 
               {/* Danger Zone */}
               <button
@@ -683,9 +707,11 @@ const TournamentManage: React.FC = () => {
               <select
                 value={selectedRound}
                 onChange={(e) => {
-                  setSelectedRound(e.target.value);
-                  persistSelectedRound(e.target.value);
+                  const val = e.target.value as RoundName;
+                  setSelectedRound(val);
+                  persistSelectedRound(val);
                 }}
+                title="Select Round"
                 className="bg-background-dark border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-primary appearance-none"
               >
                 {getRoundOptions(liveTournament.bracketType).map((opt) => (
@@ -716,7 +742,7 @@ const TournamentManage: React.FC = () => {
               }}
               canConfirmAll={
                 isAdmin &&
-                currentMatches.some((m) => (m.status as any) === "completed")
+                currentMatches.some((m) => m.status === "completed")
               }
               onConfirmAll={confirmAllCompletedInRound}
               loading={loading}
@@ -742,27 +768,25 @@ const TournamentManage: React.FC = () => {
 
               {uniqueMatches.map((match, idx) => (
                 <div
-                  key={`${(match as any).id || idx}`}
-                  className={`rounded-xl border transition-all ${
-                    match.status === "completed"
-                      ? "bg-surface-dark border-green-500/30 shadow-[0_0_10px_rgba(34,197,94,0.1)]"
-                      : (match.status as any) === "in-progress"
-                        ? "bg-surface-dark border-yellow-500/30"
-                        : "bg-surface-dark border-white/5"
-                  }`}
+                  key={`${match._id || match.id || idx}`}
+                  className={`rounded-xl border transition-all ${match.status === "completed"
+                    ? "bg-surface-dark border-green-500/30 shadow-[0_0_10px_rgba(34,197,94,0.1)]"
+                    : match.status === "in-progress"
+                      ? "bg-surface-dark border-yellow-500/30"
+                      : "bg-surface-dark border-white/5"
+                    }`}
                 >
                   <div className="p-3 border-b border-white/5 flex items-center justify-between">
                     <span className="text-xs font-bold text-slate-500 uppercase">
                       Match {match.matchNumber}
                     </span>
                     <span
-                      className={`text-[10px] font-bold px-2 py-0.5 rounded-full uppercase ${
-                        match.status === "completed"
-                          ? "bg-green-500/20 text-green-500"
-                          : (match.status as any) === "in-progress"
-                            ? "bg-yellow-500/20 text-yellow-500"
-                            : "bg-slate-700 text-slate-400"
-                      }`}
+                      className={`text-[10px] font-bold px-2 py-0.5 rounded-full uppercase ${match.status === "completed"
+                        ? "bg-green-500/20 text-green-500"
+                        : match.status === "in-progress"
+                          ? "bg-yellow-500/20 text-yellow-500"
+                          : "bg-slate-700 text-slate-400"
+                        }`}
                     >
                       {match.status.replace("_", " ")}
                     </span>
@@ -795,7 +819,7 @@ const TournamentManage: React.FC = () => {
                 )}
                 teams={liveTournament.teams}
                 currentRound={liveTournament.phase.currentRound}
-                onMatchClick={() => {}}
+                onMatchClick={() => { }}
                 showScores={true}
                 editable={true}
               />
@@ -854,7 +878,7 @@ const TournamentManage: React.FC = () => {
           )}
         </div>
       </div>
-    </div>
+    </div >
   );
 };
 

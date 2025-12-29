@@ -45,6 +45,8 @@ const deriveAllowedHosts = () => {
 const allowedHosts = deriveAllowedHosts();
 
 // Derive Keycloak config from VITE_ vars or fallback to base vars or defaults
+const keycloakUrl =
+  process.env.VITE_KEYCLOAK_URL || process.env.KEYCLOAK_URL || "/auth";
 const keycloakRealm =
   process.env.VITE_KEYCLOAK_REALM ||
   process.env.KEYCLOAK_REALM ||
@@ -59,6 +61,7 @@ export default defineConfig({
   plugins: [react()],
   define: {
     // Expose derived variables to the client
+    "import.meta.env.VITE_KEYCLOAK_URL": JSON.stringify(keycloakUrl),
     "import.meta.env.VITE_KEYCLOAK_REALM": JSON.stringify(keycloakRealm),
     "import.meta.env.VITE_KEYCLOAK_CLIENT_ID": JSON.stringify(keycloakClientId),
   },

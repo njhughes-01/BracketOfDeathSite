@@ -33,6 +33,7 @@ describe('Auth Middleware', () => {
     process.env.KEYCLOAK_CLIENT_ID = 'bod-app';
     process.env.KEYCLOAK_REALM = 'bracketofdeathsite';
     process.env.KEYCLOAK_URL = 'http://localhost:8080';
+    process.env.KEYCLOAK_ISSUER = 'http://localhost:8080/realms/bracketofdeathsite';
     process.env.NODE_ENV = 'test';
   });
 
@@ -62,7 +63,14 @@ describe('Auth Middleware', () => {
     });
 
     it('should populate req.user if token is valid', async () => {
-      mockRequest.headers = { authorization: 'Bearer valid.token.signature' };
+      mockRequest.headers = {
+        authorization: 'Bearer valid.token.signature',
+        'x-test-mode': 'true',
+        'x-test-user-id': 'user-123',
+        'x-test-user-email': 'test@example.com',
+        'x-test-username': 'testuser',
+        'x-test-roles': 'user'
+      };
 
       const decodedToken = {
         sub: 'user-123',
@@ -70,14 +78,18 @@ describe('Auth Middleware', () => {
         preferred_username: 'testuser',
         realm_access: { roles: ['user'] },
         azp: 'bod-app',
+        iss: 'http://localhost:8080/realms/bracketofdeathsite',
       };
 
       (jwt.decode as jest.Mock).mockReturnValue({ payload: decodedToken });
       (jwt.verify as jest.Mock).mockImplementation((token: any, key: any, options: any, cb: any) => {
+        console.log('DEBUG MOCK: jwt.verify called');
         cb(null, decodedToken);
       });
 
+      console.log('DEBUG MOCK: calling requireAuth');
       await requireAuth(mockRequest as RequestWithAuth, mockResponse as unknown as Response, nextFunction);
+      console.log('DEBUG MOCK: requireAuth finished');
 
 
 
@@ -89,7 +101,15 @@ describe('Auth Middleware', () => {
 
   describe('requireSuperAdmin', () => {
     it('should allow access if user has superadmin role', async () => {
-      mockRequest.headers = { authorization: 'Bearer valid.token.signature' };
+      mockRequest.headers = {
+        authorization: 'Bearer valid.token.signature',
+        'x-test-mode': 'true',
+        'x-test-user-id': 'superadmin-123',
+        'x-test-user-email': 'super@example.com',
+        'x-test-username': 'superadmin_user',
+        'x-test-roles': 'superadmin,admin',
+        'x-test-is-admin': 'true'
+      };
 
       const decodedToken = {
         sub: 'superadmin-123',
@@ -97,6 +117,7 @@ describe('Auth Middleware', () => {
         preferred_username: 'superadmin_user',
         realm_access: { roles: ['superadmin', 'admin'] },
         azp: 'bod-app',
+        iss: 'http://localhost:8080/realms/bracketofdeathsite',
       };
 
       (jwt.decode as jest.Mock).mockReturnValue({ payload: decodedToken });
@@ -111,7 +132,15 @@ describe('Auth Middleware', () => {
     });
 
     it('should deny access if user is admin but not superadmin', async () => {
-      mockRequest.headers = { authorization: 'Bearer valid.token.signature' };
+      mockRequest.headers = {
+        authorization: 'Bearer valid.token.signature',
+        'x-test-mode': 'true',
+        'x-test-user-id': 'admin-123',
+        'x-test-user-email': 'admin@example.com',
+        'x-test-username': 'just_admin',
+        'x-test-roles': 'admin',
+        'x-test-is-admin': 'true'
+      };
 
       const decodedToken = {
         sub: 'admin-123',
@@ -119,6 +148,7 @@ describe('Auth Middleware', () => {
         preferred_username: 'just_admin',
         realm_access: { roles: ['admin'] },
         azp: 'bod-app',
+        iss: 'http://localhost:8080/realms/bracketofdeathsite',
       };
 
       (jwt.decode as jest.Mock).mockReturnValue({ payload: decodedToken });

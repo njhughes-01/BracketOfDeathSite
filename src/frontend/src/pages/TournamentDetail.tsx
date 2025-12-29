@@ -713,7 +713,7 @@ const TournamentDetail: React.FC = () => {
               (tab) => (
                 <button
                   key={tab}
-                  onClick={() => setActiveTab(tab as any)}
+                  onClick={() => setActiveTab(tab as "Overview" | "Standings" | "Matches" | "Players" | "Bracket")}
                   className={`pb-4 text-sm font-bold relative shrink-0 transition-colors ${activeTab === tab
                     ? "text-primary"
                     : "text-slate-500 hover:text-slate-300"
@@ -763,7 +763,7 @@ const TournamentDetail: React.FC = () => {
                                 (champion as TournamentResult).players,
                               )
                               ? (champion as TournamentResult).players
-                                .map((p: any) =>
+                                .map((p: Player | string | { _id?: string; name?: string }) =>
                                   typeof p === "object" && "name" in p
                                     ? p.name
                                     : p,
@@ -849,7 +849,7 @@ const TournamentDetail: React.FC = () => {
                               {finalist.players &&
                                 Array.isArray(finalist.players)
                                 ? finalist.players
-                                  .map((p: any) =>
+                                  .map((p: Player | string | { _id?: string; name?: string }) =>
                                     typeof p === "object" && "name" in p
                                       ? p.name
                                       : p,
@@ -991,7 +991,7 @@ const TournamentDetail: React.FC = () => {
                           {tournamentStats.highestScorer.players &&
                             Array.isArray(tournamentStats.highestScorer.players)
                             ? tournamentStats.highestScorer.players
-                              .map((p: any) =>
+                              .map((p: Player | string | { _id?: string; name?: string }) =>
                                 typeof p === "object" && "name" in p
                                   ? p.name
                                   : p,
@@ -1591,7 +1591,7 @@ const TournamentDetail: React.FC = () => {
                                       {result.players &&
                                         Array.isArray(result.players)
                                         ? result.players
-                                          .map((p: any) =>
+                                          .map((p: Player | string | { _id?: string; name?: string }) =>
                                             typeof p === "object" &&
                                               "name" in p
                                               ? p.name
@@ -1810,7 +1810,7 @@ const TournamentDetail: React.FC = () => {
                                   {result.players &&
                                     Array.isArray(result.players)
                                     ? result.players
-                                      .map((p: any) =>
+                                      .map((p: Player | string | { _id?: string; name?: string }) =>
                                         typeof p === "object" && "name" in p
                                           ? p.name
                                           : p,
@@ -1957,7 +1957,15 @@ const TournamentDetail: React.FC = () => {
                     Player Seeds
                   </h4>
                   {tournament.generatedSeeds.map(
-                    (seedInfo: any, idx: number) => (
+                    (seedInfo: {
+                      playerId?: string;
+                      seed?: number;
+                      playerName?: string;
+                      statistics?: {
+                        totalChampionships?: number;
+                        winningPercentage?: number;
+                      };
+                    }, idx: number) => (
                       <div
                         key={seedInfo.playerId || idx}
                         className="flex items-center justify-between p-4 rounded-xl bg-[#1c2230] border border-white/5"
@@ -1997,7 +2005,16 @@ const TournamentDetail: React.FC = () => {
                     </span>
                     Teams
                   </h4>
-                  {tournament.generatedTeams.map((team: any, idx: number) => (
+                  {tournament.generatedTeams.map((team: {
+                    teamId?: string;
+                    combinedSeed?: number;
+                    teamName?: string;
+                    players?: Array<{ playerName?: string; seed?: number }>;
+                    combinedStatistics?: {
+                      avgFinish?: number;
+                      combinedWinPercentage?: number;
+                    };
+                  }, idx: number) => (
                     <div
                       key={team.teamId || idx}
                       className="p-4 rounded-xl bg-[#1c2230] border border-white/5"
@@ -2014,7 +2031,7 @@ const TournamentDetail: React.FC = () => {
                       </div>
                       {team.players && team.players.length > 0 && (
                         <div className="ml-13 space-y-1">
-                          {team.players.map((player: any, pIdx: number) => (
+                          {team.players.map((player: { playerName?: string; seed?: number }, pIdx: number) => (
                             <p key={pIdx} className="text-sm text-slate-400">
                               {player.playerName}{" "}
                               {player.seed && (
@@ -2053,7 +2070,7 @@ const TournamentDetail: React.FC = () => {
                     </span>
                     Registered Players
                   </h4>
-                  {tournament.players.map((player: any) => (
+                  {tournament.players.map((player: Player) => (
                     <Link
                       to={`/players/${player._id}`}
                       key={player._id}
@@ -2087,7 +2104,7 @@ const TournamentDetail: React.FC = () => {
                           Waitlist ({tournament.waitlistPlayers.length})
                         </h4>
                         {tournament.waitlistPlayers.map(
-                          (player: any, idx: number) => (
+                          (player: Player, idx: number) => (
                             <Link
                               to={`/players/${player._id}`}
                               key={player._id}

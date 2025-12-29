@@ -4,7 +4,7 @@ import SystemSettings from "../models/SystemSettings";
 import emailService from "../services/EmailService";
 import { SUPPORTED_EMAIL_PROVIDERS } from "../services/email/IEmailProvider";
 
-class SettingsController extends BaseController {
+export class SettingsController extends BaseController {
   constructor() {
     super();
   }

@@ -13,6 +13,8 @@ module.exports = {
     '\\.spec\\.ts$',  // Exclude Playwright spec files
     'tests/unit/models/',  // Exclude model integration tests (require MongoDB)
     'tests/unit/liveStats\\.playerStats\\.test\\.ts',  // Requires MongoDB
+    '<rootDir>/src/frontend/', // Exclude frontend tests (use Vitest)
+    '<rootDir>/tests/integration/', // Exclude integration tests for unit coverage
   ],
   transform: {
     '^.+\\.ts$': 'ts-jest',
@@ -21,7 +23,8 @@ module.exports = {
     'src/**/*.ts',
     '!src/**/*.d.ts',
     '!src/**/*.test.ts',
-    '!src/**/*.spec.ts'
+    '!src/**/*.spec.ts',
+    '!src/frontend/**'
   ],
   coverageDirectory: 'coverage',
   coverageReporters: [

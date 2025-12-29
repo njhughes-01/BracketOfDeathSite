@@ -25,9 +25,12 @@ const Header: React.FC = () => {
               <div className="flex items-center space-x-4">
                 <div className="text-sm">
                   <span className="text-gray-600">Welcome, </span>
-                  <span className="font-medium text-gray-900">
+                  <Link
+                    to="/profile"
+                    className="font-medium text-gray-900 hover:text-blue-600 transition-colors"
+                  >
                     {user.fullName || user.username}
-                  </span>
+                  </Link>
                   {user.isAdmin && (
                     <span className="ml-2 px-2 py-1 text-xs bg-blue-100 text-blue-800 rounded-full">
                       Admin

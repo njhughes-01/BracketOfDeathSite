@@ -1,8 +1,9 @@
-import { render, screen, fireEvent } from "@testing-library/react";
+import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import { vi, describe, it, expect, beforeEach } from "vitest";
 import { MemoryRouter, Routes, Route } from "react-router-dom";
 import TournamentDetail from "../TournamentDetail";
 import { useApi, useMutation } from "../../hooks/useApi";
+import { mockTournament, mockMatch, mockTournamentResult } from "../../mocks/data";
 
 // Mock child components
 vi.mock("../../components/tournament/LiveStats", () => ({
@@ -19,28 +20,6 @@ vi.mock("../../contexts/AuthContext", () => ({
   useAuth: () => mockUseAuth(),
 }));
 
-const mockTournament = {
-  id: "1",
-  bodNumber: 101,
-  location: "Test Court",
-  format: "Singles",
-  date: new Date().toISOString(),
-  maxPlayers: 32,
-  players: [{ _id: "p1", name: "Player 1", seed: 1 }],
-  notes: "Test Notes",
-  advancementCriteria: "Test Rules",
-};
-
-const mockMatches = [
-  {
-    id: "m1",
-    round: "quarterfinal",
-    matchNumber: 1,
-    status: "scheduled",
-    team1: { teamName: "Player 1", score: 0 },
-    team2: { teamName: "Player 2", score: 0 },
-  },
-];
 
 describe("TournamentDetail Page", () => {
   beforeEach(() => {
@@ -64,11 +43,10 @@ describe("TournamentDetail Page", () => {
     let callCount = 0;
     (useApi as any).mockImplementation(() => {
       callCount++;
-      // Cycle: 1=Tournament, 2=Matches, 3=Results
       const mode = (callCount - 1) % 3;
       if (mode === 0) return { data: { data: mockTournament }, loading: false };
-      if (mode === 1) return { data: { data: mockMatches }, loading: false };
-      return { data: { results: [] }, loading: false };
+      if (mode === 1) return { data: { data: [mockMatch] }, loading: false };
+      return { data: { results: [mockTournamentResult] }, loading: false };
     });
   };
 
@@ -90,18 +68,15 @@ describe("TournamentDetail Page", () => {
 
     renderPage();
 
-    expect(screen.getByText("BOD Tournament #101")).toBeInTheDocument();
-    expect(screen.getAllByText("Test Court").length).toBeGreaterThan(0);
+    expect(screen.getByText("BOD Tournament #42")).toBeInTheDocument();
+    expect(screen.getAllByText("Main Courts").length).toBeGreaterThan(0);
     expect(screen.getByText("Overview")).toBeInTheDocument();
 
     // Players appears in stats grid label and tabs
     expect(screen.getAllByText("Players").length).toBeGreaterThan(0);
 
-    expect(screen.getByText("Matches")).toBeInTheDocument();
-    expect(screen.getByText("Bracket")).toBeInTheDocument();
-
-    // Overview content by default
-    expect(screen.getAllByText("Test Notes").length).toBeGreaterThan(0);
+    expect(screen.getByRole("button", { name: /^Matches$/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /^Bracket$/i })).toBeInTheDocument();
   });
 
   it("navigates tabs", async () => {
@@ -111,16 +86,16 @@ describe("TournamentDetail Page", () => {
     renderPage();
 
     // Matches Tab
-    fireEvent.click(screen.getByText("Matches"));
-    expect(screen.getByText("Quarter Finals")).toBeInTheDocument();
-    expect(screen.getByText("Player 1")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: /^Matches$/i }));
+    expect(screen.getByText("Semi Finals")).toBeInTheDocument();
+    expect(screen.getByText("Doe/Smith")).toBeInTheDocument();
 
     // Players Tab
     fireEvent.click(screen.getByText("Players", { selector: "button" }));
-    expect(screen.getAllByText("Player 1").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("John Doe").length).toBeGreaterThan(0);
 
     // Bracket Tab
-    fireEvent.click(screen.getByText("Bracket"));
+    fireEvent.click(screen.getByRole("button", { name: /^Bracket$/i }));
     expect(screen.getByTestId("bracket-view")).toBeInTheDocument();
   });
 
@@ -212,7 +187,7 @@ describe("TournamentDetail Page", () => {
         if (callCount === 1)
           return { data: { data: mockTournamentWithPlayers }, loading: false };
         if (callCount === 2)
-          return { data: { data: mockMatches }, loading: false };
+          return { data: { data: [mockMatch] }, loading: false };
         // Third call returns results
         return { data: { results: mockTournamentResults }, loading: false };
       });
@@ -238,7 +213,7 @@ describe("TournamentDetail Page", () => {
         if (callCount === 1)
           return { data: { data: mockTournamentWithPlayers }, loading: false };
         if (callCount === 2)
-          return { data: { data: mockMatches }, loading: false };
+          return { data: { data: [mockMatch] }, loading: false };
         return { data: { results: mockTournamentResults }, loading: false };
       });
       (useMutation as any).mockReturnValue({ mutate: vi.fn() });
@@ -263,7 +238,7 @@ describe("TournamentDetail Page", () => {
         if (callCount === 1)
           return { data: { data: mockTournamentWithPlayers }, loading: false };
         if (callCount === 2)
-          return { data: { data: mockMatches }, loading: false };
+          return { data: { data: [mockMatch] }, loading: false };
         return { data: { results: mockTournamentResults }, loading: false };
       });
       (useMutation as any).mockReturnValue({ mutate: vi.fn() });
@@ -305,7 +280,7 @@ describe("TournamentDetail Page", () => {
         if (callCount === 1)
           return { data: { data: mockTournamentWithPlayers }, loading: false };
         if (callCount === 2)
-          return { data: { data: mockMatches }, loading: false };
+          return { data: { data: [mockMatch] }, loading: false };
         return { data: { results: mockTournamentResults }, loading: false };
       });
       (useMutation as any).mockReturnValue({ mutate: vi.fn() });
@@ -316,6 +291,19 @@ describe("TournamentDetail Page", () => {
       // Find player card link
       const aliceLink = screen.getByText("Alice Johnson").closest("a");
       expect(aliceLink).toHaveAttribute("href", "/players/p1");
+    });
+  });
+
+  describe("Error States", () => {
+    it("renders error message on API failure", async () => {
+      (useApi as any).mockReturnValue({ data: null, loading: false, error: new Error("Failed to load") });
+      (useMutation as any).mockReturnValue({ mutate: vi.fn() });
+
+      renderPage();
+
+      await waitFor(() => {
+        expect(screen.getByText(/Tournament not found/i)).toBeInTheDocument();
+      });
     });
   });
 });

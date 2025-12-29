@@ -16,7 +16,7 @@ services:
     image: quay.io/keycloak/keycloak:23.0
     container_name: bod-keycloak
     restart: unless-stopped
-    command: [ "start-dev" ]
+    entrypoint: ["/bin/sh", "/scripts/keycloak-entrypoint.sh", "start-dev"]
     depends_on:
       secrets-init:
         condition: service_completed_successfully
@@ -24,9 +24,9 @@ services:
         condition: service_healthy
     volumes:
       - secrets-data:/secrets:ro
+      - ./scripts/keycloak-entrypoint.sh:/scripts/keycloak-entrypoint.sh:ro
     environment:
       KEYCLOAK_ADMIN: admin
-      KEYCLOAK_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD:-keycloak123}
       KC_DB: postgres
       KC_DB_URL: jdbc:postgresql://keycloak-db:5432/keycloak
       KC_DB_USERNAME: keycloak
@@ -34,14 +34,16 @@ services:
       KC_HOSTNAME_STRICT: false
       KC_HOSTNAME_STRICT_HTTPS: false
       KC_HTTP_ENABLED: true
-      KC_HOSTNAME_URL: http://localhost:5175/auth
+      KC_HOSTNAME_URL: http://localhost:8081
+    ports:
+      - "8081:8080"
     networks:
       - bod-network
     healthcheck:
-      test: [ "CMD-SHELL", "echo > /dev/tcp/localhost/8080" ]
-      interval: 15s
-      timeout: 5s
-      retries: 3
+      test: ["CMD-SHELL", "echo > /dev/tcp/localhost/8080"]
+      interval: 10s
+      timeout: 10s
+      retries: 20
 
   # Keycloak Database
   keycloak-db:
@@ -61,7 +63,7 @@ services:
     networks:
       - bod-network
     healthcheck:
-      test: [ "CMD-SHELL", "pg_isready -U keycloak -d keycloak" ]
+      test: ["CMD-SHELL", "pg_isready -U keycloak -d keycloak"]
       interval: 30s
       timeout: 10s
       retries: 5
@@ -71,7 +73,16 @@ services:
     image: mongo:7.0
     container_name: bod-mongodb
     restart: unless-stopped
-    command: [ "mongod", "--logpath", "/var/log/mongodb/mongod.log", "--logappend", "--quiet" ]
+    command:
+      [
+        "mongod",
+        "--logpath",
+        "/var/log/mongodb/mongod.log",
+        "--logappend",
+        "--quiet",
+      ]
+    ports:
+      - "27017:27017"
     depends_on:
       secrets-init:
         condition: service_completed_successfully
@@ -87,7 +98,7 @@ services:
     networks:
       - bod-network
     healthcheck:
-      test: [ "CMD", "mongosh", "--eval", "db.adminCommand('ping')" ]
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
       interval: 30s
       timeout: 10s
       retries: 5
@@ -106,14 +117,14 @@ services:
       - secrets-data:/secrets:ro
     environment:
       KEYCLOAK_ADMIN_USER: admin
-      KEYCLOAK_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD:-keycloak123}
+      KEYCLOAK_ADMIN_PASSWORD: keycloak123
       KEYCLOAK_CLIENT_SECRET: ${KEYCLOAK_CLIENT_SECRET:-bodclient123}
       KEYCLOAK_REALM: bracketofdeathsite
       KEYCLOAK_CLIENT_ID: bod-app
     networks:
       - bod-network
     restart: "no"
-    entrypoint: [ "/bin/bash", "/scripts/init-keycloak.sh" ]
+    entrypoint: ["/bin/bash", "/scripts/init-keycloak.sh"]
 
   # Data Initialization Service (runs once)
   data-init:
@@ -162,8 +173,8 @@ services:
       KEYCLOAK_CLIENT_ID: bod-app
       KEYCLOAK_CLIENT_SECRET: ${KEYCLOAK_CLIENT_SECRET:-bodclient123}
       KEYCLOAK_ISSUER: http://localhost:5175/auth/realms/bracketofdeathsite
-      KEYCLOAK_ADMIN_USER: ${KEYCLOAK_ADMIN_USER}
-      KEYCLOAK_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD}
+      KEYCLOAK_ADMIN_USER: ${KEYCLOAK_ADMIN_USER:-admin}
+      KEYCLOAK_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD:-keycloak123}
       # Mailjet email configuration (optional - can also configure in admin UI)
       MAILJET_API_KEY: ${MAILJET_API_KEY:-}
       MAILJET_API_SECRET: ${MAILJET_API_SECRET:-}
@@ -171,7 +182,7 @@ services:
     networks:
       - bod-network
     healthcheck:
-      test: [ "CMD", "curl", "-f", "http://localhost:3000/api/health" ]
+      test: ["CMD", "curl", "-f", "http://localhost:3000/api/health"]
       interval: 30s
       timeout: 10s
       retries: 5
@@ -190,7 +201,7 @@ services:
       - secrets-data:/secrets:ro
     environment:
       VITE_API_URL: /api
-      VITE_KEYCLOAK_URL: /auth
+      VITE_KEYCLOAK_URL: http://localhost:8081
       VITE_KEYCLOAK_REALM: bracketofdeathsite
       VITE_ALLOWED_HOSTS: ${CORS_ORIGIN:-localhost,bod.lightmedia.club}
       VITE_KEYCLOAK_CLIENT_ID: bod-app
@@ -201,7 +212,15 @@ services:
     networks:
       - bod-network
     healthcheck:
-      test: [ "CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://0.0.0.0:5173" ]
+      test:
+        [
+          "CMD",
+          "wget",
+          "--no-verbose",
+          "--tries=1",
+          "--spider",
+          "http://0.0.0.0:5173",
+        ]
       interval: 30s
       timeout: 10s
       retries: 3

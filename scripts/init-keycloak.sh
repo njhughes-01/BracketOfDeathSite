@@ -5,6 +5,12 @@
 
 set -e
 
+# Source generated secrets if available (to get same password as Keycloak)
+if [ -f "/secrets/.generated_secrets" ]; then
+    echo "Loading secrets from /secrets/.generated_secrets..."
+    . /secrets/.generated_secrets
+fi
+
 echo "Waiting for Keycloak to be ready..."
 
 # Wait for Keycloak to be healthy

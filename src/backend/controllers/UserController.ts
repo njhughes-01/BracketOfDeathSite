@@ -15,7 +15,7 @@ import mailjetService from "../services/MailjetService";
 import jwt from "jsonwebtoken";
 import { Player } from "../models/Player";
 
-class UserController extends BaseController {
+export class UserController extends BaseController {
   getUsers = this.asyncHandler(
     async (req: RequestWithAuth, res: Response): Promise<void> => {
       const { search, max = "100" } = req.query as {
