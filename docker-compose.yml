@@ -70,7 +70,7 @@ services:
 
   # MongoDB Database (internal only)
   mongodb:
-    image: mongo:7.0.28  # Pinned for CVE-2025-14847
+    image: mongo:8.0.17  # Pinned for CVE-2025-14847
     container_name: bod-mongodb
     restart: unless-stopped
     command:
