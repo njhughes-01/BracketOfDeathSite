@@ -3,7 +3,7 @@
 
 services:
   mongodb-test:
-    image: mongo:7.0
+    image: mongo:8.0.17  # Pinned for CVE-2025-14847
     container_name: bod-mongodb-test
     ports:
       - "27018:27017"
