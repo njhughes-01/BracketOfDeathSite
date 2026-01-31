@@ -22,3 +22,4 @@ status.txt
 # Testing
 coverage/
 .nyc_output/
+tests/e2e/.auth/

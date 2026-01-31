@@ -82,7 +82,7 @@ services:
         "--quiet",
       ]
     ports:
-      - "27017:27017"
+      - "27018:27017"
     depends_on:
       secrets-init:
         condition: service_completed_successfully
@@ -157,8 +157,8 @@ services:
         condition: service_healthy
       data-init:
         condition: service_completed_successfully
-      keycloak-init:
-        condition: service_completed_successfully
+      keycloak:
+        condition: service_healthy
     volumes:
       - ./data/logs/backend:/app/logs
       - secrets-data:/secrets:ro

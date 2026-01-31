@@ -40,7 +40,9 @@ module.exports = {
     '^@/utils/(.*)$': '<rootDir>/src/utils/$1',
     '^@/types/(.*)$': '<rootDir>/src/types/$1',
     '^@/config/(.*)$': '<rootDir>/src/config/$1',
-    '^@/services/(.*)$': '<rootDir>/src/services/$1'
+    '^@/services/(.*)$': '<rootDir>/src/services/$1',
+    '^mailgun\\.js$': '<rootDir>/__mocks__/mailgun.js',
+    '^mailgun\\.js/definitions$': '<rootDir>/__mocks__/mailgun.js'
   },
   setupFilesAfterEnv: ['<rootDir>/tests/setup.ts'],
   testTimeout: 30000,
