@@ -761,6 +761,30 @@ class ApiClient {
   async sendVerificationEmail(): Promise<ApiResponse> {
     return this.post<ApiResponse>("/auth/verify-email-request", {});
   }
+
+  async updateHistoricalMatchScore(
+    matchId: string,
+    team1Score: number,
+    team2Score: number,
+    editReason: string,
+    notes?: string,
+  ): Promise<ApiResponse> {
+    return this.put<ApiResponse>(`/admin/tournaments/matches/${matchId}/historical`, {
+      team1Score,
+      team2Score,
+      editReason,
+      notes,
+    });
+  }
+
+  async recalculatePlayerStats(
+    tournamentId: string,
+  ): Promise<ApiResponse<{ playersUpdated: number; resultsProcessed: number }>> {
+    return this.post<ApiResponse<{ playersUpdated: number; resultsProcessed: number }>>(
+      `/admin/tournaments/${tournamentId}/recalculate-stats`,
+      {},
+    );
+  }
 }
 
 export const apiClient = new ApiClient();

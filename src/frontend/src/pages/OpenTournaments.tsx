@@ -155,7 +155,11 @@ const OpenTournaments: React.FC = () => {
             const registered = tournament.registeredPlayers.length;
             const max = tournament.maxPlayers || 32;
             const isFull = registered >= max;
-            const userIsRegistered = false; // TODO: Check if current user is in list (need playerId)
+            const userIsRegistered = user?.playerId 
+              ? tournament.registeredPlayers.some(
+                  (p: any) => (typeof p === 'string' ? p : p._id) === user.playerId
+                )
+              : false;
 
             return (
               <div
