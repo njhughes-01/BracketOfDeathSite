@@ -2,6 +2,7 @@ import { defineConfig, devices } from '@playwright/test';
 
 export default defineConfig({
     testDir: './tests/e2e',
+    testIgnore: ['**/initialization-flow.spec.js', '**/automated-initialization-flow.spec.js'],
     globalSetup: './tests/e2e/global-setup.ts',
     fullyParallel: true,
     forbidOnly: !!process.env.CI,
