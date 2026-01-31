@@ -144,4 +144,35 @@ router.delete(
   tournamentAdminController.deleteTournament,
 );
 
+// Recalculate player stats for a tournament
+router.post(
+  "/tournaments/:id/recalculate-stats",
+  [param("id").isMongoId().withMessage("Invalid tournament ID")],
+  validateRequest,
+  tournamentAdminController.recalculatePlayerStats,
+);
+
+// Historical match score update
+router.put(
+  "/tournaments/matches/:matchId/historical",
+  [
+    param("matchId").isMongoId().withMessage("Invalid match ID"),
+    body("team1Score")
+      .isInt({ min: 0, max: 99 })
+      .withMessage("Team 1 score must be between 0 and 99"),
+    body("team2Score")
+      .isInt({ min: 0, max: 99 })
+      .withMessage("Team 2 score must be between 0 and 99"),
+    body("editReason")
+      .notEmpty()
+      .withMessage("Edit reason is required for historical edits"),
+    body("notes")
+      .optional()
+      .isLength({ max: 500 })
+      .withMessage("Notes cannot exceed 500 characters"),
+  ],
+  validateRequest,
+  tournamentAdminController.updateHistoricalMatchScore,
+);
+
 export default router;

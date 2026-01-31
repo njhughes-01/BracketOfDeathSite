@@ -14,6 +14,7 @@ import {
   TournamentDeletionService,
   TournamentDeletionError,
 } from "../services/TournamentDeletionService";
+import { PlayerStatsRecalculationService } from "../services/PlayerStatsRecalculationService";
 
 export class TournamentAdminController extends BaseController {
   constructor() {
@@ -1049,6 +1050,65 @@ export class TournamentAdminController extends BaseController {
       console.error("Error updating player statistics:", error);
     }
   }
+
+  public recalculatePlayerStats = this.asyncHandler(
+    async (req: RequestWithAuth, res: Response): Promise<void> => {
+      const { id } = req.params;
+
+      const tournament = await Tournament.findById(id);
+      if (!tournament) {
+        this.sendNotFound(res, "Tournament");
+        return;
+      }
+
+      const result = await PlayerStatsRecalculationService.recalculateForTournament(id);
+
+      this.sendSuccess(res, result, "Player statistics recalculated successfully");
+    },
+  );
+
+  public updateHistoricalMatchScore = this.asyncHandler(
+    async (req: RequestWithAuth, res: Response): Promise<void> => {
+      const { matchId } = req.params;
+      const { team1Score, team2Score, editReason, notes } = req.body;
+
+      const match = await Match.findById(matchId);
+      if (!match) {
+        this.sendNotFound(res, "Match");
+        return;
+      }
+
+      const tournament = await Tournament.findById(match.tournamentId);
+      if (!tournament) {
+        this.sendNotFound(res, "Tournament");
+        return;
+      }
+
+      if (tournament.status !== "completed") {
+        this.sendError(
+          res,
+          "Historical edits are only allowed for completed tournaments",
+          400,
+        );
+        return;
+      }
+
+      match.team1.score = team1Score;
+      match.team2.score = team2Score;
+      if (notes) {
+        match.notes = notes;
+      }
+      match.adminOverride = {
+        reason: editReason,
+        authorizedBy: req.user?.id || "unknown",
+        timestamp: new Date(),
+      };
+
+      await match.save();
+
+      this.sendSuccess(res, match, "Historical match score updated successfully");
+    },
+  );
 }
 
 export default new TournamentAdminController();
