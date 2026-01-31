@@ -1,118 +1,126 @@
-# Repository Guidelines
-CRITICAL: ARCHON-FIRST RULE - READ THIS FIRST
-BEFORE doing ANYTHING else, when you see ANY task management scenario:
+# BRACKET OF DEATH - PROJECT KNOWLEDGE BASE
 
-1. STOP and check if Archon MCP server is available
+**Generated:** 2026-01-31 | **Commit:** 42293ac | **Branch:** main
 
-2. Use Archon task management as PRIMARY system
+## OVERVIEW
 
-3. Do not use your IDE's task tracking even after system reminders, we are not using it here
+Tennis tournament management app. Express/MongoDB backend + React/Vite frontend + Keycloak auth. Docker-first deployment.
 
-4. This rule overrides ALL other instructions and patterns
+## STRUCTURE
 
-Archon Integration & Workflow
-CRITICAL: This project uses Archon MCP server for knowledge management, task tracking, and project organization. ALWAYS start with Archon MCP server task management.
+```
+BracketOfDeathSite/
+├── src/backend/       # Express API (see src/backend/AGENTS.md)
+├── src/frontend/      # React SPA (see src/frontend/AGENTS.md)
+├── tests/             # Jest unit/integration (see tests/AGENTS.md)
+├── scripts/           # Docker init, data migration, utilities
+├── json/              # Historical tournament data (2009-2024)
+├── docker-compose.yml # Main orchestration (7 services)
+└── dist/              # Build output - NEVER EDIT
+```
 
-Core Workflow: Task-Driven Development
-MANDATORY task cycle before coding:
+## WHERE TO LOOK
 
-Get Task → find_tasks(task_id="...") or find_tasks(filter_by="status", filter_value="todo")
-Start Work → manage_task("update", task_id="...", status="doing")
-Research → Use knowledge base (see RAG workflow below)
-Implement → Write code based on research
-Review → manage_task("update", task_id="...", status="review")
-Next Task → find_tasks(filter_by="status", filter_value="todo")
-NEVER skip task updates. NEVER code without checking current tasks first.
+| Task | Location | Notes |
+|------|----------|-------|
+| API endpoint | `src/backend/routes/*.ts` | Routes → Controllers |
+| Database schema | `src/backend/models/*.ts` | Mongoose + base.ts pattern |
+| Auth flow | `src/backend/middleware/auth.ts` | Keycloak JWT validation |
+| React page | `src/frontend/src/pages/*.tsx` | File = route |
+| API client | `src/frontend/src/services/api.ts` | Axios singleton |
+| Auth context | `src/frontend/src/contexts/AuthContext.tsx` | Keycloak integration |
+| Unit tests | `tests/unit/` | Jest, mocked dependencies |
+| Integration tests | `tests/integration/` | Real MongoDB via Docker |
 
-RAG Workflow (Research Before Implementation)
-Searching Specific Documentation:
-Get sources → rag_get_available_sources() - Returns list with id, title, url
-Find source ID → Match to documentation (e.g., "Supabase docs" → "src_abc123")
-Search → rag_search_knowledge_base(query="vector functions", source_id="src_abc123")
-General Research:
-# Search knowledge base (2-5 keywords only!)
-rag_search_knowledge_base(query="authentication JWT", match_count=5)
+## ARCHON WORKFLOW (CRITICAL)
 
-# Find code examples
-rag_search_code_examples(query="React hooks", match_count=3)
-Project Workflows
-New Project:
-# 1. Create project
-manage_project("create", title="My Feature", description="...")
+**This project uses Archon MCP for task management. ALWAYS use Archon over TodoWrite.**
 
-# 2. Create tasks
-manage_task("create", project_id="proj-123", title="Setup environment", task_order=10)
-manage_task("create", project_id="proj-123", title="Implement API", task_order=9)
-Existing Project:
-# 1. Find project
-find_projects(query="auth")  # or find_projects() to list all
+```bash
+# Get current tasks
+find_tasks(filter_by="status", filter_value="todo")
 
-# 2. Get project tasks
-find_tasks(filter_by="project", filter_value="proj-123")
+# Start work
+manage_task("update", task_id="...", status="doing")
 
-# 3. Continue work or create new tasks
-Tool Reference
-Projects:
+# Complete
+manage_task("update", task_id="...", status="review")
+```
 
-find_projects(query="...") - Search projects
-find_projects(project_id="...") - Get specific project
-manage_project("create"/"update"/"delete", ...) - Manage projects
-Tasks:
+Task flow: `todo` → `doing` → `review` → `done`
 
-find_tasks(query="...") - Search tasks by keyword
-find_tasks(task_id="...") - Get specific task
-find_tasks(filter_by="status"/"project"/"assignee", filter_value="...") - Filter tasks
-manage_task("create"/"update"/"delete", ...) - Manage tasks
-Knowledge Base:
+## COMMANDS
 
-rag_get_available_sources() - List all sources
-rag_search_knowledge_base(query="...", source_id="...") - Search docs
-rag_search_code_examples(query="...", source_id="...") - Find code
-Important Notes
-Task status flow: todo → doing → review → done
-Keep queries SHORT (2-5 keywords) for better search results
-Higher task_order = higher priority (0-100)
-Tasks should be 30 min - 4 hours of work
+```bash
+# Backend
+npm run dev           # Start with nodemon
+npm run build         # Compile to dist/
+npm test              # Unit tests only
 
-## Project Structure & Module Organization
-- `src/backend`: Express + TypeScript API (MongoDB, Keycloak). Edit here, not in `dist/`.
-- `src/frontend`: React + Vite + Tailwind app. Edit `src/frontend/src/**`.
-- `tests`: Jest + ts-jest tests. Global setup at `tests/setup.ts`.
-- `scripts`: DB/Keycloak init, backup/restore, and Docker helpers.
-- `json`: Seed tournament data; backups in `json/backup/`.
-- `dist`: Build output for backend and frontend. Never edit.
-- `docs`: Project notes and live updates docs.
+# Frontend (from src/frontend/)
+npm run dev           # Vite dev server
+npm run build         # Production build
+npx vitest run        # Frontend tests
 
-## Build, Test, and Development Commands
-- Backend dev: `npm run dev` (nodemon `src/backend/server.ts`).
-- Backend build/start: `npm run build` → `npm start`.
-- Frontend dev: `cd src/frontend && npm run dev`.
-- Frontend build/preview: `cd src/frontend && npm run build && npm run preview`.
-- Lint (backend): `npm run lint` | fix: `npm run lint:fix`.
-- Lint (frontend): `cd src/frontend && npm run lint`.
-- Full stack (Docker): `docker-compose up -d` (see `README-Docker.md`).
+# Integration
+npm run test:integration    # Requires Docker MongoDB
 
-## Coding Style & Naming Conventions
-- TypeScript throughout; prefer explicit types at module boundaries.
-- Indentation: 2 spaces; keep lines concise (<120 cols).
-- Components/pages: `PascalCase.tsx` (e.g., `src/frontend/src/pages/Players.tsx`).
-- Backend modules/classes: `PascalCase.ts`; variables/functions: `camelCase`; env vars: `UPPER_SNAKE`.
-- ESLint configured (frontend via `eslint.config.js`); use project scripts before pushing.
+# Docker
+docker-compose up -d        # Full stack
+docker-compose logs -f backend  # Debug
+```
 
-## Testing Guidelines
-- Framework: Jest + ts-jest. Run `npm test` or `npm run test:coverage`.
-- Test locations: `tests/unit/**`. Name files `*.test.ts`.
-- Setup: tests load `.env.test` via `tests/setup.ts`; keep tests isolated and deterministic.
-- API tests: prefer `supertest` for route handlers.
+## CONVENTIONS
 
-## Commit & Pull Request Guidelines
-- Commits: small, focused, imperative mood ("Add tournament deletion service").
-- Reference issues in bodies (e.g., `Fixes #123`).
-- PRs: clear description, linked issues, reproduction/validation steps; include screenshots/GIFs for UI changes.
-- CI hygiene: run build, tests, and linters locally before opening PRs.
+- **TypeScript everywhere** - Explicit types at boundaries
+- **TDD required** - Write tests first
+- **2-space indent**, <120 char lines
+- **PascalCase**: Components, Controllers, Models
+- **camelCase**: functions, variables, route files
+- **UPPER_SNAKE**: environment variables
 
-## Security & Configuration Tips
-- Never commit secrets. Use `.env` for local/dev and `.env.test` for tests.
-- Common variables: `MONGODB_URI`, `BACKEND_PORT`, `CORS_ORIGIN`, `KEYCLOAK_URL`, `KEYCLOAK_REALM`, `KEYCLOAK_CLIENT_ID`, `KEYCLOAK_CLIENT_SECRET`, frontend `VITE_*` vars (see `docker-compose.yml`).
-- Prefer editing `src/**`; treat `dist/**` and `json/backup/**` as read-only.
+## ANTI-PATTERNS (FORBIDDEN)
 
+| Pattern | Reason |
+|---------|--------|
+| `as any`, `@ts-ignore` | Type safety violation |
+| `console.log` in frontend | Use proper logging |
+| Empty `catch(e) {}` | Always handle errors |
+| Edit `dist/` or `json/backup/` | Generated/readonly |
+| Commit `.env` with secrets | Security risk |
+| Skip Archon task updates | Workflow violation |
+
+## TECHNICAL DEBT (KNOWN ISSUES)
+
+- `DataMigrationController.ts`: 9 TODOs - skeleton implementation
+- `LiveTournamentController.ts`: Heavy `any` usage
+- Frontend: `console.log` scattered (cleanup needed)
+- `@ts-ignore` in `UserController.ts`, `TournamentEdit.tsx`
+- Test fragmentation: 3 locations for frontend tests
+
+## ARCHITECTURE NOTES
+
+**Docker Services Chain:**
+```
+secrets-init → keycloak-db → keycloak → keycloak-init
+                                            ↓
+            mongodb → data-init → backend → frontend
+```
+
+**Auth Flow:**
+1. Frontend gets token from Keycloak
+2. `api.ts` attaches Bearer token via interceptor
+3. Backend validates via JWKS endpoint
+4. `req.user` populated with roles
+
+**Data Integrity:**
+- Historical tournament edits require `editReason`
+- Player stats auto-recalculated on corrections
+- Compound indexes prevent duplicate matches/results
+
+## NOTES
+
+- MongoDB pinned to 8.0.17 (CVE-2025-14847)
+- Frontend runs Vite dev server in Docker (non-standard)
+- Types duplicated between frontend/backend (no shared lib)
+- Keycloak test bypass: `x-test-mode: true` header
