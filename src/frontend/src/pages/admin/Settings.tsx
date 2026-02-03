@@ -19,6 +19,7 @@ const SettingsPage: React.FC = () => {
   // Configuration status (from backend)
   const [mailjetConfigured, setMailjetConfigured] = useState(false);
   const [mailgunConfigured, setMailgunConfigured] = useState(false);
+  const [showEmailConfigForm, setShowEmailConfigForm] = useState(false);
 
   // Form state - Mailjet
   const [apiKey, setApiKey] = useState("");
@@ -107,6 +108,10 @@ const SettingsPage: React.FC = () => {
       // Set configuration status
       setMailjetConfigured(data.mailjetConfigured || false);
       setMailgunConfigured(data.mailgunConfigured || false);
+      const hasConfiguredProvider = !!(
+        data.mailjetConfigured || data.mailgunConfigured
+      );
+      setShowEmailConfigForm(!hasConfiguredProvider);
 
       // Mailjet defaults
       // Prefer generic senderEmail, fallback to mailjetSenderEmail
@@ -276,6 +281,9 @@ const SettingsPage: React.FC = () => {
     }
   };
 
+  const showConfigForm =
+    showEmailConfigForm || (!mailjetConfigured && !mailgunConfigured);
+
   const handleTestEmail = async () => {
     if (!testEmailAddress) {
       setError("Please enter an email address to send a test to");
@@ -438,8 +446,8 @@ const SettingsPage: React.FC = () => {
           )}
         </div>
 
-        {/* Show configured state OR configuration form, not both */}
-        {mailjetConfigured || mailgunConfigured ? (
+        {/* Show configured state or configuration form */}
+        {!showConfigForm && (mailjetConfigured || mailgunConfigured) && (
           /* Configured State - Show status and clear button only */
           <div className="p-6 bg-green-500/10 border border-green-500/20 rounded-xl">
             <div className="flex items-center justify-between flex-wrap gap-4">
@@ -463,31 +471,46 @@ const SettingsPage: React.FC = () => {
                   )}
                 </div>
               </div>
-              <button
-                type="button"
-                onClick={() =>
-                  handleRemoveConfiguration(
-                    mailjetConfigured ? "mailjet" : "mailgun",
-                  )
-                }
-                disabled={saving}
-                className="px-4 py-2 bg-red-500/20 hover:bg-red-500/30 text-red-400 rounded-lg border border-red-500/20 flex items-center gap-2 transition-all disabled:opacity-50"
-              >
-                {saving ? (
-                  <LoadingSpinner size="sm" color="white" />
-                ) : (
-                  <>
-                    <span className="material-symbols-outlined text-sm">
-                      delete
-                    </span>
-                    Clear Configuration
-                  </>
-                )}
-              </button>
+              <div className="flex flex-wrap items-center gap-3">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowEmailConfigForm(true);
+                    setError("");
+                    setSuccess("");
+                  }}
+                  disabled={saving}
+                  className="px-4 py-2 bg-blue-500/20 hover:bg-blue-500/30 text-blue-300 rounded-lg border border-blue-500/20 flex items-center gap-2 transition-all disabled:opacity-50"
+                >
+                  <span className="material-symbols-outlined text-sm">edit</span>
+                  Edit
+                </button>
+                <button
+                  type="button"
+                  onClick={() =>
+                    handleRemoveConfiguration(
+                      mailjetConfigured ? "mailjet" : "mailgun",
+                    )
+                  }
+                  disabled={saving}
+                  className="px-4 py-2 bg-red-500/20 hover:bg-red-500/30 text-red-400 rounded-lg border border-red-500/20 flex items-center gap-2 transition-all disabled:opacity-50"
+                >
+                  {saving ? (
+                    <LoadingSpinner size="sm" color="white" />
+                  ) : (
+                    <>
+                      <span className="material-symbols-outlined text-sm">
+                        delete
+                      </span>
+                      Clear Configuration
+                    </>
+                  )}
+                </button>
+              </div>
             </div>
           </div>
-        ) : (
-          /* Unconfigured State - Show full configuration form */
+        )}
+        {showConfigForm && (
           <form onSubmit={handleSubmit} className="space-y-6">
             {/* General Settings */}
             <div className="space-y-2">

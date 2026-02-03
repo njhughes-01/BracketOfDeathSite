@@ -291,6 +291,28 @@ describe('SettingsController', () => {
       );
     });
 
+    it('should clear mailgun settings when empty strings provided', async () => {
+      mockReq.body = {
+        mailgunApiKey: '',
+        mailgunDomain: '',
+      };
+
+      const mockSettings = {
+        save: jest.fn().mockResolvedValue(true),
+        mailgunApiKey: 'old-key',
+        mailgunDomain: 'mg.old-domain.com',
+        updatedBy: 'testuser',
+      };
+
+      (SystemSettings.findOne as jest.Mock) = jest.fn().mockResolvedValue(mockSettings);
+
+      await controller.updateSettings(mockReq as Request, mockRes as Response, nextMock);
+
+      expect(mockSettings.save).toHaveBeenCalled();
+      expect(mockSettings.mailgunApiKey).toBeUndefined();
+      expect(mockSettings.mailgunDomain).toBeUndefined();
+    });
+
     it('should reject non-admin users', async () => {
       mockReq.user.isAdmin = false;
 

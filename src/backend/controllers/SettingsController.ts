@@ -160,6 +160,12 @@ export class SettingsController extends BaseController {
         if (!input) return input;
         return input.replace(/<[^>]*>/g, "").trim();
       };
+      const normalizeOptional = (value?: string): string | undefined => {
+        if (value === "") {
+          return undefined;
+        }
+        return value;
+      };
 
       // General Email Settings
       if (senderEmail !== undefined) settings.senderEmail = senderEmail;
@@ -176,14 +182,22 @@ export class SettingsController extends BaseController {
       }
 
       // Mailjet settings
-      if (mailjetApiKey) settings.mailjetApiKey = mailjetApiKey;
-      if (mailjetApiSecret) settings.mailjetApiSecret = mailjetApiSecret;
+      if (mailjetApiKey !== undefined) {
+        settings.mailjetApiKey = normalizeOptional(mailjetApiKey);
+      }
+      if (mailjetApiSecret !== undefined) {
+        settings.mailjetApiSecret = normalizeOptional(mailjetApiSecret);
+      }
       if (mailjetSenderEmail !== undefined)
         settings.mailjetSenderEmail = mailjetSenderEmail;
 
       // Mailgun settings
-      if (mailgunApiKey) settings.mailgunApiKey = mailgunApiKey;
-      if (mailgunDomain) settings.mailgunDomain = mailgunDomain;
+      if (mailgunApiKey !== undefined) {
+        settings.mailgunApiKey = normalizeOptional(mailgunApiKey);
+      }
+      if (mailgunDomain !== undefined) {
+        settings.mailgunDomain = normalizeOptional(mailgunDomain);
+      }
 
       // Branding settings (sanitized)
       if (siteLogo !== undefined) settings.siteLogo = siteLogo;
