@@ -2,6 +2,7 @@ import { BaseDocument } from "./common";
 
 export interface IPlayer extends BaseDocument {
   name: string;
+  email?: string;
   bodsPlayed: number;
   bestResult: number;
   avgFinish: number;
@@ -20,6 +21,7 @@ export interface IPlayer extends BaseDocument {
 
 export interface IPlayerInput {
   name: string;
+  email?: string;
   bodsPlayed?: number;
   bestResult?: number;
   avgFinish?: number;

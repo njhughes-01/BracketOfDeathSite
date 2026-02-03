@@ -19,15 +19,11 @@ export const usePermissions = (): UsePermissionsReturn => {
   const permissions = useMemo(() => {
     if (!user) return [];
 
-    // For now, we'll use the existing role system
-    // Later we can extend this to use more granular permissions
     const userPermissions: PermissionValue[] = [];
 
-    if (user.roles.includes("admin")) {
-      // Admins get all permissions
+    if (user.roles.includes("superadmin") || user.roles.includes("admin")) {
       userPermissions.push(...Object.values(PERMISSIONS));
     } else if (user.roles.includes("user")) {
-      // Regular users get basic permissions
       userPermissions.push(
         PERMISSIONS.TOURNAMENT_VIEW,
         PERMISSIONS.PLAYER_VIEW,

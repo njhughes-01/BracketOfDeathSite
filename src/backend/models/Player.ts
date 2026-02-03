@@ -42,6 +42,12 @@ const playerSchema = new Schema<IPlayer>(
       trim: true,
       validate: createStringValidator(2, 100),
     },
+    email: {
+      type: String,
+      trim: true,
+      lowercase: true,
+      sparse: true,
+    },
     bodsPlayed: {
       type: Number,
       default: 0,

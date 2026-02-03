@@ -87,3 +87,38 @@ jobs:
       - name: Stop Docker stack
         if: always()
         run: docker-compose down
+
+  e2e-vercel-preview:
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request' && github.event.deployment_status.state == 'success'
+    timeout-minutes: 15
+    
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+
+      - name: Install dependencies
+        run: npm install --force
+
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps chromium
+
+      - name: Run E2E tests against Vercel preview
+        run: npx playwright test --grep-invert "@local-only"
+        env:
+          PLAYWRIGHT_BASE_URL: ${{ github.event.deployment_status.target_url }}
+          E2E_ADMIN_USER: ${{ secrets.E2E_ADMIN_USER || 'admin' }}
+          E2E_ADMIN_PASSWORD: ${{ secrets.E2E_ADMIN_PASSWORD || 'admin123' }}
+
+      - name: Upload Playwright report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: playwright-report-vercel
+          path: playwright-report/
+          retention-days: 7

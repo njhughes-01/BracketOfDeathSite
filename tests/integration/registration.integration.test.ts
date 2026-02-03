@@ -8,6 +8,7 @@ describe("TournamentRegistrationService Integration", () => {
     let player2Id: string;
     let player3Id: string;
     let player4Id: string;
+    let player5Id: string;
 
     // Use future date for tournaments - must be after registration deadline
     const futureTournamentDate = new Date(Date.now() + 86400000 * 60); // 60 days from now
@@ -23,11 +24,13 @@ describe("TournamentRegistrationService Integration", () => {
             { name: "Registration Player 2", gender: "female" },
             { name: "Registration Player 3", gender: "male" },
             { name: "Registration Player 4", gender: "female" },
+            { name: "Registration Player 5", gender: "male" },
         ]);
         player1Id = players[0]._id.toString();
         player2Id = players[1]._id.toString();
         player3Id = players[2]._id.toString();
         player4Id = players[3]._id.toString();
+        player5Id = players[4]._id.toString();
     });
 
     afterAll(async () => {
@@ -124,6 +127,39 @@ describe("TournamentRegistrationService Integration", () => {
 
             expect(result.success).toBe(false);
             expect(result.message).toContain("already");
+        });
+
+        it("should handle concurrent registration attempts without over-enrollment", async () => {
+            const tournament = await Tournament.create({
+                date: futureTournamentDate,
+                bodNumber: futureBodNumber,
+                format: "Mixed",
+                location: "Concurrent Registration Test",
+                status: "open",
+                maxPlayers: 2,
+                registrationType: "open",
+                advancementCriteria: "Top 2",
+                allowSelfRegistration: true,
+                registrationOpensAt: new Date(Date.now() - 86400000),
+                registrationDeadline: new Date(Date.now() + 86400000 * 50),
+                registeredPlayers: [],
+                waitlistPlayers: [],
+            });
+
+            const playerIds = [player1Id, player2Id, player3Id, player4Id, player5Id];
+
+            await Promise.all(
+                playerIds.map((playerId) =>
+                    TournamentRegistrationService.registerPlayer(
+                        tournament._id.toString(),
+                        playerId
+                    )
+                )
+            );
+
+            const updated = await Tournament.findById(tournament._id);
+            expect(updated?.registeredPlayers?.length).toBe(2);
+            expect(updated?.waitlistPlayers?.length).toBe(3);
         });
     });
 

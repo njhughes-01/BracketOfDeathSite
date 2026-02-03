@@ -21,7 +21,6 @@ interface ITournament {
 
 const OpenTournaments: React.FC = () => {
   const { isAuthenticated, user } = useAuth();
-  const hasProfile = !!user?.playerId;
   const navigate = useNavigate();
   const [tournaments, setTournaments] = useState<ITournament[]>([]);
   const [loading, setLoading] = useState(true);
@@ -48,7 +47,6 @@ const OpenTournaments: React.FC = () => {
   };
 
   const handleJoin = async (tournamentId: string) => {
-    // 1. Check Authentication
     if (!isAuthenticated) {
       navigate(
         `/login?returnUrl=${encodeURIComponent(window.location.pathname)}`,
@@ -56,50 +54,16 @@ const OpenTournaments: React.FC = () => {
       return;
     }
 
-    // 2. Check Profile
-    // We assume useAuth provides `hasProfile` (boolean) or similar.
-    // If not, we might need to check user payload or api.
-    // Based on previous contexts, we might need to check if user has linked player.
-    // For now, let's try to join. If 400 'Player ID required' or similar, we know.
-    if (!hasProfile) {
-      // Redirect to onboarding if we know they lack a profile
-      navigate("/onboarding");
-      return;
-    }
-
     try {
       setJoiningId(tournamentId);
 
-      // We need to pass playerId if we have it locally, or let backend infer from user.
-      // Backend `join` implementation currently requires `playerId` in body if we didn't implement user lookup yet.
-      // BUT, `TournamentController.ts` assumes `user.sub` is available.
-      // Wait, my `TournamentController.ts` update had:
-      // if (playerId) { ... } else { sendError(400, 'Player ID is required') }
-      // So I MUST pass playerId.
-      // Does `user` object have it?
-      // I should look at `AuthContext`.
-
-      // Assuming for now we rely on the backend to know the link or we fetch it.
-      // Let's try to fetch current player profile first if we don't have it?
-      // Or, let's update backend to look it up.
-      // Actually, `AuthContext` usually loads the profile.
-
-      // Let's Check AuthContext again to see if we have access to playerId.
-      // For now I will assume we need to fetch it or finding it.
-      // Actually, simpler: The user should be onboarding if they don't have a profile.
-      // If they have a profile, we should handle it.
-
-      // HACK: For this implementation, I will try to call join.
-      // If it fails with "ID required", I'll fetch profile and retry.
-      // But better: let's fetch profile.
-
-      const profile = await axios.get("/api/players/me").catch(() => null);
-      if (!profile || !profile.data.data) {
+      const profileResponse = await axios.get("/api/profile");
+      const playerId = profileResponse.data?.data?.user?.playerId;
+      
+      if (!playerId) {
         navigate("/onboarding");
         return;
       }
-
-      const playerId = profile.data.data._id;
 
       await axios.post(`/api/tournaments/${tournamentId}/join`, {
         playerId,

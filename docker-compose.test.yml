@@ -1,9 +1,9 @@
 # Docker Compose for Integration Tests
-# Provides a minimal test environment with MongoDB only
+# Provides test environment with MongoDB and Mailhog for email testing
 
 services:
   mongodb-test:
-    image: mongo:8.0.17  # Pinned for CVE-2025-14847
+    image: mongo:8.0.17
     container_name: bod-mongodb-test
     ports:
       - "27018:27017"
@@ -15,6 +15,20 @@ services:
       - test-network
     healthcheck:
       test: [ "CMD", "mongosh", "--eval", "db.adminCommand('ping')" ]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  mailhog:
+    image: mailhog/mailhog:v1.0.1
+    container_name: bod-mailhog-test
+    ports:
+      - "8025:8025"
+      - "1025:1025"
+    networks:
+      - test-network
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:8025/api/v2/messages"]
       interval: 10s
       timeout: 5s
       retries: 3

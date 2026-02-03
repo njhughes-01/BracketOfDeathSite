@@ -785,6 +785,15 @@ class ApiClient {
       {},
     );
   }
+
+  async sendTournamentReminders(
+    tournamentId: string,
+  ): Promise<ApiResponse<{ sent: number; failed: number; total: number }>> {
+    return this.post<ApiResponse<{ sent: number; failed: number; total: number }>>(
+      `/admin/tournaments/${tournamentId}/send-reminders`,
+      {},
+    );
+  }
 }
 
 export const apiClient = new ApiClient();

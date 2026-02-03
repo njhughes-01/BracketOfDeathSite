@@ -312,6 +312,123 @@ export class EmailService {
       config,
     );
   }
+
+  async sendRegistrationConfirmation(
+    email: string,
+    playerName: string,
+    tournamentName: string,
+    tournamentDate: Date,
+  ): Promise<boolean> {
+    const config = await this.getConfig();
+    const formattedDate = tournamentDate.toLocaleDateString("en-US", {
+      weekday: "long",
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+    });
+    const tournamentLink = `${process.env.FRONTEND_URL || `http://localhost:${process.env.VITE_PORT || "5173"}`}/tournaments`;
+
+    const content = `
+            <h2 style="margin:0 0 20px 0;color:#1a1a2e;">Registration Confirmed!</h2>
+            <p>Hello ${playerName}!</p>
+            <p>You have been successfully registered for <strong>${tournamentName}</strong>.</p>
+            <p><strong>Date:</strong> ${formattedDate}</p>
+            <p>We look forward to seeing you there!</p>
+            ${this.createButton("View Tournament", tournamentLink, config.brandPrimaryColor)}
+        `;
+
+    return this.sendEmail({
+      to: email,
+      subject: `Registration Confirmed - ${tournamentName}`,
+      text: `Hello ${playerName}! You have been registered for ${tournamentName} on ${formattedDate}.`,
+      html: this.buildBrandedTemplate(content, config),
+    });
+  }
+
+  async sendWaitlistConfirmation(
+    email: string,
+    playerName: string,
+    tournamentName: string,
+    position: number,
+  ): Promise<boolean> {
+    const config = await this.getConfig();
+    const tournamentLink = `${process.env.FRONTEND_URL || `http://localhost:${process.env.VITE_PORT || "5173"}`}/tournaments`;
+
+    const content = `
+            <h2 style="margin:0 0 20px 0;color:#1a1a2e;">Added to Waitlist</h2>
+            <p>Hello ${playerName}!</p>
+            <p>The tournament <strong>${tournamentName}</strong> is currently full.</p>
+            <p>You have been added to the waitlist at <strong>position #${position}</strong>.</p>
+            <p>We will notify you immediately if a spot becomes available.</p>
+            ${this.createButton("View Tournament", tournamentLink, config.brandSecondaryColor)}
+        `;
+
+    return this.sendEmail({
+      to: email,
+      subject: `Waitlist Confirmation - ${tournamentName}`,
+      text: `Hello ${playerName}! You have been added to the waitlist for ${tournamentName} at position #${position}.`,
+      html: this.buildBrandedTemplate(content, config),
+    });
+  }
+
+  async sendSpotAvailableNotification(
+    email: string,
+    playerName: string,
+    tournamentName: string,
+  ): Promise<boolean> {
+    const config = await this.getConfig();
+    const tournamentLink = `${process.env.FRONTEND_URL || `http://localhost:${process.env.VITE_PORT || "5173"}`}/tournaments`;
+
+    const content = `
+            <h2 style="margin:0 0 20px 0;color:#1a1a2e;">You're In! Spot Available</h2>
+            <p>Hello ${playerName}!</p>
+            <p>Great news! A spot has opened up in <strong>${tournamentName}</strong>.</p>
+            <p>You have been automatically moved from the waitlist to the registered players list.</p>
+            <p>No action is required - you're confirmed for the tournament!</p>
+            ${this.createButton("View Tournament", tournamentLink, config.brandPrimaryColor)}
+        `;
+
+    return this.sendEmail({
+      to: email,
+      subject: `You're In! - ${tournamentName}`,
+      text: `Hello ${playerName}! A spot opened up and you've been registered for ${tournamentName}.`,
+      html: this.buildBrandedTemplate(content, config),
+    });
+  }
+
+  async sendTournamentReminder(
+    email: string,
+    playerName: string,
+    tournamentName: string,
+    tournamentDate: Date,
+    location: string,
+  ): Promise<boolean> {
+    const config = await this.getConfig();
+    const formattedDate = tournamentDate.toLocaleDateString("en-US", {
+      weekday: "long",
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+    });
+    const tournamentLink = `${process.env.FRONTEND_URL || `http://localhost:${process.env.VITE_PORT || "5173"}`}/tournaments`;
+
+    const content = `
+            <h2 style="margin:0 0 20px 0;color:#1a1a2e;">Tournament Reminder</h2>
+            <p>Hello ${playerName}!</p>
+            <p>This is a reminder that you are registered for <strong>${tournamentName}</strong>.</p>
+            <p><strong>Date:</strong> ${formattedDate}</p>
+            <p><strong>Location:</strong> ${location}</p>
+            <p>Don't forget to bring your gear and be ready to compete!</p>
+            ${this.createButton("View Tournament Details", tournamentLink, config.brandPrimaryColor)}
+        `;
+
+    return this.sendEmail({
+      to: email,
+      subject: `Reminder: ${tournamentName} - ${formattedDate}`,
+      text: `Hello ${playerName}! Reminder: ${tournamentName} is on ${formattedDate} at ${location}.`,
+      html: this.buildBrandedTemplate(content, config),
+    });
+  }
 }
 
 export const emailService = new EmailService();

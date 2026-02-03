@@ -96,6 +96,16 @@ function App() {
                   }
                 />
                 <Route
+                  path="/tournaments/create"
+                  element={
+                    <ProtectedRoute
+                      requirePermission={PERMISSIONS.TOURNAMENT_CREATE}
+                    >
+                      <TournamentSetup />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
                   path="/tournaments/:id/edit"
                   element={
                     <ProtectedRoute

@@ -120,6 +120,13 @@ router.post(
   tournamentAdminController.finalizeRegistration,
 );
 
+router.post(
+  "/tournaments/:id/send-reminders",
+  [param("id").isMongoId().withMessage("Invalid tournament ID")],
+  validateRequest,
+  tournamentAdminController.sendReminders,
+);
+
 // Tournament seeding
 router.get(
   "/tournaments/:id/seeding-preview",

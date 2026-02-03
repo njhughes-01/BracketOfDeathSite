@@ -76,4 +76,56 @@ describe("EmailService", () => {
         const result = await failingEmailService.sendEmail(params);
         expect(result).toBe(false);
     });
+
+    describe("Tournament Registration Emails", () => {
+        beforeEach(() => {
+            const { MailjetProvider } = require("../../services/email/MailjetProvider");
+            MailjetProvider.mockImplementation(() => ({
+                sendEmail: jest.fn().mockResolvedValue(true),
+                verifyCredentials: jest.fn().mockResolvedValue(true),
+                getName: jest.fn().mockReturnValue("Mailjet"),
+            }));
+            emailService = new EmailService();
+        });
+
+        it("should send registration confirmation email", async () => {
+            const result = await emailService.sendRegistrationConfirmation(
+                "player@example.com",
+                "John Doe",
+                "BOD #50",
+                new Date("2025-03-15"),
+            );
+            expect(result).toBe(true);
+        });
+
+        it("should send waitlist confirmation email", async () => {
+            const result = await emailService.sendWaitlistConfirmation(
+                "player@example.com",
+                "John Doe",
+                "BOD #50",
+                3,
+            );
+            expect(result).toBe(true);
+        });
+
+        it("should send spot available notification email", async () => {
+            const result = await emailService.sendSpotAvailableNotification(
+                "player@example.com",
+                "John Doe",
+                "BOD #50",
+            );
+            expect(result).toBe(true);
+        });
+
+        it("should send tournament reminder email", async () => {
+            const result = await emailService.sendTournamentReminder(
+                "player@example.com",
+                "John Doe",
+                "BOD #50",
+                new Date("2025-03-15"),
+                "Mill Valley Courts",
+            );
+            expect(result).toBe(true);
+        });
+    });
 });

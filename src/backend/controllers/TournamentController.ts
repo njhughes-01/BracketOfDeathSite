@@ -10,6 +10,7 @@ import {
 } from "../types/tournament";
 import { BaseCrudController, RequestWithAuth } from "./base";
 import { ApiResponse } from "../types/common";
+import { TournamentRegistrationService } from "../services/TournamentRegistrationService";
 
 export class TournamentController extends BaseCrudController<ITournament> {
   constructor() {
@@ -400,109 +401,39 @@ export class TournamentController extends BaseCrudController<ITournament> {
     async (req: RequestWithAuth, res: Response): Promise<void> => {
       const { id } = req.params;
       const { playerId } = req.body;
-      const userId = req.user?.id; // Keycloak user ID
 
-      // 1. Validate Tournament
-      const tournament = await Tournament.findById(id);
-      if (!tournament) {
-        this.sendNotFound(res, "Tournament");
-        return;
-      }
-
-      // 2. Validate Registration Rules
-      if (
-        !tournament.allowSelfRegistration &&
-        tournament.registrationType !== "open"
-      ) {
-        this.sendForbidden(
-          res,
-          "Self-registration is not allowed for this tournament",
-        );
-        return;
-      }
-
-      const now = new Date();
-      if (
-        tournament.registrationOpensAt &&
-        now < new Date(tournament.registrationOpensAt)
-      ) {
-        this.sendError(res, "Registration is not yet open", 400);
-        return;
-      }
-      if (
-        tournament.registrationDeadline &&
-        now > new Date(tournament.registrationDeadline)
-      ) {
-        this.sendError(res, "Registration deadline has passed", 400);
-        return;
-      }
-
-      // 3. Find Player Profile
-      let player;
-
-      if (playerId) {
-        player = await Player.findById(playerId);
-      } else {
+      if (!playerId) {
         this.sendError(res, "Player ID is required for registration", 400);
         return;
       }
 
-      if (!player) {
-        this.sendNotFound(res, "Player profile");
+      const result = await TournamentRegistrationService.registerPlayer(id, playerId);
+
+      if (!result.success) {
+        if (result.message === "Tournament not found") {
+          this.sendNotFound(res, "Tournament");
+          return;
+        }
+        if (result.message === "Player not found") {
+          this.sendNotFound(res, "Player profile");
+          return;
+        }
+        if (result.message === "Self-registration not allowed for this tournament") {
+          this.sendForbidden(res, result.message);
+          return;
+        }
+        this.sendError(res, result.message, 400);
         return;
       }
-
-      // 4. Check Duplicate Registration
-      const isRegistered = tournament.registeredPlayers?.some(
-        (p) => p.playerId.toString() === playerId,
-      );
-      const isWaitlisted = tournament.waitlistPlayers?.some(
-        (p) => p.playerId.toString() === playerId,
-      );
-
-      if (isRegistered) {
-        this.sendError(res, "Player already registered", 400);
-        return;
-      }
-      if (isWaitlisted) {
-        this.sendError(res, "Player already on waitlist", 400);
-        return;
-      }
-
-      // 5. Add to Tournament (Register or Waitlist)
-      const maxPlayers = tournament.maxPlayers || 32; // Default if not set
-      const currentCount = tournament.registeredPlayers.length;
-
-      let status = "registered";
-      if (currentCount >= maxPlayers) {
-        // Add to waitlist
-        tournament.waitlistPlayers = tournament.waitlistPlayers || [];
-        tournament.waitlistPlayers.push({
-          playerId: player._id,
-          registeredAt: now,
-        });
-        status = "waitlisted";
-      } else {
-        // Register
-        tournament.registeredPlayers = tournament.registeredPlayers || [];
-        tournament.registeredPlayers.push({
-          playerId: player._id,
-          registeredAt: now,
-        });
-      }
-
-      await tournament.save();
 
       this.sendSuccess(
         res,
         {
-          tournamentId: tournament._id,
-          playerId: player._id,
-          status,
+          tournamentId: id,
+          playerId: playerId,
+          status: result.position,
         },
-        status === "registered"
-          ? "Successfully registered for tournament"
-          : "Tournament full. Added to waitlist.",
+        result.message,
       );
     },
   );

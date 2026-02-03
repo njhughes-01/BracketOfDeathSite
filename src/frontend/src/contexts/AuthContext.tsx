@@ -148,7 +148,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           tokenParsed.preferred_username ||
           "",
         roles,
-        isAdmin: roles.includes("admin"),
+        isAdmin: roles.includes("admin") || roles.includes("superadmin"),
         isSuperAdmin: roles.includes("superadmin"),
         playerId: profile.attributes?.playerId?.[0],
         enabled: true, // Keycloak users are enabled if we are here

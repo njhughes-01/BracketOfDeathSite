@@ -602,6 +602,23 @@ const TournamentManage: React.FC = () => {
                     Close Reg
                   </button>
                   <button
+                    onClick={async () => {
+                      if (!window.confirm("Send reminder emails to all registered players?")) return;
+                      try {
+                        const result = await apiClient.sendTournamentReminders(id!);
+                        if (result.success && result.data) {
+                          alert(`Sent ${result.data.sent} reminders (${result.data.failed} failed)`);
+                        }
+                      } catch (err) {
+                        alert("Failed to send reminders");
+                      }
+                    }}
+                    className="px-4 py-2 rounded-lg bg-blue-500/20 text-blue-500 font-bold hover:bg-blue-500/30 text-sm"
+                    disabled={loading}
+                  >
+                    Send Reminders
+                  </button>
+                  <button
                     onClick={() =>
                       executeTournamentAction({ action: "start_checkin" })
                     }

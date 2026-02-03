@@ -10,6 +10,7 @@ import { ApiResponse, ErrorMessages } from "../types/common";
 import { Types } from "mongoose";
 import { TournamentRegistrationService } from "../services/TournamentRegistrationService";
 import { TournamentSeedingService } from "../services/TournamentSeedingService";
+import { emailService } from "../services/EmailService";
 import {
   TournamentDeletionService,
   TournamentDeletionError,
@@ -444,6 +445,61 @@ export class TournamentAdminController extends BaseController {
       }
 
       this.sendSuccess(res, result.data, "Registration info retrieved");
+    },
+  );
+
+  /**
+   * Send reminder emails to all registered players
+   */
+  public sendReminders = this.asyncHandler(
+    async (req: RequestWithAuth, res: Response): Promise<void> => {
+      const { id } = req.params;
+
+      const tournament = await Tournament.findById(id).populate(
+        "registeredPlayers.playerId",
+        "name email",
+      );
+      if (!tournament) {
+        this.sendNotFound(res, "Tournament");
+        return;
+      }
+
+      const registeredPlayers = tournament.registeredPlayers || [];
+      if (registeredPlayers.length === 0) {
+        this.sendError(res, "No registered players to send reminders to", 400);
+        return;
+      }
+
+      let sent = 0;
+      let failed = 0;
+      const tournamentName = tournament.location || `BOD #${tournament.bodNumber}`;
+
+      for (const registration of registeredPlayers) {
+        const player = registration.playerId as unknown as { name: string; email?: string };
+        if (!player?.email) {
+          failed++;
+          continue;
+        }
+
+        try {
+          await emailService.sendTournamentReminder(
+            player.email,
+            player.name,
+            tournamentName,
+            tournament.date,
+            tournament.location || "TBD",
+          );
+          sent++;
+        } catch {
+          failed++;
+        }
+      }
+
+      this.sendSuccess(
+        res,
+        { sent, failed, total: registeredPlayers.length },
+        `Sent ${sent} reminder emails (${failed} failed)`,
+      );
     },
   );
 

@@ -1,8 +1,8 @@
 import { TournamentRegistrationService } from "../../services/TournamentRegistrationService";
 import { Tournament } from "../../models/Tournament";
 import { Player } from "../../models/Player";
+import { Types } from "mongoose";
 
-// Mock Mongoose models
 jest.mock("../../models/Tournament");
 jest.mock("../../models/Player");
 
@@ -30,23 +30,29 @@ describe("TournamentRegistrationService", () => {
         };
 
         mockPlayer = {
-            _id: playerId,
+            _id: new Types.ObjectId(playerId),
             name: "Test Player",
         };
 
         (Tournament.findById as jest.Mock).mockResolvedValue(mockTournament);
         (Player.findById as jest.Mock).mockResolvedValue(mockPlayer);
+        (Tournament.findOneAndUpdateSafe as jest.Mock).mockResolvedValue(null);
     });
 
     describe("registerPlayer", () => {
         it("should register a player successfully when open and spots available", async () => {
+            const registeredTournament = {
+                ...mockTournament,
+                registeredPlayers: [{ playerId: new Types.ObjectId(playerId), registeredAt: new Date() }],
+            };
+            (Tournament.findOneAndUpdateSafe as jest.Mock)
+                .mockResolvedValueOnce(registeredTournament);
+
             const result = await TournamentRegistrationService.registerPlayer(tournId, playerId);
 
             expect(result.success).toBe(true);
             expect(result.position).toBe("registered");
-            expect(mockTournament.registeredPlayers).toHaveLength(1);
-            expect(mockTournament.registeredPlayers[0].playerId.toString()).toBe(playerId);
-            expect(mockTournament.save).toHaveBeenCalled();
+            expect(result.tournament).toEqual(registeredTournament);
         });
 
         it("should return error if tournament not found", async () => {
@@ -79,51 +85,79 @@ describe("TournamentRegistrationService", () => {
 
         it("should fail if player not found", async () => {
             (Player.findById as jest.Mock).mockResolvedValue(null);
-            const result = await TournamentRegistrationService.registerPlayer(tournId, "bad-player");
-            // The catch block might catch the ID casting error for "bad-player" 
-            // but if we pass a valid ID that isn't found:
-            const result2 = await TournamentRegistrationService.registerPlayer(tournId, otherPlayerId);
-            expect(result2.success).toBe(false);
-            expect(result2.message).toBe("Player not found");
+            const result = await TournamentRegistrationService.registerPlayer(tournId, otherPlayerId);
+            expect(result.success).toBe(false);
+            expect(result.message).toBe("Player not found");
         });
 
         it("should fail if already registered", async () => {
-            mockTournament.registeredPlayers = [{ playerId: { toString: () => playerId } }];
+            (Tournament.findOneAndUpdateSafe as jest.Mock)
+                .mockResolvedValueOnce(null)
+                .mockResolvedValueOnce(null);
+
+            const refreshedTournament = {
+                ...mockTournament,
+                registeredPlayers: [{ playerId: { toString: () => playerId } }],
+            };
+            (Tournament.findById as jest.Mock)
+                .mockResolvedValueOnce(mockTournament)
+                .mockResolvedValueOnce(refreshedTournament);
+
             const result = await TournamentRegistrationService.registerPlayer(tournId, playerId);
             expect(result.success).toBe(false);
             expect(result.message).toContain("already registered");
         });
 
         it("should fail if on waitlist", async () => {
-            mockTournament.waitlistPlayers = [{ playerId: { toString: () => playerId } }];
+            (Tournament.findOneAndUpdateSafe as jest.Mock)
+                .mockResolvedValueOnce(null)
+                .mockResolvedValueOnce(null);
+
+            const refreshedTournament = {
+                ...mockTournament,
+                waitlistPlayers: [{ playerId: { toString: () => playerId } }],
+            };
+            (Tournament.findById as jest.Mock)
+                .mockResolvedValueOnce(mockTournament)
+                .mockResolvedValueOnce(refreshedTournament);
+
             const result = await TournamentRegistrationService.registerPlayer(tournId, playerId);
             expect(result.success).toBe(false);
             expect(result.message).toContain("already on waitlist");
         });
 
         it("should add to waitlist if full", async () => {
-            mockTournament.maxPlayers = 1;
-            mockTournament.registeredPlayers = [{ playerId: { toString: () => otherPlayerId } }];
+            const waitlistTournament = {
+                ...mockTournament,
+                maxPlayers: 1,
+                registeredPlayers: [{ playerId: new Types.ObjectId(otherPlayerId) }],
+                waitlistPlayers: [{ playerId: new Types.ObjectId(playerId), registeredAt: new Date() }],
+            };
+            (Tournament.findOneAndUpdateSafe as jest.Mock)
+                .mockResolvedValueOnce(null)
+                .mockResolvedValueOnce(waitlistTournament);
 
             const result = await TournamentRegistrationService.registerPlayer(tournId, playerId);
 
             expect(result.success).toBe(true);
             expect(result.position).toBe("waitlist");
-            expect(mockTournament.waitlistPlayers).toHaveLength(1);
+            expect(result.tournament).toEqual(waitlistTournament);
         });
     });
 
     describe("unregisterPlayer", () => {
         it("should unregister player and promote from waitlist", async () => {
-            mockTournament.registeredPlayers = [{ playerId: { toString: () => playerId } }];
-            mockTournament.waitlistPlayers = [{ playerId: { toString: () => waitPlayerId } }];
+            const updatedTournament = {
+                ...mockTournament,
+                registeredPlayers: [{ playerId: new Types.ObjectId(waitPlayerId), registeredAt: new Date() }],
+                waitlistPlayers: [],
+            };
+            (Tournament.findOneAndUpdateSafe as jest.Mock).mockResolvedValueOnce(updatedTournament);
 
             const result = await TournamentRegistrationService.unregisterPlayer(tournId, playerId);
 
             expect(result.success).toBe(true);
-            expect(mockTournament.registeredPlayers).toHaveLength(1);
-            expect(mockTournament.registeredPlayers[0].playerId.toString()).toBe(waitPlayerId); // Promoted
-            expect(mockTournament.waitlistPlayers).toHaveLength(0);
+            expect(result.tournament).toEqual(updatedTournament);
         });
 
         it("should fail if tournament is active/completed", async () => {
@@ -131,21 +165,32 @@ describe("TournamentRegistrationService", () => {
             const result = await TournamentRegistrationService.unregisterPlayer(tournId, playerId);
             expect(result.success).toBe(false);
         });
+
+        it("should remove from waitlist if on waitlist", async () => {
+            (Tournament.findOneAndUpdateSafe as jest.Mock)
+                .mockResolvedValueOnce(null)
+                .mockResolvedValueOnce({ ...mockTournament, waitlistPlayers: [] });
+
+            const result = await TournamentRegistrationService.unregisterPlayer(tournId, playerId);
+
+            expect(result.success).toBe(true);
+            expect(result.message).toContain("waitlist");
+        });
+
+        it("should return error if not registered", async () => {
+            (Tournament.findOneAndUpdateSafe as jest.Mock)
+                .mockResolvedValueOnce(null)
+                .mockResolvedValueOnce(null);
+
+            const result = await TournamentRegistrationService.unregisterPlayer(tournId, playerId);
+
+            expect(result.success).toBe(false);
+            expect(result.message).toContain("not registered");
+        });
     });
 
     describe("finalizeRegistration", () => {
         it("should finalize registration successfully", async () => {
-            // Mock populate
-            (Tournament.findById as jest.Mock).mockReturnValue({
-                populate: jest.fn().mockReturnValue({
-                    populate: jest.fn().mockResolvedValue(mockTournament) // Assuming two populat calls? No, implementation has chaining?
-                    // Actually implementation: .findById(..).populate(..)
-                    // So we expect one populate here for findById().populate()
-                    // wait, line 193: Tournament.findById(tournamentId).populate("registeredPlayers", "name")
-                })
-            } as any);
-
-            // Simplest approach: Just make findById return an object with populate that resolves to mockTournament
             const mockQuery = {
                 populate: jest.fn().mockResolvedValue(mockTournament)
             };
@@ -160,7 +205,6 @@ describe("TournamentRegistrationService", () => {
 
             expect(result.success).toBe(true);
             expect(mockTournament.players).toHaveLength(2);
-            // Verify IDs were invoked
             expect(mockTournament.players).toEqual([playerId, otherPlayerId]);
             expect(mockTournament.save).toHaveBeenCalled();
         });
@@ -192,7 +236,6 @@ describe("TournamentRegistrationService", () => {
 
     describe("getRegistrationInfo", () => {
         it("should return correct info", async () => {
-            // Mock chain: findById().populate().populate()
             const mockQuery2 = {
                 populate: jest.fn().mockResolvedValue(mockTournament)
             };
@@ -201,7 +244,6 @@ describe("TournamentRegistrationService", () => {
             };
             (Tournament.findById as jest.Mock).mockReturnValue(mockQuery1);
 
-
             mockTournament.registeredPlayerCount = 5;
             mockTournament.waitlistCount = 0;
             mockTournament.isRegistrationOpen = true;
@@ -209,8 +251,8 @@ describe("TournamentRegistrationService", () => {
             const result = await TournamentRegistrationService.getRegistrationInfo(tournId);
 
             expect(result.success).toBe(true);
-            expect(result.data.isRegistrationOpen).toBe(true);
-            expect(result.data.canRegister).toBe(true);
+            expect(result.data?.isRegistrationOpen).toBe(true);
+            expect(result.data?.canRegister).toBe(true);
         });
     });
 });
