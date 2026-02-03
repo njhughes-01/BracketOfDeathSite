@@ -69,8 +69,7 @@ describe("OpenTournaments Page", () => {
 
     (useAuth as any).mockReturnValue({
       isAuthenticated: true,
-      user: { id: "u1", name: "User", playerId: "p1" }, // Added playerId for hasProfile=true
-      hasProfile: true,
+      user: { id: "u1", name: "User", playerId: "p1" },
     });
   });
 
@@ -146,7 +145,13 @@ describe("OpenTournaments Page", () => {
   it("redirects to onboarding if no profile", async () => {
     (useAuth as any).mockReturnValue({
       isAuthenticated: true,
-      hasProfile: false,
+    });
+    (axios.get as any).mockImplementation((url: string) => {
+      if (url === "/api/profile")
+        return Promise.resolve({ data: { data: { user: {} } } });
+      if (url === "/api/tournaments/open")
+        return Promise.resolve({ data: { data: mockTournaments } });
+      return Promise.reject(new Error("Unknown url " + url));
     });
 
     render(
@@ -162,13 +167,15 @@ describe("OpenTournaments Page", () => {
     const registerBtn = screen.getAllByRole("button")[0];
     fireEvent.click(registerBtn);
 
-    expect(mockNavigate).toHaveBeenCalledWith("/onboarding");
+    await waitFor(() => {
+      expect(mockNavigate).toHaveBeenCalledWith("/onboarding");
+    });
   });
 
   it("calls join api when clicking register (happy path)", async () => {
     (axios.get as any).mockImplementation((url: string) => {
-      if (url === "/api/players/me")
-        return Promise.resolve({ data: { data: { _id: "p1" } } });
+      if (url === "/api/profile")
+        return Promise.resolve({ data: { data: { user: { playerId: "p1" } } } });
       if (url === "/api/tournaments/open")
         return Promise.resolve({ data: { data: mockTournaments } });
       return Promise.reject(new Error("Unknown url " + url));
@@ -189,7 +196,7 @@ describe("OpenTournaments Page", () => {
     fireEvent.click(registerBtn); // Click first tournament (not full)
 
     await waitFor(() => {
-      expect(axios.get).toHaveBeenCalledWith("/api/players/me");
+      expect(axios.get).toHaveBeenCalledWith("/api/profile");
       expect(axios.post).toHaveBeenCalledWith("/api/tournaments/1/join", {
         playerId: "p1",
       });
