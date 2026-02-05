@@ -20,8 +20,9 @@ const RequireProfile: React.FC = () => {
   // Admin and superadmin users don't need player profiles - bypass the check
   const isAdmin = user?.isAdmin === true;
 
-  // Cleanup ref on unmount
+  // Track mount state - reset on mount (for React StrictMode double-mounting)
   useEffect(() => {
+    isMountedRef.current = true;
     return () => {
       isMountedRef.current = false;
     };
