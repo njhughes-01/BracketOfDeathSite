@@ -372,6 +372,49 @@ const TournamentSetupPage: React.FC = () => {
                 placeholder="Additional tournament notes"
               />
             </div>
+
+            {/* Registration Type Selection */}
+            <div className="mt-6 pt-6 border-t border-white/10">
+              <label className="block text-xs font-bold text-slate-500 uppercase mb-3">
+                Registration Type
+              </label>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <button
+                  type="button"
+                  onClick={() => updateBasicInfo("registrationType", "preselected")}
+                  className={`p-4 rounded-xl border-2 text-left transition-all ${
+                    setupData.basicInfo.registrationType === "preselected"
+                      ? "border-primary bg-primary/10"
+                      : "border-white/10 hover:border-white/20"
+                  }`}
+                >
+                  <div className="flex items-center gap-3 mb-2">
+                    <span className="material-symbols-outlined text-primary">group_add</span>
+                    <span className="font-bold text-white">Pre-Selected Players</span>
+                  </div>
+                  <p className="text-xs text-slate-400">
+                    You select players manually in the next step. Use for invite-only tournaments.
+                  </p>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => updateBasicInfo("registrationType", "open")}
+                  className={`p-4 rounded-xl border-2 text-left transition-all ${
+                    setupData.basicInfo.registrationType === "open"
+                      ? "border-primary bg-primary/10"
+                      : "border-white/10 hover:border-white/20"
+                  }`}
+                >
+                  <div className="flex items-center gap-3 mb-2">
+                    <span className="material-symbols-outlined text-green-500">public</span>
+                    <span className="font-bold text-white">Open Registration</span>
+                  </div>
+                  <p className="text-xs text-slate-400">
+                    Players sign themselves up. Tournament appears in Open Events.
+                  </p>
+                </button>
+              </div>
+            </div>
           </div>
         );
 
@@ -1046,7 +1089,14 @@ const TournamentSetupPage: React.FC = () => {
           <div className="max-w-5xl mx-auto flex items-center justify-between gap-4">
             <button
               disabled={currentStep === 0}
-              onClick={() => setCurrentStep((prev) => prev - 1)}
+              onClick={() => {
+                // Skip player selection step when going back if open registration
+                if (currentStep === 2 && setupData.basicInfo.registrationType === "open") {
+                  setCurrentStep(0);
+                } else {
+                  setCurrentStep((prev) => prev - 1);
+                }
+              }}
               className="px-6 py-3 rounded-xl border border-white/10 text-white font-bold disabled:opacity-30 disabled:cursor-not-allowed hover:bg-white/5 transition-all"
             >
               Back
@@ -1074,6 +1124,12 @@ const TournamentSetupPage: React.FC = () => {
                       setupData.basicInfo.bodNumber <= 0
                     ) {
                       setError("Valid BOD Number is required");
+                      return;
+                    }
+                    // Skip player selection for open registration
+                    if (setupData.basicInfo.registrationType === "open") {
+                      setError(null);
+                      setCurrentStep(2); // Jump to seeding step
                       return;
                     }
                   }
