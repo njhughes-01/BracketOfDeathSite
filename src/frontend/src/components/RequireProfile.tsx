@@ -27,8 +27,13 @@ const RequireProfile: React.FC = () => {
     };
   }, []);
 
-  // Check system initialization status first - with timeout and cleanup
+  // Check system initialization status - wait for auth to finish first
   useEffect(() => {
+    // Don't check system status until auth has finished loading
+    if (authLoading) {
+      return;
+    }
+
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 second timeout
 
@@ -59,7 +64,7 @@ const RequireProfile: React.FC = () => {
       clearTimeout(timeoutId);
       controller.abort();
     };
-  }, [retryCount]);
+  }, [retryCount, authLoading]);
 
   useEffect(() => {
     const controller = new AbortController();
