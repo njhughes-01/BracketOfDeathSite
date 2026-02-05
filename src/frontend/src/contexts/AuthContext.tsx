@@ -59,7 +59,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [keycloak, setKeycloak] = useState<Keycloak | null>(null);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [user, setUser] = useState<User | null>(null);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true); // Start as TRUE to prevent flash of unauthenticated content
   const initializationAttempted = useRef(false);
 
   // Token persistence helpers (Memory-only for security)
@@ -249,6 +249,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const initializeAuth = useCallback(async () => {
     if (keycloak || initializationAttempted.current) {
       console.log("Keycloak already initialized or initialization attempted");
+      // Ensure loading is false if we're skipping initialization
+      setLoading(false);
       return;
     }
 
