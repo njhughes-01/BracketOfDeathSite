@@ -22,7 +22,6 @@ const RequireProfile: React.FC = () => {
 
   // Cleanup ref on unmount
   useEffect(() => {
-    isMountedRef.current = true;
     return () => {
       isMountedRef.current = false;
     };
@@ -69,6 +68,7 @@ const RequireProfile: React.FC = () => {
     const checkProfile = async () => {
       if (!isAuthenticated) {
         if (isMountedRef.current) setIsLoading(false);
+        clearTimeout(timeoutId);
         return;
       }
 
@@ -78,6 +78,7 @@ const RequireProfile: React.FC = () => {
           setIsComplete(true);
           setIsLoading(false);
         }
+        clearTimeout(timeoutId);
         return;
       }
 
