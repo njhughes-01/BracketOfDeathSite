@@ -1084,8 +1084,8 @@ const TournamentSetupPage: React.FC = () => {
         {/* Step Content */}
         {renderStepContent()}
 
-        {/* Navigation Actions - with safe-area handling for iOS */}
-        <div className="fixed bottom-0 left-0 right-0 bg-[#1c2230] border-t border-white/10 p-4 pb-[max(1rem,env(safe-area-inset-bottom))] z-20">
+        {/* Navigation Actions - with safe-area handling for iOS, z-50 to be above Layout nav */}
+        <div className="fixed bottom-0 left-0 right-0 bg-[#1c2230] border-t border-white/10 p-4 pb-[max(1rem,env(safe-area-inset-bottom))] z-50">
           <div className="max-w-5xl mx-auto flex items-center justify-between gap-4">
             <button
               disabled={currentStep === 0}
