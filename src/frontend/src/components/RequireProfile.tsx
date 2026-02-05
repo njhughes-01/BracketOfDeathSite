@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef } from "react";
+import React, { useEffect, useState, useRef, useCallback } from "react";
 import { Navigate, Outlet, useLocation } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
 import { apiClient } from "../services/api";
@@ -11,6 +11,9 @@ const RequireProfile: React.FC = () => {
   const [isSystemInitialized, setIsSystemInitialized] = useState<
     boolean | null
   >(null);
+  const [systemError, setSystemError] = useState<string | null>(null);
+  const [profileError, setProfileError] = useState<string | null>(null);
+  const [retryCount, setRetryCount] = useState(0);
   const location = useLocation();
   const isMountedRef = useRef(true);
 
@@ -32,15 +35,20 @@ const RequireProfile: React.FC = () => {
 
     const checkSystemStatus = async () => {
       try {
-        const status = await apiClient.getSystemStatus();
+        setSystemError(null);
+        const status = await apiClient.getSystemStatus({ signal: controller.signal });
         if (isMountedRef.current) {
           setIsSystemInitialized(status.data?.initialized ?? true);
         }
-      } catch (error) {
+      } catch (error: any) {
+        // Don't show error if request was intentionally aborted
+        if (error?.name === 'CanceledError' || error?.name === 'AbortError') {
+          return;
+        }
         console.error("Failed to check system status", error);
-        // Assume initialized on error to prevent redirect loops
+        // Fail closed - show error to user instead of assuming state
         if (isMountedRef.current) {
-          setIsSystemInitialized(true);
+          setSystemError("Unable to connect to server. Please check your connection.");
         }
       } finally {
         clearTimeout(timeoutId);
@@ -52,7 +60,7 @@ const RequireProfile: React.FC = () => {
       clearTimeout(timeoutId);
       controller.abort();
     };
-  }, []);
+  }, [retryCount]);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -74,20 +82,25 @@ const RequireProfile: React.FC = () => {
       }
 
       try {
-        const response = await apiClient.getProfile();
+        setProfileError(null);
+        const response = await apiClient.getProfile({ signal: controller.signal });
         if (isMountedRef.current) {
           if (response.success && response.data) {
             setIsComplete(response.data.isComplete);
           } else {
-            // Fallback or error handling?
+            // Explicit failure from API
             setIsComplete(false);
           }
         }
-      } catch (error) {
+      } catch (error: any) {
+        // Don't show error if request was intentionally aborted
+        if (error?.name === 'CanceledError' || error?.name === 'AbortError') {
+          return;
+        }
         console.error("Failed to check profile status", error);
-        // If checking fails, assume complete to avoid blocking
+        // Fail closed - show error to user instead of assuming state
         if (isMountedRef.current) {
-          setIsComplete(true);
+          setProfileError("Unable to load profile. Please try again.");
         }
       } finally {
         clearTimeout(timeoutId);
@@ -101,13 +114,39 @@ const RequireProfile: React.FC = () => {
       clearTimeout(timeoutId);
       controller.abort();
     };
-  }, [isAuthenticated, isAdmin]);
+  }, [isAuthenticated, isAdmin, retryCount]);
+
+  // Retry handler
+  const handleRetry = useCallback(() => {
+    setSystemError(null);
+    setProfileError(null);
+    setRetryCount(prev => prev + 1);
+  }, []);
 
   // Wait for auth to finish loading first
   if (authLoading) {
     return (
       <div className="flex h-screen items-center justify-center bg-background-dark">
         <LoadingSpinner size="lg" />
+      </div>
+    );
+  }
+
+  // Show error state for system check failure
+  if (systemError) {
+    return (
+      <div className="flex h-screen items-center justify-center bg-background-dark">
+        <div className="flex flex-col items-center gap-4 max-w-md text-center px-4">
+          <span className="material-symbols-outlined text-red-500 text-5xl">error</span>
+          <h2 className="text-white text-xl font-bold">Connection Error</h2>
+          <p className="text-slate-400 text-sm">{systemError}</p>
+          <button
+            onClick={handleRetry}
+            className="mt-2 px-6 py-2 bg-primary text-black font-bold rounded-xl hover:bg-primary-dark transition-colors"
+          >
+            Retry
+          </button>
+        </div>
       </div>
     );
   }
@@ -133,6 +172,25 @@ const RequireProfile: React.FC = () => {
     return <Navigate to="/login" state={{ from: location.pathname }} replace />;
   }
 
+  // Show error state for profile check failure
+  if (profileError) {
+    return (
+      <div className="flex h-screen items-center justify-center bg-background-dark">
+        <div className="flex flex-col items-center gap-4 max-w-md text-center px-4">
+          <span className="material-symbols-outlined text-red-500 text-5xl">error</span>
+          <h2 className="text-white text-xl font-bold">Profile Error</h2>
+          <p className="text-slate-400 text-sm">{profileError}</p>
+          <button
+            onClick={handleRetry}
+            className="mt-2 px-6 py-2 bg-primary text-black font-bold rounded-xl hover:bg-primary-dark transition-colors"
+          >
+            Retry
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   if (isLoading) {
     return (
       <div className="flex h-screen items-center justify-center bg-background-dark">
@@ -144,10 +202,7 @@ const RequireProfile: React.FC = () => {
     );
   }
 
-  // If on onboarding page, don't redirect to onboarding (prevent loop) via Outlet?
-  // Wait, RequireProfile should WRAP other routes.
-  // So if isComplete is false, redirect to /onboarding.
-
+  // If profile check completed with isComplete as false, redirect to onboarding
   if (isComplete === false) {
     return <Navigate to="/onboarding" state={{ from: location }} replace />;
   }

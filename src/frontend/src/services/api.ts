@@ -666,8 +666,8 @@ class ApiClient {
   }
 
   // System Settings API methods
-  async getSystemStatus(): Promise<ApiResponse<{ initialized: boolean }>> {
-    return this.get<ApiResponse<{ initialized: boolean }>>("/system/status");
+  async getSystemStatus(config?: AxiosRequestConfig): Promise<ApiResponse<{ initialized: boolean }>> {
+    return this.get<ApiResponse<{ initialized: boolean }>>("/system/status", config);
   }
 
   async claimSuperAdmin(): Promise<ApiResponse> {
@@ -732,12 +732,12 @@ class ApiClient {
   }
 
   // Profile API methods
-  async getProfile(): Promise<
+  async getProfile(config?: AxiosRequestConfig): Promise<
     ApiResponse<{ user: User; player: Player | null; isComplete: boolean }>
   > {
     return this.get<
       ApiResponse<{ user: User; player: Player | null; isComplete: boolean }>
-    >("/profile");
+    >("/profile", config);
   }
 
   async updateProfile(data: {
