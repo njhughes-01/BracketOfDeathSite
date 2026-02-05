@@ -1011,7 +1011,7 @@ const TournamentSetupPage: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-background-dark text-white pb-20">
+    <div className="min-h-screen bg-background-dark text-white pb-24">
       {/* Sticky Header */}
       <div className="sticky top-0 z-20 bg-background-dark/95 backdrop-blur-md border-b border-white/10 px-4 py-4 flex items-center justify-between">
         <h1 className="text-xl font-bold tracking-tight">Setup Tournament</h1>
@@ -1084,8 +1084,8 @@ const TournamentSetupPage: React.FC = () => {
         {/* Step Content */}
         {renderStepContent()}
 
-        {/* Navigation Actions */}
-        <div className="fixed bottom-0 left-0 right-0 bg-[#1c2230] border-t border-white/10 p-4 z-20">
+        {/* Navigation Actions - with safe-area handling for iOS */}
+        <div className="fixed bottom-0 left-0 right-0 bg-[#1c2230] border-t border-white/10 p-4 pb-[max(1rem,env(safe-area-inset-bottom))] z-20">
           <div className="max-w-5xl mx-auto flex items-center justify-between gap-4">
             <button
               disabled={currentStep === 0}

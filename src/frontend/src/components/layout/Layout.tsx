@@ -161,7 +161,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
       {showNav && (
         <nav
           data-testid="navigation"
-          className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-[#0f1115]/90 backdrop-blur-lg border-t border-white/5 w-full pb-6 pt-2 px-6"
+          className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-[#0f1115]/90 backdrop-blur-lg border-t border-white/5 w-full pb-[max(1.5rem,env(safe-area-inset-bottom))] pt-2 px-6"
         >
           <div className="flex items-center justify-between max-w-md mx-auto">
             {/* Home Tab */}
