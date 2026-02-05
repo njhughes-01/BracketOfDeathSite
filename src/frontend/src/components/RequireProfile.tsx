@@ -67,6 +67,11 @@ const RequireProfile: React.FC = () => {
   }, [retryCount, authLoading]);
 
   useEffect(() => {
+    // Don't check profile until auth has finished loading
+    if (authLoading) {
+      return;
+    }
+
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 second timeout
 
@@ -120,7 +125,7 @@ const RequireProfile: React.FC = () => {
       clearTimeout(timeoutId);
       controller.abort();
     };
-  }, [isAuthenticated, isAdmin, retryCount]);
+  }, [authLoading, isAuthenticated, isAdmin, retryCount]);
 
   // Retry handler
   const handleRetry = useCallback(() => {
