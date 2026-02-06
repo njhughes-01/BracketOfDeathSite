@@ -119,6 +119,20 @@ interface ITournamentPricing {
 
 *Webhook is public but verified via Stripe signature
 
+### Player Transaction Routes (`/api/profile`)
+
+| Method | Endpoint | Auth | Description |
+|--------|----------|------|-------------|
+| GET | `/transactions` | User | List user's payment history |
+| GET | `/tickets` | User | List user's tickets (all tournaments) |
+| POST | `/billing-portal` | User | Create Stripe Customer Portal session |
+
+**Stripe Customer Portal** allows players to:
+- View all payment history with receipts
+- Request refunds (if policy allows)
+- Update payment methods for future purchases
+- Download invoices
+
 ### Check-in Routes (`/api/checkin`)
 
 | Method | Endpoint | Auth | Description |
@@ -260,6 +274,8 @@ async function generateTicketQR(ticket: ITournamentTicket): Promise<string> {
 | `TicketView` | `/tickets/:code` | View ticket details + QR |
 | `CheckInScanner` | `/admin/checkin/:tournamentId` | Admin scanner interface |
 | `TicketManagement` | `/admin/tournaments/:id/tickets` | Admin ticket list |
+| `MyTickets` | `/profile/tickets` | Player's ticket history |
+| `MyTransactions` | `/profile/transactions` | Player's payment history + Stripe Portal link |
 
 ### Components
 
