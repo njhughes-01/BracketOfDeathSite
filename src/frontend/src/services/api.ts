@@ -708,6 +708,10 @@ class ApiClient {
     return this.post<ApiResponse>("/auth/forgot-password", { email });
   }
 
+  async resetPassword(token: string, newPassword: string): Promise<ApiResponse> {
+    return this.post<ApiResponse>("/auth/reset-password", { token, newPassword });
+  }
+
   // System Settings API methods
   async getSystemStatus(config?: AxiosRequestConfig): Promise<ApiResponse<{ initialized: boolean }>> {
     return this.get<ApiResponse<{ initialized: boolean }>>("/system/status", config);

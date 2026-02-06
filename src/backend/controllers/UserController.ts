@@ -12,8 +12,12 @@ import {
 } from "../types/user";
 import keycloakAdminService from "../services/keycloakAdminService";
 import mailjetService from "../services/MailjetService";
+import { EmailService } from "../services/EmailService";
+import PasswordResetToken from "../models/PasswordResetToken";
 import jwt from "jsonwebtoken";
 import { Player } from "../models/Player";
+
+const emailService = new EmailService();
 
 export class UserController extends BaseController {
   getUsers = this.asyncHandler(
@@ -613,10 +617,19 @@ export class UserController extends BaseController {
         );
 
         if (user && user.id) {
-          // Trigger Keycloak reset email
-          await keycloakAdminService.executeActionsEmail(user.id, [
-            "UPDATE_PASSWORD",
-          ]);
+          // Generate reset token using our system
+          const resetToken = await (PasswordResetToken as any).createForUser(
+            user.id,
+            email,
+            60 // 60 minutes expiry
+          );
+
+          // Build reset link
+          const frontendUrl = process.env.FRONTEND_URL || "http://localhost:5173";
+          const resetLink = `${frontendUrl}/reset-password?token=${resetToken.token}`;
+
+          // Send email via Mailgun API
+          await emailService.sendPasswordReset(email, resetLink);
         }
 
         // Always return success to prevent user enumeration
@@ -634,6 +647,37 @@ export class UserController extends BaseController {
           "If an account exists, a password reset email has been sent.",
         );
       }
+    },
+  );
+
+  // Complete password reset with token
+  publicResetPassword = this.asyncHandler(
+    async (req: RequestWithAuth, res: Response): Promise<void> => {
+      const { token, newPassword } = req.body;
+
+      if (!token || !newPassword) {
+        return this.sendError(res, "Token and new password are required", 400);
+      }
+
+      if (newPassword.length < 8) {
+        return this.sendError(res, "Password must be at least 8 characters", 400);
+      }
+
+      // Validate and consume the token
+      const resetToken = await (PasswordResetToken as any).validateAndConsume(token);
+
+      if (!resetToken) {
+        return this.sendError(res, "Invalid or expired reset token", 400);
+      }
+
+      // Update password in Keycloak
+      await keycloakAdminService.resetUserPassword(
+        resetToken.userId,
+        newPassword,
+        false // not temporary
+      );
+
+      this.sendSuccess(res, null, "Password has been reset successfully");
     },
   );
 

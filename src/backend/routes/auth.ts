@@ -13,6 +13,9 @@ router.post("/register", UserController.register);
 // Password Reset Request
 router.post("/forgot-password", UserController.publicRequestPasswordReset);
 
+// Complete Password Reset (with token)
+router.post("/reset-password", UserController.publicResetPassword);
+
 // Email Verification Request
 router.post(
   "/verify-email-request",
