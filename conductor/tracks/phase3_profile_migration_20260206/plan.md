@@ -35,37 +35,37 @@ Complete the auth/RBAC track Phase 3 (profile updates, password reset UI, email 
 ## Phase 3B: Data Migration Controller
 
 ### 3B.1: Migration Infrastructure
-- [ ] Task: Analyze JSON file structure (43 files, 2009-2024)
-- [ ] Task: Create migration utility functions (parseJsonFile, mapToSchema)
-- [ ] Task: Create tests for migration utilities
-- [ ] Task: Implement migration status tracking (MongoDB collection)
+- [x] Task: Analyze JSON file structure (43 files, 2009-2024) [analyzed via json-schema-analyzer]
+- [x] Task: Create migration utility functions (parseJsonFile, mapToSchema) [DataMigrationService.ts]
+- [x] Task: Create tests for migration utilities [15 tests passing]
+- [x] Task: Implement migration status tracking (MigrationStatus interface in controller)
 
 ### 3B.2: Player Migration
-- [ ] Task: Create tests for player extraction from JSON
-- [ ] Task: Implement `migratePlayers` - extract unique players from all JSONs
-- [ ] Task: Handle player name normalization and deduplication
+- [x] Task: Create tests for player extraction from JSON [extractPlayersFromRecord, extractAllPlayers tests]
+- [x] Task: Implement `migratePlayers` - extract unique players from all JSONs [DataMigrationController]
+- [x] Task: Handle player name normalization and deduplication [via Player.findOne]
 - [ ] Task: Verify player migration against existing database
 
 ### 3B.3: Tournament Migration  
-- [ ] Task: Create tests for tournament metadata extraction
-- [ ] Task: Implement `migrateTournaments` - create tournament records from JSON filenames/data
-- [ ] Task: Map JSON fields to Tournament schema (date, format, location, bodNumber)
+- [x] Task: Create tests for tournament metadata extraction [loadChampionsData, mapChampionToTournament tests]
+- [x] Task: Implement `migrateTournaments` - create tournament records from JSON filenames/data
+- [x] Task: Map JSON fields to Tournament schema (date, format, location, bodNumber) [normalizeFormat helper]
 
 ### 3B.4: Results Migration
-- [ ] Task: Create tests for tournament results extraction
-- [ ] Task: Implement `migrateResults` - create TournamentResult records
-- [ ] Task: Link results to tournaments and players by reference
+- [x] Task: Create tests for tournament results extraction [mapRecordToTournamentResult tests]
+- [x] Task: Implement `migrateResults` - create TournamentResult records
+- [x] Task: Link results to tournaments and players by reference [via Player.findOne by name]
 - [ ] Task: Calculate and store aggregate statistics
 
 ### 3B.5: Migration Operations
-- [ ] Task: Implement `migrateAll` - orchestrate full migration with rollback
-- [ ] Task: Implement `getMigrationStatus` - track progress and errors
-- [ ] Task: Implement `previewMigration` - dry-run with validation report
-- [ ] Task: Implement `validateData` - check data integrity post-migration
+- [x] Task: Implement `migrateAll` - orchestrate full migration with rollback
+- [x] Task: Implement `getMigrationStatus` - track progress and errors
+- [x] Task: Implement `previewMigration` - dry-run with validation report
+- [x] Task: Implement `validateData` - check data integrity post-migration
 
 ### 3B.6: Backup & Restore
-- [ ] Task: Implement `createBackup` - MongoDB dump to file
-- [ ] Task: Implement `restoreBackup` - restore from backup file
+- [x] Task: Implement `createBackup` - MongoDB dump to file [mongodump wrapper]
+- [x] Task: Implement `restoreBackup` - restore from backup file [mongorestore wrapper]
 - [ ] Task: Create admin UI for migration controls (optional)
 - [ ] Task: Conductor - User Manual Verification 'Phase 3B' (Protocol in workflow.md)
 
