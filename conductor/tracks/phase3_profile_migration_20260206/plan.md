@@ -22,12 +22,12 @@ Complete the auth/RBAC track Phase 3 (profile updates, password reset UI, email 
 - [x] Task: Update API client updateProfile method
 - [x] Task: Backend endpoint PUT /api/profile extended for firstName/lastName
 - [x] Task: Wire ProfileEditForm into Profile page [Edit button + modal]
-- [ ] Task: Test profile update flow end-to-end
+- [x] Task: Test profile update flow end-to-end [API 200 verified]
 
 ### 3A.3: Email Configuration (Keycloak + Mailgun)
 - [x] Task: Document Keycloak SMTP configuration requirements [keycloak-admin skill updated]
 - [x] Task: Add Mailgun credentials to .env
-- [ ] Task: Configure Keycloak realm email settings for Mailgun (manual - admin console)
+- [x] Task: Configure Keycloak realm email settings for Mailgun [API configured]
 - [ ] Task: Test password reset email delivery
 - [ ] Task: Test email verification flow
 - [ ] Task: Conductor - User Manual Verification 'Phase 3A' (Protocol in workflow.md)
