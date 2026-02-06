@@ -1,3 +1,4 @@
+import logger from "../utils/logger";
 import {
   IEmailProvider,
   EmailParams,
@@ -106,7 +107,7 @@ export class EmailService {
         brandSecondaryColor: settings?.brandSecondaryColor || "#008CBA",
       };
     } catch (error) {
-      console.warn(
+      logger.warn(
         "Failed to fetch system settings, falling back to env:",
         error,
       );

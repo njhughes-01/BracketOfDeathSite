@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import logger from "../utils/logger";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
 import { apiClient } from "../services/api";
@@ -37,7 +38,7 @@ const OpenTournaments: React.FC = () => {
       const response = await apiClient.getOpenTournaments();
       setTournaments(response.data || []);
     } catch (err) {
-      console.error("Fetch error:", err);
+      logger.error("Fetch error:", err);
       setError("Failed to load tournaments. Please try again later.");
     } finally {
       setLoading(false);
@@ -69,7 +70,7 @@ const OpenTournaments: React.FC = () => {
       await fetchOpenTournaments();
       alert("Successfully registered!");
     } catch (err: any) {
-      console.error("Join failed:", err);
+      logger.error("Join failed:", err);
       const msg = err.response?.data?.error || "Failed to join tournament.";
       alert(msg);
     } finally {

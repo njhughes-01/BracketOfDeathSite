@@ -1,4 +1,5 @@
 import { Types } from "mongoose";
+import logger from "../utils/logger";
 import { Player } from "../models/Player";
 import { TournamentResult } from "../models/TournamentResult";
 import { IPlayer } from "../types/player";
@@ -61,7 +62,7 @@ export class TournamentSeedingService {
         seeds: playerSeeds,
       };
     } catch (error) {
-      console.error("Seeding calculation error:", error);
+      logger.error("Seeding calculation error:", error);
       return { success: false, message: "Failed to calculate seeding" };
     }
   }
@@ -232,7 +233,7 @@ export class TournamentSeedingService {
         pairings,
       };
     } catch (error) {
-      console.error("Bracket pairing error:", error);
+      logger.error("Bracket pairing error:", error);
       return { success: false, message: "Failed to generate bracket pairings" };
     }
   }
@@ -280,7 +281,7 @@ export class TournamentSeedingService {
         },
       };
     } catch (error) {
-      console.error("Seeding preview error:", error);
+      logger.error("Seeding preview error:", error);
       return { success: false, message: "Failed to generate seeding preview" };
     }
   }

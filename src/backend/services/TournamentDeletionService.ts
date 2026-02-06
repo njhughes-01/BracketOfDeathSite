@@ -1,4 +1,5 @@
 import { Types } from "mongoose";
+import logger from "../utils/logger";
 import { Tournament } from "../models/Tournament";
 import { Match } from "../models/Match";
 import { TournamentResult } from "../models/TournamentResult";
@@ -86,7 +87,7 @@ export class TournamentDeletionService {
     };
 
     try {
-      console.log(`[${operation.correlationId}] Starting tournament deletion`, {
+      logger.info(`[${operation.correlationId}] Starting tournament deletion`, {
         tournamentId,
         adminUserId,
         timestamp: operation.startTime.toISOString(),
@@ -108,7 +109,7 @@ export class TournamentDeletionService {
       operation.status = "completed";
       operation.endTime = new Date();
 
-      console.log(
+      logger.info(
         `[${operation.correlationId}] Tournament deletion completed successfully`,
         {
           tournamentId,
@@ -134,7 +135,7 @@ export class TournamentDeletionService {
       operation.error = error as Error;
       operation.endTime = new Date();
 
-      console.error(`[${operation.correlationId}] Tournament deletion failed`, {
+      logger.error(`[${operation.correlationId}] Tournament deletion failed`, {
         tournamentId,
         error:
           error instanceof Error
@@ -255,7 +256,7 @@ export class TournamentDeletionService {
         deletedCount += batchDeleted;
         batch++;
 
-        console.log(
+        logger.info(
           `[${operation.correlationId}] Deleted matches batch ${batch}: ${batchDeleted} records`,
         );
 
@@ -271,7 +272,7 @@ export class TournamentDeletionService {
       operation.status = "matches_deleted";
 
       if (deletedCount !== step.expectedCount) {
-        console.warn(
+        logger.warn(
           `[${operation.correlationId}] Match deletion count mismatch: expected ${step.expectedCount}, actual ${deletedCount}`,
         );
       }
@@ -322,7 +323,7 @@ export class TournamentDeletionService {
         deletedCount += batchDeleted;
         batch++;
 
-        console.log(
+        logger.info(
           `[${operation.correlationId}] Deleted results batch ${batch}: ${batchDeleted} records`,
         );
 
@@ -337,7 +338,7 @@ export class TournamentDeletionService {
       operation.status = "results_deleted";
 
       if (deletedCount !== step.expectedCount) {
-        console.warn(
+        logger.warn(
           `[${operation.correlationId}] Results deletion count mismatch: expected ${step.expectedCount}, actual ${deletedCount}`,
         );
       }
@@ -399,7 +400,7 @@ export class TournamentDeletionService {
   ): Promise<void> {
     operation.status = "compensating";
 
-    console.warn(
+    logger.warn(
       `[${operation.correlationId}] Attempting compensation for failed deletion`,
     );
 
@@ -413,11 +414,11 @@ export class TournamentDeletionService {
         try {
           await Tournament.create(tournamentStep.compensationData.tournament);
           tournamentStep.status = "compensated";
-          console.log(
+          logger.info(
             `[${operation.correlationId}] Tournament restored from compensation data`,
           );
         } catch (error) {
-          console.error(
+          logger.error(
             `[${operation.correlationId}] Failed to restore tournament:`,
             error,
           );
@@ -427,7 +428,7 @@ export class TournamentDeletionService {
       // Note: We don't restore matches and results as they're more complex to restore
       // In a real system, you might want to implement more sophisticated compensation
     } catch (error) {
-      console.error(`[${operation.correlationId}] Compensation failed:`, error);
+      logger.error(`[${operation.correlationId}] Compensation failed:`, error);
     }
   }
 

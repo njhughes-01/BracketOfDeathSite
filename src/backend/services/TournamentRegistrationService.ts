@@ -1,4 +1,5 @@
 import { Types } from "mongoose";
+import logger from "../utils/logger";
 import { Tournament } from "../models/Tournament";
 import { Player } from "../models/Player";
 import { ITournament } from "../types/tournament";
@@ -131,7 +132,7 @@ export class TournamentRegistrationService {
 
       return { success: false, message: "Registration failed" };
     } catch (error) {
-      console.error("Registration error:", error);
+      logger.error("Registration error:", error);
       return { success: false, message: "Registration failed" };
     }
   }
@@ -239,7 +240,7 @@ export class TournamentRegistrationService {
         message: "Player was not registered for this tournament",
       };
     } catch (error) {
-      console.error("Unregistration error:", error);
+      logger.error("Unregistration error:", error);
       return { success: false, message: "Unregistration failed" };
     }
   }
@@ -289,7 +290,7 @@ export class TournamentRegistrationService {
         tournament,
       };
     } catch (error) {
-      console.error("Finalization error:", error);
+      logger.error("Finalization error:", error);
       return { success: false, message: "Registration finalization failed" };
     }
   }
@@ -321,7 +322,7 @@ export class TournamentRegistrationService {
         },
       };
     } catch (error) {
-      console.error("Get registration info error:", error);
+      logger.error("Get registration info error:", error);
       return { success: false, message: "Failed to get registration info" };
     }
   }
@@ -338,7 +339,7 @@ export class TournamentRegistrationService {
         tournament.location || `BOD #${tournament.bodNumber}`,
         tournament.date,
       )
-      .catch((err) => console.error("Failed to send registration email:", err));
+      .catch((err) => logger.error("Failed to send registration email:", err));
   }
 
   private static sendWaitlistEmail(
@@ -354,7 +355,7 @@ export class TournamentRegistrationService {
         tournament.location || `BOD #${tournament.bodNumber}`,
         position,
       )
-      .catch((err) => console.error("Failed to send waitlist email:", err));
+      .catch((err) => logger.error("Failed to send waitlist email:", err));
   }
 
   private static async notifyPromotedPlayer(
@@ -378,7 +379,7 @@ export class TournamentRegistrationService {
           afterTournament.location || `BOD #${afterTournament.bodNumber}`,
         )
         .catch((err) =>
-          console.error("Failed to send spot available email:", err),
+          logger.error("Failed to send spot available email:", err),
         );
     }
   }

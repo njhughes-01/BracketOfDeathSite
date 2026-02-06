@@ -1,4 +1,5 @@
 import React, { useCallback, useMemo, useEffect } from "react";
+import logger from "../utils/logger";
 import { Link, useNavigate } from "react-router-dom";
 import { useApi } from "../hooks/useApi";
 import apiClient from "../services/api";
@@ -18,7 +19,7 @@ const Home: React.FC = () => {
           navigate("/setup", { replace: true });
         }
       } catch (error) {
-        console.error("Failed to check system status:", error);
+        logger.error("Failed to check system status:", error);
       }
     };
     checkSystemStatus();

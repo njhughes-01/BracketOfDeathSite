@@ -1,3 +1,4 @@
+import logger from "../utils/logger";
 /**
  * useSystemStatus Hook
  *
@@ -87,7 +88,7 @@ export function useSystemStatus(
                 }
             }
         } catch (err) {
-            console.error("Failed to check system status:", err);
+            logger.error("Failed to check system status:", err);
             setError(
                 err instanceof Error ? err : new Error("Failed to check system status")
             );

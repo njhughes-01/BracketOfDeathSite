@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import logger from "../utils/logger";
 import { useAuth } from "../contexts/AuthContext";
 import { Link } from "react-router-dom";
 import { apiClient } from "../services/api";
@@ -49,7 +50,7 @@ const Profile: React.FC = () => {
           });
           setSearchResults(response.data);
         } catch (error) {
-          console.error("Search failed", error);
+          logger.error("Search failed", error);
         } finally {
           setIsSearching(false);
         }
@@ -66,7 +67,7 @@ const Profile: React.FC = () => {
       await apiClient.sendVerificationEmail();
       setVerificationSent(true);
     } catch (err) {
-      console.error("Failed to send verification email", err);
+      logger.error("Failed to send verification email", err);
     }
   };
 
@@ -77,7 +78,7 @@ const Profile: React.FC = () => {
       await refreshUser();
       setIsLinkModalOpen(false);
     } catch (error) {
-      console.error("Failed to link profile", error);
+      logger.error("Failed to link profile", error);
       // Optionally show toast error
     } finally {
       setIsLinking(false);

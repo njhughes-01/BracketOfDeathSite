@@ -1,4 +1,5 @@
 import FormData from "form-data";
+import logger from "../../utils/logger";
 import Mailgun from "mailgun.js";
 import { Interfaces } from "mailgun.js/definitions";
 import { IEmailProvider, EmailParams, BrandingConfig } from "./IEmailProvider";
@@ -23,7 +24,7 @@ export class MailgunProvider implements IEmailProvider {
             await this.client.domains.get(this.domain);
             return true;
         } catch (error) {
-            console.error("Mailgun verification failed:", error);
+            logger.error("Mailgun verification failed:", error);
             return false;
         }
     }
@@ -33,7 +34,7 @@ export class MailgunProvider implements IEmailProvider {
         config: BrandingConfig,
     ): Promise<boolean> {
         if (!this.client || !this.domain) {
-            console.warn("Mailgun provider missing configuration");
+            logger.warn("Mailgun provider missing configuration");
             return false;
         }
 
@@ -49,7 +50,7 @@ export class MailgunProvider implements IEmailProvider {
             await this.client.messages.create(this.domain, messageData);
             return true;
         } catch (error: any) {
-            console.error("Mailgun send error:", error);
+            logger.error("Mailgun send error:", error);
             return false;
         }
     }

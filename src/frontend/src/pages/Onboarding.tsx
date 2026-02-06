@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import logger from "../utils/logger";
 import { useNavigate, useLocation } from "react-router-dom";
 import { apiClient } from "../services/api";
 import { useAuth } from "../contexts/AuthContext";
@@ -37,7 +38,7 @@ const Onboarding: React.FC = () => {
           setStep("profile");
         }
       } catch (err) {
-        console.error("Failed to check system status:", err);
+        logger.error("Failed to check system status:", err);
         // Fallback to profile step on error
         setStep("profile");
       }
@@ -60,7 +61,7 @@ const Onboarding: React.FC = () => {
       await forceTokenRefresh(); // Force refresh to get new roles from server
       setStep("profile"); // Move to profile step
     } catch (err: any) {
-      console.error("Failed to claim admin:", err);
+      logger.error("Failed to claim admin:", err);
       setError(
         err.response?.data?.error || "Failed to claim superadmin access.",
       );
@@ -84,7 +85,7 @@ const Onboarding: React.FC = () => {
       await refreshUser(); // Refresh user state
       navigate(from, { replace: true });
     } catch (err: any) {
-      console.error("Onboarding update failed", err);
+      logger.error("Onboarding update failed", err);
       setError(
         err.response?.data?.error ||
         "Failed to update profile. Please try again.",

@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import logger from "../utils/logger";
 import { useApi } from "../hooks/useApi";
 import apiClient from "../services/api";
 import { Link } from "react-router-dom";
@@ -25,7 +26,7 @@ const Rankings: React.FC = () => {
           setAvailableRange(res.data);
         }
       } catch (err) {
-        console.error("Failed to fetch available years", err);
+        logger.error("Failed to fetch available years", err);
       }
     };
     fetchYears();

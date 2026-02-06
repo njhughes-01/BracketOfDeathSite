@@ -1,3 +1,4 @@
+import logger from "../utils/logger";
 import React, {
   useState,
   useEffect,
@@ -54,7 +55,7 @@ const TournamentManage: React.FC = () => {
     try {
       localStorage.setItem(storageKey("selectedRound"), round);
     } catch (e) {
-      console.error("Storage error:", e);
+      logger.error("Storage error:", e);
     }
   }, [storageKey]);
 
@@ -62,7 +63,7 @@ const TournamentManage: React.FC = () => {
     try {
       return localStorage.getItem(storageKey("selectedRound"));
     } catch (e) {
-      console.error("Storage error:", e);
+      logger.error("Storage error:", e);
       return null;
     }
   }, [storageKey]);
@@ -71,7 +72,7 @@ const TournamentManage: React.FC = () => {
     try {
       localStorage.setItem(storageKey(key), String(val));
     } catch (e) {
-      console.error("Storage error:", e);
+      logger.error("Storage error:", e);
     }
   }, [storageKey]);
 
@@ -80,7 +81,7 @@ const TournamentManage: React.FC = () => {
       const v = localStorage.getItem(storageKey(key));
       return v === null ? fallback : v === "true";
     } catch (e) {
-      console.error("Storage error:", e);
+      logger.error("Storage error:", e);
       return fallback;
     }
   }, [storageKey]);
@@ -159,7 +160,7 @@ const TournamentManage: React.FC = () => {
       }
     } catch (err: unknown) {
       setError("Failed to load tournament data");
-      console.error(err);
+      logger.error(err);
     } finally {
       setLoading(false);
     }
@@ -230,7 +231,7 @@ const TournamentManage: React.FC = () => {
         try {
           es.close();
         } catch (e) {
-          console.error("SSE close error:", e);
+          logger.error("SSE close error:", e);
         }
         eventSourceRef.current = null;
       };
@@ -263,7 +264,7 @@ const TournamentManage: React.FC = () => {
           ? `Failed to ${action.action.replace("_", " ")}: ${backendMsg}`
           : `Failed to ${action.action.replace("_", " ")}`,
       );
-      console.error("Execute action error:", errorObj.response?.data || err);
+      logger.error("Execute action error:", errorObj.response?.data || err);
     } finally {
       setLoading(false);
     }
@@ -292,7 +293,7 @@ const TournamentManage: React.FC = () => {
           ? `Failed to update match: ${backendMsg}`
           : "Failed to update match score",
       );
-      console.error("Update match error:", errorObj.response?.data || err);
+      logger.error("Update match error:", errorObj.response?.data || err);
     } finally {
       setLoading(false);
     }
@@ -318,7 +319,7 @@ const TournamentManage: React.FC = () => {
           ? `Failed to generate matches: ${backendMsg}`
           : "Failed to generate matches for this round",
       );
-      console.error("Generate matches error:", errorObj.response?.data || err);
+      logger.error("Generate matches error:", errorObj.response?.data || err);
     } finally {
       setLoading(false);
     }
@@ -341,7 +342,7 @@ const TournamentManage: React.FC = () => {
       }
     } catch (err) {
       setError("Failed to confirm all completed matches");
-      console.error(err);
+      logger.error(err);
     } finally {
       setLoading(false);
     }
@@ -357,7 +358,7 @@ const TournamentManage: React.FC = () => {
       }
     } catch (err) {
       setError("Failed to update check-in status");
-      console.error(err);
+      logger.error(err);
     }
   };
 

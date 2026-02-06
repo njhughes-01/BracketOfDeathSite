@@ -1,4 +1,5 @@
 import { Tournament } from "../models/Tournament";
+import logger from "../utils/logger";
 import { Match } from "../models/Match";
 import { TournamentResult } from "../models/TournamentResult";
 import { Player } from "../models/Player";
@@ -111,7 +112,7 @@ export class LiveStatsService {
         lastUpdated: new Date(),
       };
     } catch (error) {
-      console.error("Error calculating live tournament stats:", error);
+      logger.error("Error calculating live tournament stats:", error);
       return null;
     }
   }
@@ -360,7 +361,7 @@ export class LiveStatsService {
       const match = await Match.findById(matchId);
       if (!match || match.status !== "completed") return;
 
-      console.log(`Updating live stats for tournament ${match.tournamentId}`);
+      logger.debug(`Updating live stats for tournament ${match.tournamentId}`);
 
       // Broadcast an event so SSE/WebSocket subscribers can refresh
       try {
@@ -370,7 +371,7 @@ export class LiveStatsService {
         });
       } catch {}
     } catch (error) {
-      console.error("Error updating live stats:", error);
+      logger.error("Error updating live stats:", error);
     }
   }
 

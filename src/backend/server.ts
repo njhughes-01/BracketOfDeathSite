@@ -1,4 +1,5 @@
 import express from "express";
+import logger from "./utils/logger";
 import cors from "cors";
 import helmet from "helmet";
 import compression from "compression";
@@ -87,27 +88,27 @@ export const startServer = async (): Promise<void> => {
     await connectToDatabase();
 
     const server = app.listen(PORT, () => {
-      console.log(`Server running on port ${PORT}`);
-      console.log(`Environment: ${process.env.NODE_ENV || "development"}`);
+      logger.info(`Server running on port ${PORT}`);
+      logger.info(`Environment: ${process.env.NODE_ENV || "development"}`);
     });
 
     // Graceful shutdown
     process.on("SIGTERM", () => {
-      console.log("SIGTERM received, shutting down gracefully");
+      logger.info("SIGTERM received, shutting down gracefully");
       server.close(() => {
-        console.log("Process terminated");
+        logger.info("Process terminated");
         process.exit(0);
       });
     });
   } catch (error) {
-    console.error("Failed to start server:", error);
+    logger.error("Failed to start server:", error);
     process.exit(1);
   }
 };
 
 // Start the server if this file is run directly
 if (require.main === module) {
-  startServer().catch(console.error);
+  startServer().catch((err) => logger.error("Failed to start server:", err));
 }
 
 export default app;

@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import logger from "../../utils/logger";
 import apiClient from "../../services/api";
 import type { SystemSettings } from "../../services/api";
 import LoadingSpinner from "../../components/ui/LoadingSpinner";
@@ -159,7 +160,7 @@ const SettingsPage: React.FC = () => {
 
       // Don't set keys, they are hidden
     } catch (err: any) {
-      console.error(err);
+      logger.error(err);
       setError(
         "Failed to load settings. Ensure you have Super Admin privileges.",
       );
@@ -209,7 +210,7 @@ const SettingsPage: React.FC = () => {
 
     // Optional: Warn if email credentials changed without testing (but allow save)
     if (emailCredentialsChanged && !testEmailSuccess) {
-      console.warn(
+      logger.warn(
         "Saving email settings without testing. Consider testing first.",
       );
     }
@@ -250,7 +251,7 @@ const SettingsPage: React.FC = () => {
       const providerName = activeProvider === "mailjet" ? "Mailjet" : "Mailgun";
       setSuccess(`✅ ${providerName} configuration saved successfully!`);
     } catch (err: any) {
-      console.error(err);
+      logger.error(err);
       setError(err.response?.data?.error || "Failed to save settings");
     } finally {
       setSaving(false);

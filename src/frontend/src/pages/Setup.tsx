@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import logger from "../utils/logger";
 import { useNavigate } from "react-router-dom";
 import { apiClient } from "../services/api";
 import LoadingSpinner from "../components/ui/LoadingSpinner";
@@ -17,7 +18,7 @@ const Setup: React.FC = () => {
           setIsLoading(false);
         }
       } catch (err) {
-        console.error("Failed to check system status:", err);
+        logger.error("Failed to check system status:", err);
         // Fallback to login if check fails
         navigate("/login", { replace: true });
       }

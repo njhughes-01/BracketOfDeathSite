@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import logger from "../utils/logger";
 import { useNavigate } from "react-router-dom";
 import { useMutation } from "../hooks/useApi";
 import apiClient from "../services/api";
@@ -26,7 +27,7 @@ const PlayerCreate: React.FC = () => {
     error,
   } = useMutation((data: PlayerInput) => apiClient.createPlayer(data), {
     onSuccess: () => navigate("/players"),
-    onError: (err) => console.error("Failed to create player:", err),
+    onError: (err) => logger.error("Failed to create player:", err),
   });
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {

@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import logger from "../utils/logger";
 import { Link } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
 import { usePermissions } from "../hooks/usePermissions";
@@ -30,7 +31,7 @@ const Admin: React.FC = () => {
         setTournaments(tournamentsData);
       } catch (err) {
         setError("Failed to load tournaments");
-        console.error(err);
+        logger.error(err);
       } finally {
         setLoading(false);
       }

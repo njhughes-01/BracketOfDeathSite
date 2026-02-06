@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from "react";
+import logger from "../utils/logger";
 import { useNavigate } from "react-router-dom";
 import { useApi } from "../hooks/useApi";
 import apiClient from "../services/api";
@@ -109,7 +110,7 @@ const TournamentSetupPage: React.FC = () => {
         }
       } catch (err) {
         setError("Failed to load initial data");
-        console.error(err);
+        logger.error(err);
       } finally {
         setLoading(false);
       }
@@ -146,7 +147,7 @@ const TournamentSetupPage: React.FC = () => {
       }
     } catch (err) {
       setError("Failed to generate player seeds");
-      console.error(err);
+      logger.error(err);
     } finally {
       setLoading(false);
     }
@@ -170,7 +171,7 @@ const TournamentSetupPage: React.FC = () => {
       }
     } catch (err) {
       setError("Failed to generate teams");
-      console.error(err);
+      logger.error(err);
     } finally {
       setLoading(false);
     }
@@ -228,13 +229,13 @@ const TournamentSetupPage: React.FC = () => {
         generatedTeams,
       };
 
-      console.log("Creating tournament with setup data:", cleanSetupData);
+      logger.debug("Creating tournament with setup data:", cleanSetupData);
       const response = await apiClient.setupTournament(cleanSetupData);
       if (response.success && response.data) {
         navigate(`/tournaments/${response.data._id || response.data.id}`);
       }
     } catch (err: any) {
-      console.error("Tournament creation error:", err);
+      logger.error("Tournament creation error:", err);
       const errorMessage =
         err.response?.data?.message ||
         err.response?.data?.error ||

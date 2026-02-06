@@ -1,4 +1,5 @@
 import axios from "axios";
+import logger from "../../utils/logger";
 import { IEmailProvider, EmailParams, BrandingConfig } from "./IEmailProvider";
 
 interface MailjetConfig extends BrandingConfig {
@@ -31,7 +32,7 @@ export class MailjetProvider implements IEmailProvider {
             );
             return response.status === 200;
         } catch (error) {
-            console.error("Mailjet verification failed:", error);
+            logger.error("Mailjet verification failed:", error);
             return false;
         }
     }
@@ -41,7 +42,7 @@ export class MailjetProvider implements IEmailProvider {
         config: BrandingConfig,
     ): Promise<boolean> {
         if (!this.apiKey || !this.apiSecret) {
-            console.warn("Mailjet provider missing credentials");
+            logger.warn("Mailjet provider missing credentials");
             return false;
         }
 
@@ -63,7 +64,7 @@ export class MailjetProvider implements IEmailProvider {
             );
             return response.status === 200 || response.status === 201;
         } catch (error: any) {
-            console.error(
+            logger.error(
                 "Mailjet send error:",
                 error.response?.data || error.message,
             );
