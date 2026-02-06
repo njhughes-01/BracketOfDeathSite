@@ -15,25 +15,42 @@ export class SettingsController extends BaseController {
         "+mailjetApiKey +mailjetApiSecret +mailgunApiKey",
       );
 
+      // Check for environment variables first
+      const envMailgunKey = process.env.MAILGUN_API_KEY;
+      const envMailgunDomain = process.env.MAILGUN_DOMAIN;
+      const envMailjetKey = process.env.MAILJET_API_KEY;
+      const envMailjetSecret = process.env.MAILJET_API_SECRET;
+
+      const mailgunFromEnv = !!(envMailgunKey && envMailgunDomain);
+      const mailjetFromEnv = !!(envMailjetKey && envMailjetSecret);
+      const emailConfigSource = mailgunFromEnv || mailjetFromEnv ? "environment" : 
+        (settings?.mailgunApiKey || settings?.mailjetApiKey ? "database" : null);
+
+      // Determine active provider
+      let activeProvider = settings?.activeProvider || "mailjet";
+      if (mailgunFromEnv) activeProvider = "mailgun";
+      else if (mailjetFromEnv) activeProvider = "mailjet";
+
       const data = {
         // Email Provider config
-        activeProvider: settings?.activeProvider || "mailjet",
+        activeProvider,
         senderEmail: settings?.senderEmail || "",
+        emailConfigSource,
 
-        // Mailjet config
-        mailjetConfigured: !!(
+        // Mailjet config - check env vars first, then database
+        mailjetConfigured: mailjetFromEnv || !!(
           settings?.mailjetApiKey && settings?.mailjetApiSecret
         ),
         mailjetSenderEmail: settings?.mailjetSenderEmail || "",
-        hasApiKey: !!settings?.mailjetApiKey,
-        hasApiSecret: !!settings?.mailjetApiSecret,
+        hasApiKey: mailjetFromEnv || !!settings?.mailjetApiKey,
+        hasApiSecret: mailjetFromEnv || !!settings?.mailjetApiSecret,
 
-        // Mailgun config
-        mailgunConfigured: !!(
+        // Mailgun config - check env vars first, then database
+        mailgunConfigured: mailgunFromEnv || !!(
           settings?.mailgunApiKey && settings?.mailgunDomain
         ),
-        mailgunDomain: settings?.mailgunDomain || "",
-        hasMailgunApiKey: !!settings?.mailgunApiKey,
+        mailgunDomain: mailgunFromEnv ? envMailgunDomain : (settings?.mailgunDomain || ""),
+        hasMailgunApiKey: mailgunFromEnv || !!settings?.mailgunApiKey,
 
         // Branding config
         siteLogo: settings?.siteLogo || "",
@@ -266,7 +283,27 @@ export class SettingsController extends BaseController {
   // Check if email is configured (public endpoint for banner)
   isEmailConfigured = this.asyncHandler(
     async (_req: Request, res: Response): Promise<void> => {
-      // Need to explicitly select hidden fields to check if they're set
+      // Check environment variables first
+      const envMailgunKey = process.env.MAILGUN_API_KEY;
+      const envMailgunDomain = process.env.MAILGUN_DOMAIN;
+      const envMailjetKey = process.env.MAILJET_API_KEY;
+      const envMailjetSecret = process.env.MAILJET_API_SECRET;
+
+      // If env vars are set, they take priority
+      const isEnvMailgunConfigured = !!(envMailgunKey && envMailgunDomain);
+      const isEnvMailjetConfigured = !!(envMailjetKey && envMailjetSecret);
+
+      if (isEnvMailgunConfigured || isEnvMailjetConfigured) {
+        this.sendSuccess(res, {
+          configured: true,
+          source: "environment",
+          provider: isEnvMailgunConfigured ? "mailgun" : "mailjet",
+          message: "Email is configured via environment variables. To change settings, update your .env file."
+        });
+        return;
+      }
+
+      // Fall back to database settings
       const settings = await SystemSettings.findOne().select('+mailgunApiKey +mailjetApiKey +mailjetApiSecret');
       const provider = settings?.activeProvider || "mailjet";
       const isMailgunConfigured =
@@ -275,7 +312,12 @@ export class SettingsController extends BaseController {
         provider === "mailjet" &&
         !!(settings?.mailjetApiKey && settings?.mailjetApiSecret);
       const configured = isMailgunConfigured || isMailjetConfigured;
-      this.sendSuccess(res, { configured });
+
+      this.sendSuccess(res, {
+        configured,
+        source: configured ? "database" : null,
+        provider: configured ? provider : null
+      });
     },
   );
 

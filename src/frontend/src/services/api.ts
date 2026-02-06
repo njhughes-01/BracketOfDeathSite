@@ -762,8 +762,18 @@ class ApiClient {
     });
   }
 
-  async isEmailConfigured(): Promise<{ configured: boolean }> {
-    const response = await this.get<ApiResponse<{ configured: boolean }>>(
+  async isEmailConfigured(): Promise<{
+    configured: boolean;
+    source?: "environment" | "database" | null;
+    provider?: string;
+    message?: string;
+  }> {
+    const response = await this.get<ApiResponse<{
+      configured: boolean;
+      source?: "environment" | "database" | null;
+      provider?: string;
+      message?: string;
+    }>>(
       "/settings/email/status",
     );
     return response.data || { configured: false };

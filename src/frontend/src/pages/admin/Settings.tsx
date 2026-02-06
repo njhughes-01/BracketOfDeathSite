@@ -20,6 +20,8 @@ const SettingsPage: React.FC = () => {
   const [mailjetConfigured, setMailjetConfigured] = useState(false);
   const [mailgunConfigured, setMailgunConfigured] = useState(false);
   const [showEmailConfigForm, setShowEmailConfigForm] = useState(false);
+  const [emailConfigSource, setEmailConfigSource] = useState<"environment" | "database" | null>(null);
+  const [emailConfigMessage, setEmailConfigMessage] = useState("");
 
   // Form state - Mailjet
   const [apiKey, setApiKey] = useState("");
@@ -98,17 +100,29 @@ const SettingsPage: React.FC = () => {
   const loadSettings = async () => {
     try {
       setLoading(true);
+
+      // First check email config source
+      const emailStatus = await apiClient.isEmailConfigured();
+      setEmailConfigSource(emailStatus.source || null);
+      setEmailConfigMessage(emailStatus.message || "");
+
       const data = await apiClient.getSystemSettings();
       setSettings(data);
 
-      const provider = data.activeProvider || "mailjet";
-      setActiveProvider(provider);
-      setInitialProvider(provider);
+      // Use emailConfigSource from settings as fallback
+      const source = emailStatus.source || (data as any).emailConfigSource || null;
+      setEmailConfigSource(source);
+
+      const provider = emailStatus.provider || data.activeProvider || "mailjet";
+      setActiveProvider(provider as "mailjet" | "mailgun");
+      setInitialProvider(provider as "mailjet" | "mailgun");
 
       // Set configuration status
       setMailjetConfigured(data.mailjetConfigured || false);
       setMailgunConfigured(data.mailgunConfigured || false);
-      const hasConfiguredProvider = !!(
+
+      // If configured via env vars, don't show the form
+      const hasConfiguredProvider = source === "environment" || emailStatus.configured || !!(
         data.mailjetConfigured || data.mailgunConfigured
       );
       setShowEmailConfigForm(!hasConfiguredProvider);
@@ -282,7 +296,7 @@ const SettingsPage: React.FC = () => {
   };
 
   const showConfigForm =
-    showEmailConfigForm || (!mailjetConfigured && !mailgunConfigured);
+    emailConfigSource !== "environment" && (showEmailConfigForm || (!mailjetConfigured && !mailgunConfigured));
 
   const handleTestEmail = async () => {
     if (!testEmailAddress) {
@@ -380,8 +394,23 @@ const SettingsPage: React.FC = () => {
       )}
 
       <div className="bg-[#1c2230] border border-white/5 rounded-2xl p-6 shadow-2xl">
-        {/* Only show provider selector when no provider is configured */}
-        {settings && !mailjetConfigured && !mailgunConfigured && (
+        {/* Show banner when email is configured via environment variables */}
+        {emailConfigSource === "environment" && (
+          <div className="mb-6 p-4 bg-blue-500/10 border border-blue-500/20 rounded-xl flex items-start gap-3">
+            <span className="material-symbols-outlined text-blue-500 mt-0.5">info</span>
+            <div>
+              <p className="text-blue-500 font-bold">Configured via Environment Variables</p>
+              <p className="text-blue-400 text-sm mt-1">
+                Email is configured using environment variables (.env file). To change these settings,
+                update your <code className="bg-blue-500/20 px-1 rounded">MAILGUN_API_KEY</code> and{" "}
+                <code className="bg-blue-500/20 px-1 rounded">MAILGUN_DOMAIN</code> (or Mailjet equivalents) in your .env file and restart the server.
+              </p>
+            </div>
+          </div>
+        )}
+
+        {/* Only show provider selector when no provider is configured and not using env vars */}
+        {settings && !mailjetConfigured && !mailgunConfigured && emailConfigSource !== "environment" && (
           <div className="mb-6 flex space-x-4">
             <label
               className={`flex items-center space-x-2 cursor-pointer p-3 rounded-lg border ${activeProvider === "mailjet" ? "border-primary bg-primary/10" : "border-white/10 hover:bg-white/5"}`}
@@ -447,30 +476,34 @@ const SettingsPage: React.FC = () => {
         </div>
 
         {/* Show configured state or configuration form */}
-        {!showConfigForm && (mailjetConfigured || mailgunConfigured) && (
+        {!showConfigForm && (mailjetConfigured || mailgunConfigured || emailConfigSource === "environment") && (
           /* Configured State - Show status and clear button only */
-          <div className="p-6 bg-green-500/10 border border-green-500/20 rounded-xl">
+          <div className={`p-6 rounded-xl ${emailConfigSource === "environment" ? "bg-blue-500/10 border border-blue-500/20" : "bg-green-500/10 border border-green-500/20"}`}>
             <div className="flex items-center justify-between flex-wrap gap-4">
               <div className="flex items-center gap-3">
-                <span className="material-symbols-outlined text-green-500 text-3xl">
-                  check_circle
+                <span className={`material-symbols-outlined text-3xl ${emailConfigSource === "environment" ? "text-blue-500" : "text-green-500"}`}>
+                  {emailConfigSource === "environment" ? "settings" : "check_circle"}
                 </span>
                 <div>
                   <p className="font-bold text-white">
-                    {mailjetConfigured ? "Mailjet" : "Mailgun"} Configured
+                    {activeProvider === "mailjet" ? "Mailjet" : "Mailgun"} Configured
+                    {emailConfigSource === "environment" && " (via .env)"}
                   </p>
                   <p className="text-sm text-slate-400">
-                    {mailjetConfigured
-                      ? "Credentials are saved and ready to use"
-                      : `Domain: ${settings?.mailgunDomain}`}
+                    {emailConfigSource === "environment"
+                      ? "Settings loaded from environment variables"
+                      : mailjetConfigured
+                        ? "Credentials are saved and ready to use"
+                        : `Domain: ${settings?.mailgunDomain}`}
                   </p>
-                  {senderEmail && (
+                  {senderEmail && emailConfigSource !== "environment" && (
                     <p className="text-sm text-slate-400">
                       Sender: {senderEmail}
                     </p>
                   )}
                 </div>
               </div>
+              {emailConfigSource !== "environment" && (
               <div className="flex flex-wrap items-center gap-3">
                 <button
                   type="button"
@@ -507,6 +540,7 @@ const SettingsPage: React.FC = () => {
                   )}
                 </button>
               </div>
+              )}
             </div>
           </div>
         )}

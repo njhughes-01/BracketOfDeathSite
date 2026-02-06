@@ -180,6 +180,9 @@ services:
       MAILJET_API_KEY: ${MAILJET_API_KEY:-}
       MAILJET_API_SECRET: ${MAILJET_API_SECRET:-}
       MAILJET_SENDER_EMAIL: ${MAILJET_SENDER_EMAIL:-noreply@bracketofdeath.com}
+      # Mailgun email configuration (optional - can also configure in admin UI)
+      MAILGUN_API_KEY: ${MAILGUN_API_KEY:-}
+      MAILGUN_DOMAIN: ${MAILGUN_DOMAIN:-}
     networks:
       - bod-network
     healthcheck:
