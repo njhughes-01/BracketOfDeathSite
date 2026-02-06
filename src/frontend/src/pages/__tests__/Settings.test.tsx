@@ -10,6 +10,7 @@ vi.mock("../../services/api", () => ({
         updateSystemSettings: vi.fn(),
         verifyEmailCredentials: vi.fn(),
         testEmail: vi.fn(),
+        isEmailConfigured: vi.fn(),
     },
 }));
 
@@ -19,12 +20,14 @@ describe("SettingsPage", () => {
     });
 
     it("should show loading state", () => {
+        vi.mocked(apiClient.isEmailConfigured).mockReturnValue(new Promise(() => { })); // Never resolves
         vi.mocked(apiClient.getSystemSettings).mockReturnValue(new Promise(() => { })); // Never resolves
         render(<SettingsPage />);
         expect(screen.getByRole("status")).toBeInTheDocument();
     });
 
     it("should render settings page title", async () => {
+        vi.mocked(apiClient.isEmailConfigured).mockResolvedValue({ configured: false, source: null });
         vi.mocked(apiClient.getSystemSettings).mockResolvedValue({
             activeProvider: "mailjet",
             mailjetConfigured: false,
@@ -41,6 +44,7 @@ describe("SettingsPage", () => {
     });
 
     it("should show Mailjet configuration by default", async () => {
+        vi.mocked(apiClient.isEmailConfigured).mockResolvedValue({ configured: false, source: null });
         vi.mocked(apiClient.getSystemSettings).mockResolvedValue({
             activeProvider: "mailjet",
             mailjetConfigured: false,
@@ -56,6 +60,7 @@ describe("SettingsPage", () => {
     });
 
     it("should show status as Not Configured when new", async () => {
+        vi.mocked(apiClient.isEmailConfigured).mockResolvedValue({ configured: false, source: null });
         vi.mocked(apiClient.getSystemSettings).mockResolvedValue({
             activeProvider: "mailjet",
             mailjetConfigured: false,
@@ -69,7 +74,8 @@ describe("SettingsPage", () => {
         });
     });
 
-    it("should show status as Active when configured", async () => {
+    it("should show status as Active when configured via database", async () => {
+        vi.mocked(apiClient.isEmailConfigured).mockResolvedValue({ configured: true, source: "database", provider: "mailjet" });
         vi.mocked(apiClient.getSystemSettings).mockResolvedValue({
             activeProvider: "mailjet",
             mailjetConfigured: true,
@@ -81,6 +87,28 @@ describe("SettingsPage", () => {
         await waitFor(() => {
             expect(screen.getByText(/Active/i)).toBeInTheDocument();
             expect(screen.getByText(/Mailjet Configured/i)).toBeInTheDocument();
+        });
+    });
+
+    it("should show env var banner when configured via environment", async () => {
+        vi.mocked(apiClient.isEmailConfigured).mockResolvedValue({ 
+            configured: true, 
+            source: "environment", 
+            provider: "mailgun",
+            message: "Email is configured via environment variables."
+        });
+        vi.mocked(apiClient.getSystemSettings).mockResolvedValue({
+            activeProvider: "mailgun",
+            mailjetConfigured: false,
+            mailgunConfigured: true,
+            emailConfigSource: "environment",
+        } as any);
+
+        render(<SettingsPage />);
+
+        await waitFor(() => {
+            expect(screen.getByText(/Configured via Environment Variables/i)).toBeInTheDocument();
+            expect(screen.getByText(/Mailgun Configured/i)).toBeInTheDocument();
         });
     });
 });
