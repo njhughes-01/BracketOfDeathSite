@@ -34,7 +34,7 @@ jobs:
 
       - name: Start Docker stack
         run: |
-          docker-compose up -d
+          docker compose up -d
           echo "Waiting for services to be healthy..."
           sleep 60
 
@@ -86,7 +86,7 @@ jobs:
 
       - name: Stop Docker stack
         if: always()
-        run: docker-compose down
+        run: docker compose down
 
   e2e-vercel-preview:
     runs-on: ubuntu-latest
