@@ -13,6 +13,7 @@ import { notFoundHandler } from "./middleware/notFoundHandler";
 import { sanitizeInput, validatePagination } from "./middleware/validation";
 import apiRoutes from "./routes";
 import systemRoutes from "./routes/system";
+import ReservationCleanupService from "./services/ReservationCleanupService";
 
 // Load environment variables
 config();
@@ -86,6 +87,9 @@ app.use(errorHandler);
 export const startServer = async (): Promise<void> => {
   try {
     await connectToDatabase();
+    
+    // Start background services
+    ReservationCleanupService.startCleanupService();
 
     const server = app.listen(PORT, () => {
       logger.info(`Server running on port ${PORT}`);
@@ -95,6 +99,7 @@ export const startServer = async (): Promise<void> => {
     // Graceful shutdown
     process.on("SIGTERM", () => {
       logger.info("SIGTERM received, shutting down gracefully");
+      ReservationCleanupService.stopCleanupService();
       server.close(() => {
         logger.info("Process terminated");
         process.exit(0);

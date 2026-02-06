@@ -7,9 +7,9 @@ import DiscountCode from "../models/DiscountCode";
 import { Tournament } from "../models/Tournament";
 import { Types } from "mongoose";
 import logger from "../utils/logger";
-
-// TODO: Import Stripe when integrated
-// import Stripe from 'stripe';
+import StripeService from "../services/StripeService";
+import QRCodeService from "../services/QRCodeService";
+import Stripe from 'stripe';
 
 export class StripeWebhookController extends BaseController {
   constructor() {
@@ -19,19 +19,24 @@ export class StripeWebhookController extends BaseController {
   // Handle Stripe webhook (POST /api/webhooks/stripe)
   handleWebhook = this.asyncHandler(
     async (req: Request, res: Response): Promise<void> => {
-      const sig = req.headers['stripe-signature'];
+      const sig = req.headers['stripe-signature'] as string;
       
-      // TODO: Verify webhook signature with Stripe
-      // const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
-      // let event: Stripe.Event;
-      // try {
-      //   event = stripe.webhooks.constructEvent(req.body, sig, webhookSecret);
-      // } catch (err) {
-      //   return this.sendError(res, `Webhook signature verification failed`, 400);
-      // }
+      let event: Stripe.Event;
       
-      // For now, parse the body directly (INSECURE - for development only)
-      const event = req.body;
+      // Verify webhook signature if secret is configured
+      const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
+      if (webhookSecret && sig) {
+        try {
+          event = StripeService.verifyWebhookSignature(req.body, sig, webhookSecret);
+        } catch (err: any) {
+          logger.error('Webhook signature verification failed:', err.message);
+          return this.sendError(res, `Webhook signature verification failed: ${err.message}`, 400);
+        }
+      } else {
+        // Development mode - parse body directly (INSECURE)
+        logger.warn('Stripe webhook received without signature verification (dev mode)');
+        event = req.body;
+      }
       
       if (!event || !event.type) {
         return this.sendError(res, "Invalid webhook payload", 400);
@@ -108,6 +113,11 @@ export class StripeWebhookController extends BaseController {
       amountPaid: session.amount_total || 0,
       discountCodeUsed: discountCode,
     });
+    
+    // Generate QR code for ticket
+    const appUrl = process.env.APP_URL || 'http://localhost:5173';
+    const qrCodeData = await QRCodeService.generateTicketQRCode(ticket.ticketCode, appUrl);
+    ticket.qrCodeData = qrCodeData;
     
     await ticket.save();
     

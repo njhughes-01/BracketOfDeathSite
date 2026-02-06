@@ -3,6 +3,7 @@ import { BaseController } from "./base";
 import DiscountCode, { IDiscountCode } from "../models/DiscountCode";
 import { Types } from "mongoose";
 import logger from "../utils/logger";
+import StripeService from "../services/StripeService";
 
 export class DiscountCodeController extends BaseController {
   constructor() {
@@ -81,9 +82,26 @@ export class DiscountCodeController extends BaseController {
         return this.sendError(res, "Discount code already exists", 409);
       }
       
-      // TODO: Create corresponding Stripe Coupon
-      // For now, generate a placeholder stripeCouponId
-      const stripeCouponId = `coupon_${code.toUpperCase()}_${Date.now()}`;
+      // Create Stripe Coupon
+      let stripeCouponId = `coupon_${code.toUpperCase()}_${Date.now()}`;
+      
+      const stripeConfigured = await StripeService.isStripeConfigured();
+      if (stripeConfigured) {
+        try {
+          const stripeCoupon = await StripeService.createCoupon({
+            code: code.toUpperCase(),
+            type,
+            percentOff: type === 'percent' ? percentOff : undefined,
+            amountOff: type === 'amount' ? amountOff : undefined,
+            maxRedemptions,
+            expiresAt: expiresAt ? new Date(expiresAt) : undefined,
+          });
+          stripeCouponId = stripeCoupon.id;
+        } catch (stripeError: any) {
+          logger.warn(`Failed to create Stripe coupon: ${stripeError.message}`);
+          // Continue with local-only coupon
+        }
+      }
       
       const discountCode = new DiscountCode({
         code: code.toUpperCase(),
@@ -160,7 +178,16 @@ export class DiscountCodeController extends BaseController {
       code.active = false;
       await code.save();
       
-      // TODO: Deactivate Stripe Coupon
+      // Delete Stripe Coupon
+      const stripeConfigured = await StripeService.isStripeConfigured();
+      if (stripeConfigured && code.stripeCouponId) {
+        try {
+          await StripeService.deleteCoupon(code.stripeCouponId);
+        } catch (stripeError: any) {
+          logger.warn(`Failed to delete Stripe coupon: ${stripeError.message}`);
+          // Continue - local deactivation is sufficient
+        }
+      }
       
       logger.info(`Discount code deactivated: ${code.code}`);
       this.sendSuccess(res, { code }, "Discount code deactivated successfully");

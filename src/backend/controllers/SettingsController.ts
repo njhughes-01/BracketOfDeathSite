@@ -3,6 +3,7 @@ import { BaseController } from "./base";
 import SystemSettings from "../models/SystemSettings";
 import emailService from "../services/EmailService";
 import { SUPPORTED_EMAIL_PROVIDERS } from "../services/email/IEmailProvider";
+import StripeService from "../services/StripeService";
 
 export class SettingsController extends BaseController {
   constructor() {
@@ -59,6 +60,15 @@ export class SettingsController extends BaseController {
         brandName: settings?.brandName || "Bracket of Death",
         brandPrimaryColor: settings?.brandPrimaryColor || "#4CAF50",
         brandSecondaryColor: settings?.brandSecondaryColor || "#008CBA",
+        
+        // Stripe config (public info only)
+        stripeConfigured: await StripeService.isStripeConfigured(),
+        stripePublishableKey: await StripeService.getPublishableKey(),
+        
+        // Global pricing (skeleton for memberships)
+        defaultEntryFee: settings?.defaultEntryFee || 0,
+        annualMembershipFee: settings?.annualMembershipFee,
+        monthlyMembershipFee: settings?.monthlyMembershipFee,
       };
 
       this.sendSuccess(res, data, "Settings retrieved successfully");

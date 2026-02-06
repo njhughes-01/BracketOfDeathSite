@@ -7,6 +7,8 @@ import { Tournament } from "../models/Tournament";
 import { Player } from "../models/Player";
 import { Types } from "mongoose";
 import logger from "../utils/logger";
+import StripeService from "../services/StripeService";
+import QRCodeService from "../services/QRCodeService";
 
 export class CheckoutController extends BaseController {
   constructor() {
@@ -225,20 +227,46 @@ export class CheckoutController extends BaseController {
         }, "Tournament is free, use free registration endpoint");
       }
       
-      // TODO: Create actual Stripe Checkout Session
-      // For now, return placeholder
-      const sessionId = `cs_placeholder_${Date.now()}`;
-      const checkoutUrl = `https://checkout.stripe.com/placeholder/${sessionId}`;
+      // Check if Stripe is configured
+      const stripeConfigured = await StripeService.isStripeConfigured();
+      if (!stripeConfigured) {
+        return this.sendError(res, "Stripe is not configured. Contact administrator.", 503);
+      }
+      
+      // Get player info for checkout
+      const player = await Player.findById(reservation.playerId);
+      if (!player) {
+        return this.sendError(res, "Player not found", 400);
+      }
+      
+      // Build success/cancel URLs
+      const appUrl = process.env.APP_URL || 'http://localhost:5173';
+      const successUrl = `${appUrl}/checkout/success?session_id={CHECKOUT_SESSION_ID}`;
+      const cancelUrl = `${appUrl}/checkout/cancel?tournament_id=${tournamentId}`;
+      
+      // Create Stripe Checkout Session
+      const session = await StripeService.createCheckoutSession({
+        tournamentId,
+        tournamentName: `BOD #${tournament.bodNumber}`,
+        userId,
+        playerId: reservation.playerId.toString(),
+        playerEmail: player.email || (req as any).user?.email || '',
+        reservationId: reservationId,
+        amount: price,
+        discountCode: appliedDiscount?.code,
+        successUrl,
+        cancelUrl,
+      });
       
       // Update reservation with Stripe session ID
-      reservation.stripeSessionId = sessionId;
+      reservation.stripeSessionId = session.id;
       await reservation.save();
       
-      logger.info(`Checkout session created for tournament ${tournamentId}, price: ${price}`);
+      logger.info(`Stripe checkout session created: ${session.id} for tournament ${tournamentId}, price: ${price}`);
       
       this.sendSuccess(res, {
-        sessionId,
-        url: checkoutUrl,
+        sessionId: session.id,
+        url: session.url,
         price,
         currency: 'usd',
         discountApplied: appliedDiscount ? {
@@ -299,6 +327,11 @@ export class CheckoutController extends BaseController {
         amountPaid: 0,
       });
       
+      // Generate QR code for ticket
+      const appUrl = process.env.APP_URL || 'http://localhost:5173';
+      const qrCodeData = await QRCodeService.generateTicketQRCode(ticket.ticketCode, appUrl);
+      ticket.qrCodeData = qrCodeData;
+      
       await ticket.save();
       
       // Add player to tournament registeredPlayers
@@ -315,7 +348,7 @@ export class CheckoutController extends BaseController {
       // Complete reservation
       await reservation.complete();
       
-      // TODO: Generate QR code and send email
+      // TODO: Send ticket email with QR code
       
       logger.info(`Free registration completed for tournament ${tournamentId}, ticket: ${ticket.ticketCode}`);
       
