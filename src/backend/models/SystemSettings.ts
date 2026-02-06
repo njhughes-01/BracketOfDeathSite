@@ -16,6 +16,17 @@ export interface ISystemSettings extends Document {
 
   // Provider config
   activeProvider: EmailProviderType;
+  
+  // Stripe settings
+  stripePublishableKey?: string;
+  stripeSecretKey?: string;
+  stripeWebhookSecret?: string;
+  
+  // Global pricing (skeleton for memberships)
+  annualMembershipFee?: number;   // In cents, future use
+  monthlyMembershipFee?: number;  // In cents, future use
+  defaultEntryFee?: number;       // Default tournament fee in cents
+  
   // Branding settings
   siteLogo?: string; // Base64 or URL
   siteLogoUrl?: string; // External URL fallback
@@ -48,6 +59,17 @@ const SystemSettingsSchema: Schema = new Schema(
       enum: SUPPORTED_EMAIL_PROVIDERS,
       default: "mailjet"
     },
+    
+    // Stripe settings
+    stripePublishableKey: { type: String },
+    stripeSecretKey: { type: String, select: false }, // Hide by default
+    stripeWebhookSecret: { type: String, select: false }, // Hide by default
+    
+    // Global pricing (skeleton for memberships)
+    annualMembershipFee: { type: Number, min: 0 },   // In cents
+    monthlyMembershipFee: { type: Number, min: 0 },  // In cents
+    defaultEntryFee: { type: Number, min: 0, default: 0 }, // In cents
+    
     // Branding settings
     siteLogo: { type: String }, // Base64 encoded image
     siteLogoUrl: { type: String }, // External URL fallback

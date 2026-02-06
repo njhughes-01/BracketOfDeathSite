@@ -2,6 +2,9 @@ import { Router } from "express";
 import TournamentController from "../controllers/TournamentController";
 import TournamentAdminController from "../controllers/TournamentAdminController";
 import LiveTournamentController from "../controllers/LiveTournamentController";
+import { checkoutController } from "../controllers/CheckoutController";
+import { ticketController } from "../controllers/TicketController";
+import { invitationController } from "../controllers/InvitationController";
 import { requireAuth, requireAdmin } from "../middleware/auth";
 import {
   validateObjectId,
@@ -152,5 +155,81 @@ router.post(
 
 // Admin routes
 router.post("/bulk-import", requireAdmin, TournamentController.bulkImport);
+
+// ===== Phase 4: Slot Reservation Routes =====
+router.post(
+  "/:id/reserve",
+  requireAuth,
+  validateObjectId,
+  checkoutController.reserveSlot,
+);
+router.delete(
+  "/:id/reserve",
+  requireAuth,
+  validateObjectId,
+  checkoutController.cancelReservation,
+);
+router.get(
+  "/:id/reservation",
+  requireAuth,
+  validateObjectId,
+  checkoutController.getReservation,
+);
+
+// ===== Phase 4: Tournament Ticket Routes (Admin) =====
+router.get(
+  "/:id/tickets",
+  requireAdmin,
+  validateObjectId,
+  ticketController.getTournamentTickets,
+);
+router.get(
+  "/:id/tickets/stats",
+  requireAdmin,
+  validateObjectId,
+  ticketController.getTournamentTicketStats,
+);
+
+// ===== Phase 4: Invitation Routes (Admin) =====
+router.get(
+  "/:id/invitations",
+  requireAdmin,
+  validateObjectId,
+  invitationController.getInvitations,
+);
+router.post(
+  "/:id/invitations",
+  requireAdmin,
+  validateObjectId,
+  invitationController.sendInvitations,
+);
+router.post(
+  "/:id/invitations/:playerId/remind",
+  requireAdmin,
+  [
+    param("id").isMongoId().withMessage("Invalid tournament ID"),
+    param("playerId").isMongoId().withMessage("Invalid player ID"),
+  ],
+  validateRequest,
+  invitationController.sendReminder,
+);
+router.delete(
+  "/:id/invitations/:playerId",
+  requireAdmin,
+  [
+    param("id").isMongoId().withMessage("Invalid tournament ID"),
+    param("playerId").isMongoId().withMessage("Invalid player ID"),
+  ],
+  validateRequest,
+  invitationController.revokeInvitation,
+);
+
+// Check invitation status (for user)
+router.get(
+  "/:id/invitation-status",
+  requireAuth,
+  validateObjectId,
+  invitationController.checkInvitation,
+);
 
 export default router;

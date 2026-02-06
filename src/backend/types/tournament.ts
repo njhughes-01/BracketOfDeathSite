@@ -22,6 +22,19 @@ export interface ITournament extends BaseDocument {
   registrationOpensAt?: Date;
   registrationDeadline?: Date;
   allowSelfRegistration: boolean;
+  
+  // Pricing
+  entryFee?: number;          // In cents (0 = free)
+  earlyBirdFee?: number;      // In cents
+  earlyBirdDeadline?: Date;
+  
+  // Invite-only control
+  inviteOnly?: boolean;
+  paymentDeadlineHours?: number;  // For invite payments
+  
+  // Reserved spots (during checkout)
+  spotsReserved?: number;
+  
   registeredPlayers?: Array<{ playerId: Types.ObjectId; registeredAt: Date }>;
   waitlistPlayers?: Array<{ playerId: Types.ObjectId; registeredAt: Date }>;
   champion?: {
@@ -120,6 +133,12 @@ export interface ITournamentInput {
   registrationOpensAt?: Date | string;
   registrationDeadline?: Date | string;
   allowSelfRegistration?: boolean;
+  // Pricing
+  entryFee?: number;
+  earlyBirdFee?: number;
+  earlyBirdDeadline?: Date | string;
+  inviteOnly?: boolean;
+  paymentDeadlineHours?: number;
 }
 
 export interface ITournamentUpdate extends Partial<ITournamentInput> {
