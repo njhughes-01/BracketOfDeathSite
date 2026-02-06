@@ -1,3 +1,4 @@
+import logger from "../../utils/logger";
 import React, { useState, useEffect, useRef } from "react";
 import type { Match, MatchUpdate } from "../../types/api";
 import { EditableNumber } from "../admin";
@@ -207,7 +208,7 @@ const MatchScoring: React.FC<MatchScoringProps> = ({
     }
 
     onUpdateMatch(payload);
-    console.log("Manual save triggered for match:", payload.matchId);
+    logger.debug("Manual save triggered for match:", payload.matchId);
     // Note: We don't update lastLoadedMatchId here. We wait for the parent to pass back
     // the new props. Since the ID won't change, we effectively keep our local state.
     // If the save returns new data that CHANGES what we see (unlikely for just saving numbers),

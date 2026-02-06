@@ -67,10 +67,9 @@ const TournamentEdit: React.FC = () => {
     const { name, value, type } = e.target;
     setFormData((prev) => ({
       ...prev,
-      // @ts-ignore
       [name]:
         type === "number" ? (value === "" ? 0 : parseFloat(value)) : value,
-    }));
+    } as TournamentInput));
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -179,9 +178,7 @@ const TournamentEdit: React.FC = () => {
               </label>
               <select
                 name="format"
-                // @ts-ignore
                 value={formData.format}
-                // @ts-ignore
                 onChange={handleChange}
                 className="w-full bg-[#1c2230] border border-white/5 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-primary/50 transition-all appearance-none"
               >
@@ -199,9 +196,7 @@ const TournamentEdit: React.FC = () => {
               </label>
               <select
                 name="status"
-                // @ts-ignore
                 value={formData.status}
-                // @ts-ignore
                 onChange={handleChange}
                 className="w-full bg-[#1c2230] border border-white/5 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-primary/50 transition-all appearance-none"
               >

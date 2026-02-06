@@ -1,4 +1,5 @@
 import { Response, NextFunction } from "express";
+import logger from "../utils/logger";
 import jwt from "jsonwebtoken";
 import jwksClient from "jwks-rsa";
 import axios from "axios";
@@ -97,7 +98,7 @@ export const verifyKeycloakToken = async (
     // Decode the token to see its claims for debugging
     const decoded = jwt.decode(token, { complete: true });
     if (process.env.NODE_ENV !== "production") {
-      console.log(
+      logger.debug(
         "DEBUG: Token decoded:",
         JSON.stringify((decoded as any)?.payload, null, 2),
       );
@@ -105,7 +106,7 @@ export const verifyKeycloakToken = async (
 
     const allowedIssuers = buildAllowedIssuers();
     if (process.env.NODE_ENV !== "production") {
-      console.log("DEBUG: Allowed issuers:", allowedIssuers);
+      logger.debug("DEBUG: Allowed issuers:", allowedIssuers);
     }
 
     jwt.verify(
@@ -119,7 +120,7 @@ export const verifyKeycloakToken = async (
       },
       (err, decoded) => {
         if (err) {
-          console.error("DEBUG: JWT Verify Error:", err);
+          logger.error("DEBUG: JWT Verify Error:", err);
           reject(err);
           return;
         }
@@ -223,7 +224,7 @@ export const requireAuth = async (
 
     // Verify the Keycloak token (quiet in production)
     if (process.env.NODE_ENV !== "production") {
-      // console.log('Attempting to verify token:', token.substring(0, 20) + '...');
+      // logger.debug('Attempting to verify token:', token.substring(0, 20) + '...');
     }
     const tokenData = await verifyKeycloakToken(token);
 
@@ -259,9 +260,9 @@ export const requireAuth = async (
 
     next();
   } catch (error) {
-    console.error("Auth middleware error:", error);
+    logger.error("Auth middleware error:", error);
     if ((error as any).message)
-      console.error("Error message:", (error as any).message);
+      logger.error("Error message:", (error as any).message);
     const response: ApiResponse = {
       success: false,
       error: "Invalid or expired token",

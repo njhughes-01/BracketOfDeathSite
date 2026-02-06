@@ -1,3 +1,4 @@
+import logger from "../../utils/logger";
 import React, { useState } from "react";
 import apiClient from "../../services/api";
 import LoadingSpinner from "../ui/LoadingSpinner";
@@ -44,7 +45,7 @@ const ChangePasswordModal: React.FC<ChangePasswordModalProps> = ({
         onClose();
       }, 2000);
     } catch (err: any) {
-      console.error("Change password failed:", err);
+      logger.error("Change password failed:", err);
       // Error response is usually in err.response.data.error
       const errorMsg =
         err.response?.data?.error ||

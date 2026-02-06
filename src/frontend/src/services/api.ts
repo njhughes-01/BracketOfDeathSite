@@ -1,4 +1,5 @@
 import axios from "axios";
+import logger from "../utils/logger";
 import type { AxiosInstance, AxiosRequestConfig } from "axios";
 import type {
   ApiResponse,
@@ -86,7 +87,7 @@ const tokenExpiringSoon = (token?: string, leewayMs = 300000): boolean => {
     const expMs = (body?.exp || 0) * 1000;
     const willExpire = Date.now() + leewayMs >= expMs;
     if (willExpire) {
-      console.log("Token expiring soon, will attempt refresh");
+      logger.debug("Token expiring soon, will attempt refresh");
     }
     return willExpire;
   } catch {
@@ -97,22 +98,22 @@ const tokenExpiringSoon = (token?: string, leewayMs = 300000): boolean => {
 const ensureFreshToken = async (): Promise<void> => {
   const token = getKeycloakToken?.();
   if (!tokenExpiringSoon(token)) {
-    console.log("Token still valid, no refresh needed");
+    logger.debug("Token still valid, no refresh needed");
     return;
   }
   if (refreshKeycloakToken) {
     try {
-      console.log("Proactively refreshing token before API call...");
+      logger.debug("Proactively refreshing token before API call...");
       const refreshed = await refreshKeycloakToken();
       if (refreshed) {
-        console.log("Token proactively refreshed successfully");
+        logger.debug("Token proactively refreshed successfully");
       } else {
-        console.warn(
+        logger.warn(
           "Token refresh returned false, proceeding with current token",
         );
       }
     } catch (e) {
-      console.warn(
+      logger.warn(
         "Proactive token refresh failed, letting interceptor handle it:",
         e,
       );
@@ -137,7 +138,7 @@ class ApiClient {
     this.client.interceptors.request.use(
       (config) => {
         const token = getKeycloakToken?.();
-        console.log("API Request:", {
+        logger.debug("API Request:", {
           url: config.url,
           hasTokenGetter: !!getKeycloakToken,
           hasToken: !!token,
@@ -175,10 +176,10 @@ class ApiClient {
               return this.client.request(original);
             }
           } catch (e) {
-            console.warn("Token refresh failed on 401");
+            logger.warn("Token refresh failed on 401");
           }
           // Token refresh failed - trigger logout to clear auth state
-          console.warn("Authentication failed - logging out user");
+          logger.warn("Authentication failed - logging out user");
           if (logoutHandler) {
             logoutHandler();
           }

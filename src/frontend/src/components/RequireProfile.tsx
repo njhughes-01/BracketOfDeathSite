@@ -1,3 +1,4 @@
+import logger from "../utils/logger";
 import React, { useEffect, useState, useRef, useCallback } from "react";
 import { Navigate, Outlet, useLocation } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
@@ -50,7 +51,7 @@ const RequireProfile: React.FC = () => {
         if (error?.name === 'CanceledError' || error?.name === 'AbortError') {
           return;
         }
-        console.error("Failed to check system status", error);
+        logger.error("Failed to check system status", error);
         // Fail closed - show error to user instead of assuming state
         if (isMountedRef.current) {
           setSystemError("Unable to connect to server. Please check your connection.");
@@ -109,7 +110,7 @@ const RequireProfile: React.FC = () => {
         if (error?.name === 'CanceledError' || error?.name === 'AbortError') {
           return;
         }
-        console.error("Failed to check profile status", error);
+        logger.error("Failed to check profile status", error);
         // Fail closed - show error to user instead of assuming state
         if (isMountedRef.current) {
           setProfileError("Unable to load profile. Please try again.");

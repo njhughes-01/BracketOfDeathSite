@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
+import logger from "../utils/logger";
 import { useAuth } from "../contexts/AuthContext";
 import {
   useNavigate,
@@ -50,7 +51,7 @@ const Login: React.FC = () => {
           return;
         }
       } catch (e) {
-        console.error("Failed to check system status", e);
+        logger.error("Failed to check system status", e);
       }
     };
     checkInit();
@@ -62,7 +63,7 @@ const Login: React.FC = () => {
           await initializeAuth();
           setAuthInitialized(true);
         } catch (error) {
-          console.error("Initial auth check failed:", error);
+          logger.error("Initial auth check failed:", error);
         }
       }
     };
@@ -89,7 +90,7 @@ const Login: React.FC = () => {
       }
       login();
     } catch (error) {
-      console.error("Keycloak login failed:", error);
+      logger.error("Keycloak login failed:", error);
       setLoginError("Authentication service unavailable.");
     } finally {
       setIsLoggingIn(false);
@@ -148,7 +149,7 @@ const Login: React.FC = () => {
 
       localStorage.setItem("hasLoggedInBefore", "true");
     } catch (error: any) {
-      console.error("Direct login failed:", error);
+      logger.error("Direct login failed:", error);
       setLoginError(error.message || "Login failed.");
     } finally {
       setIsLoggingIn(false);

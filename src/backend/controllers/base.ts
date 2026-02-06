@@ -1,4 +1,5 @@
 import { Request, Response, NextFunction } from "express";
+import logger from "../utils/logger";
 import { Model, Document } from "mongoose";
 import { ApiResponse, PaginationOptions } from "../types/common";
 
@@ -32,7 +33,7 @@ export abstract class BaseController {
     statusCode: number = 500,
   ): void {
     const errorMessage = error instanceof Error ? error.message : String(error);
-    console.error(`${message}:`, error);
+    logger.error(`${message}:`, error);
 
     const response: ApiResponse = {
       success: false,

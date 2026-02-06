@@ -1,3 +1,4 @@
+import logger from "../../utils/logger";
 import React, { useState } from 'react';
 import { apiClient } from '../../services/api';
 import type { User } from '../../types/user';
@@ -32,7 +33,7 @@ const ProfileEditForm: React.FC<ProfileEditFormProps> = ({ user, onSave, onCance
       });
       onSave();
     } catch (err) {
-      console.error('Profile update failed:', err);
+      logger.error('Profile update failed:', err);
       setError('Failed to update profile. Please try again.');
     } finally {
       setLoading(false);

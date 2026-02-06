@@ -2,6 +2,7 @@ import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "./contexts/AuthContext";
 import Layout from "./components/layout/Layout";
 import ProtectedRoute from "./components/common/ProtectedRoute";
+import ErrorBoundary from "./components/common/ErrorBoundary";
 import { PERMISSIONS } from "./types/user";
 import Home from "./pages/Home";
 import Login from "./pages/Login";
@@ -32,10 +33,11 @@ import OpenTournaments from "./pages/OpenTournaments";
 
 function App() {
   return (
-    <AuthProvider>
-      <Router>
-        <div className="min-h-screen bg-gray-50">
-          <Layout>
+    <ErrorBoundary>
+      <AuthProvider>
+        <Router>
+          <div className="min-h-screen bg-gray-50">
+            <Layout>
             <Routes>
               <Route path="/login" element={<Login />} />
               <Route path="/register" element={<Register />} />
@@ -170,6 +172,7 @@ function App() {
         </div>
       </Router>
     </AuthProvider>
+  </ErrorBoundary>
   );
 }
 

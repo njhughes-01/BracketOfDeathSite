@@ -1,3 +1,4 @@
+import logger from "../../utils/logger";
 import React from "react";
 import { Navigate, useLocation } from "react-router-dom";
 import { useAuth } from "../../contexts/AuthContext";
@@ -29,7 +30,7 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   const location = useLocation();
 
   // Debug logging
-  console.log("ProtectedRoute check:", {
+  logger.debug("ProtectedRoute check:", {
     isAuthenticated,
     isAdmin,
     loading,
@@ -71,7 +72,7 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   }
 
   if (!hasRequiredPermissions) {
-    console.log("Access denied - insufficient permissions");
+    logger.debug("Access denied - insufficient permissions");
     return <Navigate to={fallbackPath} replace />;
   }
 

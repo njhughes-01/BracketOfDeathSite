@@ -1,3 +1,4 @@
+import logger from "../../utils/logger";
 import React, { useState } from "react";
 import apiClient from "../../services/api";
 import LoadingSpinner from "../ui/LoadingSpinner";
@@ -27,7 +28,7 @@ const ForgotPasswordModal: React.FC<ForgotPasswordModalProps> = ({
       // We always show success to prevent enumeration, unless there's a network error
       setSuccess(true);
     } catch (err: any) {
-      console.error(err);
+      logger.error(err);
       setError("Failed to process request. Please try again.");
     } finally {
       setLoading(false);

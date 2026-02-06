@@ -1,3 +1,4 @@
+import logger from "../../utils/logger";
 import React, { useState, useEffect, useCallback } from "react";
 import type { LiveTournamentStats } from "../../types/api";
 import apiClient from "../../services/api";
@@ -38,7 +39,7 @@ const LiveStats: React.FC<LiveStatsProps> = ({
       }
     } catch (err) {
       setError("Network error while fetching live statistics");
-      console.error("Live stats fetch error:", err);
+      logger.error("Live stats fetch error:", err);
     } finally {
       setLoading(false);
     }

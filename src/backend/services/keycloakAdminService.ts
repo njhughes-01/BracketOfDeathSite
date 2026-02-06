@@ -1,4 +1,5 @@
 import axios, { AxiosInstance } from "axios";
+import logger from "../utils/logger";
 
 export interface KeycloakUser {
   id?: string;
@@ -86,7 +87,7 @@ export class KeycloakAdminService {
 
       return this.adminToken;
     } catch (error) {
-      console.error("Failed to get Keycloak admin token:", error);
+      logger.error("Failed to get Keycloak admin token:", error);
       throw new Error("Failed to authenticate with Keycloak admin API");
     }
   }
@@ -112,7 +113,7 @@ export class KeycloakAdminService {
       const response = await this.client.request(config);
       return response.data;
     } catch (error: any) {
-      console.error(
+      logger.error(
         `Keycloak API error (${method} ${url}):`,
         error.response?.data || error.message,
       );
@@ -141,7 +142,7 @@ export class KeycloakAdminService {
       const response = await this.client.request(config);
       return response;
     } catch (error: any) {
-      console.error(
+      logger.error(
         `Keycloak API error (${method} ${url}):`,
         error.response?.data || error.message,
       );
@@ -204,7 +205,7 @@ export class KeycloakAdminService {
     try {
       await this.clearUserRequiredActions(userId);
     } catch (error) {
-      console.warn(
+      logger.warn(
         `Failed to clear required actions for new user ${userData.username}:`,
         error,
       );
@@ -293,7 +294,7 @@ export class KeycloakAdminService {
           requiredActions: [],
         });
       } catch (error) {
-        console.warn("Could not clear required actions for user:", error);
+        logger.warn("Could not clear required actions for user:", error);
       }
     }
   }

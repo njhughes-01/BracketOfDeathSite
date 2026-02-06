@@ -1,4 +1,5 @@
 import { Response } from "express";
+import logger from "../utils/logger";
 import { RequestWithAuth, BaseController } from "./base";
 import { ApiResponse } from "../types/common";
 import {
@@ -246,9 +247,9 @@ export class UserController extends BaseController {
         if (playerId) {
           try {
             await Player.findByIdAndDelete(playerId);
-            console.log(`Deleted linked player ${playerId} for user ${id}`);
+            logger.debug(`Deleted linked player ${playerId} for user ${id}`);
           } catch (err) {
-            console.error(`Failed to delete linked player ${playerId}:`, err);
+            logger.error(`Failed to delete linked player ${playerId}:`, err);
           }
         }
 
@@ -287,7 +288,7 @@ export class UserController extends BaseController {
           try {
             await keycloakAdminService.clearUserRequiredActions(id);
           } catch (error) {
-            console.warn(
+            logger.warn(
               "Could not clear required actions after password reset:",
               error,
             );
@@ -462,7 +463,7 @@ export class UserController extends BaseController {
           expiresIn: response.data.expires_in,
         });
       } catch (authError: any) {
-        console.error(
+        logger.error(
           "Keycloak login failed:",
           authError.response?.data || authError.message,
         );
@@ -500,7 +501,7 @@ export class UserController extends BaseController {
             linkedPlayerId = decoded.playerId;
           }
         } catch (e) {
-          console.error("Invalid claim token", e);
+          logger.error("Invalid claim token", e);
           return this.sendError(res, "Invalid or expired claim token", 400);
         }
       }
@@ -640,7 +641,7 @@ export class UserController extends BaseController {
         );
       } catch (error: any) {
         // Log but return success
-        console.error("Password reset request error:", error);
+        logger.error("Password reset request error:", error);
         this.sendSuccess(
           res,
           null,
@@ -767,10 +768,10 @@ export class UserController extends BaseController {
 
     // Gender validation
     if (userData.gender) {
-      // @ts-ignore
+      const genderValidation = UpdateUserValidation.gender as { validOptions?: string[] } | undefined;
       if (
-        UpdateUserValidation.gender &&
-        !UpdateUserValidation.gender.validOptions.includes(userData.gender)
+        genderValidation?.validOptions &&
+        !genderValidation.validOptions.includes(userData.gender)
       ) {
         errors.push("Invalid gender option");
       }

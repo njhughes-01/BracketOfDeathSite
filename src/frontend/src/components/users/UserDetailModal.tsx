@@ -1,3 +1,4 @@
+import logger from "../../utils/logger";
 import React from "react";
 import type { User } from "../../types/user";
 
@@ -70,7 +71,7 @@ const UserDetailModal: React.FC<UserDetailModalProps> = ({
         await onUpdateUser(user, { ...formData });
         setIsEditing(false);
       } catch (error) {
-        console.error("Failed to update user", error);
+        logger.error("Failed to update user", error);
         alert("Failed to update user");
       } finally {
         setLoading(false);

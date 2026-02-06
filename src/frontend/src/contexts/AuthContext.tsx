@@ -9,6 +9,7 @@ import React, {
 import type { ReactNode } from "react";
 import Keycloak from "keycloak-js";
 import { setTokenGetter, setTokenRefresher, setLogoutHandler, apiClient } from "../services/api";
+import logger from "../utils/logger";
 
 interface KeycloakTokenParsed {
   sub: string;
@@ -83,7 +84,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       const tokenParsed = kc.tokenParsed as KeycloakTokenParsed;
 
       if (!tokenParsed) {
-        console.error("No token parsed available");
+        logger.error("No token parsed available");
         return;
       }
 
@@ -110,7 +111,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         try {
           profile = await kc.loadUserProfile();
         } catch (profileError) {
-          console.warn(
+          logger.warn(
             "Could not load user profile from Keycloak, using token data:",
             profileError,
           );
@@ -125,7 +126,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         }
       } else {
         // Direct auth - use token data directly (no account API available)
-        console.log("Using token data directly (direct auth mode)");
+        logger.debug("Using token data directly (direct auth mode)");
         profile = {
           id: tokenParsed.sub,
           email: tokenParsed.email,
@@ -157,7 +158,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       setUser(userData);
       setIsAuthenticated(true);
 
-      console.log("User authenticated successfully:", userData);
+      logger.debug("User authenticated successfully:", userData);
 
       // Set up token refresh
       setTokenRefresher(async () => {
@@ -165,41 +166,41 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           // Increase min validity to 300 seconds (5 minutes) for better refresh timing
           const refreshed = await kc.updateToken(300);
           if (refreshed) {
-            console.log("Token refreshed via API call");
+            logger.debug("Token refreshed via API call");
             // ensure API picks up the latest token
             setTokenGetter(() => kc.token);
             saveTokens(kc);
           }
           return refreshed as boolean;
         } catch (e) {
-          console.warn("Token refresh failed:", e);
+          logger.warn("Token refresh failed:", e);
           return false;
         }
       });
       kc.onTokenExpired = () => {
-        console.log("Token expired, attempting refresh...");
+        logger.debug("Token expired, attempting refresh...");
         // Increase min validity to 300 seconds (5 minutes)
         kc.updateToken(300)
           .then((refreshed) => {
             if (refreshed) {
-              console.log("Token refreshed successfully");
+              logger.debug("Token refreshed successfully");
               setTokenGetter(() => kc.token);
               saveTokens(kc);
             } else {
-              console.log("Token refresh not needed or failed");
+              logger.debug("Token refresh not needed or failed");
             }
           })
           .catch((error) => {
-            console.error("Failed to refresh token on expiry:", error);
+            logger.error("Failed to refresh token on expiry:", error);
             // Don't auto-logout on refresh failure - let the user manually logout
             // This prevents the logout loop
-            console.warn(
+            logger.warn(
               "Token refresh failed - user will need to re-login for next request",
             );
           });
       };
     } catch (error) {
-      console.error("Failed to setup user from token:", error);
+      logger.error("Failed to setup user from token:", error);
     }
   };
 
@@ -228,17 +229,17 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           const expiresIn = tokenParsed.exp * 1000 - Date.now();
           if (expiresIn < 90000) {
             // Less than 90 seconds until expiry
-            console.log("Periodic check: Token expiring soon, refreshing...");
+            logger.debug("Periodic check: Token expiring soon, refreshing...");
             const refreshed = await keycloak.updateToken(300);
             if (refreshed) {
-              console.log("Periodic token refresh successful");
+              logger.debug("Periodic token refresh successful");
               setTokenGetter(() => keycloak.token);
               saveTokens(keycloak);
             }
           }
         }
       } catch (error) {
-        console.warn("Periodic token refresh check failed:", error);
+        logger.warn("Periodic token refresh check failed:", error);
       }
     }, 30000); // Check every 30 seconds
 
@@ -248,7 +249,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   // Manual initialization function (called by Login page)
   const initializeAuth = useCallback(async () => {
     if (keycloak || initializationAttempted.current) {
-      console.log("Keycloak already initialized or initialization attempted");
+      logger.debug("Keycloak already initialized or initialization attempted");
       // Ensure loading is false if we're skipping initialization
       setLoading(false);
       return;
@@ -259,8 +260,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     setLoading(true);
 
     try {
-      console.log("Starting Keycloak initialization...");
-      console.log("Environment check:", {
+      logger.debug("Starting Keycloak initialization...");
+      logger.debug("Environment check:", {
         VITE_KEYCLOAK_URL: import.meta.env.VITE_KEYCLOAK_URL,
         VITE_KEYCLOAK_REALM: import.meta.env.VITE_KEYCLOAK_REALM,
         VITE_KEYCLOAK_CLIENT_ID: import.meta.env.VITE_KEYCLOAK_CLIENT_ID,
@@ -274,7 +275,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       });
       setKeycloak(kc);
 
-      console.log("Keycloak client created, initializing...");
+      logger.debug("Keycloak client created, initializing...");
 
       // Attempt to restore tokens before init for instant session
       const saved = loadTokens();
@@ -297,7 +298,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           saveTokens(kc);
           setIsAuthenticated(true);
         } catch (e) {
-          console.warn("Failed to restore tokens from storage:", e);
+          logger.warn("Failed to restore tokens from storage:", e);
         }
       }
 
@@ -314,13 +315,13 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           pkceMethod: "S256",
         });
       } catch (initError) {
-        console.warn(
+        logger.warn(
           "Keycloak init failed, but continuing with manual setup:",
           initError,
         );
       }
 
-      console.log("Keycloak initialization completed:", {
+      logger.debug("Keycloak initialization completed:", {
         authenticated,
         keycloakUrl: kc.authServerUrl,
         realm: kc.realm,
@@ -348,7 +349,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         setIsAuthenticated(true);
       }
     } catch (error) {
-      console.error("Keycloak initialization failed:", error);
+      logger.error("Keycloak initialization failed:", error);
 
       // Still try to set up Keycloak for manual login
       try {
@@ -359,7 +360,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         });
         setKeycloak(kc);
       } catch (setupError) {
-        console.error("Failed to create Keycloak instance:", setupError);
+        logger.error("Failed to create Keycloak instance:", setupError);
         setKeycloak(null);
       }
 
@@ -371,19 +372,19 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   }, [keycloak]);
 
   const login = () => {
-    console.log("Login button clicked");
+    logger.debug("Login button clicked");
 
     if (!keycloak) {
-      console.error("Keycloak not initialized");
+      logger.error("Keycloak not initialized");
       return;
     }
 
-    console.log("Redirecting to Keycloak login...");
+    logger.debug("Redirecting to Keycloak login...");
     keycloak.login();
   };
 
   const logout = () => {
-    console.log("Logout initiated");
+    logger.debug("Logout initiated");
 
     // Clear authentication state
     setIsAuthenticated(false);
@@ -408,7 +409,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     // Redirect to login page
     window.location.href = "/login";
 
-    console.log("Logout completed");
+    logger.debug("Logout completed");
   };
 
   const hasRole = (role: string): boolean => {
@@ -429,7 +430,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
       // If keycloak is not initialized, create a new instance
       if (!kc) {
-        console.log("Creating Keycloak instance for direct token setup...");
+        logger.debug("Creating Keycloak instance for direct token setup...");
         kc = new Keycloak({
           url: import.meta.env.VITE_KEYCLOAK_URL,
           realm: import.meta.env.VITE_KEYCLOAK_REALM,
@@ -452,7 +453,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       } catch {}
       kc.authenticated = true;
 
-      console.log("Direct tokens set on Keycloak, setting up user...");
+      logger.debug("Direct tokens set on Keycloak, setting up user...");
 
       // Set up token getter for API client
       setTokenGetter(() => kc.token);
@@ -461,9 +462,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       await setupUserFromToken(kc);
       saveTokens(kc);
 
-      console.log("Direct authentication setup complete");
+      logger.debug("Direct authentication setup complete");
     } catch (error) {
-      console.error("Failed to set direct auth tokens:", error);
+      logger.error("Failed to set direct auth tokens:", error);
       throw error;
     }
   };
@@ -487,7 +488,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           } : null);
         }
       } catch (error) {
-        console.warn('Could not fetch fresh profile data:', error);
+        logger.warn('Could not fetch fresh profile data:', error);
       }
     }
   };
@@ -509,14 +510,14 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       try {
         if (keycloak) {
           // Force refresh by passing -1 (min validity)
-          console.log("Forcing token refresh...");
+          logger.debug("Forcing token refresh...");
           await keycloak.updateToken(-1);
           await setupUserFromToken(keycloak);
           saveTokens(keycloak);
-          console.log("Token forced refresh successful");
+          logger.debug("Token forced refresh successful");
         }
       } catch (e) {
-        console.error("Force token refresh failed:", e);
+        logger.error("Force token refresh failed:", e);
         throw e;
       }
     },

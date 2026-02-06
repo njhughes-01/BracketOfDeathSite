@@ -1,4 +1,5 @@
 import { Request, Response, NextFunction } from "express";
+import logger from "../utils/logger";
 import { Tournament } from "../models/Tournament";
 import { Player } from "../models/Player";
 import { Match } from "../models/Match";
@@ -680,7 +681,7 @@ export class TournamentAdminController extends BaseController {
         }
 
         // Log unexpected errors
-        console.error("Unexpected error in tournament deletion:", {
+        logger.error("Unexpected error in tournament deletion:", {
           tournamentId: req.params.id,
           adminUserId: req.user?.id,
           correlationId,
@@ -903,7 +904,7 @@ export class TournamentAdminController extends BaseController {
       // Update or create TournamentResult for losing team
       await this.updateTeamResult(tournament, losingTeam, false, match);
     } catch (error) {
-      console.error("Error updating tournament results:", error);
+      logger.error("Error updating tournament results:", error);
     }
   }
 
@@ -1012,7 +1013,7 @@ export class TournamentAdminController extends BaseController {
         await result.save();
       }
     } catch (error) {
-      console.error("Error updating team result:", error);
+      logger.error("Error updating team result:", error);
     }
   }
 
@@ -1103,7 +1104,7 @@ export class TournamentAdminController extends BaseController {
         }
       }
     } catch (error) {
-      console.error("Error updating player statistics:", error);
+      logger.error("Error updating player statistics:", error);
     }
   }
 

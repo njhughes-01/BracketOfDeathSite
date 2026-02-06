@@ -1,3 +1,4 @@
+import logger from "../../utils/logger";
 import React, { useState } from "react";
 import apiClient from "../../services/api";
 import LoadingSpinner from "../ui/LoadingSpinner";
@@ -29,7 +30,7 @@ const ClaimUserModal: React.FC<ClaimUserModalProps> = ({
         setPlayers(res.data);
       }
     } catch (err) {
-      console.error(err);
+      logger.error(err);
     } finally {
       setSearching(false);
     }
@@ -54,7 +55,7 @@ const ClaimUserModal: React.FC<ClaimUserModalProps> = ({
         setError(res.error || "Failed to send invitation");
       }
     } catch (err: any) {
-      console.error(err);
+      logger.error(err);
       setError(err.message || "An unexpected error occurred");
     } finally {
       setLoading(false);

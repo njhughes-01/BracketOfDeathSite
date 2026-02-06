@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import logger from "../utils/logger";
 import { useAuth } from "../contexts/AuthContext";
 import { usePermissions } from "../hooks/usePermissions";
 import type { User, CreateUserInput } from "../types/user";
@@ -37,7 +38,7 @@ const UserManagement: React.FC = () => {
         setError(response.error || "Failed to load users");
       }
     } catch (err: any) {
-      console.error("Failed to load users:", err);
+      logger.error("Failed to load users:", err);
       setError("Failed to load users. Please try again.");
     } finally {
       setLoading(false);
@@ -58,7 +59,7 @@ const UserManagement: React.FC = () => {
         throw new Error(response.error || "Failed to create user");
       }
     } catch (err: any) {
-      console.error("Failed to create user:", err);
+      logger.error("Failed to create user:", err);
       throw err;
     } finally {
       setLoading(false);
@@ -86,7 +87,7 @@ const UserManagement: React.FC = () => {
         setError(response.error || "Failed to delete user");
       }
     } catch (err: any) {
-      console.error("Failed to delete user:", err);
+      logger.error("Failed to delete user:", err);
       setError("Failed to delete user. Please try again.");
     } finally {
       setLoading(false);
@@ -115,7 +116,7 @@ const UserManagement: React.FC = () => {
         setError(response.error || "Failed to reset password");
       }
     } catch (err: any) {
-      console.error("Failed to reset password:", err);
+      logger.error("Failed to reset password:", err);
       setError("Failed to reset password. Please try again.");
     } finally {
       setLoading(false);
@@ -154,7 +155,7 @@ const UserManagement: React.FC = () => {
         setError(response.error || `Failed to ${action} user`);
       }
     } catch (err: any) {
-      console.error(`Failed to ${action} user:`, err);
+      logger.error(`Failed to ${action} user:`, err);
       setError(`Failed to ${action} user. Please try again.`);
     } finally {
       setLoading(false);
@@ -221,7 +222,7 @@ const UserManagement: React.FC = () => {
         setError(response.error || `Failed to ${action} user`);
       }
     } catch (err: any) {
-      console.error(`Failed to ${action} user:`, err);
+      logger.error(`Failed to ${action} user:`, err);
       setError(`Failed to ${action} user. Please try again.`);
     } finally {
       setLoading(false);
@@ -287,7 +288,7 @@ const UserManagement: React.FC = () => {
         setError(response.error || `Failed to ${action} user`);
       }
     } catch (err: any) {
-      console.error(`Failed to ${action} user:`, err);
+      logger.error(`Failed to ${action} user:`, err);
       setError(`Failed to ${action} user. Please try again.`);
     } finally {
       setLoading(false);
@@ -318,7 +319,7 @@ const UserManagement: React.FC = () => {
         setError(response.error || "Failed to update user");
       }
     } catch (err: any) {
-      console.error("Failed to update user:", err);
+      logger.error("Failed to update user:", err);
       setError("Failed to update user. Please try again.");
       throw err; // Re-throw so modal knows it failed
     } finally {

@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import logger from "../utils/logger";
 import { useNavigate, Link, useSearchParams } from "react-router-dom";
 import axios from "axios";
 import { jwtDecode } from "jwt-decode";
@@ -33,7 +34,7 @@ const Register: React.FC = () => {
           setIsClaiming(true);
         }
       } catch (e) {
-        console.error("Invalid claim token", e);
+        logger.error("Invalid claim token", e);
         setError("Invalid or expired invitation link.");
       }
     }
@@ -121,7 +122,7 @@ const Register: React.FC = () => {
             return;
           }
         } catch (loginErr) {
-          console.error(
+          logger.error(
             "Auto-login after setup registration failed:",
             loginErr,
           );
@@ -140,7 +141,7 @@ const Register: React.FC = () => {
         },
       );
     } catch (err: any) {
-      console.error("Registration failed:", err);
+      logger.error("Registration failed:", err);
       setError(
         err.response?.data?.error || "Registration failed. Please try again.",
       );

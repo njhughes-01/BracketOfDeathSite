@@ -1,4 +1,5 @@
 import { Request, Response, NextFunction } from "express";
+import logger from "../utils/logger";
 import { Tournament } from "../models/Tournament";
 import { TournamentResult } from "../models/TournamentResult";
 import { Player } from "../models/Player";
@@ -455,12 +456,12 @@ export class TournamentController extends BaseCrudController<ITournament> {
   // Generate player seeds based on historical data
   generatePlayerSeeds = this.asyncHandler(
     async (req: Request, res: Response): Promise<void> => {
-      console.log("generatePlayerSeeds called with:", req.body);
+      logger.debug("generatePlayerSeeds called with:", req.body);
       const { method = "historical", parameters = {} } = req.body;
 
       // Get all players with their career statistics
       const players = await this.getAllPlayersWithStats();
-      console.log(`Found ${players.length} players for seeding`);
+      logger.debug(`Found ${players.length} players for seeding`);
 
       if (players.length === 0) {
         this.sendNotFound(res, "Players for seeding");
@@ -493,7 +494,7 @@ export class TournamentController extends BaseCrudController<ITournament> {
           playerSeeds = this.calculateHistoricalSeeds(players, parameters);
       }
 
-      console.log(`Generated ${playerSeeds.length} player seeds`);
+      logger.debug(`Generated ${playerSeeds.length} player seeds`);
 
       this.sendSuccess(res, playerSeeds);
     },
@@ -527,7 +528,7 @@ export class TournamentController extends BaseCrudController<ITournament> {
   // Setup complete tournament with all configurations
   setupTournament = this.asyncHandler(
     async (req: RequestWithAuth, res: Response): Promise<void> => {
-      console.log(
+      logger.debug(
         "setupTournament called with body:",
         JSON.stringify(req.body, null, 2),
       );
@@ -574,7 +575,7 @@ export class TournamentController extends BaseCrudController<ITournament> {
         return;
       }
 
-      console.log("Creating tournament with data:", {
+      logger.debug("Creating tournament with data:", {
         ...basicInfo,
         maxPlayers,
         status: basicInfo.status || "scheduled",

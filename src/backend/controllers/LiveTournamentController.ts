@@ -1,4 +1,5 @@
 import { Request, Response, NextFunction } from "express";
+import logger from "../utils/logger";
 import { Tournament } from "../models/Tournament";
 import { Match } from "../models/Match";
 import { TournamentResult } from "../models/TournamentResult";
@@ -114,7 +115,7 @@ export class LiveTournamentController extends BaseController {
         return;
       }
 
-      console.log(
+      logger.debug(
         "DEBUG: Fetched tournament",
         id,
         "bracketType:",
@@ -165,7 +166,7 @@ export class LiveTournamentController extends BaseController {
   // Execute tournament actions (start registration, advance rounds, etc.)
   executeTournamentAction = this.asyncHandler(
     async (req: RequestWithAuth, res: Response): Promise<void> => {
-      console.log(
+      logger.debug(
         "DEBUG: executeTournamentAction called with body:",
         JSON.stringify(req.body),
       );
@@ -174,10 +175,10 @@ export class LiveTournamentController extends BaseController {
 
       const tournament = await Tournament.findById(id);
       if (!tournament) {
-        console.log(`DEBUG: Tournament not found for ID: ${id}`);
+        logger.debug(`DEBUG: Tournament not found for ID: ${id}`);
         // Log all tournament IDs in DB for debugging
         const allTournaments = await Tournament.find({}, { _id: 1 });
-        console.log(`DEBUG: Available tournament IDs: ${allTournaments.map(t => t._id).join(", ")}`);
+        logger.debug(`DEBUG: Available tournament IDs: ${allTournaments.map(t => t._id).join(", ")}`);
         this.sendNotFound(res, "Tournament");
         return;
       }
@@ -885,7 +886,7 @@ export class LiveTournamentController extends BaseController {
       const storedTeams = tournament.generatedTeams || [];
 
       if (storedTeams.length === 0) {
-        console.log("No generated teams found in tournament setup data");
+        logger.debug("No generated teams found in tournament setup data");
         return [];
       }
 
@@ -942,10 +943,10 @@ export class LiveTournamentController extends BaseController {
         };
       });
 
-      console.log(`Generated live team data for ${liveTeams.length} teams`);
+      logger.debug(`Generated live team data for ${liveTeams.length} teams`);
       return liveTeams;
     } catch (error) {
-      console.error("Error generating team data:", error);
+      logger.error("Error generating team data:", error);
       return [];
     }
   }
@@ -1035,7 +1036,7 @@ export class LiveTournamentController extends BaseController {
 
       return checkInStatus;
     } catch (error) {
-      console.error("Error getting check-in status:", error);
+      logger.error("Error getting check-in status:", error);
       return {};
     }
   }
@@ -1045,7 +1046,7 @@ export class LiveTournamentController extends BaseController {
     tournament: ITournament,
   ): Promise<ITournament> {
     try {
-      console.log("Starting registration logic...");
+      logger.debug("Starting registration logic...");
       // Only skip registration if ALL players are preselected (tournament is full)
       const maxPlayers = tournament.maxPlayers || 0;
       const preselectedCount =
@@ -1057,27 +1058,27 @@ export class LiveTournamentController extends BaseController {
       const isFullyPreselected =
         maxPlayers > 0 && preselectedCount >= maxPlayers;
 
-      console.log(
+      logger.debug(
         `Registration check: max=${maxPlayers}, preselected=${preselectedCount}, full=${isFullyPreselected}`,
       );
 
       if (isFullyPreselected) {
         // Full roster preselected — proceed without registration
-        console.log("Full roster preselected, skipping registration phase");
+        logger.debug("Full roster preselected, skipping registration phase");
         tournament.status = "active";
         const saved = await tournament.save();
-        console.log("Tournament saved as active");
+        logger.debug("Tournament saved as active");
         return saved;
       }
 
       // Normal registration flow (not all players preselected)
-      console.log("Opening registration (status=open)");
+      logger.debug("Opening registration (status=open)");
       tournament.status = "open";
       const saved = await tournament.save();
-      console.log("Tournament saved as open");
+      logger.debug("Tournament saved as open");
       return saved;
     } catch (err) {
-      console.error("Error in startRegistration:", err);
+      logger.error("Error in startRegistration:", err);
       throw err;
     }
   }
@@ -1107,14 +1108,14 @@ export class LiveTournamentController extends BaseController {
 
   private async advanceRound(tournament: ITournament): Promise<ITournament> {
     try {
-      console.log("Advancing tournament to next round");
+      logger.debug("Advancing tournament to next round");
 
       // Get current matches to determine current round and progression
       const matches = await Match.find({ tournamentId: tournament._id });
       const phase = this.calculateTournamentPhase(tournament, matches);
 
       if (!phase.canAdvance) {
-        console.log("Tournament round cannot advance - matches not completed");
+        logger.debug("Tournament round cannot advance - matches not completed");
         return tournament;
       }
 
@@ -1127,7 +1128,7 @@ export class LiveTournamentController extends BaseController {
 
       return tournament;
     } catch (error) {
-      console.error("Error advancing round:", error);
+      logger.error("Error advancing round:", error);
       return tournament;
     }
   }
@@ -1142,7 +1143,7 @@ export class LiveTournamentController extends BaseController {
 
       if (nextRound === "bracket") {
         // Round robin complete, determine qualifiers and start bracket
-        console.log("Round robin complete, starting bracket phase");
+        logger.debug("Round robin complete, starting bracket phase");
 
         // Calculate final round-robin standings
         await this.calculateRoundRobinStandings(tournament);
@@ -1154,12 +1155,12 @@ export class LiveTournamentController extends BaseController {
         return await tournament.save();
       } else {
         // Generate next round-robin matches
-        console.log(`Advancing to ${nextRound}`);
+        logger.debug(`Advancing to ${nextRound}`);
         await this.createMatchesForRound(tournament, nextRound);
         return tournament;
       }
     } catch (error) {
-      console.error("Error advancing round robin:", error);
+      logger.error("Error advancing round robin:", error);
       return tournament;
     }
   }
@@ -1177,14 +1178,14 @@ export class LiveTournamentController extends BaseController {
 
       const nextRound = this.getNextBracketRound(currentRound);
       if (!nextRound) {
-        console.log("Tournament complete!");
+        logger.debug("Tournament complete!");
         tournament.status = "completed";
         await this.setTournamentChampion(tournament);
         await this.updatePlayerCareerStats(tournament);
         return await tournament.save();
       }
 
-      console.log(`Advancing to bracket ${nextRound}`);
+      logger.debug(`Advancing to bracket ${nextRound}`);
       const advancingTeams = await this.getBracketAdvancingTeams(
         tournament,
         currentRound,
@@ -1196,7 +1197,7 @@ export class LiveTournamentController extends BaseController {
       );
       return tournament;
     } catch (error) {
-      console.error("Error advancing bracket round:", error);
+      logger.error("Error advancing bracket round:", error);
       return tournament;
     }
   }
@@ -1272,7 +1273,7 @@ export class LiveTournamentController extends BaseController {
       // If scores are tied, don't set winner
     }
 
-    console.log(
+    logger.debug(
       "Processed match update:",
       JSON.stringify(processedData, null, 2),
     );
@@ -1336,13 +1337,13 @@ export class LiveTournamentController extends BaseController {
         return a.combinedSeed - b.combinedSeed;
       });
 
-      console.log(
+      logger.debug(
         "Round-robin standings calculated:",
         standings.length,
         "teams",
       );
     } catch (error) {
-      console.error("Error calculating round-robin standings:", error);
+      logger.error("Error calculating round-robin standings:", error);
     }
   }
 
@@ -1378,7 +1379,7 @@ export class LiveTournamentController extends BaseController {
       }
     });
 
-    console.log(
+    logger.debug(
       `${advancingTeams.length} teams advancing from ${currentRound}`,
     );
     return advancingTeams;
@@ -1398,13 +1399,13 @@ export class LiveTournamentController extends BaseController {
       1,
     );
     await Match.insertMany(matches);
-    console.log(`Generated ${matches.length} matches for ${round}`);
+    logger.debug(`Generated ${matches.length} matches for ${round}`);
   }
 
   // Set tournament champion when tournament completes
   private async setTournamentChampion(tournament: ITournament): Promise<void> {
     try {
-      console.log(
+      logger.debug(
         `DEBUG: setTournamentChampion called for tournament ${tournament._id}`,
       );
       const finalMatch = await Match.findOne({
@@ -1414,12 +1415,12 @@ export class LiveTournamentController extends BaseController {
       });
 
       if (finalMatch && finalMatch.winner) {
-        console.log(
+        logger.debug(
           `DEBUG: Found final match ${finalMatch._id}, winner: ${finalMatch.winner}`,
         );
         const winningTeam =
           finalMatch.winner === "team1" ? finalMatch.team1 : finalMatch.team2;
-        console.log(
+        logger.debug(
           `DEBUG: Winning Team Players: ${JSON.stringify(winningTeam.players)}`,
         );
 
@@ -1428,16 +1429,16 @@ export class LiveTournamentController extends BaseController {
           playerName: winningTeam.playerNames.join(" & "),
         };
 
-        console.log(
+        logger.debug(
           `Tournament champion set: ${tournament.champion.playerName} (${tournament.champion.playerId})`,
         );
       } else {
-        console.log(
+        logger.debug(
           `DEBUG: Final match not found or no winner. Match: ${finalMatch?._id} Winner: ${finalMatch?.winner}`,
         );
       }
     } catch (error) {
-      console.error("Error setting tournament champion:", error);
+      logger.error("Error setting tournament champion:", error);
     }
   }
 
@@ -1446,7 +1447,7 @@ export class LiveTournamentController extends BaseController {
     tournament: ITournament,
   ): Promise<void> {
     try {
-      console.log(
+      logger.debug(
         `Updating career statistics for tournament ${tournament._id}`,
       );
 
@@ -1457,14 +1458,14 @@ export class LiveTournamentController extends BaseController {
       });
 
       if (allMatches.length === 0) {
-        console.log("No completed matches found, skipping career stats update");
+        logger.debug("No completed matches found, skipping career stats update");
         return;
       }
 
       // Get teams from tournament setup
       const teams = tournament.generatedTeams || [];
       if (teams.length === 0) {
-        console.log("No teams found in tournament setup");
+        logger.debug("No teams found in tournament setup");
         return;
       }
 
@@ -1490,9 +1491,9 @@ export class LiveTournamentController extends BaseController {
         }
       }
 
-      console.log(`Career statistics updated for ${teamResults.length} teams`);
+      logger.debug(`Career statistics updated for ${teamResults.length} teams`);
     } catch (error) {
-      console.error("Error updating career statistics:", error);
+      logger.error("Error updating career statistics:", error);
     }
   }
 
@@ -1676,7 +1677,7 @@ export class LiveTournamentController extends BaseController {
         });
       }
     } catch (error) {
-      console.error("Error creating tournament result record:", error);
+      logger.error("Error creating tournament result record:", error);
     }
   }
 
@@ -1688,7 +1689,7 @@ export class LiveTournamentController extends BaseController {
     try {
       const existingPlayer = await Player.findById(player.playerId);
       if (!existingPlayer) {
-        console.log(`Player not found: ${player.playerId}`);
+        logger.debug(`Player not found: ${player.playerId}`);
         return;
       }
 
@@ -1738,9 +1739,9 @@ export class LiveTournamentController extends BaseController {
       // Save updated player statistics
       await Player.findByIdAndUpdate(player.playerId, updatedStats);
 
-      console.log(`Updated career stats for player ${player.playerName}`);
+      logger.debug(`Updated career stats for player ${player.playerName}`);
     } catch (error) {
-      console.error(
+      logger.error(
         `Error updating player stats for ${player.playerName}:`,
         error,
       );
@@ -1771,7 +1772,7 @@ export class LiveTournamentController extends BaseController {
       await this.setTournamentChampion(tournament);
       await this.updatePlayerCareerStats(tournament);
     } catch (err) {
-      console.error("Error finalizing tournament stats on completion:", err);
+      logger.error("Error finalizing tournament stats on completion:", err);
     }
     return await tournament.save();
   }
@@ -1845,7 +1846,7 @@ export class LiveTournamentController extends BaseController {
     }
     if (matches.length === 0) return [] as any;
     const created = await Match.insertMany(matches);
-    console.log(`Generated ${created.length} matches for ${round}`);
+    logger.debug(`Generated ${created.length} matches for ${round}`);
     return created as any;
   }
 
@@ -2002,9 +2003,9 @@ export class LiveTournamentController extends BaseController {
         : 1;
 
       // Get teams from tournament setup data, or synthesize from selected players if missing
-      console.log("DEBUG: Entering Match/Teams check");
+      logger.debug("DEBUG: Entering Match/Teams check");
       let teams = tournament.generatedTeams || [];
-      console.log("DEBUG: Teams count:", teams.length);
+      logger.debug("DEBUG: Teams count:", teams.length);
       if (!teams || teams.length === 0) {
         // Build lightweight teams from selected players + generatedSeeds metadata
         const seedMap: Record<
@@ -2088,7 +2089,7 @@ export class LiveTournamentController extends BaseController {
           // Persist reconstructed teams to tournament for future use
           (tournament.generatedTeams as any) = teams;
           await tournament.save();
-          console.log(`Reconstructed ${teams.length} teams from TournamentResult`);
+          logger.debug(`Reconstructed ${teams.length} teams from TournamentResult`);
         }
       }
 
@@ -2114,15 +2115,15 @@ export class LiveTournamentController extends BaseController {
       }
 
       // Create matches in database
-      console.error(
+      logger.error(
         `DEBUG: About to insert ${matches.length} matches for ${round}`,
       );
       const createdMatches = await Match.insertMany(matches);
-      console.log(`Created ${createdMatches.length} matches for ${round}`);
+      logger.debug(`Created ${createdMatches.length} matches for ${round}`);
 
       return createdMatches as IMatch[];
     } catch (error) {
-      console.error(`Error creating matches for round ${round}:`, error);
+      logger.error(`Error creating matches for round ${round}:`, error);
       throw error;
     }
   }
@@ -2137,7 +2138,7 @@ export class LiveTournamentController extends BaseController {
     const matches = [];
     let matchNumber = startMatchNumber;
 
-    console.log("Team structure sample:", JSON.stringify(teams[0], null, 2));
+    logger.debug("Team structure sample:", JSON.stringify(teams[0], null, 2));
 
     // Generate all possible team pairings (combinatorial)
     for (let i = 0; i < teams.length; i++) {
@@ -2179,14 +2180,14 @@ export class LiveTournamentController extends BaseController {
           scheduledDate: new Date(),
         };
 
-        console.log(
+        logger.debug(
           `Match ${matchNumber - 1}: ${team1PlayerNames.join(" & ")} vs ${team2PlayerNames.join(" & ")}`,
         );
         matches.push(match);
       }
     }
 
-    console.log(`Generated ${matches.length} round-robin matches`);
+    logger.debug(`Generated ${matches.length} round-robin matches`);
     return matches;
   }
 
@@ -2274,7 +2275,7 @@ export class LiveTournamentController extends BaseController {
       }
     }
 
-    console.log(`Generated ${matches.length} ${round} matches`);
+    logger.debug(`Generated ${matches.length} ${round} matches`);
     return matches;
   }
 
@@ -2311,14 +2312,14 @@ export class LiveTournamentController extends BaseController {
 
   private async updateTournamentStatistics(match: IMatch): Promise<void> {
     try {
-      console.log(
+      logger.debug(
         `Updating tournament statistics for match ${match.matchNumber}`,
       );
 
       // Get tournament to access setup data
       const tournament = await Tournament.findById(match.tournamentId);
       if (!tournament) {
-        console.error("Tournament not found for statistics update");
+        logger.error("Tournament not found for statistics update");
         return;
       }
 
@@ -2328,7 +2329,7 @@ export class LiveTournamentController extends BaseController {
         match.team1.score === undefined ||
         match.team2.score === undefined
       ) {
-        console.log(
+        logger.debug(
           "Match does not have winner or scores, skipping statistics update",
         );
         return;
@@ -2356,11 +2357,11 @@ export class LiveTournamentController extends BaseController {
         await this.updateBracketProgression(tournament, match);
       }
 
-      console.log(
+      logger.debug(
         `Statistics updated successfully for match ${match.matchNumber}`,
       );
     } catch (error) {
-      console.error("Error updating tournament statistics:", error);
+      logger.error("Error updating tournament statistics:", error);
     }
   }
 
@@ -2508,9 +2509,9 @@ export class LiveTournamentController extends BaseController {
           .map((p: any) => p.name || p.toString())
           .join(" & ")
         : result.players.map((p: any) => p.toString()).join(" & ");
-      console.log(`Updated tournament result for team: ${teamName}`);
+      logger.debug(`Updated tournament result for team: ${teamName}`);
     } catch (error) {
-      console.error("Error updating team tournament result:", error);
+      logger.error("Error updating team tournament result:", error);
     }
   }
 
@@ -2543,7 +2544,7 @@ export class LiveTournamentController extends BaseController {
   ): Promise<void> {
     // This would update tournament's bracket progression tracking
     // For now, log the progression
-    console.log(
+    logger.debug(
       `Bracket progression: ${match.round} winner is team ${match.winner}`,
     );
   }
@@ -2561,7 +2562,7 @@ export class LiveTournamentController extends BaseController {
         .sort({ seed: 1, "totalStats.bodFinish": 1 });
 
       if (!results || results.length === 0) {
-        console.log("No TournamentResults to reconstruct teams from");
+        logger.debug("No TournamentResults to reconstruct teams from");
         return [];
       }
 
@@ -2590,10 +2591,10 @@ export class LiveTournamentController extends BaseController {
         });
       }
 
-      console.log(`Reconstructed ${teams.length} teams from ${results.length} results`);
+      logger.debug(`Reconstructed ${teams.length} teams from ${results.length} results`);
       return teams;
     } catch (error) {
-      console.error("Error reconstructing teams from results:", error);
+      logger.error("Error reconstructing teams from results:", error);
       return [];
     }
   }

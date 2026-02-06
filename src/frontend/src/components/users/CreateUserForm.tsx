@@ -1,3 +1,4 @@
+import logger from "../../utils/logger";
 import React, { useState } from "react";
 import type { CreateUserInput } from "../../types/user";
 import { useAuth } from "../../contexts/AuthContext";
@@ -94,7 +95,7 @@ const CreateUserForm: React.FC<CreateUserFormProps> = ({
     try {
       await onSubmit(formData);
     } catch (error) {
-      console.error("Failed to create user:", error);
+      logger.error("Failed to create user:", error);
     }
   };
 
