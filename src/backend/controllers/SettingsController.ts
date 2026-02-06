@@ -428,6 +428,116 @@ export class SettingsController extends BaseController {
       this.sendSuccess(res, data, "Email settings updated successfully");
     },
   );
+
+  // Get Stripe settings
+  getStripeSettings = this.asyncHandler(
+    async (req: Request, res: Response): Promise<void> => {
+      const settings = await SystemSettings.findOne().select(
+        "+stripeSecretKey +stripeWebhookSecret"
+      );
+
+      // Check for environment variables first
+      const envSecretKey = process.env.STRIPE_SECRET_KEY;
+      const envPublishableKey = process.env.STRIPE_PUBLISHABLE_KEY;
+      const envWebhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
+
+      const stripeFromEnv = !!(envSecretKey && envPublishableKey);
+      const stripeConfigSource = stripeFromEnv 
+        ? "environment" 
+        : (settings?.stripeSecretKey ? "database" : null);
+
+      const data = {
+        stripeConfigured: stripeFromEnv || !!(settings?.stripeSecretKey),
+        stripeConfigSource,
+        stripePublishableKey: stripeFromEnv 
+          ? envPublishableKey 
+          : (settings?.stripePublishableKey || ""),
+        hasSecretKey: stripeFromEnv || !!settings?.stripeSecretKey,
+        hasWebhookSecret: !!envWebhookSecret || !!settings?.stripeWebhookSecret,
+        defaultEntryFee: settings?.defaultEntryFee || 0,
+        annualMembershipFee: settings?.annualMembershipFee || null,
+        monthlyMembershipFee: settings?.monthlyMembershipFee || null,
+      };
+
+      this.sendSuccess(res, data, "Stripe settings retrieved successfully");
+    },
+  );
+
+  // Update Stripe settings
+  updateStripeSettings = this.asyncHandler(
+    async (req: Request, res: Response): Promise<void> => {
+      const {
+        stripePublishableKey,
+        stripeSecretKey,
+        stripeWebhookSecret,
+        defaultEntryFee,
+      } = req.body;
+
+      // requireAdmin middleware should handle this, but adding check for safety
+      if (!(req as any).user?.isAdmin) {
+        return this.sendForbidden(res, "Administrative privileges required");
+      }
+
+      // Input validation
+      const errors: string[] = [];
+
+      // Validate publishable key format
+      if (stripePublishableKey && !stripePublishableKey.startsWith("pk_")) {
+        errors.push("Invalid publishable key format. Must start with pk_");
+      }
+
+      // Validate secret key format
+      if (stripeSecretKey && !stripeSecretKey.startsWith("sk_")) {
+        errors.push("Invalid secret key format. Must start with sk_");
+      }
+
+      // Validate webhook secret format
+      if (stripeWebhookSecret && !stripeWebhookSecret.startsWith("whsec_")) {
+        errors.push("Invalid webhook secret format. Must start with whsec_");
+      }
+
+      // Validate entry fee
+      if (defaultEntryFee !== undefined) {
+        if (typeof defaultEntryFee !== "number" || defaultEntryFee < 0) {
+          errors.push("Default entry fee must be a non-negative number (in cents)");
+        }
+      }
+
+      if (errors.length > 0) {
+        return this.sendValidationError(res, errors);
+      }
+
+      let settings = await SystemSettings.findOne();
+      if (!settings) {
+        settings = new SystemSettings({ updatedBy: (req as any).user.username });
+      }
+
+      // Update Stripe fields (only if provided)
+      if (stripePublishableKey !== undefined) {
+        settings.stripePublishableKey = stripePublishableKey || undefined;
+      }
+      if (stripeSecretKey) {
+        settings.stripeSecretKey = stripeSecretKey;
+      }
+      if (stripeWebhookSecret) {
+        settings.stripeWebhookSecret = stripeWebhookSecret;
+      }
+      if (defaultEntryFee !== undefined) {
+        settings.defaultEntryFee = defaultEntryFee;
+      }
+
+      settings.updatedBy = (req as any).user.username;
+      await settings.save();
+
+      // Clear Stripe instance if keys changed (to reload)
+      if (stripeSecretKey) {
+        // Force re-initialization of Stripe on next use
+        StripeService.resetClient();
+      }
+
+      this.sendSuccess(res, undefined, "Stripe settings updated successfully");
+    },
+  );
 }
 
 export default new SettingsController();

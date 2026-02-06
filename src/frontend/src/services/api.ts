@@ -59,6 +59,59 @@ export interface SystemSettings {
   brandSecondaryColor: string;
 }
 
+// Stripe Settings types
+export interface StripeSettings {
+  stripeConfigured: boolean;
+  stripeConfigSource: "environment" | "database" | null;
+  stripePublishableKey: string;
+  hasSecretKey: boolean;
+  hasWebhookSecret: boolean;
+  defaultEntryFee: number; // In cents
+  annualMembershipFee: number | null; // In cents
+  monthlyMembershipFee: number | null; // In cents
+}
+
+export interface StripeSettingsUpdate {
+  stripePublishableKey?: string;
+  stripeSecretKey?: string;
+  stripeWebhookSecret?: string;
+  defaultEntryFee?: number; // In cents
+}
+
+// Discount Code types
+export interface DiscountCode {
+  _id: string;
+  code: string;
+  stripeCouponId: string;
+  type: "percent" | "amount";
+  percentOff?: number;
+  amountOff?: number; // In cents
+  maxRedemptions?: number | null;
+  redemptionCount: number;
+  expiresAt?: string | null;
+  tournamentIds?: string[];
+  active: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface DiscountCodeInput {
+  code: string;
+  type: "percent" | "amount";
+  percentOff?: number;
+  amountOff?: number; // In cents
+  maxRedemptions?: number | null;
+  expiresAt?: string | null;
+  tournamentIds?: string[];
+}
+
+export interface DiscountCodeUpdate {
+  maxRedemptions?: number | null;
+  expiresAt?: string | null;
+  tournamentIds?: string[];
+  active?: boolean;
+}
+
 // ... existing code ...
 
 // Global token getter function - will be set by AuthContext
@@ -831,6 +884,26 @@ class ApiClient {
     return this.get<ApiResponse<any>>(`/tickets/${id}`);
   }
 
+  async getMyTicketForTournament(tournamentId: string): Promise<ApiResponse<{
+    ticket: {
+      _id: string;
+      ticketCode: string;
+      status: "valid" | "checked_in" | "refunded" | "void";
+      paymentStatus: "paid" | "free" | "refunded";
+      amountPaid: number;
+    };
+  } | null>> {
+    return this.get<ApiResponse<{
+      ticket: {
+        _id: string;
+        ticketCode: string;
+        status: "valid" | "checked_in" | "refunded" | "void";
+        paymentStatus: "paid" | "free" | "refunded";
+        amountPaid: number;
+      };
+    } | null>>(`/tickets/tournament/${tournamentId}/mine`);
+  }
+
   async resendTicketEmail(ticketId: string): Promise<ApiResponse> {
     return this.post<ApiResponse>(`/tickets/${ticketId}/resend`, {});
   }
@@ -966,6 +1039,68 @@ class ApiClient {
       `/admin/tournaments/${tournamentId}/send-reminders`,
       {},
     );
+  }
+
+  // Stripe Settings API methods
+  async getStripeSettings(): Promise<ApiResponse<StripeSettings>> {
+    return this.get<ApiResponse<StripeSettings>>("/settings/stripe");
+  }
+
+  async updateStripeSettings(settings: StripeSettingsUpdate): Promise<ApiResponse> {
+    return this.put<ApiResponse>("/settings/stripe", settings);
+  }
+
+  // Discount Code API methods
+  async getDiscountCodes(options?: {
+    active?: boolean;
+    includeExpired?: boolean;
+  }): Promise<ApiResponse<{ codes: DiscountCode[] }>> {
+    const params = new URLSearchParams();
+    if (options?.active !== undefined) {
+      params.append("active", String(options.active));
+    }
+    if (options?.includeExpired !== undefined) {
+      params.append("includeExpired", String(options.includeExpired));
+    }
+    const queryString = params.toString();
+    const url = queryString ? `/discount-codes?${queryString}` : "/discount-codes";
+    return this.get<ApiResponse<{ codes: DiscountCode[] }>>(url);
+  }
+
+  async getDiscountCode(id: string): Promise<ApiResponse<{ code: DiscountCode }>> {
+    return this.get<ApiResponse<{ code: DiscountCode }>>(`/discount-codes/${id}`);
+  }
+
+  async createDiscountCode(data: DiscountCodeInput): Promise<ApiResponse<{ code: DiscountCode }>> {
+    return this.post<ApiResponse<{ code: DiscountCode }>>("/discount-codes", data);
+  }
+
+  async updateDiscountCode(
+    id: string,
+    data: DiscountCodeUpdate
+  ): Promise<ApiResponse<{ code: DiscountCode }>> {
+    return this.put<ApiResponse<{ code: DiscountCode }>>(`/discount-codes/${id}`, data);
+  }
+
+  async deactivateDiscountCode(id: string): Promise<ApiResponse> {
+    return this.delete<ApiResponse>(`/discount-codes/${id}`);
+  }
+
+  async validateDiscountCode(
+    code: string,
+    tournamentId?: string
+  ): Promise<ApiResponse<{
+    valid: boolean;
+    discountCode?: DiscountCode;
+    discountAmount?: number;
+    message?: string;
+  }>> {
+    return this.post<ApiResponse<{
+      valid: boolean;
+      discountCode?: DiscountCode;
+      discountAmount?: number;
+      message?: string;
+    }>>("/discount-codes/validate", { code, tournamentId });
   }
 }
 

@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useMemo } from "react";
+import React, { useState, useCallback, useMemo, useEffect } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
 import { useApi, useMutation } from "../hooks/useApi";
 import { useAuth } from "../contexts/AuthContext";
@@ -6,19 +6,57 @@ import apiClient from "../services/api";
 
 import LiveStats from "../components/tournament/LiveStats";
 import BracketView from "../components/tournament/BracketView";
+import { CheckoutTimer, DiscountCodeInput } from "../components/checkout";
+import type { DiscountInfo } from "../components/checkout";
 import { getTournamentStatus } from "../utils/tournamentStatus";
 import type { Tournament, Match, TournamentResult, Player } from "../types/api";
+import logger from "../utils/logger";
+
+// Registration state machine
+type RegistrationState = 
+  | "loading"
+  | "not_logged_in"
+  | "not_registered"
+  | "reserved"
+  | "registered"
+  | "waitlisted"
+  | "invite_only"
+  | "closed"
+  | "full";
+
+interface ReservationInfo {
+  reservationId: string;
+  expiresAt: string;
+  remainingSeconds: number;
+}
+
+interface UserTicket {
+  _id: string;
+  ticketCode: string;
+  status: "valid" | "checked_in" | "refunded" | "void";
+  paymentStatus: "paid" | "free" | "refunded";
+  amountPaid: number;
+}
 
 const TournamentDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { isAdmin } = useAuth();
+  const { isAdmin, isAuthenticated, user } = useAuth();
   const [activeTab, setActiveTab] = useState<
     "Overview" | "Standings" | "Matches" | "Players" | "Bracket"
   >("Overview");
   const [expandedRows, setExpandedRows] = useState<Set<string | number>>(
     new Set(),
   );
+
+  // Checkout flow state
+  const [registrationState, setRegistrationState] = useState<RegistrationState>("loading");
+  const [reservation, setReservation] = useState<ReservationInfo | null>(null);
+  const [userTicket, setUserTicket] = useState<UserTicket | null>(null);
+  const [discountCode, setDiscountCode] = useState<string>("");
+  const [discountInfo, setDiscountInfo] = useState<DiscountInfo | null>(null);
+  const [checkoutLoading, setCheckoutLoading] = useState(false);
+  const [checkoutError, setCheckoutError] = useState<string | null>(null);
 
   const getTournament = useCallback(() => apiClient.getTournament(id!), [id]);
   const { data: tournamentWrapper, loading } = useApi(getTournament, {
@@ -457,6 +495,242 @@ const TournamentDetail: React.FC = () => {
 
     return derivedMatches;
   }, [matches, results, tournament]);
+
+  // ============================================
+  // CHECKOUT FLOW FUNCTIONS
+  // ============================================
+
+  // Check user's registration status on mount and when tournament changes
+  useEffect(() => {
+    const checkRegistrationStatus = async () => {
+      if (!id || loading) return;
+      
+      if (!isAuthenticated) {
+        setRegistrationState("not_logged_in");
+        return;
+      }
+
+      try {
+        // Check for existing ticket
+        const ticketResponse = await apiClient.getMyTicketForTournament(id);
+        if (ticketResponse.data?.ticket && 
+            ticketResponse.data.ticket.status !== "void" && 
+            ticketResponse.data.ticket.status !== "refunded") {
+          setUserTicket(ticketResponse.data.ticket);
+          setRegistrationState("registered");
+          return;
+        }
+
+        // Check for existing reservation
+        const reservationResponse = await apiClient.getReservationStatus(id);
+        if (reservationResponse.data) {
+          setReservation(reservationResponse.data);
+          setRegistrationState("reserved");
+          return;
+        }
+
+        // Determine state based on tournament properties
+        setRegistrationState("not_registered");
+      } catch (err) {
+        logger.error("Failed to check registration status:", err);
+        setRegistrationState("not_registered");
+      }
+    };
+
+    checkRegistrationStatus();
+  }, [id, loading, isAuthenticated]);
+
+  // Update registration state based on tournament data
+  useEffect(() => {
+    if (!tournament || registrationState === "loading") return;
+    
+    // Don't override if already registered or has reservation
+    if (registrationState === "registered" || registrationState === "reserved") return;
+
+    // Check various states
+    if (tournament.inviteOnly && !isAdmin) {
+      setRegistrationState("invite_only");
+      return;
+    }
+
+    if (tournament.registrationStatus === "closed") {
+      setRegistrationState("closed");
+      return;
+    }
+
+    if (tournament.registrationStatus === "full") {
+      // Check if user is on waitlist
+      const isOnWaitlist = tournament.waitlistPlayers?.some(
+        p => p._id === user?.playerId
+      );
+      if (isOnWaitlist) {
+        setRegistrationState("waitlisted");
+        return;
+      }
+      setRegistrationState("full");
+      return;
+    }
+  }, [tournament, registrationState, isAdmin, user?.playerId]);
+
+  // Calculate current price (considering early bird)
+  const currentPrice = useMemo(() => {
+    if (!tournament) return 0;
+    if (!tournament.entryFee || tournament.entryFee === 0) return 0;
+
+    // Check for early bird pricing
+    if (tournament.earlyBirdFee && tournament.earlyBirdDeadline) {
+      const deadline = new Date(tournament.earlyBirdDeadline);
+      if (new Date() < deadline) {
+        return tournament.earlyBirdFee;
+      }
+    }
+
+    return tournament.entryFee;
+  }, [tournament]);
+
+  // Calculate discounted price
+  const finalPrice = useMemo(() => {
+    if (!discountInfo?.valid) return currentPrice;
+
+    if (discountInfo.discountType === "percent" && discountInfo.discountValue) {
+      return Math.round(currentPrice * (1 - discountInfo.discountValue / 100));
+    }
+    
+    if (discountInfo.discountType === "amount" && discountInfo.discountValue) {
+      return Math.max(0, currentPrice - discountInfo.discountValue);
+    }
+
+    return currentPrice;
+  }, [currentPrice, discountInfo]);
+
+  // Check if tournament requires payment
+  const requiresPayment = currentPrice > 0;
+
+  // Format price in dollars
+  const formatPrice = (cents: number): string => {
+    return (cents / 100).toLocaleString("en-US", {
+      style: "currency",
+      currency: "USD",
+    });
+  };
+
+  // Handle discount code application
+  const handleDiscountApply = (code: string, info: DiscountInfo) => {
+    setDiscountCode(code);
+    setDiscountInfo(info);
+    logger.info("Discount applied:", { code, info });
+  };
+
+  // Reserve slot and start checkout
+  const handleReserveSlot = async () => {
+    if (!id) return;
+    
+    setCheckoutLoading(true);
+    setCheckoutError(null);
+
+    try {
+      const response = await apiClient.reserveSlot(id);
+      
+      if (!response.data) {
+        throw new Error("Failed to reserve slot");
+      }
+
+      setReservation({
+        reservationId: response.data.reservationId,
+        expiresAt: response.data.expiresAt,
+        remainingSeconds: response.data.remainingSeconds,
+      });
+      setRegistrationState("reserved");
+      logger.info("Slot reserved:", response.data);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Failed to reserve slot";
+      setCheckoutError(message);
+      logger.error("Reserve slot failed:", err);
+    } finally {
+      setCheckoutLoading(false);
+    }
+  };
+
+  // Complete checkout (redirect to Stripe or complete free registration)
+  const handleCompleteCheckout = async () => {
+    if (!id || !reservation) return;
+
+    setCheckoutLoading(true);
+    setCheckoutError(null);
+
+    try {
+      if (requiresPayment && finalPrice > 0) {
+        // Create Stripe checkout session
+        const response = await apiClient.createCheckoutSession({
+          tournamentId: id,
+          reservationId: reservation.reservationId,
+          discountCode: discountCode || undefined,
+        });
+
+        if (!response.data?.url) {
+          throw new Error("Failed to create checkout session");
+        }
+
+        // Redirect to Stripe
+        logger.info("Redirecting to Stripe checkout:", response.data.url);
+        window.location.href = response.data.url;
+      } else {
+        // Free registration
+        const response = await apiClient.completeFreeRegistration({
+          tournamentId: id,
+          reservationId: reservation.reservationId,
+        });
+
+        if (!response.data) {
+          throw new Error("Failed to complete registration");
+        }
+
+        setUserTicket({
+          _id: response.data.ticketId,
+          ticketCode: response.data.ticketCode,
+          status: "valid",
+          paymentStatus: "free",
+          amountPaid: 0,
+        });
+        setReservation(null);
+        setRegistrationState("registered");
+        logger.info("Free registration completed:", response.data);
+      }
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Checkout failed";
+      setCheckoutError(message);
+      logger.error("Checkout failed:", err);
+    } finally {
+      setCheckoutLoading(false);
+    }
+  };
+
+  // Handle reservation expiry
+  const handleReservationExpire = () => {
+    setReservation(null);
+    setRegistrationState("not_registered");
+    setCheckoutError("Your reservation has expired. Please try again.");
+    logger.info("Reservation expired");
+  };
+
+  // Cancel reservation
+  const handleCancelReservation = async () => {
+    if (!id) return;
+
+    try {
+      await apiClient.cancelReservation(id);
+      setReservation(null);
+      setRegistrationState("not_registered");
+      setCheckoutError(null);
+      logger.info("Reservation cancelled");
+    } catch (err) {
+      logger.error("Failed to cancel reservation:", err);
+    }
+  };
+
+  // ============================================
+  // END CHECKOUT FLOW FUNCTIONS
+  // ============================================
 
   const status = tournament
     ? getTournamentStatus(tournament.date)
@@ -1481,6 +1755,266 @@ const TournamentDetail: React.FC = () => {
                     </div>
                   </div>
                 )}
+
+              {/* Registration Section - Only show for upcoming/open tournaments */}
+              {status !== "completed" && status !== "cancelled" && (
+                <div className="bg-[#1c2230] rounded-2xl p-6 border border-white/5 shadow-lg">
+                  <div className="flex items-center gap-2 mb-4">
+                    <span className="material-symbols-outlined text-primary">
+                      how_to_reg
+                    </span>
+                    <h3 className="text-white font-bold text-lg">Registration</h3>
+                  </div>
+
+                  {/* Checkout Timer Banner */}
+                  {registrationState === "reserved" && reservation && (
+                    <div className="mb-4">
+                      <CheckoutTimer
+                        expiresAt={reservation.expiresAt}
+                        onExpire={handleReservationExpire}
+                      />
+                    </div>
+                  )}
+
+                  {/* Error Alert */}
+                  {checkoutError && (
+                    <div className="alert alert-error mb-4">
+                      <span className="material-symbols-outlined">error</span>
+                      <span>{checkoutError}</span>
+                      <button
+                        className="btn btn-ghost btn-sm"
+                        onClick={() => setCheckoutError(null)}
+                      >
+                        <span className="material-symbols-outlined">close</span>
+                      </button>
+                    </div>
+                  )}
+
+                  {/* Price Display */}
+                  {requiresPayment && (
+                    <div className="mb-4 p-4 bg-background-dark rounded-xl">
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="text-slate-400 text-sm">Entry Fee</span>
+                        <div className="text-right">
+                          {tournament?.earlyBirdFee && tournament?.earlyBirdDeadline && (
+                            <>
+                              {new Date() < new Date(tournament.earlyBirdDeadline) ? (
+                                <div>
+                                  <span className="text-green-400 font-bold text-lg">
+                                    {formatPrice(tournament.earlyBirdFee)}
+                                  </span>
+                                  <span className="text-slate-500 line-through ml-2 text-sm">
+                                    {formatPrice(tournament.entryFee || 0)}
+                                  </span>
+                                  <p className="text-[10px] text-green-400/70">
+                                    Early bird ends {new Date(tournament.earlyBirdDeadline).toLocaleDateString()}
+                                  </p>
+                                </div>
+                              ) : (
+                                <span className="text-white font-bold text-lg">
+                                  {formatPrice(tournament?.entryFee || 0)}
+                                </span>
+                              )}
+                            </>
+                          )}
+                          {!tournament?.earlyBirdFee && (
+                            <span className="text-white font-bold text-lg">
+                              {formatPrice(tournament?.entryFee || 0)}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Discount applied */}
+                      {discountInfo?.valid && (
+                        <div className="flex items-center justify-between pt-2 border-t border-white/10">
+                          <span className="text-slate-400 text-sm">After Discount</span>
+                          <span className="text-primary font-bold text-lg">
+                            {formatPrice(finalPrice)}
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Registration States */}
+                  {registrationState === "loading" && (
+                    <div className="flex items-center justify-center py-8">
+                      <div className="loading loading-spinner loading-lg text-primary" />
+                    </div>
+                  )}
+
+                  {registrationState === "not_logged_in" && (
+                    <div className="text-center py-6">
+                      <p className="text-slate-400 mb-4">
+                        Sign in to register for this tournament
+                      </p>
+                      <Link
+                        to="/login"
+                        className="btn btn-primary"
+                      >
+                        <span className="material-symbols-outlined mr-2">login</span>
+                        Sign In
+                      </Link>
+                    </div>
+                  )}
+
+                  {registrationState === "registered" && userTicket && (
+                    <div className="text-center py-6">
+                      <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-green-500/20 text-green-400 mb-4">
+                        <span className="material-symbols-outlined">check_circle</span>
+                        <span className="font-bold">You're Registered!</span>
+                      </div>
+                      <p className="text-slate-400 text-sm mb-4">
+                        Ticket Code: <span className="font-mono text-white">{userTicket.ticketCode}</span>
+                      </p>
+                      <Link
+                        to={`/tickets/${userTicket._id}`}
+                        className="btn btn-outline btn-primary"
+                      >
+                        <span className="material-symbols-outlined mr-2">confirmation_number</span>
+                        View Ticket
+                      </Link>
+                    </div>
+                  )}
+
+                  {registrationState === "waitlisted" && (
+                    <div className="text-center py-6">
+                      <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-yellow-500/20 text-yellow-400 mb-4">
+                        <span className="material-symbols-outlined">hourglass_empty</span>
+                        <span className="font-bold">On Waitlist</span>
+                      </div>
+                      <p className="text-slate-400 text-sm">
+                        You'll be notified if a spot opens up.
+                      </p>
+                    </div>
+                  )}
+
+                  {registrationState === "invite_only" && (
+                    <div className="text-center py-6">
+                      <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-purple-500/20 text-purple-400 mb-4">
+                        <span className="material-symbols-outlined">lock</span>
+                        <span className="font-bold">Invite Only</span>
+                      </div>
+                      <p className="text-slate-400 text-sm">
+                        This tournament is by invitation only.
+                      </p>
+                    </div>
+                  )}
+
+                  {registrationState === "closed" && (
+                    <div className="text-center py-6">
+                      <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-slate-500/20 text-slate-400 mb-4">
+                        <span className="material-symbols-outlined">event_busy</span>
+                        <span className="font-bold">Registration Closed</span>
+                      </div>
+                    </div>
+                  )}
+
+                  {registrationState === "full" && (
+                    <div className="text-center py-6">
+                      <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-red-500/20 text-red-400 mb-4">
+                        <span className="material-symbols-outlined">group_off</span>
+                        <span className="font-bold">Tournament Full</span>
+                      </div>
+                      <p className="text-slate-400 text-sm">
+                        All spots have been filled.
+                      </p>
+                    </div>
+                  )}
+
+                  {registrationState === "not_registered" && (
+                    <div className="space-y-4">
+                      {/* Discount Code Input - only for paid tournaments */}
+                      {requiresPayment && (
+                        <DiscountCodeInput
+                          tournamentId={id!}
+                          onApply={handleDiscountApply}
+                          disabled={checkoutLoading}
+                        />
+                      )}
+
+                      {/* Register Button */}
+                      <button
+                        className={`btn btn-primary w-full ${checkoutLoading ? "loading" : ""}`}
+                        onClick={handleReserveSlot}
+                        disabled={checkoutLoading}
+                      >
+                        {!checkoutLoading && (
+                          <span className="material-symbols-outlined mr-2">
+                            how_to_reg
+                          </span>
+                        )}
+                        {requiresPayment
+                          ? `Register — ${formatPrice(finalPrice)}`
+                          : "Register (Free)"}
+                      </button>
+                    </div>
+                  )}
+
+                  {registrationState === "reserved" && reservation && (
+                    <div className="space-y-4">
+                      {/* Discount Code Input - only for paid tournaments, before completing checkout */}
+                      {requiresPayment && finalPrice > 0 && (
+                        <DiscountCodeInput
+                          tournamentId={id!}
+                          onApply={handleDiscountApply}
+                          disabled={checkoutLoading}
+                        />
+                      )}
+
+                      {/* Complete Checkout Button */}
+                      <button
+                        className={`btn btn-primary w-full ${checkoutLoading ? "loading" : ""}`}
+                        onClick={handleCompleteCheckout}
+                        disabled={checkoutLoading}
+                      >
+                        {!checkoutLoading && (
+                          <span className="material-symbols-outlined mr-2">
+                            {requiresPayment && finalPrice > 0 ? "credit_card" : "check_circle"}
+                          </span>
+                        )}
+                        {requiresPayment && finalPrice > 0
+                          ? `Complete Payment — ${formatPrice(finalPrice)}`
+                          : "Complete Registration"}
+                      </button>
+
+                      {/* Cancel Reservation */}
+                      <button
+                        className="btn btn-ghost btn-sm w-full"
+                        onClick={handleCancelReservation}
+                        disabled={checkoutLoading}
+                      >
+                        Cancel Reservation
+                      </button>
+                    </div>
+                  )}
+
+                  {/* Spots Remaining */}
+                  {tournament?.maxPlayers && (
+                    <div className="mt-4 pt-4 border-t border-white/5">
+                      <div className="flex items-center justify-between text-sm">
+                        <span className="text-slate-400">Spots Remaining</span>
+                        <span className={`font-bold ${
+                          (tournament.maxPlayers - (tournament.currentPlayerCount || 0)) <= 5
+                            ? "text-yellow-400"
+                            : "text-white"
+                        }`}>
+                          {tournament.maxPlayers - (tournament.currentPlayerCount || 0)} / {tournament.maxPlayers}
+                        </span>
+                      </div>
+                      <div className="w-full bg-slate-700 rounded-full h-2 mt-2">
+                        <div
+                          className="bg-primary rounded-full h-2 transition-all"
+                          style={{
+                            width: `${((tournament.currentPlayerCount || 0) / tournament.maxPlayers) * 100}%`,
+                          }}
+                        />
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
 
               {/* Live Section Placeholders */}
               {isLive && (

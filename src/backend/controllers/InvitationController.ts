@@ -5,6 +5,9 @@ import { Tournament } from "../models/Tournament";
 import { Player } from "../models/Player";
 import { Types } from "mongoose";
 import logger from "../utils/logger";
+import emailService from "../services/EmailService";
+import { generateTournamentInvitationEmail } from "../services/email/templates/tournamentInvitation";
+import { generateInvitationReminderEmail } from "../services/email/templates/invitationReminder";
 
 export class InvitationController extends BaseController {
   constructor() {
@@ -112,7 +115,7 @@ export class InvitationController extends BaseController {
           }
           
           // Create invitation
-          await TournamentInvitation.createInvitation(
+          const invitation = await TournamentInvitation.createInvitation(
             new Types.ObjectId(tournamentId),
             new Types.ObjectId(playerId),
             playerEmail,
@@ -121,7 +124,50 @@ export class InvitationController extends BaseController {
             message
           );
           
-          // TODO: Send invitation email
+          // Send invitation email
+          try {
+            const branding = await emailService.getBrandingConfig();
+            const appUrl = process.env.APP_URL || 'http://localhost:5173';
+            
+            // Get admin name if available (from their player profile)
+            let invitedByName: string | undefined;
+            const adminPlayer = await Player.findOne({ keycloakUserId: adminUserId });
+            if (adminPlayer) {
+              invitedByName = adminPlayer.name;
+            }
+            
+            const emailContent = generateTournamentInvitationEmail({
+              playerName: player.name,
+              invitedByName,
+              tournament: {
+                id: tournamentId,
+                name: `BOD #${tournament.bodNumber}`,
+                bodNumber: tournament.bodNumber,
+                date: tournament.date,
+                location: tournament.location || 'TBA',
+                format: tournament.format,
+                entryFee: tournament.entryFee || 0,
+              },
+              expiresAt: invitation.expiresAt!,
+              customMessage: message,
+              paymentLink: `${appUrl}/tournaments/${tournamentId}/register`,
+              branding,
+            });
+            
+            const html = await emailService.wrapInBrandedTemplate(emailContent.html);
+            
+            await emailService.sendEmail({
+              to: playerEmail,
+              subject: emailContent.subject,
+              text: emailContent.text,
+              html,
+            });
+            
+            logger.info(`Invitation email sent to ${playerEmail} for tournament ${tournamentId}`);
+          } catch (emailError) {
+            logger.error(`Failed to send invitation email to ${playerEmail}:`, emailError);
+            // Don't fail the invitation, just log the error
+          }
           
           results.sent++;
           
@@ -160,7 +206,56 @@ export class InvitationController extends BaseController {
         return this.sendError(res, "Cannot send reminder at this time", 429);
       }
       
-      // TODO: Send reminder email
+      // Get tournament details
+      const tournament = await Tournament.findById(tournamentId);
+      if (!tournament) {
+        return this.sendNotFound(res, "Tournament");
+      }
+      
+      // Get player details
+      const player = invitation.playerId as any;
+      
+      // Calculate hours remaining
+      const hoursRemaining = invitation.expiresAt 
+        ? Math.max(0, (invitation.expiresAt.getTime() - Date.now()) / (1000 * 60 * 60))
+        : 24;
+      
+      // Send reminder email
+      try {
+        const branding = await emailService.getBrandingConfig();
+        const appUrl = process.env.APP_URL || 'http://localhost:5173';
+        
+        const emailContent = generateInvitationReminderEmail({
+          playerName: player.name,
+          tournament: {
+            id: tournamentId,
+            name: `BOD #${tournament.bodNumber}`,
+            bodNumber: tournament.bodNumber,
+            date: tournament.date,
+            location: tournament.location || 'TBA',
+            entryFee: tournament.entryFee || 0,
+          },
+          expiresAt: invitation.expiresAt!,
+          hoursRemaining,
+          paymentLink: `${appUrl}/tournaments/${tournamentId}/register`,
+          branding,
+        });
+        
+        const html = await emailService.wrapInBrandedTemplate(emailContent.html);
+        
+        await emailService.sendEmail({
+          to: invitation.email,
+          subject: emailContent.subject,
+          text: emailContent.text,
+          html,
+        });
+        
+        logger.info(`Reminder email sent to ${invitation.email} for tournament ${tournamentId}`);
+      } catch (emailError) {
+        logger.error(`Failed to send reminder email to ${invitation.email}:`, emailError);
+        return this.sendError(res, "Failed to send reminder email", 500);
+      }
+      
       await invitation.recordReminderSent();
       
       logger.info(`Invitation reminder sent for tournament ${tournamentId}, player ${playerId}`);

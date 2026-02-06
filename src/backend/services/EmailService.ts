@@ -191,6 +191,29 @@ export class EmailService {
     return config.provider.sendEmail(params, config);
   }
 
+  /**
+   * Get branding configuration for email templates
+   */
+  async getBrandingConfig(): Promise<BrandingConfig> {
+    const config = await this.getConfig();
+    return {
+      senderEmail: config.senderEmail,
+      siteLogo: config.siteLogo,
+      siteLogoUrl: config.siteLogoUrl,
+      brandName: config.brandName,
+      brandPrimaryColor: config.brandPrimaryColor,
+      brandSecondaryColor: config.brandSecondaryColor,
+    };
+  }
+
+  /**
+   * Wrap email content in branded template
+   */
+  async wrapInBrandedTemplate(content: string): Promise<string> {
+    const config = await this.getConfig();
+    return this.buildBrandedTemplate(content, config);
+  }
+
   async sendClaimInvitation(
     email: string,
     token: string,

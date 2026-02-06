@@ -9,6 +9,8 @@ import { Types } from "mongoose";
 import logger from "../utils/logger";
 import StripeService from "../services/StripeService";
 import QRCodeService from "../services/QRCodeService";
+import emailService from "../services/EmailService";
+import { generateTicketConfirmationEmail } from "../services/email/templates/ticketConfirmation";
 
 export class CheckoutController extends BaseController {
   constructor() {
@@ -348,7 +350,49 @@ export class CheckoutController extends BaseController {
       // Complete reservation
       await reservation.complete();
       
-      // TODO: Send ticket email with QR code
+      // Send ticket email with QR code
+      try {
+        const player = await Player.findById(reservation.playerId);
+        
+        if (player && player.email) {
+          const branding = await emailService.getBrandingConfig();
+          
+          // Extract base64 from data URL for email
+          const qrCodeBase64 = ticket.qrCodeData 
+            ? ticket.qrCodeData.replace(/^data:image\/png;base64,/, '')
+            : undefined;
+          
+          const emailContent = generateTicketConfirmationEmail({
+            playerName: player.name,
+            ticketCode: ticket.ticketCode,
+            qrCodeBase64,
+            tournament: {
+              name: `BOD #${tournament.bodNumber}`,
+              bodNumber: tournament.bodNumber,
+              date: tournament.date,
+              location: tournament.location || 'TBA',
+              format: tournament.format,
+            },
+            amountPaid: 0,
+            branding,
+          });
+          
+          const html = await emailService.wrapInBrandedTemplate(emailContent.html);
+          
+          await emailService.sendEmail({
+            to: player.email,
+            subject: emailContent.subject,
+            text: emailContent.text,
+            html,
+          });
+          
+          await ticket.recordEmailSent();
+          logger.info(`Ticket email sent to ${player.email} for ticket ${ticket.ticketCode}`);
+        }
+      } catch (emailError) {
+        logger.error('Failed to send ticket email:', emailError);
+        // Don't throw - registration succeeded, email failure is non-critical
+      }
       
       logger.info(`Free registration completed for tournament ${tournamentId}, ticket: ${ticket.ticketCode}`);
       

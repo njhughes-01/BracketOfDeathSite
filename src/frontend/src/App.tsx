@@ -23,6 +23,8 @@ import Rankings from "./pages/Rankings";
 import News from "./pages/News";
 import Admin from "./pages/Admin";
 import SettingsPage from "./pages/admin/Settings";
+import StripeSettingsPage from "./pages/admin/StripeSettingsPage";
+import DiscountCodesPage from "./pages/admin/DiscountCodesPage";
 import UserManagement from "./pages/UserManagement";
 import NotFound from "./pages/NotFound";
 import Setup from "./pages/Setup";
@@ -181,6 +183,26 @@ function App() {
                       requirePermission={PERMISSIONS.SYSTEM_MANAGE_SETTINGS}
                     >
                       <SettingsPage />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/admin/settings/stripe"
+                  element={
+                    <ProtectedRoute
+                      requirePermission={PERMISSIONS.SYSTEM_MANAGE_SETTINGS}
+                    >
+                      <StripeSettingsPage />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/admin/settings/discounts"
+                  element={
+                    <ProtectedRoute
+                      requirePermission={PERMISSIONS.SYSTEM_MANAGE_SETTINGS}
+                    >
+                      <DiscountCodesPage />
                     </ProtectedRoute>
                   }
                 />

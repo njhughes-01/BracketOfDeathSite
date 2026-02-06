@@ -1,7 +1,12 @@
 import { render, screen, waitFor } from "@testing-library/react";
 import { describe, it, expect, vi, beforeEach } from "vitest";
+import { BrowserRouter } from "react-router-dom";
 import SettingsPage from "../admin/Settings";
 import apiClient from "../../services/api";
+
+const renderWithRouter = (ui: React.ReactElement) => {
+    return render(<BrowserRouter>{ui}</BrowserRouter>);
+};
 
 // Mock API
 vi.mock("../../services/api", () => ({
@@ -22,7 +27,7 @@ describe("SettingsPage", () => {
     it("should show loading state", () => {
         vi.mocked(apiClient.isEmailConfigured).mockReturnValue(new Promise(() => { })); // Never resolves
         vi.mocked(apiClient.getSystemSettings).mockReturnValue(new Promise(() => { })); // Never resolves
-        render(<SettingsPage />);
+        renderWithRouter(<SettingsPage />);
         expect(screen.getByRole("status")).toBeInTheDocument();
     });
 
@@ -34,7 +39,7 @@ describe("SettingsPage", () => {
             mailgunConfigured: false,
         } as any);
 
-        render(<SettingsPage />);
+        renderWithRouter(<SettingsPage />);
 
         await waitFor(() => {
             expect(screen.getByText((content, element) => {
@@ -51,7 +56,7 @@ describe("SettingsPage", () => {
             mailgunConfigured: false,
         } as any);
 
-        render(<SettingsPage />);
+        renderWithRouter(<SettingsPage />);
 
         await waitFor(() => {
             expect(screen.getByText(/Mailjet Configuration/i)).toBeInTheDocument();
@@ -67,7 +72,7 @@ describe("SettingsPage", () => {
             mailgunConfigured: false,
         } as any);
 
-        render(<SettingsPage />);
+        renderWithRouter(<SettingsPage />);
 
         await waitFor(() => {
             expect(screen.getByText(/Not Configured/i)).toBeInTheDocument();
@@ -82,7 +87,7 @@ describe("SettingsPage", () => {
             mailgunConfigured: false,
         } as any);
 
-        render(<SettingsPage />);
+        renderWithRouter(<SettingsPage />);
 
         await waitFor(() => {
             expect(screen.getByText(/Active/i)).toBeInTheDocument();
@@ -104,7 +109,7 @@ describe("SettingsPage", () => {
             emailConfigSource: "environment",
         } as any);
 
-        render(<SettingsPage />);
+        renderWithRouter(<SettingsPage />);
 
         await waitFor(() => {
             expect(screen.getByText(/Configured via Environment Variables/i)).toBeInTheDocument();

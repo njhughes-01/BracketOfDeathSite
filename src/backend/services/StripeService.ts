@@ -65,6 +65,13 @@ export const getPublishableKey = async (): Promise<string | null> => {
   return settings?.stripePublishableKey || null;
 };
 
+/**
+ * Reset the Stripe client (call when credentials change)
+ */
+export const resetClient = (): void => {
+  stripeInstance = null;
+};
+
 export interface CreateCheckoutSessionParams {
   tournamentId: string;
   tournamentName: string;
@@ -308,6 +315,7 @@ export default {
   getStripeClient,
   isStripeConfigured,
   getPublishableKey,
+  resetClient,
   createCheckoutSession,
   createCoupon,
   deleteCoupon,

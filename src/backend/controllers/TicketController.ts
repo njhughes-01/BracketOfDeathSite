@@ -2,8 +2,11 @@ import { Request, Response } from "express";
 import { BaseController } from "./base";
 import TournamentTicket from "../models/TournamentTicket";
 import { Tournament } from "../models/Tournament";
+import { Player } from "../models/Player";
 import { Types } from "mongoose";
 import logger from "../utils/logger";
+import emailService from "../services/EmailService";
+import { generateTicketConfirmationEmail } from "../services/email/templates/ticketConfirmation";
 
 export class TicketController extends BaseController {
   constructor() {
@@ -90,8 +93,46 @@ export class TicketController extends BaseController {
         return this.sendError(res, "Maximum resend limit reached", 429);
       }
       
-      // TODO: Send email with ticket/QR code
-      // For now, just update the count
+      // Get player with email
+      const player = ticket.playerId as any;
+      const tournament = ticket.tournamentId as any;
+      
+      if (!player?.email) {
+        return this.sendError(res, "Player email not found", 400);
+      }
+      
+      // Generate and send ticket email
+      const branding = await emailService.getBrandingConfig();
+      
+      // Extract base64 from data URL for email
+      const qrCodeBase64 = ticket.qrCodeData 
+        ? ticket.qrCodeData.replace(/^data:image\/png;base64,/, '')
+        : undefined;
+      
+      const emailContent = generateTicketConfirmationEmail({
+        playerName: player.name,
+        ticketCode: ticket.ticketCode,
+        qrCodeBase64,
+        tournament: {
+          name: `BOD #${tournament.bodNumber}`,
+          bodNumber: tournament.bodNumber,
+          date: tournament.date,
+          location: tournament.location || 'TBA',
+          format: tournament.format,
+        },
+        amountPaid: ticket.amountPaid,
+        branding,
+      });
+      
+      const html = await emailService.wrapInBrandedTemplate(emailContent.html);
+      
+      await emailService.sendEmail({
+        to: player.email,
+        subject: emailContent.subject,
+        text: emailContent.text,
+        html,
+      });
+      
       await ticket.recordEmailSent();
       
       logger.info(`Ticket email resent: ${ticket.ticketCode}`);

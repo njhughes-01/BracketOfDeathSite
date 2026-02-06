@@ -5,10 +5,14 @@ import TournamentTicket from "../models/TournamentTicket";
 import SlotReservation from "../models/SlotReservation";
 import DiscountCode from "../models/DiscountCode";
 import { Tournament } from "../models/Tournament";
+import { Player } from "../models/Player";
 import { Types } from "mongoose";
 import logger from "../utils/logger";
 import StripeService from "../services/StripeService";
 import QRCodeService from "../services/QRCodeService";
+import emailService from "../services/EmailService";
+import { generateTicketConfirmationEmail } from "../services/email/templates/ticketConfirmation";
+import { generateRefundConfirmationEmail } from "../services/email/templates/refundConfirmation";
 import Stripe from 'stripe';
 
 export class StripeWebhookController extends BaseController {
@@ -150,8 +154,50 @@ export class StripeWebhookController extends BaseController {
       currency: session.currency,
     });
     
-    // TODO: Generate QR code for ticket
-    // TODO: Send confirmation email with ticket
+    // Send confirmation email with ticket
+    try {
+      const tournament = await Tournament.findById(tournamentId);
+      const player = await Player.findById(playerId);
+      
+      if (tournament && player && player.email) {
+        const branding = await emailService.getBrandingConfig();
+        
+        // Extract base64 from data URL for email
+        const qrCodeBase64 = ticket.qrCodeData 
+          ? ticket.qrCodeData.replace(/^data:image\/png;base64,/, '')
+          : undefined;
+        
+        const emailContent = generateTicketConfirmationEmail({
+          playerName: player.name,
+          ticketCode: ticket.ticketCode,
+          qrCodeBase64,
+          tournament: {
+            name: `BOD #${tournament.bodNumber}`,
+            bodNumber: tournament.bodNumber,
+            date: tournament.date,
+            location: tournament.location || 'TBA',
+            format: tournament.format,
+          },
+          amountPaid: ticket.amountPaid,
+          branding,
+        });
+        
+        const html = await emailService.wrapInBrandedTemplate(emailContent.html);
+        
+        await emailService.sendEmail({
+          to: player.email,
+          subject: emailContent.subject,
+          text: emailContent.text,
+          html,
+        });
+        
+        await ticket.recordEmailSent();
+        logger.info(`Confirmation email sent to ${player.email} for ticket ${ticket.ticketCode}`);
+      }
+    } catch (emailError) {
+      logger.error('Failed to send confirmation email:', emailError);
+      // Don't throw - payment succeeded, email failure is non-critical
+    }
     
     logger.info(`Checkout completed: ticket ${ticket.ticketCode} for tournament ${tournamentId}`);
   }
@@ -218,7 +264,43 @@ export class StripeWebhookController extends BaseController {
       currency: charge.currency,
     });
     
-    // TODO: Send refund confirmation email
+    // Send refund confirmation email
+    try {
+      const tournament = await Tournament.findById(ticket.tournamentId);
+      const player = await Player.findById(ticket.playerId);
+      
+      if (tournament && player && player.email) {
+        const branding = await emailService.getBrandingConfig();
+        
+        const emailContent = generateRefundConfirmationEmail({
+          playerName: player.name,
+          ticketCode: ticket.ticketCode,
+          tournament: {
+            name: `BOD #${tournament.bodNumber}`,
+            bodNumber: tournament.bodNumber,
+            date: tournament.date,
+            location: tournament.location || 'TBA',
+          },
+          refundAmount: charge.amount_refunded,
+          originalAmount: ticket.amountPaid,
+          branding,
+        });
+        
+        const html = await emailService.wrapInBrandedTemplate(emailContent.html);
+        
+        await emailService.sendEmail({
+          to: player.email,
+          subject: emailContent.subject,
+          text: emailContent.text,
+          html,
+        });
+        
+        logger.info(`Refund confirmation email sent to ${player.email} for ticket ${ticket.ticketCode}`);
+      }
+    } catch (emailError) {
+      logger.error('Failed to send refund confirmation email:', emailError);
+      // Don't throw - refund succeeded, email failure is non-critical
+    }
     
     logger.info(`Refund processed: ticket ${ticket.ticketCode} refunded`);
   }
