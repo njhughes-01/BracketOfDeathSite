@@ -1,27 +1,18 @@
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { MemoryRouter, useNavigate } from "react-router-dom";
-import axios from "axios";
+import { MemoryRouter } from "react-router-dom";
 import OpenTournaments from "./OpenTournaments";
 import { useAuth } from "../contexts/AuthContext";
+import { apiClient } from "../services/api";
 
 // Mock dependencies
-vi.mock("axios", () => {
-  const mockInstance = {
-    get: vi.fn(),
-    post: vi.fn(),
-    interceptors: {
-      request: { use: vi.fn(), eject: vi.fn() },
-      response: { use: vi.fn(), eject: vi.fn() },
-    },
-  };
-  return {
-    default: {
-      ...mockInstance,
-      create: vi.fn(() => mockInstance),
-    },
-  };
-});
+vi.mock("../services/api", () => ({
+  apiClient: {
+    getOpenTournaments: vi.fn(),
+    getProfile: vi.fn(),
+    joinTournament: vi.fn(),
+  },
+}));
 vi.mock("../contexts/AuthContext");
 vi.mock("../components/ui/LoadingSpinner", () => ({
   default: () => <div data-testid="loading">Loading...</div>,
@@ -40,7 +31,7 @@ vi.mock("react-router-dom", async () => {
 describe("OpenTournaments Page", () => {
   const mockTournaments = [
     {
-      _id: "1",
+      id: "1",
       bodNumber: 202401,
       date: "2024-05-15T00:00:00.000Z",
       location: "Test Location",
@@ -51,7 +42,7 @@ describe("OpenTournaments Page", () => {
       waitlistPlayers: [],
     },
     {
-      _id: "2",
+      id: "2",
       bodNumber: 202402,
       date: "2024-06-15T00:00:00.000Z",
       location: "Full Tournament",
@@ -65,7 +56,8 @@ describe("OpenTournaments Page", () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-    (axios.get as any).mockResolvedValue({ data: { data: mockTournaments } });
+    (apiClient.getOpenTournaments as any).mockResolvedValue({ data: mockTournaments });
+    (apiClient.getProfile as any).mockResolvedValue({ data: { user: { playerId: "p1" } } });
 
     (useAuth as any).mockReturnValue({
       isAuthenticated: true,
@@ -75,7 +67,7 @@ describe("OpenTournaments Page", () => {
 
   it("renders loading state initially", () => {
     // Make promise not resolve immediately
-    (axios.get as any).mockReturnValue(new Promise(() => {}));
+    (apiClient.getOpenTournaments as any).mockReturnValue(new Promise(() => {}));
 
     render(
       <MemoryRouter>
@@ -146,13 +138,8 @@ describe("OpenTournaments Page", () => {
     (useAuth as any).mockReturnValue({
       isAuthenticated: true,
     });
-    (axios.get as any).mockImplementation((url: string) => {
-      if (url === "/api/profile")
-        return Promise.resolve({ data: { data: { user: {} } } });
-      if (url === "/api/tournaments/open")
-        return Promise.resolve({ data: { data: mockTournaments } });
-      return Promise.reject(new Error("Unknown url " + url));
-    });
+    // User has no playerId - should redirect to onboarding
+    (apiClient.getProfile as any).mockResolvedValue({ data: { user: {} } });
 
     render(
       <MemoryRouter>
@@ -173,14 +160,8 @@ describe("OpenTournaments Page", () => {
   });
 
   it("calls join api when clicking register (happy path)", async () => {
-    (axios.get as any).mockImplementation((url: string) => {
-      if (url === "/api/profile")
-        return Promise.resolve({ data: { data: { user: { playerId: "p1" } } } });
-      if (url === "/api/tournaments/open")
-        return Promise.resolve({ data: { data: mockTournaments } });
-      return Promise.reject(new Error("Unknown url " + url));
-    });
-    (axios.post as any).mockResolvedValue({ data: { success: true } });
+    (apiClient.getProfile as any).mockResolvedValue({ data: { user: { playerId: "p1" } } });
+    (apiClient.joinTournament as any).mockResolvedValue({ success: true });
 
     render(
       <MemoryRouter>
@@ -196,10 +177,8 @@ describe("OpenTournaments Page", () => {
     fireEvent.click(registerBtn); // Click first tournament (not full)
 
     await waitFor(() => {
-      expect(axios.get).toHaveBeenCalledWith("/api/profile");
-      expect(axios.post).toHaveBeenCalledWith("/api/tournaments/1/join", {
-        playerId: "p1",
-      });
+      expect(apiClient.getProfile).toHaveBeenCalled();
+      expect(apiClient.joinTournament).toHaveBeenCalledWith("1", "p1");
     });
   });
 });
