@@ -25,3 +25,15 @@ This file tracks all major tracks for the project. Each track has its own detail
 ## [x] Track: NPM Dependency Cleanup
 *Link: [./conductor/tracks/npm_cleanup_20251221/](./conductor/tracks/npm_cleanup_20251221/)*
 *Status: ✅ Complete*
+
+---
+
+## [ ] Track: Phase 4 - Stripe Payments & QR Ticketing
+*Link: [./conductor/tracks/phase4_stripe_ticketing/](./conductor/tracks/phase4_stripe_ticketing/)*
+*Status: PLANNING*
+
+Security-first implementation of:
+- Stripe Checkout for paid tournament registration
+- Webhook handling with signature verification
+- QR ticket generation and email delivery
+- Mobile check-in scanner for event day
