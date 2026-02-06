@@ -37,6 +37,10 @@ vi.mock("keycloak-js", () => {
 vi.mock("../../services/api", () => ({
     setTokenGetter: vi.fn(),
     setTokenRefresher: vi.fn(),
+    setLogoutHandler: vi.fn(),
+    apiClient: {
+        getProfile: vi.fn().mockResolvedValue({ success: true, data: { user: {} } }),
+    },
 }));
 
 // Test component to consume context

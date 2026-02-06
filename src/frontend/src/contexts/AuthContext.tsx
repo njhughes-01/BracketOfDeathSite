@@ -8,7 +8,7 @@ import React, {
 } from "react";
 import type { ReactNode } from "react";
 import Keycloak from "keycloak-js";
-import { setTokenGetter, setTokenRefresher, setLogoutHandler } from "../services/api";
+import { setTokenGetter, setTokenRefresher, setLogoutHandler, apiClient } from "../services/api";
 
 interface KeycloakTokenParsed {
   sub: string;
@@ -470,7 +470,25 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   const refreshUser = async () => {
     if (keycloak) {
+      // First, refresh from token
       await setupUserFromToken(keycloak);
+      
+      // Then fetch fresh profile data from backend (has latest Keycloak data)
+      try {
+        const response = await apiClient.getProfile();
+        if (response.success && response.data?.user) {
+          const profileUser = response.data.user;
+          setUser(prev => prev ? {
+            ...prev,
+            firstName: profileUser.firstName,
+            lastName: profileUser.lastName,
+            fullName: profileUser.fullName,
+            playerId: profileUser.playerId,
+          } : null);
+        }
+      } catch (error) {
+        console.warn('Could not fetch fresh profile data:', error);
+      }
     }
   };
 

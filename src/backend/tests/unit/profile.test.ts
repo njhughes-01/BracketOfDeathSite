@@ -248,13 +248,33 @@ describe("ProfileController", () => {
       });
     });
 
-    it("should return 400 if gender is missing", async () => {
-      req.body = {}; // Missing gender
+    it("should allow name-only updates without gender", async () => {
+      req.body = { firstName: "John", lastName: "Doe" };
+      
+      // Mock Keycloak user
+      const mockKcUser = {
+        id: "user-123",
+        firstName: "John",
+        lastName: "Doe",
+        attributes: {},
+      };
+      (keycloakAdminService.getUser as jest.Mock).mockResolvedValue(mockKcUser);
+      (keycloakAdminService.updateUser as jest.Mock).mockResolvedValue(undefined);
+
       await ProfileController.updateProfile(req as any, res as Response, jest.fn());
-      expect(res.status).toHaveBeenCalledWith(400);
-      expect(json).toHaveBeenCalledWith({
-        success: false,
-        error: "Gender is required",
+
+      expect(keycloakAdminService.updateUser).toHaveBeenCalledWith("user-123", {
+        firstName: "John",
+        lastName: "Doe",
+      });
+      expect(res.json).toHaveBeenCalledWith({
+        success: true,
+        data: {
+          firstName: "John",
+          lastName: "Doe",
+          fullName: "John Doe",
+        },
+        message: "Profile updated successfully",
       });
     });
   });
