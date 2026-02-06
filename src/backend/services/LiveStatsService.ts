@@ -179,7 +179,7 @@ export class LiveStatsService {
       teamStats.push({
         teamId: team.teamId,
         teamName: team.teamName,
-        players: team.players.map((p: any) => ({
+        players: (team.players || []).filter((p: any) => p).map((p: any) => ({
           playerId: p.playerId,
           playerName: p.playerName,
         })),
