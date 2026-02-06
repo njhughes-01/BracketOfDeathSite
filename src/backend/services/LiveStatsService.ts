@@ -217,8 +217,8 @@ export class LiveStatsService {
   // Helper methods
   private static isTeamInMatch(teamId: string, match: any): boolean {
     return (
-      match.team1?.players?.some((p: any) => p.toString().includes(teamId)) ||
-      match.team2?.players?.some((p: any) => p.toString().includes(teamId))
+      match.team1?.players?.some((p: any) => p && p.toString().includes(teamId)) ||
+      match.team2?.players?.some((p: any) => p && p.toString().includes(teamId))
     );
   }
 
