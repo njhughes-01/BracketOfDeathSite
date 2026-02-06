@@ -11,7 +11,9 @@ router.use(requireAdmin);
 router.get("/revenue", stripeEventController.getRevenueSummary);
 router.get("/revenue/:tournamentId", stripeEventController.getTournamentRevenue);
 
-// TODO: Add more report endpoints
-// router.get("/revenue/export", ...); // CSV export
+// Future report endpoints (post-MVP):
+// - GET /revenue/export - CSV export of revenue data
+// - GET /attendance - Check-in statistics by tournament
+// - GET /refunds - Refund summary and details
 
 export default router;

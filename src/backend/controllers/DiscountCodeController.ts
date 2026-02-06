@@ -153,7 +153,20 @@ export class DiscountCodeController extends BaseController {
       
       await code.save();
       
-      // TODO: Update Stripe Coupon if needed
+      // Sync with Stripe coupon
+      // Note: Stripe coupons are mostly immutable (can't change percent_off, amount_off, max_redemptions, redeem_by)
+      // If deactivated, we delete from Stripe. For other changes, user must delete & recreate.
+      if (active === false) {
+        try {
+          await StripeService.deleteCoupon(code.code);
+          logger.info(`Stripe coupon deleted for deactivated code: ${code.code}`);
+        } catch (stripeError: any) {
+          // Ignore if coupon doesn't exist in Stripe
+          if (stripeError.code !== 'resource_missing') {
+            logger.warn(`Failed to delete Stripe coupon ${code.code}:`, stripeError);
+          }
+        }
+      }
       
       logger.info(`Discount code updated: ${code.code}`);
       this.sendSuccess(res, { code }, "Discount code updated successfully");

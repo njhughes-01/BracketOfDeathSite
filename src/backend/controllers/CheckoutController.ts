@@ -409,14 +409,35 @@ export class CheckoutController extends BaseController {
     async (req: Request, res: Response): Promise<void> => {
       const { sessionId } = req.params;
       
-      // TODO: Query Stripe for session status
-      // For now, return placeholder
-      
-      this.sendSuccess(res, {
-        sessionId,
-        status: 'pending',
-        message: "Stripe integration pending",
-      }, "Session status retrieved");
+      try {
+        const session = await StripeService.retrieveCheckoutSession(sessionId);
+        
+        // Get ticket if payment was successful
+        let ticket = null;
+        if (session.payment_status === 'paid' && session.metadata?.reservationId) {
+          ticket = await TournamentTicket.findOne({ 
+            reservationId: session.metadata.reservationId 
+          });
+        }
+        
+        this.sendSuccess(res, {
+          sessionId,
+          status: session.status,
+          paymentStatus: session.payment_status,
+          amountTotal: session.amount_total,
+          currency: session.currency,
+          customerEmail: session.customer_email,
+          metadata: session.metadata,
+          ticket: ticket ? {
+            id: ticket.id,
+            ticketCode: ticket.ticketCode,
+            status: ticket.status,
+          } : null,
+        }, "Session status retrieved");
+      } catch (error: any) {
+        logger.error("Failed to retrieve checkout session:", error);
+        this.sendError(res, "Failed to retrieve session status", 400);
+      }
     }
   );
 }
