@@ -4,8 +4,15 @@ This file tracks all major tracks for the project. Each track has its own detail
 
 ---
 
-## [ ] Track: Refine Authentication and Role-Based Access Control
+## [~] Track: Refine Authentication and Role-Based Access Control
 *Link: [./conductor/tracks/auth_rbac_20251220/](./conductor/tracks/auth_rbac_20251220/)*
+*Status: Phase 1-2 complete, Phase 3 moved to new track*
+
+---
+
+## [ ] Track: Phase 3 - Profile Management, Password Reset & Data Migration
+*Link: [./conductor/tracks/phase3_profile_migration_20260206/](./conductor/tracks/phase3_profile_migration_20260206/)*
+*Status: Planning complete, ready for implementation*
 
 ---
 
