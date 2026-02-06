@@ -26,7 +26,8 @@ Complete the auth/RBAC track Phase 3 (profile updates, password reset UI, email 
 
 ### 3A.3: Email Configuration (Keycloak + Mailgun)
 - [x] Task: Document Keycloak SMTP configuration requirements [keycloak-admin skill updated]
-- [ ] Task: Configure Keycloak realm email settings for Mailgun
+- [x] Task: Add Mailgun credentials to .env
+- [ ] Task: Configure Keycloak realm email settings for Mailgun (manual - admin console)
 - [ ] Task: Test password reset email delivery
 - [ ] Task: Test email verification flow
 - [ ] Task: Conductor - User Manual Verification 'Phase 3A' (Protocol in workflow.md)
