@@ -292,6 +292,10 @@
 - **Stripe account** for payment processing (test + live keys)
 - QR code scanning requires camera access (HTTPS required)
 
+### Deployment
+- **Test/Staging:** bod.lightmedia.club (local hosting)
+- **Production:** VPS (rented, for uptime guarantees)
+
 ---
 
 *This roadmap is a living document. Priorities may shift based on user feedback and tournament needs.*
