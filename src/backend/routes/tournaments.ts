@@ -2,6 +2,8 @@ import { Router } from "express";
 import TournamentController from "../controllers/TournamentController";
 import TournamentAdminController from "../controllers/TournamentAdminController";
 import LiveTournamentController from "../controllers/LiveTournamentController";
+import MatchController from "../controllers/MatchController";
+import TournamentStatsController from "../controllers/TournamentStatsController";
 import { checkoutController } from "../controllers/CheckoutController";
 import { ticketController } from "../controllers/TicketController";
 import { invitationController } from "../controllers/InvitationController";
