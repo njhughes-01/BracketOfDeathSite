@@ -1,11 +1,9 @@
-import React, { useState } from 'react';
-import logger from '../../utils/logger';
-import api from '../../services/api';
+import React from 'react';
+import { Link } from 'react-router-dom';
 
-export interface Ticket {
+export interface TicketData {
   id: string;
   ticketCode: string;
-  qrCodeUrl?: string;
   tournament: {
     id: string;
     name: string;
@@ -14,53 +12,33 @@ export interface Ticket {
   };
   status: 'valid' | 'checked_in' | 'refunded' | 'void';
   paymentStatus: 'paid' | 'free' | 'refunded';
-  amountPaid: number; // In cents
+  amountPaid: number;
   checkedInAt?: string;
   createdAt: string;
 }
 
 interface TicketCardProps {
-  ticket: Ticket;
-  showResendButton?: boolean;
-  onResendSuccess?: () => void;
+  ticket: TicketData;
+  showQR?: boolean;
+  onResend?: (ticketId: string) => void;
 }
 
-/**
- * Displays a single ticket with QR code, tournament info, and status.
- * Includes "Resend Email" button if email is supported.
- */
-export const TicketCard: React.FC<TicketCardProps> = ({
-  ticket,
-  showResendButton = true,
-  onResendSuccess,
-}) => {
-  const [resending, setResending] = useState(false);
-  const [resendError, setResendError] = useState<string | null>(null);
-  const [resendSuccess, setResendSuccess] = useState(false);
-
-  const handleResendEmail = async () => {
-    setResending(true);
-    setResendError(null);
-    setResendSuccess(false);
-
-    try {
-      await api.post(`/tickets/${ticket.id}/resend`);
-      setResendSuccess(true);
-      logger.info('Ticket email resent successfully', { ticketId: ticket.id });
-      onResendSuccess?.();
-      
-      // Clear success message after 3 seconds
-      setTimeout(() => setResendSuccess(false), 3000);
-    } catch (error) {
-      const message = error instanceof Error ? error.message : 'Failed to resend email';
-      setResendError(message);
-      logger.error('Failed to resend ticket email', error);
-    } finally {
-      setResending(false);
-    }
+const TicketCard: React.FC<TicketCardProps> = ({ ticket, showQR = true, onResend }) => {
+  const statusColors = {
+    valid: 'bg-green-500/10 text-green-500 border-green-500/20',
+    checked_in: 'bg-blue-500/10 text-blue-500 border-blue-500/20',
+    refunded: 'bg-yellow-500/10 text-yellow-500 border-yellow-500/20',
+    void: 'bg-red-500/10 text-red-500 border-red-500/20',
   };
 
-  const formatDate = (dateString: string): string => {
+  const statusLabels = {
+    valid: 'Valid',
+    checked_in: 'Checked In',
+    refunded: 'Refunded',
+    void: 'Void',
+  };
+
+  const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('en-US', {
       weekday: 'short',
       month: 'short',
@@ -69,124 +47,86 @@ export const TicketCard: React.FC<TicketCardProps> = ({
     });
   };
 
-  const formatAmount = (cents: number): string => {
-    return (cents / 100).toLocaleString('en-US', {
-      style: 'currency',
-      currency: 'USD',
-    });
+  const formatAmount = (cents: number) => {
+    if (cents === 0) return 'Free';
+    return `$${(cents / 100).toFixed(2)}`;
   };
-
-  const getStatusBadge = () => {
-    const statusStyles: Record<Ticket['status'], { className: string; label: string }> = {
-      valid: { className: 'badge-success', label: 'Valid' },
-      checked_in: { className: 'badge-info', label: 'Checked In' },
-      refunded: { className: 'badge-warning', label: 'Refunded' },
-      void: { className: 'badge-error', label: 'Void' },
-    };
-    
-    const style = statusStyles[ticket.status];
-    return <span className={`badge ${style.className}`}>{style.label}</span>;
-  };
-
-  const getPaymentBadge = () => {
-    if (ticket.paymentStatus === 'free') {
-      return <span className="badge badge-ghost">Free Entry</span>;
-    }
-    if (ticket.paymentStatus === 'refunded') {
-      return <span className="badge badge-warning">Refunded</span>;
-    }
-    return <span className="badge badge-primary">{formatAmount(ticket.amountPaid)}</span>;
-  };
-
-  const isActive = ticket.status === 'valid' || ticket.status === 'checked_in';
 
   return (
-    <div className={`card bg-base-100 shadow-xl ${!isActive ? 'opacity-60' : ''}`}>
-      <div className="card-body">
-        {/* Header with status badges */}
-        <div className="flex justify-between items-start">
-          <div>
-            <h2 className="card-title text-lg">{ticket.tournament.name}</h2>
-            <p className="text-sm text-base-content/70">
+    <div className="bg-[#1c2230] rounded-2xl border border-white/5 overflow-hidden hover:border-white/10 transition-all group">
+      {/* Header with tournament info */}
+      <div className="p-5 border-b border-white/5">
+        <div className="flex items-start justify-between gap-4">
+          <div className="flex-1 min-w-0">
+            <Link
+              to={`/tournaments/${ticket.tournament.id}`}
+              className="text-lg font-bold text-white hover:text-primary transition-colors line-clamp-1"
+            >
+              {ticket.tournament.name}
+            </Link>
+            <div className="flex items-center gap-2 mt-1 text-sm text-slate-400">
+              <span className="material-symbols-outlined text-[16px]">calendar_today</span>
               {formatDate(ticket.tournament.date)}
-            </p>
+            </div>
             {ticket.tournament.location && (
-              <p className="text-sm text-base-content/60">
-                <span className="material-symbols-outlined text-xs align-middle mr-1">
-                  location_on
-                </span>
+              <div className="flex items-center gap-2 mt-1 text-sm text-slate-400">
+                <span className="material-symbols-outlined text-[16px]">location_on</span>
                 {ticket.tournament.location}
-              </p>
+              </div>
             )}
           </div>
-          <div className="flex flex-col gap-1 items-end">
-            {getStatusBadge()}
-            {getPaymentBadge()}
-          </div>
+          <span
+            className={`px-3 py-1 rounded-full text-xs font-bold border ${statusColors[ticket.status]}`}
+          >
+            {statusLabels[ticket.status]}
+          </span>
         </div>
+      </div>
 
-        {/* QR Code */}
-        <div className="flex justify-center my-4">
-          {ticket.qrCodeUrl ? (
-            <img
-              src={ticket.qrCodeUrl}
-              alt={`QR Code for ticket ${ticket.ticketCode}`}
-              className="w-40 h-40 rounded-lg border border-base-300"
-            />
-          ) : (
-            <div className="w-40 h-40 bg-base-200 rounded-lg flex items-center justify-center">
-              <span className="material-symbols-outlined text-4xl text-base-content/30">
-                qr_code_2
-              </span>
+      {/* Ticket code and QR preview */}
+      <div className="p-5 flex items-center gap-4">
+        {showQR && (
+          <div className="size-20 bg-white rounded-xl flex items-center justify-center shrink-0">
+            {/* Simple QR placeholder - actual QR would be generated */}
+            <div className="size-16 bg-gradient-to-br from-black to-gray-800 rounded-lg flex items-center justify-center">
+              <span className="material-symbols-outlined text-white text-2xl">qr_code_2</span>
             </div>
-          )}
-        </div>
-
-        {/* Ticket Code */}
-        <div className="text-center">
-          <p className="text-xs text-base-content/60 uppercase tracking-wide">Ticket Code</p>
-          <p className="font-mono font-bold text-lg tracking-wider">{ticket.ticketCode}</p>
-        </div>
-
-        {/* Checked in info */}
-        {ticket.status === 'checked_in' && ticket.checkedInAt && (
-          <div className="alert alert-info py-2 mt-2">
-            <span className="material-symbols-outlined text-sm">check_circle</span>
-            <span className="text-sm">
-              Checked in on {formatDate(ticket.checkedInAt)}
-            </span>
           </div>
         )}
+        <div className="flex-1 min-w-0">
+          <p className="text-xs text-slate-500 uppercase tracking-wider font-bold">Ticket Code</p>
+          <p className="text-xl font-mono font-bold text-primary mt-1">{ticket.ticketCode}</p>
+          <p className="text-xs text-slate-500 mt-2">
+            {ticket.paymentStatus === 'free' ? 'Free Entry' : formatAmount(ticket.amountPaid)}
+          </p>
+        </div>
+      </div>
 
-        {/* Resend Email Button */}
-        {showResendButton && isActive && (
-          <div className="card-actions justify-center mt-4">
+      {/* Footer with actions */}
+      <div className="px-5 py-3 bg-black/20 flex items-center justify-between">
+        <p className="text-xs text-slate-500">
+          {ticket.checkedInAt
+            ? `Checked in ${formatDate(ticket.checkedInAt)}`
+            : `Purchased ${formatDate(ticket.createdAt)}`}
+        </p>
+        <div className="flex items-center gap-2">
+          {onResend && ticket.status === 'valid' && (
             <button
-              className={`btn btn-outline btn-sm ${resending ? 'loading' : ''}`}
-              onClick={handleResendEmail}
-              disabled={resending}
+              onClick={() => onResend(ticket.id)}
+              className="text-xs font-bold text-slate-400 hover:text-primary px-3 py-1.5 rounded-lg hover:bg-white/5 transition-colors flex items-center gap-1"
             >
-              {!resending && (
-                <span className="material-symbols-outlined text-sm mr-1">mail</span>
-              )}
-              Resend Email
+              <span className="material-symbols-outlined text-[14px]">mail</span>
+              Resend
             </button>
-          </div>
-        )}
-
-        {/* Feedback messages */}
-        {resendSuccess && (
-          <div className="alert alert-success py-2 mt-2">
-            <span className="material-symbols-outlined text-sm">check</span>
-            <span className="text-sm">Email sent successfully!</span>
-          </div>
-        )}
-        {resendError && (
-          <div className="alert alert-error py-2 mt-2">
-            <span className="material-symbols-outlined text-sm">error</span>
-            <span className="text-sm">{resendError}</span>
-          </div>
-        )}
+          )}
+          <Link
+            to={`/profile?ticket=${ticket.id}`}
+            className="text-xs font-bold text-primary hover:text-white px-3 py-1.5 rounded-lg hover:bg-white/10 transition-colors flex items-center gap-1"
+          >
+            <span className="material-symbols-outlined text-[14px]">visibility</span>
+            View
+          </Link>
+        </div>
       </div>
     </div>
   );

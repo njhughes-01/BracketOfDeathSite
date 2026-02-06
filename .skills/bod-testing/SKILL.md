@@ -175,6 +175,21 @@ describe('MyService', () => {
 3. **Refactor while keeping tests green**
 4. **Commit with test + implementation**
 
+## ⚠️ CRITICAL: No Fake Tests
+
+**NEVER fake tests to meet a goal.** This includes:
+- Mocking everything so tests always pass
+- Writing tests that don't actually verify behavior
+- Skipping tests to ship faster
+- Using `expect(true).toBe(true)` style assertions
+
+If real testing isn't possible (e.g., hardware dependency, external API):
+1. **Stop and clarify** with the user
+2. Document why testing is blocked
+3. Get approval before proceeding without tests
+
+Tests exist to catch bugs. Fake tests give false confidence and hide bugs.
+
 ## Test Naming Convention
 
 ```typescript

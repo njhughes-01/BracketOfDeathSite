@@ -88,6 +88,14 @@ Include tournament info via populate."
 - [ ] Invitation reminder
 - [ ] Refund confirmation
 
+## ⚠️ CRITICAL: No Fake Tests
+
+**NEVER fake tests to meet a goal.** All teams must:
+- Write real tests that verify actual behavior
+- Use TDD: failing test → implement → pass → refactor
+- If testing is blocked, **stop and clarify** before proceeding
+- Never skip tests to ship faster
+
 ## Self-Improvement
 
 Track coordination issues in `references/lessons.md`:

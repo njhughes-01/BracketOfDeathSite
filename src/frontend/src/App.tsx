@@ -26,6 +26,8 @@ import SettingsPage from "./pages/admin/Settings";
 import UserManagement from "./pages/UserManagement";
 import NotFound from "./pages/NotFound";
 import Setup from "./pages/Setup";
+import CheckoutSuccessPage from "./pages/CheckoutSuccessPage";
+import CheckoutCancelPage from "./pages/CheckoutCancelPage";
 
 import RequireProfile from "./components/RequireProfile";
 import Onboarding from "./pages/Onboarding";
@@ -52,6 +54,24 @@ function App() {
                 }
               />
               <Route path="/open-tournaments" element={<OpenTournaments />} />
+
+              {/* Checkout Routes - Protected */}
+              <Route
+                path="/checkout/success"
+                element={
+                  <ProtectedRoute>
+                    <CheckoutSuccessPage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/checkout/cancel"
+                element={
+                  <ProtectedRoute>
+                    <CheckoutCancelPage />
+                  </ProtectedRoute>
+                }
+              />
 
               {/* Profile Required Routes */}
               <Route element={<RequireProfile />}>
