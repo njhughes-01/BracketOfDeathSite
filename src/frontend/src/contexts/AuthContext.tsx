@@ -8,7 +8,7 @@ import React, {
 } from "react";
 import type { ReactNode } from "react";
 import Keycloak from "keycloak-js";
-import { setTokenGetter, setTokenRefresher } from "../services/api";
+import { setTokenGetter, setTokenRefresher, setLogoutHandler } from "../services/api";
 
 interface KeycloakTokenParsed {
   sub: string;
@@ -414,6 +414,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const hasRole = (role: string): boolean => {
     return user?.roles.includes(role) || false;
   };
+
+  useEffect(() => {
+    setLogoutHandler(logout);
+  }, []);
 
   const setDirectAuthTokens = async (tokens: {
     access_token: string;
