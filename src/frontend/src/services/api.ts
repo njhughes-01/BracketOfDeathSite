@@ -784,8 +784,10 @@ class ApiClient {
   }
 
   async updateProfile(data: {
-    gender: string;
-    bracketPreference: string;
+    firstName?: string;
+    lastName?: string;
+    gender?: string;
+    bracketPreference?: string;
   }): Promise<ApiResponse<Player>> {
     return this.put<ApiResponse<Player>>("/profile", data);
   }

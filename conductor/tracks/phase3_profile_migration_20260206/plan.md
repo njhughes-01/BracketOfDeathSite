@@ -17,9 +17,10 @@ Complete the auth/RBAC track Phase 3 (profile updates, password reset UI, email 
 ### 3A.2: Profile Update UI
 - [x] Profile page exists with viewing capabilities
 - [x] Player linking functionality works
-- [ ] Task: Create tests for ProfileEditForm component
-- [ ] Task: Implement ProfileEditForm (edit firstName, lastName, nickname)
-- [ ] Task: Create backend endpoint PUT /api/profile for self-update
+- [x] Task: Create tests for ProfileEditForm component [9 tests passing]
+- [x] Task: Implement ProfileEditForm (edit firstName, lastName)
+- [x] Task: Update API client updateProfile method
+- [ ] Task: Create backend endpoint PUT /api/profile for self-update (check if exists)
 - [ ] Task: Wire ProfileEditForm into Profile page
 - [ ] Task: Test profile update flow end-to-end
 

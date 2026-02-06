@@ -52,22 +52,38 @@ class ProfileController extends BaseController {
     },
   );
 
-  // Update current user's profile (specifically the player data)
+  // Update current user's profile (user data and/or player data)
   updateProfile = this.asyncHandler(
     async (req: RequestWithAuth, res: Response): Promise<void> => {
       const userId = req.user?.id;
-      const { gender, bracketPreference } = req.body;
+      const { firstName, lastName, gender, bracketPreference } = req.body;
 
       if (!userId) {
         return this.sendUnauthorized(res);
       }
 
-      if (!gender) {
-        return this.sendError(res, "Gender is required");
-      }
-
       // 1. Get User
       const kcUser = await keycloakAdminService.getUser(userId);
+
+      // 2. Update Keycloak user if name fields provided
+      if (firstName !== undefined || lastName !== undefined) {
+        const updateData: Record<string, any> = {};
+        if (firstName !== undefined) updateData.firstName = firstName;
+        if (lastName !== undefined) updateData.lastName = lastName;
+        await keycloakAdminService.updateUser(userId, updateData);
+      }
+
+      // 3. If no gender/bracketPreference, just return success for name-only update
+      if (!gender && !bracketPreference) {
+        const updatedUser = await keycloakAdminService.getUser(userId);
+        return this.sendSuccess(res, {
+          firstName: updatedUser.firstName,
+          lastName: updatedUser.lastName,
+          fullName: [updatedUser.firstName, updatedUser.lastName].filter(Boolean).join(" ")
+        }, "Profile updated successfully");
+      }
+
+      // 4. Handle player data update (gender/bracketPreference)
       let playerId = kcUser.attributes?.playerId?.[0];
       let player: IPlayer | null = null;
 
