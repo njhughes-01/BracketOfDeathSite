@@ -63,6 +63,7 @@ export interface SystemSettings {
 // Global token getter function - will be set by AuthContext
 let getKeycloakToken: (() => string | undefined) | null = null;
 let refreshKeycloakToken: (() => Promise<boolean>) | null = null;
+let logoutHandler: (() => void) | null = null;
 
 export const setTokenGetter = (getter: () => string | undefined) => {
   getKeycloakToken = getter;
@@ -70,6 +71,10 @@ export const setTokenGetter = (getter: () => string | undefined) => {
 
 export const setTokenRefresher = (refresher: () => Promise<boolean>) => {
   refreshKeycloakToken = refresher;
+};
+
+export const setLogoutHandler = (handler: () => void) => {
+  logoutHandler = handler;
 };
 
 // Helper: ensure token is fresh before protected calls
@@ -172,7 +177,11 @@ class ApiClient {
           } catch (e) {
             console.warn("Token refresh failed on 401");
           }
-          console.warn("Authentication failed - redirecting to login");
+          // Token refresh failed - trigger logout to clear auth state
+          console.warn("Authentication failed - logging out user");
+          if (logoutHandler) {
+            logoutHandler();
+          }
         }
 
         // Handle rate limiting (429 errors)
@@ -439,6 +448,40 @@ class ApiClient {
     );
   }
 
+  async getOpenTournaments(): Promise<ApiResponse<Tournament[]>> {
+    return this.get<ApiResponse<Tournament[]>>("/tournaments/open");
+  }
+
+  async joinTournament(
+    tournamentId: string,
+    playerId: string,
+  ): Promise<ApiResponse<{ status: string; position?: number }>> {
+    await ensureFreshToken();
+    return this.post<ApiResponse<{ status: string; position?: number }>>(
+      `/tournaments/${tournamentId}/join`,
+      { playerId },
+    );
+  }
+
+  async getTournamentPlayerStats(
+    tournamentId: string,
+  ): Promise<ApiResponse<Array<{
+    playerId: string;
+    playerName?: string;
+    totalPoints: number;
+    matchesWithPoints: number;
+    wins: number;
+    losses: number;
+  }>>> {
+    return this.get<ApiResponse<Array<{
+      playerId: string;
+      playerName?: string;
+      totalPoints: number;
+      matchesWithPoints: number;
+      wins: number;
+      losses: number;
+    }>>>(`/tournaments/${tournamentId}/player-stats`);
+  }
 
   // Tournament Result API methods
   async getTournamentResults(

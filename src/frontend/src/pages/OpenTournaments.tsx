@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import axios from "axios";
 import { useAuth } from "../contexts/AuthContext";
+import { apiClient } from "../services/api";
 import LoadingSpinner from "../components/ui/LoadingSpinner";
 
 interface ITournament {
@@ -12,8 +12,8 @@ interface ITournament {
   format: string;
   status: string;
   maxPlayers?: number;
-  registeredPlayers: any[];
-  waitlistPlayers: any[];
+  registeredPlayers?: any[];
+  waitlistPlayers?: any[];
   notes?: string;
   registrationOpensAt?: string;
   registrationDeadline?: string;
@@ -34,10 +34,8 @@ const OpenTournaments: React.FC = () => {
   const fetchOpenTournaments = async () => {
     try {
       setLoading(true);
-      const response = await axios.get("/api/tournaments/open");
-      console.log("API Response:", JSON.stringify(response.data));
-      setTournaments(response.data.data);
-      console.log("Set tournaments:", response.data.data.length);
+      const response = await apiClient.getOpenTournaments();
+      setTournaments(response.data || []);
     } catch (err) {
       console.error("Fetch error:", err);
       setError("Failed to load tournaments. Please try again later.");
@@ -57,21 +55,19 @@ const OpenTournaments: React.FC = () => {
     try {
       setJoiningId(tournamentId);
 
-      const profileResponse = await axios.get("/api/profile");
-      const playerId = profileResponse.data?.data?.user?.playerId;
+      const profileResponse = await apiClient.getProfile();
+      const playerId = profileResponse.data?.player?._id || profileResponse.data?.user?.playerId;
       
       if (!playerId) {
         navigate("/onboarding");
         return;
       }
 
-      await axios.post(`/api/tournaments/${tournamentId}/join`, {
-        playerId,
-      });
+      await apiClient.joinTournament(tournamentId, playerId);
 
       // Refresh list to show updated status
       await fetchOpenTournaments();
-      alert("Successfully registered!"); // Simple feedback for now
+      alert("Successfully registered!");
     } catch (err: any) {
       console.error("Join failed:", err);
       const msg = err.response?.data?.error || "Failed to join tournament.";
@@ -115,12 +111,12 @@ const OpenTournaments: React.FC = () => {
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {tournaments.map((tournament) => {
-            // Calculate spots
-            const registered = tournament.registeredPlayers.length;
+            const registeredPlayers = tournament.registeredPlayers || [];
+            const registered = registeredPlayers.length;
             const max = tournament.maxPlayers || 32;
             const isFull = registered >= max;
             const userIsRegistered = user?.playerId 
-              ? tournament.registeredPlayers.some(
+              ? registeredPlayers.some(
                   (p: any) => (typeof p === 'string' ? p : p._id) === user.playerId
                 )
               : false;
