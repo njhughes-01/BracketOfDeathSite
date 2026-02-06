@@ -60,10 +60,57 @@
 
 ## 🚀 Roadmap
 
-### Phase 4: Mobile & Live Tournament Experience
+### Phase 4: Payments & Ticketing (Stripe)
+*Priority: HIGH - Client requirement for paid tournaments*
+
+#### 4.1 Stripe Integration
+- [ ] Stripe account setup and API keys (env vars)
+- [ ] Tournament pricing configuration
+  - [ ] Entry fee per tournament (optional, $0 = free)
+  - [ ] Early bird pricing with deadline
+  - [ ] Team vs individual pricing
+- [ ] Stripe Checkout integration
+  - [ ] Redirect to Stripe hosted checkout
+  - [ ] Success/cancel return URLs
+  - [ ] Metadata: tournament ID, player ID, team info
+- [ ] Webhook handling
+  - [ ] `checkout.session.completed` → confirm registration
+  - [ ] `charge.refunded` → update registration status
+  - [ ] Webhook signature verification
+- [ ] Stripe Customer Portal link (for refund requests)
+
+#### 4.2 QR Ticket System
+- [ ] Ticket generation on successful payment
+  - [ ] Unique ticket ID (UUID or short code)
+  - [ ] QR code generation (qrcode library)
+  - [ ] Store ticket in database with payment reference
+- [ ] Email ticket to player
+  - [ ] QR code as inline image
+  - [ ] Tournament details, date, location
+  - [ ] "Add to calendar" link
+- [ ] Check-in scanner interface
+  - [ ] Mobile-friendly camera scanner
+  - [ ] Manual ticket ID lookup fallback
+  - [ ] Show player name, team, payment status
+  - [ ] One-tap check-in confirmation
+- [ ] Admin ticket management
+  - [ ] View all tickets for tournament
+  - [ ] Filter: paid, checked-in, refunded
+  - [ ] Manual ticket generation (cash payments)
+  - [ ] Void/refund ticket
+
+#### 4.3 Registration Flow Updates
+- [ ] Tournament detail page shows price
+- [ ] "Register" → Stripe Checkout (if paid) or direct (if free)
+- [ ] Registration status: pending_payment, paid, refunded, checked_in
+- [ ] Capacity limits with waitlist
+
+---
+
+### Phase 5: Mobile & Live Tournament Experience
 *Priority: HIGH - Core use case is courtside scoring*
 
-#### 4.1 Mobile Optimization
+#### 5.1 Mobile Optimization
 - [ ] PWA (Progressive Web App) support
   - [ ] Service worker for offline capability
   - [ ] Add to home screen prompt
@@ -77,7 +124,7 @@
   - [ ] Queue updates when offline
   - [ ] Sync on reconnect
 
-#### 4.2 Live Tournament Enhancements
+#### 5.2 Live Tournament Enhancements
 - [ ] Real-time WebSocket updates (currently SSE)
   - [ ] Socket.io integration
   - [ ] Live score updates across all connected devices
@@ -93,24 +140,24 @@
 
 ---
 
-### Phase 5: Advanced Tournament Features
+### Phase 6: Advanced Tournament Features
 *Priority: MEDIUM - Enhances tournament management*
 
-#### 5.1 Tournament Formats
+#### 6.1 Tournament Formats
 - [ ] Double elimination bracket support
 - [ ] Swiss system format
 - [ ] Pool play variations
 - [ ] Custom bracket sizes (4, 8, 16, 32, 64)
 - [ ] Consolation brackets
 
-#### 5.2 Seeding & Scheduling
+#### 6.2 Seeding & Scheduling
 - [ ] Automatic seeding based on historical performance
 - [ ] Manual seed override
 - [ ] Schedule optimization (minimize wait times)
 - [ ] Conflict detection (player in multiple matches)
 - [ ] Rest time between matches configuration
 
-#### 5.3 Team Formation
+#### 6.3 Team Formation
 - [ ] Random team generation (with skill balancing)
 - [ ] Draft-style team formation
 - [ ] Pre-registered partnerships
@@ -118,23 +165,23 @@
 
 ---
 
-### Phase 6: Analytics & Insights
+### Phase 7: Analytics & Insights
 *Priority: MEDIUM - Historical archive enhancement*
 
-#### 6.1 Player Statistics
+#### 7.1 Player Statistics
 - [ ] Head-to-head records
 - [ ] Win streaks and records
 - [ ] Performance trends over time
 - [ ] Partner compatibility stats
 - [ ] Division-specific stats
 
-#### 6.2 Tournament Analytics
+#### 7.2 Tournament Analytics
 - [ ] Match duration tracking
 - [ ] Score distribution analysis
 - [ ] Upset tracking (seed vs finish)
 - [ ] Tournament comparison reports
 
-#### 6.3 Visualization
+#### 7.3 Visualization
 - [ ] Interactive historical bracket viewer
 - [ ] Player career timeline
 - [ ] Statistics graphs and charts
@@ -142,22 +189,22 @@
 
 ---
 
-### Phase 7: Social & Engagement
+### Phase 8: Social & Engagement
 *Priority: LOW - Nice to have*
 
-#### 7.1 Social Features
+#### 8.1 Social Features
 - [ ] Player profiles with avatars
 - [ ] Activity feed
 - [ ] Comments on matches/tournaments
 - [ ] Share results to social media
 
-#### 7.2 Gamification
+#### 8.2 Gamification
 - [ ] Achievement badges
 - [ ] All-time records board
 - [ ] Season leaderboards
 - [ ] "Most Improved" awards
 
-#### 7.3 Communication
+#### 8.3 Communication
 - [ ] In-app messaging
 - [ ] Tournament announcements
 - [ ] Email newsletters
@@ -165,23 +212,23 @@
 
 ---
 
-### Phase 8: Platform Stability & DevOps
+### Phase 9: Platform Stability & DevOps
 *Priority: ONGOING*
 
-#### 8.1 Infrastructure
+#### 9.1 Infrastructure
 - [ ] Production deployment guide
 - [ ] Docker Compose production config
 - [ ] SSL/TLS setup documentation
 - [ ] Backup automation
 - [ ] Monitoring and alerting (health checks, error tracking)
 
-#### 8.2 Performance
+#### 9.2 Performance
 - [ ] Database indexing optimization
 - [ ] API response caching
 - [ ] Image optimization and CDN
 - [ ] Load testing
 
-#### 8.3 Security
+#### 9.3 Security
 - [ ] Rate limiting
 - [ ] CSRF protection audit
 - [ ] Security headers
@@ -210,9 +257,9 @@
 
 | Version | Focus | Target |
 |---------|-------|--------|
-| v2.1.0 | PWA + Mobile scoring | Q1 2026 |
-| v2.2.0 | Real-time WebSocket | Q1 2026 |
-| v2.3.0 | Court assignments | Q2 2026 |
+| v2.1.0 | Stripe payments + QR tickets | Q1 2026 |
+| v2.2.0 | PWA + Mobile scoring | Q1 2026 |
+| v2.3.0 | Real-time WebSocket | Q2 2026 |
 | v3.0.0 | Advanced tournament formats | Q2 2026 |
 | v3.1.0 | Analytics dashboard | Q3 2026 |
 | v4.0.0 | Social features | Q4 2026 |
@@ -224,7 +271,6 @@
 - [ ] Dark/light theme toggle
 - [ ] Export tournament results to CSV
 - [ ] Print-friendly bracket view
-- [ ] QR code for tournament check-in
 - [ ] Bulk player import from CSV
 - [ ] Tournament templates (save settings for reuse)
 - [ ] Keyboard shortcuts for scoring
@@ -235,14 +281,16 @@
 
 ### Out of Scope (for now)
 - Native mobile apps (iOS/Android) - PWA sufficient
-- Payment processing - tournaments are free
 - Multi-organization support - single org focus
 - Video integration - manual scoring only
+- Complex pricing (subscriptions, memberships) - per-tournament fees only
 
 ### Dependencies
 - Keycloak must be maintained/upgraded separately
 - Mailgun account required for email features
 - MongoDB hosting for production
+- **Stripe account** for payment processing (test + live keys)
+- QR code scanning requires camera access (HTTPS required)
 
 ---
 
