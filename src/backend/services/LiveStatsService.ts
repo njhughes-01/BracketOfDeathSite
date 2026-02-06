@@ -449,13 +449,15 @@ export class LiveStatsService {
       { $sort: { totalPoints: -1, wins: -1 } },
     ]);
 
-    return matches.map((m: any) => ({
-      playerId: m._id.toString(),
-      playerName: m.playerName,
-      totalPoints: m.totalPoints || 0,
-      matchesWithPoints: m.matchesWithPoints || 0,
-      wins: m.wins || 0,
-      losses: m.losses || 0,
-    }));
+    return matches
+      .filter((m: any) => m._id != null)
+      .map((m: any) => ({
+        playerId: m._id.toString(),
+        playerName: m.playerName,
+        totalPoints: m.totalPoints || 0,
+        matchesWithPoints: m.matchesWithPoints || 0,
+        wins: m.wins || 0,
+        losses: m.losses || 0,
+      }));
   }
 }
