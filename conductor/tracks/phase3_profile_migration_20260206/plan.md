@@ -20,13 +20,13 @@ Complete the auth/RBAC track Phase 3 (profile updates, password reset UI, email 
 - [x] Task: Create tests for ProfileEditForm component [9 tests passing]
 - [x] Task: Implement ProfileEditForm (edit firstName, lastName)
 - [x] Task: Update API client updateProfile method
-- [ ] Task: Create backend endpoint PUT /api/profile for self-update (check if exists)
-- [ ] Task: Wire ProfileEditForm into Profile page
+- [x] Task: Backend endpoint PUT /api/profile extended for firstName/lastName
+- [x] Task: Wire ProfileEditForm into Profile page [Edit button + modal]
 - [ ] Task: Test profile update flow end-to-end
 
-### 3A.3: Email Configuration (Keycloak + Mailjet)
-- [ ] Task: Document Keycloak SMTP configuration requirements
-- [ ] Task: Configure Keycloak realm email settings for Mailjet
+### 3A.3: Email Configuration (Keycloak + Mailgun)
+- [x] Task: Document Keycloak SMTP configuration requirements [keycloak-admin skill updated]
+- [ ] Task: Configure Keycloak realm email settings for Mailgun
 - [ ] Task: Test password reset email delivery
 - [ ] Task: Test email verification flow
 - [ ] Task: Conductor - User Manual Verification 'Phase 3A' (Protocol in workflow.md)
