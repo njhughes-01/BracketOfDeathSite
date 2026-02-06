@@ -5,7 +5,7 @@ import { apiClient } from "../services/api";
 import LoadingSpinner from "../components/ui/LoadingSpinner";
 
 interface ITournament {
-  _id: string;
+  id: string;
   bodNumber: number;
   date: string;
   location: string;
@@ -123,7 +123,7 @@ const OpenTournaments: React.FC = () => {
 
             return (
               <div
-                key={tournament._id}
+                key={tournament.id}
                 className="group relative bg-[#1c2230] border border-white/5 rounded-3xl overflow-hidden hover:border-primary/50 transition-all duration-300 hover:shadow-[0_0_30px_rgba(34,197,94,0.1)]"
               >
                 {/* Status Bar */}
@@ -184,15 +184,15 @@ const OpenTournaments: React.FC = () => {
                   </div>
 
                   <button
-                    onClick={() => handleJoin(tournament._id)}
-                    disabled={joiningId === tournament._id}
+                    onClick={() => handleJoin(tournament.id)}
+                    disabled={joiningId === tournament.id}
                     className={`w-full py-4 rounded-xl font-bold text-base transition-all flex items-center justify-center gap-2 ${
                       isFull
                         ? "bg-amber-500/10 text-amber-500 hover:bg-amber-500 hover:text-black border border-amber-500/20"
                         : "bg-primary text-black hover:bg-primary-dark shadow-[0_0_20px_rgba(34,197,94,0.3)] hover:shadow-[0_0_30px_rgba(34,197,94,0.5)]"
                     }`}
                   >
-                    {joiningId === tournament._id ? (
+                    {joiningId === tournament.id ? (
                       <span className="animate-pulse">Processing...</span>
                     ) : (
                       <>
