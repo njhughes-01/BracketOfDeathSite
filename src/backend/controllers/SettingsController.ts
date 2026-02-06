@@ -266,7 +266,8 @@ export class SettingsController extends BaseController {
   // Check if email is configured (public endpoint for banner)
   isEmailConfigured = this.asyncHandler(
     async (_req: Request, res: Response): Promise<void> => {
-      const settings = await SystemSettings.findOne();
+      // Need to explicitly select hidden fields to check if they're set
+      const settings = await SystemSettings.findOne().select('+mailgunApiKey +mailjetApiKey +mailjetApiSecret');
       const provider = settings?.activeProvider || "mailjet";
       const isMailgunConfigured =
         provider === "mailgun" && !!(settings?.mailgunApiKey && settings?.mailgunDomain);
