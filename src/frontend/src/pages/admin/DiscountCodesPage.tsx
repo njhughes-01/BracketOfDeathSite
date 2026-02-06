@@ -8,41 +8,7 @@ import type {
   DiscountCodeUpdate,
   Tournament,
 } from "../../services/api";
-import LoadingSpinner from "../../components/ui/LoadingSpinner";
-
-interface ModalProps {
-  isOpen: boolean;
-  onClose: () => void;
-  children: React.ReactNode;
-  title: string;
-}
-
-const Modal: React.FC<ModalProps> = ({ isOpen, onClose, children, title }) => {
-  if (!isOpen) return null;
-
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center">
-      <div
-        className="absolute inset-0 bg-black/50 backdrop-blur-sm"
-        onClick={onClose}
-      />
-      <div className="relative bg-[#1c2230] border border-white/10 rounded-2xl p-6 w-full max-w-lg mx-4 max-h-[90vh] overflow-y-auto">
-        <div className="flex items-center justify-between mb-6 border-b border-white/5 pb-4">
-          <h3 className="text-xl font-bold text-white">{title}</h3>
-          <button
-            onClick={onClose}
-            className="p-2 rounded-full hover:bg-white/10 transition-colors"
-          >
-            <span className="material-symbols-outlined text-slate-400">
-              close
-            </span>
-          </button>
-        </div>
-        {children}
-      </div>
-    </div>
-  );
-};
+import { Modal, LoadingSpinner } from "../../components/ui";
 
 const DiscountCodesPage: React.FC = () => {
   const [codes, setCodes] = useState<DiscountCode[]>([]);

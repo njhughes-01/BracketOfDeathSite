@@ -45,7 +45,7 @@ router.post("/", requireAdmin, TournamentController.create);
 router.put(
   "/matches/:matchId",
   requireAdmin,
-  LiveTournamentController.updateMatch,
+  MatchController.updateMatch,
 );
 router.put("/:id", requireAdmin, validateObjectId, TournamentController.update);
 router.delete(
@@ -111,17 +111,17 @@ router.get(
 router.get(
   "/:id/live-stats",
   validateObjectId,
-  LiveTournamentController.getLiveStats,
+  TournamentStatsController.getLiveStats,
 );
 router.get(
   "/:id/player-stats",
   validateObjectId,
-  LiveTournamentController.getTournamentPlayerStats,
+  TournamentStatsController.getTournamentPlayerStats,
 );
 router.get(
   "/:id/stream",
   validateObjectId,
-  LiveTournamentController.streamTournamentEvents,
+  TournamentStatsController.streamTournamentEvents,
 );
 router.post(
   "/:id/action",
@@ -132,25 +132,25 @@ router.post(
 router.get(
   "/:id/matches",
   validateObjectId,
-  LiveTournamentController.getTournamentMatches,
+  MatchController.getTournamentMatches,
 );
 router.post(
   "/:id/checkin",
   requireAdmin,
   validateObjectId,
-  LiveTournamentController.checkInTeam,
+  MatchController.checkInTeam,
 );
 router.post(
   "/:id/generate-matches",
   requireAdmin,
   validateObjectId,
-  LiveTournamentController.generateMatches,
+  MatchController.generateMatches,
 );
 router.post(
   "/:id/matches/confirm-completed",
   requireAdmin,
   validateObjectId,
-  LiveTournamentController.confirmCompletedMatches,
+  MatchController.confirmCompletedMatches,
 );
 
 // Match management routes (create separate route file later if needed)

@@ -52,15 +52,18 @@ jest.mock("../../src/backend/services/EventBus", () => ({
 import { Tournament } from "../../src/backend/models/Tournament";
 import { Match } from "../../src/backend/models/Match";
 import { LiveTournamentController } from "../../src/backend/controllers/LiveTournamentController";
+import { MatchController } from "../../src/backend/controllers/MatchController";
 
 describe("Round Robin Lifecycle", () => {
   let ctl: any;
+  let matchCtl: any;
   let tournamentMock: any;
   let matchesMock: any[];
 
   beforeEach(() => {
     jest.clearAllMocks();
     ctl = new LiveTournamentController();
+    matchCtl = new MatchController();
     matchesMock = [];
 
     tournamentMock = {
@@ -137,7 +140,7 @@ describe("Round Robin Lifecycle", () => {
     const req = { params: { id: "rr_tourn" }, body: { round: "RR_R1" } };
     const res = { status: jest.fn().mockReturnThis(), json: jest.fn() };
 
-    await ctl.generateMatches(req, res, jest.fn());
+    await matchCtl.generateMatches(req, res, jest.fn());
 
     expect(Match.insertMany).toHaveBeenCalled();
     expect(matchesMock.length).toBeGreaterThan(0);

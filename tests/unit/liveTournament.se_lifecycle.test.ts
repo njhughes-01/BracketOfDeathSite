@@ -54,15 +54,18 @@ jest.mock("../../src/backend/services/EventBus", () => ({
 import { Tournament } from "../../src/backend/models/Tournament";
 import { Match } from "../../src/backend/models/Match";
 import { LiveTournamentController } from "../../src/backend/controllers/LiveTournamentController";
+import { MatchController } from "../../src/backend/controllers/MatchController";
 
 describe("Single Elimination Lifecycle", () => {
     let ctl: LiveTournamentController;
+    let matchCtl: MatchController;
     let tournamentMock: Record<string, unknown>;
     let matchesMock: any[];
 
     beforeEach(() => {
         jest.clearAllMocks();
         ctl = new LiveTournamentController();
+        matchCtl = new MatchController();
         matchesMock = [];
 
         // 8-team Single Elimination tournament
@@ -173,7 +176,7 @@ describe("Single Elimination Lifecycle", () => {
             const req = { params: { id: "se_tourn_1" }, body: { round: "quarterfinal" } };
             const res = { status: jest.fn().mockReturnThis(), json: jest.fn() };
 
-            await (ctl as any).generateMatches(req, res, jest.fn());
+            await matchCtl.generateMatches(req as any, res as any, jest.fn());
 
             expect(Match.insertMany).toHaveBeenCalled();
             expect(matchesMock.length).toBe(4);
@@ -193,7 +196,7 @@ describe("Single Elimination Lifecycle", () => {
             const req = { params: { id: "se_tourn_1" }, body: { round: "semifinal" } };
             const res = { status: jest.fn().mockReturnThis(), json: jest.fn() };
 
-            await (ctl as any).generateMatches(req, res, jest.fn());
+            await matchCtl.generateMatches(req as any, res as any, jest.fn());
 
             expect(Match.insertMany).toHaveBeenCalled();
             // Should add 2 SF matches
@@ -211,7 +214,7 @@ describe("Single Elimination Lifecycle", () => {
             const req = { params: { id: "se_tourn_1" }, body: { round: "final" } };
             const res = { status: jest.fn().mockReturnThis(), json: jest.fn() };
 
-            await (ctl as any).generateMatches(req, res, jest.fn());
+            await matchCtl.generateMatches(req as any, res as any, jest.fn());
 
             expect(Match.insertMany).toHaveBeenCalled();
             const finalMatches = matchesMock.filter((m) => m.round === "final");
