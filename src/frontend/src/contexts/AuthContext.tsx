@@ -63,19 +63,49 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [loading, setLoading] = useState(true); // Start as TRUE to prevent flash of unauthenticated content
   const initializationAttempted = useRef(false);
 
-  // Token persistence helpers (Memory-only for security)
-  // We no longer save sensitive tokens to localStorage to prevent XSS attacks.
+  // Token persistence helpers — stored in localStorage with 24h TTL
+  const TOKENS_KEY = "bod_auth_tokens";
+  const TOKEN_TTL_MS = 24 * 60 * 60 * 1000; // 24 hours
+
   const saveTokens = (kc: Keycloak) => {
-    // Intentionally empty - tokens are kept in memory only
-    // Logic for refreshing is handled by Keycloak JS automatically via iframe/silent-sso
+    try {
+      if (kc.token) {
+        const payload = {
+          access_token: kc.token,
+          refresh_token: kc.refreshToken,
+          id_token: kc.idToken,
+          saved_at: Date.now(),
+        };
+        localStorage.setItem(TOKENS_KEY, JSON.stringify(payload));
+      }
+    } catch (e) {
+      logger.warn("Failed to save tokens to localStorage:", e);
+    }
   };
+
   const loadTokens = (): {
     access_token: string;
     refresh_token?: string;
     id_token?: string;
   } | null => {
-    // Intentionally returning null to force fresh login or silent SSO check
-    return null;
+    try {
+      const raw = localStorage.getItem(TOKENS_KEY);
+      if (!raw) return null;
+      const parsed = JSON.parse(raw);
+      // Check 24h TTL
+      if (Date.now() - (parsed.saved_at || 0) > TOKEN_TTL_MS) {
+        localStorage.removeItem(TOKENS_KEY);
+        return null;
+      }
+      return parsed;
+    } catch {
+      localStorage.removeItem(TOKENS_KEY);
+      return null;
+    }
+  };
+
+  const clearTokens = () => {
+    try { localStorage.removeItem(TOKENS_KEY); } catch {}
   };
 
   // Helper function to set up user from token
@@ -403,8 +433,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     sessionStorage.removeItem("redirectAfterLogin");
     localStorage.removeItem("hasLoggedInBefore");
 
-    // IMPORTANT: Clear stored tokens to prevent auto-login loop
-    // localStorage.removeItem(TOKENS_KEY); // Removed as TOKENS_KEY is no longer used/defined
+    // Clear persisted tokens
+    clearTokens();
 
     // Redirect to login page
     window.location.href = "/login";
