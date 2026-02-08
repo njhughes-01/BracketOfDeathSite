@@ -56,7 +56,7 @@ describe('SettingsController', () => {
         brandSecondaryColor: '#008CBA',
       };
 
-      (SystemSettings.findOne as jest.Mock) = jest.fn().mockReturnValue({
+      (SystemSettings.findOne as jest.Mock).mockReturnValue({
         select: jest.fn().mockResolvedValue(mockSettings),
       });
 
@@ -77,7 +77,7 @@ describe('SettingsController', () => {
     });
 
     it('should handle errors gracefully', async () => {
-      (SystemSettings.findOne as jest.Mock) = jest.fn().mockReturnValue({
+      (SystemSettings.findOne as jest.Mock).mockReturnValue({
         select: jest.fn().mockRejectedValue(new Error('Database error')),
       });
 
@@ -90,7 +90,7 @@ describe('SettingsController', () => {
   describe('testEmail', () => {
     it('should send test email successfully', async () => {
       mockReq.body = { testEmail: 'test@example.com' };
-      (emailService.sendTestEmail as jest.Mock) = jest.fn().mockResolvedValue(true);
+      (emailService.sendTestEmail as jest.Mock).mockResolvedValue(true);
 
       await controller.testEmail(mockReq as Request, mockRes as Response, nextMock);
 
@@ -136,7 +136,7 @@ describe('SettingsController', () => {
 
     it('should handle email send failures', async () => {
       mockReq.body = { testEmail: 'test@example.com' };
-      (emailService.sendTestEmail as jest.Mock) = jest.fn().mockResolvedValue(false);
+      (emailService.sendTestEmail as jest.Mock).mockResolvedValue(false);
 
       await controller.testEmail(mockReq as Request, mockRes as Response, nextMock);
 
@@ -157,7 +157,7 @@ describe('SettingsController', () => {
         mailjetApiKey: 'test-key',
         mailjetApiSecret: 'test-secret',
       };
-      (emailService.verifyProvider as jest.Mock) = jest.fn().mockResolvedValue(true);
+      (emailService.verifyProvider as jest.Mock).mockResolvedValue(true);
 
       await controller.verifyCredentials(mockReq as Request, mockRes as Response, nextMock);
 
@@ -180,7 +180,7 @@ describe('SettingsController', () => {
         mailgunApiKey: 'test-key',
         mailgunDomain: 'mg.example.com',
       };
-      (emailService.verifyProvider as jest.Mock) = jest.fn().mockResolvedValue(true);
+      (emailService.verifyProvider as jest.Mock).mockResolvedValue(true);
 
       await controller.verifyCredentials(mockReq as Request, mockRes as Response, nextMock);
 
@@ -220,7 +220,7 @@ describe('SettingsController', () => {
         mailjetApiKey: 'invalid-key',
         mailjetApiSecret: 'invalid-secret',
       };
-      (emailService.verifyProvider as jest.Mock) = jest.fn().mockResolvedValue(false);
+      (emailService.verifyProvider as jest.Mock).mockResolvedValue(false);
 
       await controller.verifyCredentials(mockReq as Request, mockRes as Response, nextMock);
 
@@ -248,7 +248,7 @@ describe('SettingsController', () => {
         updatedBy: 'testuser',
       };
 
-      (SystemSettings.findOne as jest.Mock) = jest.fn().mockResolvedValue(mockSettings);
+      (SystemSettings.findOne as jest.Mock).mockResolvedValue(mockSettings);
 
       await controller.updateSettings(mockReq as Request, mockRes as Response, nextMock);
 
@@ -278,7 +278,7 @@ describe('SettingsController', () => {
         updatedBy: 'testuser',
       };
 
-      (SystemSettings.findOne as jest.Mock) = jest.fn().mockResolvedValue(mockSettings);
+      (SystemSettings.findOne as jest.Mock).mockResolvedValue(mockSettings);
 
       await controller.updateSettings(mockReq as Request, mockRes as Response, nextMock);
 
@@ -304,7 +304,7 @@ describe('SettingsController', () => {
         updatedBy: 'testuser',
       };
 
-      (SystemSettings.findOne as jest.Mock) = jest.fn().mockResolvedValue(mockSettings);
+      (SystemSettings.findOne as jest.Mock).mockResolvedValue(mockSettings);
 
       await controller.updateSettings(mockReq as Request, mockRes as Response, nextMock);
 
@@ -336,7 +336,7 @@ describe('SettingsController', () => {
         save: jest.fn(),
       };
 
-      (SystemSettings.findOne as jest.Mock) = jest.fn().mockResolvedValue(mockSettings);
+      (SystemSettings.findOne as jest.Mock).mockResolvedValue(mockSettings);
 
       await controller.updateSettings(mockReq as Request, mockRes as Response, nextMock);
 
@@ -361,14 +361,16 @@ describe('SettingsController', () => {
         mailjetApiSecret: 'secret',
       };
 
-      (SystemSettings.findOne as jest.Mock) = jest.fn().mockResolvedValue(mockSettings);
+      (SystemSettings.findOne as jest.Mock).mockReturnValue({
+        select: jest.fn().mockResolvedValue(mockSettings),
+      });
 
       await controller.isEmailConfigured(mockReq as Request, mockRes as Response, nextMock);
 
       expect(jsonMock).toHaveBeenCalledWith(
         expect.objectContaining({
           success: true,
-          data: { configured: true },
+          data: expect.objectContaining({ configured: true }),
         })
       );
     });
@@ -380,14 +382,16 @@ describe('SettingsController', () => {
         mailgunDomain: 'mg.example.com',
       };
 
-      (SystemSettings.findOne as jest.Mock) = jest.fn().mockResolvedValue(mockSettings);
+      (SystemSettings.findOne as jest.Mock).mockReturnValue({
+        select: jest.fn().mockResolvedValue(mockSettings),
+      });
 
       await controller.isEmailConfigured(mockReq as Request, mockRes as Response, nextMock);
 
       expect(jsonMock).toHaveBeenCalledWith(
         expect.objectContaining({
           success: true,
-          data: { configured: true },
+          data: expect.objectContaining({ configured: true }),
         })
       );
     });
@@ -398,20 +402,24 @@ describe('SettingsController', () => {
         // No keys set
       };
 
-      (SystemSettings.findOne as jest.Mock) = jest.fn().mockResolvedValue(mockSettings);
+      (SystemSettings.findOne as jest.Mock).mockReturnValue({
+        select: jest.fn().mockResolvedValue(mockSettings),
+      });
 
       await controller.isEmailConfigured(mockReq as Request, mockRes as Response, nextMock);
 
       expect(jsonMock).toHaveBeenCalledWith(
         expect.objectContaining({
           success: true,
-          data: { configured: false },
+          data: expect.objectContaining({ configured: false }),
         })
       );
     });
 
     it('should handle errors gracefully', async () => {
-      (SystemSettings.findOne as jest.Mock) = jest.fn().mockRejectedValue(new Error('DB error'));
+      (SystemSettings.findOne as jest.Mock).mockReturnValue({
+        select: jest.fn().mockRejectedValue(new Error('DB error')),
+      });
 
       await controller.isEmailConfigured(mockReq as Request, mockRes as Response, nextMock);
       expect(nextMock).toHaveBeenCalledWith(expect.any(Error));

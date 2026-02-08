@@ -211,6 +211,54 @@ const tournamentSchema = new Schema<ITournament>(
         return this.registrationType === "open";
       },
     },
+    
+    // Pricing
+    entryFee: {
+      type: Number,
+      default: 0,
+      min: [0, "Entry fee cannot be negative"],
+    },
+    earlyBirdFee: {
+      type: Number,
+      min: [0, "Early bird fee cannot be negative"],
+      validate: {
+        validator: function (this: ITournament, value: number) {
+          if (!value) return true;
+          return value < (this.entryFee || 0);
+        },
+        message: "Early bird fee must be less than regular entry fee",
+      },
+    },
+    earlyBirdDeadline: {
+      type: Date,
+      validate: {
+        validator: function (this: ITournament, date: Date) {
+          if (!date) return true;
+          return date <= this.date;
+        },
+        message: "Early bird deadline must be before tournament date",
+      },
+    },
+    
+    // Invite-only control
+    inviteOnly: {
+      type: Boolean,
+      default: false,
+    },
+    paymentDeadlineHours: {
+      type: Number,
+      default: 72,
+      min: [1, "Payment deadline must be at least 1 hour"],
+      max: [720, "Payment deadline cannot exceed 30 days"],
+    },
+    
+    // Reserved spots (for active reservations during checkout)
+    spotsReserved: {
+      type: Number,
+      default: 0,
+      min: 0,
+    },
+    
     registeredPlayers: [
       {
         playerId: {

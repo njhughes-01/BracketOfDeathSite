@@ -54,9 +54,11 @@ jest.mock("../../src/backend/services/EventBus", () => ({
 import { Match } from "../../src/backend/models/Match";
 import { Tournament } from "../../src/backend/models/Tournament";
 import { LiveTournamentController } from "../../src/backend/controllers/LiveTournamentController";
+import { MatchController } from "../../src/backend/controllers/MatchController";
 
 describe("Scoring and Advancement", () => {
   let ctl: LiveTournamentController;
+  let matchCtl: MatchController;
   let tournamentMock: Record<string, unknown>;
   let matchesMock: any[];
   let matchDocMock: Record<string, unknown>;
@@ -64,6 +66,7 @@ describe("Scoring and Advancement", () => {
   beforeEach(() => {
     jest.clearAllMocks();
     ctl = new LiveTournamentController();
+    matchCtl = new MatchController();
     matchesMock = [];
 
     tournamentMock = {
@@ -156,7 +159,7 @@ describe("Scoring and Advancement", () => {
     };
     const res = { status: jest.fn().mockReturnThis(), json: jest.fn() };
 
-    await ctl.updateMatch(req as any, res as any, jest.fn() as any);
+    await matchCtl.updateMatch(req as any, res as any, jest.fn() as any);
 
     expect(Match.findById).toHaveBeenCalledWith("match_1");
     expect((matchDocMock.team1 as Record<string, unknown>).score).toBe(10);

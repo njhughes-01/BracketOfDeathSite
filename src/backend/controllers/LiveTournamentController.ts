@@ -1,4 +1,4 @@
-import { Request, Response, NextFunction } from "express";
+import { Request, Response } from "express";
 import logger from "../utils/logger";
 import { Tournament } from "../models/Tournament";
 import { Match } from "../models/Match";
@@ -9,34 +9,32 @@ import {
   IMatch,
   isRoundRobinRound,
   getNextRoundRobinRound,
-  getRoundNumber,
 } from "../types/match";
 import { BaseController, RequestWithAuth } from "./base";
-import { ApiResponse } from "../types/common";
-import { LiveStatsService } from "../services/LiveStatsService";
 import { eventBus } from "../services/EventBus";
+import MatchController from "./MatchController";
 
 interface TournamentPhase {
   phase:
-  | "setup"
-  | "registration"
-  | "check_in"
-  | "round_robin"
-  | "bracket"
-  | "completed";
+    | "setup"
+    | "registration"
+    | "check_in"
+    | "round_robin"
+    | "bracket"
+    | "completed";
   currentRound?:
-  | "RR_R1"
-  | "RR_R2"
-  | "RR_R3"
-  | "quarterfinal"
-  | "semifinal"
-  | "final"
-  | "lbr-round-1"
-  | "lbr-round-2"
-  | "lbr-quarterfinal"
-  | "lbr-semifinal"
-  | "lbr-final"
-  | "grand-final";
+    | "RR_R1"
+    | "RR_R2"
+    | "RR_R3"
+    | "quarterfinal"
+    | "semifinal"
+    | "final"
+    | "lbr-round-1"
+    | "lbr-round-2"
+    | "lbr-quarterfinal"
+    | "lbr-semifinal"
+    | "lbr-final"
+    | "grand-final";
   roundStatus: "not_started" | "in_progress" | "completed";
   totalMatches: number;
   completedMatches: number;
@@ -77,25 +75,30 @@ interface LiveTournament {
     currentRound?: string;
   };
   bracketType?:
-  | "single_elimination"
-  | "double_elimination"
-  | "round_robin_playoff";
+    | "single_elimination"
+    | "double_elimination"
+    | "round_robin_playoff";
 }
 
 interface TournamentAction {
   action:
-  | "start_registration"
-  | "close_registration"
-  | "start_checkin"
-  | "start_round_robin"
-  | "advance_round"
-  | "start_bracket"
-  | "complete_tournament"
-  | "reset_tournament"
-  | "set_round";
+    | "start_registration"
+    | "close_registration"
+    | "start_checkin"
+    | "start_round_robin"
+    | "advance_round"
+    | "start_bracket"
+    | "complete_tournament"
+    | "reset_tournament"
+    | "set_round";
   parameters?: { targetRound?: string };
 }
 
+/**
+ * LiveTournamentController handles core tournament operations:
+ * - getLiveTournament: Fetch complete live tournament data
+ * - executeTournamentAction: Handle tournament state transitions
+ */
 export class LiveTournamentController extends BaseController {
   constructor() {
     super();
@@ -150,7 +153,7 @@ export class LiveTournamentController extends BaseController {
         maxPlayers: t.maxPlayers,
         champion: t.champion,
         phase: this.calculateTournamentPhase(t, matches, standings.length),
-        teams: await this.generateTeamData(t),
+        teams: await this.generateTeamData(t, matches),
         matches,
         currentStandings: standings,
         bracketProgression: this.calculateBracketProgression(matches),
@@ -270,7 +273,7 @@ export class LiveTournamentController extends BaseController {
         maxPlayers: updatedTournamentObj.maxPlayers,
         champion: updatedTournamentObj.champion,
         phase: this.calculateTournamentPhase(updatedTournament, matches),
-        teams: await this.generateTeamData(updatedTournament),
+        teams: await this.generateTeamData(updatedTournament, matches),
         matches,
         currentStandings: standings,
         bracketProgression: this.calculateBracketProgression(matches),
@@ -290,404 +293,8 @@ export class LiveTournamentController extends BaseController {
     },
   );
 
-  // Get matches for a tournament (optionally filtered by round)
-  getTournamentMatches = this.asyncHandler(
-    async (req: Request, res: Response): Promise<void> => {
-      const { id } = req.params;
-      const { round } = req.query;
+  // ==================== Phase Calculation ====================
 
-      const filter: any = { tournamentId: id };
-      if (round && typeof round === "string") {
-        filter.round = round;
-      }
-
-      const matches = await Match.find(filter)
-        .populate("team1.players team2.players", "name")
-        .sort({ roundNumber: 1, matchNumber: 1 });
-
-      this.sendSuccess(res, matches);
-    },
-  );
-
-  // Update match scores and status
-  updateMatch = this.asyncHandler(
-    async (req: RequestWithAuth, res: Response): Promise<void> => {
-      const { matchId } = req.params;
-      const updateData = req.body;
-
-      // Process individual player scores and calculate derived team scores
-      const processedUpdateData = this.processMatchUpdate(updateData);
-
-      // Load the match doc to leverage full document validation and pre-save logic
-      const matchDoc = await Match.findById(matchId).populate(
-        "team1.players team2.players",
-        "name",
-      );
-      if (!matchDoc) {
-        this.sendNotFound(res, "Match");
-        return;
-      }
-
-      // Apply fields safely to the document
-      if (processedUpdateData["team1.playerScores"] !== undefined) {
-        (matchDoc as any).team1.playerScores =
-          processedUpdateData["team1.playerScores"];
-        matchDoc.markModified("team1.playerScores");
-      }
-      if (processedUpdateData["team2.playerScores"] !== undefined) {
-        (matchDoc as any).team2.playerScores =
-          processedUpdateData["team2.playerScores"];
-        matchDoc.markModified("team2.playerScores");
-      }
-      if (processedUpdateData["team1.score"] !== undefined) {
-        (matchDoc as any).team1.score = processedUpdateData["team1.score"];
-      }
-      if (processedUpdateData["team2.score"] !== undefined) {
-        (matchDoc as any).team2.score = processedUpdateData["team2.score"];
-      }
-      if (processedUpdateData.court !== undefined) {
-        (matchDoc as any).court = processedUpdateData.court;
-      }
-      if (processedUpdateData.notes !== undefined) {
-        (matchDoc as any).notes = processedUpdateData.notes;
-      }
-      // Map client times to model fields
-      if ((processedUpdateData as any).startTime) {
-        (matchDoc as any).scheduledDate = new Date(
-          (processedUpdateData as any).startTime,
-        );
-      }
-      if ((processedUpdateData as any).endTime) {
-        (matchDoc as any).completedDate = new Date(
-          (processedUpdateData as any).endTime,
-        );
-      }
-      // Determine winner/status before validation to satisfy validators
-      const t1Score = (matchDoc as any).team1?.score;
-      const t2Score = (matchDoc as any).team2?.score;
-      const bothScored =
-        typeof t1Score === "number" && typeof t2Score === "number";
-
-      if (processedUpdateData.status) {
-        (matchDoc as any).status = processedUpdateData.status;
-        if (
-          processedUpdateData.status === "completed" &&
-          bothScored &&
-          t1Score !== t2Score
-        ) {
-          (matchDoc as any).winner = t1Score > t2Score ? "team1" : "team2";
-        }
-      } else if (bothScored && t1Score !== t2Score) {
-        (matchDoc as any).winner = t1Score > t2Score ? "team1" : "team2";
-        (matchDoc as any).status = "completed";
-      }
-
-      const match = await matchDoc.save();
-
-      // If match is completed, update tournament statistics
-      if (match.status === "completed") {
-        await this.updateTournamentStatistics(match as any);
-        // Trigger live stats update for real-time updates
-        await LiveStatsService.updateLiveStats(matchId);
-      }
-
-      // Emit match update and full live snapshot for clients
-      eventBus.emitTournament(match.tournamentId.toString(), "match:update", {
-        matchId,
-        update: processedUpdateData,
-      });
-      try {
-        const live = await this.buildLiveTournament(
-          match.tournamentId.toString(),
-        );
-        if (live)
-          eventBus.emitTournament(match.tournamentId.toString(), "snapshot", {
-            live,
-          });
-      } catch { }
-
-      this.sendSuccess(res, match, "Match updated successfully");
-    },
-  );
-
-  // Team check-in for tournaments
-  checkInTeam = this.asyncHandler(
-    async (req: RequestWithAuth, res: Response): Promise<void> => {
-      const { id } = req.params;
-      const { teamId, present = true } = req.body;
-
-      // This would typically update a check-in collection or tournament field
-      // For now, we'll return success - would need to implement proper check-in storage
-
-      eventBus.emitTournament(id, "team:checkin", { teamId, present });
-      try {
-        const live = await this.buildLiveTournament(id);
-        if (live) eventBus.emitTournament(id, "snapshot", { live });
-      } catch { }
-
-      this.sendSuccess(
-        res,
-        { teamId, present, checkInTime: new Date().toISOString() },
-        `Team ${present ? "checked in" : "marked absent"} successfully`,
-      );
-    },
-  );
-
-  // Generate matches for a specific round
-  generateMatches = this.asyncHandler(
-    async (req: RequestWithAuth, res: Response): Promise<void> => {
-      const { id } = req.params;
-      const { round } = req.body;
-
-      const tournament = await Tournament.findById(id);
-      if (!tournament) {
-        this.sendNotFound(res, "Tournament");
-        return;
-      }
-
-      let matches: IMatch[] = [] as any;
-
-      // Handle losers and grand-final rounds explicitly for double elimination
-      const isLosers = typeof round === "string" && round.startsWith("lbr-");
-      const isGrandFinal = round === "grand-final";
-      if (
-        (tournament as any).bracketType === "double_elimination" &&
-        (isLosers || isGrandFinal)
-      ) {
-        if (round === "lbr-round-1") {
-          const qfLosers = await this.getBracketLosingTeams(
-            tournament,
-            "quarterfinal",
-          );
-          matches = await this.generateLosersMatchesForRound(
-            tournament,
-            qfLosers,
-            "lbr-round-1",
-          );
-        } else if (round === "lbr-semifinal") {
-          const sfLosers = await this.getBracketLosingTeams(
-            tournament,
-            "semifinal",
-          );
-          const l1Winners = await this.getBracketAdvancingTeams(
-            tournament as any,
-            "lbr-round-1" as any,
-          );
-          const lsfTeams = [...sfLosers, ...l1Winners];
-          matches = await this.generateLosersMatchesForRound(
-            tournament,
-            lsfTeams,
-            "lbr-semifinal",
-          );
-        } else if (round === "lbr-final") {
-          const lsfWinners = await this.getBracketAdvancingTeams(
-            tournament as any,
-            "lbr-semifinal" as any,
-          );
-          matches = await this.generateLosersMatchesForRound(
-            tournament,
-            lsfWinners,
-            "lbr-final",
-          );
-        } else if (isGrandFinal) {
-          const wfWinner = await this.getBracketAdvancingTeams(
-            tournament,
-            "final",
-          );
-          const lfWinner = await this.getBracketAdvancingTeams(
-            tournament as any,
-            "lbr-final" as any,
-          );
-          const gfTeams = [...wfWinner, ...lfWinner];
-          matches = await this.generateLosersMatchesForRound(
-            tournament,
-            gfTeams,
-            "grand-final",
-          );
-        }
-      } else {
-        matches = await this.createMatchesForRound(tournament, round);
-      }
-
-      eventBus.emitTournament(id, "matches:generated", {
-        round,
-        count: matches.length,
-      });
-      try {
-        const live = await this.buildLiveTournament(id);
-        if (live) eventBus.emitTournament(id, "snapshot", { live });
-      } catch { }
-
-      this.sendSuccess(res, matches, `Matches generated for ${round}`);
-    },
-  );
-
-  // Get live tournament statistics
-  getLiveStats = this.asyncHandler(
-    async (req: Request, res: Response): Promise<void> => {
-      const { id } = req.params;
-
-      // Use the LiveStatsService to get comprehensive statistics
-      const liveStats =
-        await LiveStatsService.calculateLiveTournamentStats(id);
-
-      if (!liveStats) {
-        this.sendError(
-          res,
-          "Tournament not found or no statistics available",
-          404,
-        );
-        return;
-      }
-
-      this.sendSuccess(
-        res,
-        liveStats,
-        "Live tournament statistics retrieved successfully",
-      );
-    },
-  );
-
-  // Confirm all completed matches in a tournament (optionally by round)
-  confirmCompletedMatches = this.asyncHandler(
-    async (req: RequestWithAuth, res: Response): Promise<void> => {
-      const { id } = req.params;
-      const { round } = req.query as { round?: string };
-
-      const filter: any = { tournamentId: id, status: "completed" };
-      if (round) filter.round = round;
-
-      const matches = await Match.find(filter);
-      if (matches.length === 0) {
-        this.sendSuccess(res, { updated: 0 }, "No completed matches to confirm");
-        return;
-      }
-
-      const ids = matches.map((m) => m._id);
-      await Match.updateMany(
-        { _id: { $in: ids } },
-        { $set: { status: "confirmed" } },
-      );
-
-      // Emit per-match updates and a snapshot
-      for (const m of matches) {
-        eventBus.emitTournament(
-          m.tournamentId.toString(),
-          "match:confirmed",
-          { matchId: m._id.toString() },
-        );
-      }
-      const live = await this.buildLiveTournament(id);
-      if (live) eventBus.emitTournament(id, "snapshot", { live });
-
-      this.sendSuccess(
-        res,
-        { updated: matches.length },
-        "Completed matches confirmed",
-      );
-    },
-  );
-
-  // Per-player stats for a tournament (points, wins/losses based on playerScores)
-  getTournamentPlayerStats = this.asyncHandler(
-    async (req: Request, res: Response): Promise<void> => {
-      const { id } = req.params;
-      const playerStats =
-        await LiveStatsService.calculatePlayerStatsForTournament(id);
-      this.sendSuccess(
-        res,
-        playerStats,
-        "Tournament player stats retrieved successfully",
-      );
-    },
-  );
-
-  // Server-Sent Events: stream live tournament updates
-  streamTournamentEvents = this.asyncHandler(
-    async (req: Request, res: Response): Promise<void> => {
-      const { id } = req.params;
-
-      res.status(200);
-      res.setHeader("Content-Type", "text/event-stream");
-      res.setHeader("Cache-Control", "no-cache");
-      res.setHeader("Connection", "keep-alive");
-      res.setHeader("X-Accel-Buffering", "no");
-
-      const send = (event: string, data: unknown) => {
-        res.write(`event: ${event}\n`);
-        res.write(`data: ${JSON.stringify(data)}\n\n`);
-      };
-
-      // Initial snapshot
-      try {
-        const live = await this.buildLiveTournament(id);
-        if (live) {
-          send("snapshot", { success: true, data: live });
-        } else {
-          send("error", { success: false, error: "Tournament not found" });
-        }
-      } catch (e) {
-        send("error", { success: false, error: "Failed to build snapshot" });
-      }
-
-      const unsubscribe = eventBus.onTournament(id, (evt) => {
-        send("update", evt);
-      });
-
-      const heartbeat = setInterval(() => {
-        res.write(": ping\n\n");
-      }, 25000);
-
-      req.on("close", () => {
-        clearInterval(heartbeat);
-        unsubscribe();
-      });
-    },
-  );
-
-  // Build a full live snapshot of the tournament
-  private async buildLiveTournament(
-    id: string,
-  ): Promise<LiveTournament | null> {
-    const tournament = await Tournament.findById(id).populate(
-      "players",
-      "name",
-    );
-    if (!tournament) return null;
-
-    const matches = await Match.find({ tournamentId: id })
-      .populate("team1.players team2.players", "name")
-      .sort({ roundNumber: 1, matchNumber: 1 });
-
-    const standings = await TournamentResult.find({ tournamentId: id })
-      .populate("players", "name")
-      .sort({ "totalStats.finalRank": 1 });
-
-    const t = tournament.toObject();
-    const liveTournament: LiveTournament = {
-      _id: t._id.toString(),
-      date: t.date,
-      bodNumber: t.bodNumber,
-      format: t.format,
-      location: t.location,
-      advancementCriteria: t.advancementCriteria,
-      notes: t.notes,
-      photoAlbums: t.photoAlbums,
-      status: t.status,
-      players: t.players?.map((p: any) => p.toString()),
-      maxPlayers: t.maxPlayers,
-      champion: t.champion,
-      phase: this.calculateTournamentPhase(tournament as any, matches, standings.length),
-      teams: await this.generateTeamData(tournament as any),
-      matches,
-      currentStandings: standings,
-      bracketProgression: this.calculateBracketProgression(matches),
-      checkInStatus: await this.getCheckInStatus(tournament as any),
-    };
-    return liveTournament;
-  }
-
-  // Helper methods
   private calculateTournamentPhase(
     tournament: ITournament,
     matches: IMatch[],
@@ -880,7 +487,9 @@ export class LiveTournamentController extends BaseController {
     };
   }
 
-  private async generateTeamData(tournament: ITournament) {
+  // ==================== Team Data Generation ====================
+
+  private async generateTeamData(tournament: ITournament, matches?: IMatch[]) {
     try {
       // Convert stored generatedTeams to live team format with runtime status
       const storedTeams = tournament.generatedTeams || [];
@@ -890,25 +499,29 @@ export class LiveTournamentController extends BaseController {
         return [];
       }
 
+      // Get matches if not provided
+      if (!matches) {
+        matches = await Match.find({ tournamentId: tournament._id });
+      }
+
       // Get current tournament phase to determine team status
-      const matches = await Match.find({ tournamentId: tournament._id });
       const phase = this.calculateTournamentPhase(tournament, matches);
 
       // Convert each stored team to live team format
       const liveTeams = storedTeams.map((storedTeam: any) => {
         // Determine if team is still active based on match results
-        const teamMatches = matches.filter((m) =>
+        const teamMatches = matches!.filter((m) =>
           this.teamInMatch(storedTeam.teamId, m),
         );
 
         const isEliminated = this.isTeamEliminated(
           storedTeam.teamId,
-          matches,
+          matches!,
           phase.phase,
         );
         const hasAdvanced = this.hasTeamAdvanced(
           storedTeam.teamId,
-          matches,
+          matches!,
           phase.phase,
         );
 
@@ -1041,7 +654,8 @@ export class LiveTournamentController extends BaseController {
     }
   }
 
-  // Tournament action handlers
+  // ==================== Tournament Action Handlers ====================
+
   private async startRegistration(
     tournament: ITournament,
   ): Promise<ITournament> {
@@ -1101,7 +715,7 @@ export class LiveTournamentController extends BaseController {
 
   private async startRoundRobin(tournament: ITournament): Promise<ITournament> {
     // Generate round robin matches for first round and activate tournament
-    await this.createMatchesForRound(tournament, "RR_R1");
+    await MatchController.createMatchesForRound(tournament, "RR_R1");
     tournament.status = "active";
     return await (tournament as any).save();
   }
@@ -1149,14 +763,14 @@ export class LiveTournamentController extends BaseController {
         await this.calculateRoundRobinStandings(tournament);
 
         // Generate bracket matches with qualified teams
-        await this.createMatchesForRound(tournament, "quarterfinal");
+        await MatchController.createMatchesForRound(tournament, "quarterfinal");
 
         tournament.status = "active"; // Ensure tournament is active for bracket play
         return await tournament.save();
       } else {
         // Generate next round-robin matches
         logger.debug(`Advancing to ${nextRound}`);
-        await this.createMatchesForRound(tournament, nextRound);
+        await MatchController.createMatchesForRound(tournament, nextRound);
         return tournament;
       }
     } catch (error) {
@@ -1186,11 +800,11 @@ export class LiveTournamentController extends BaseController {
       }
 
       logger.debug(`Advancing to bracket ${nextRound}`);
-      const advancingTeams = await this.getBracketAdvancingTeams(
+      const advancingTeams = await MatchController.getBracketAdvancingTeams(
         tournament,
         currentRound,
       );
-      await this.generateBracketMatchesForRound(
+      await MatchController.generateBracketMatchesForRound(
         tournament,
         advancingTeams,
         nextRound,
@@ -1201,86 +815,6 @@ export class LiveTournamentController extends BaseController {
       return tournament;
     }
   }
-
-  // Process match update data to handle individual player scores
-  private processMatchUpdate(updateData: any): any {
-    const processedData = { ...updateData };
-
-    // Process team 1 player scores
-    if (
-      updateData.team1PlayerScores &&
-      Array.isArray(updateData.team1PlayerScores)
-    ) {
-      processedData["team1.playerScores"] = updateData.team1PlayerScores;
-
-      // Calculate team 1 total score from individual player scores
-      const team1Total = updateData.team1PlayerScores.reduce(
-        (sum: number, player: any) => {
-          return sum + (player.score || 0);
-        },
-        0,
-      );
-      processedData["team1.score"] = team1Total;
-
-      // Remove the original field to avoid conflicts
-      delete processedData.team1PlayerScores;
-    }
-
-    // Process team 2 player scores
-    if (
-      updateData.team2PlayerScores &&
-      Array.isArray(updateData.team2PlayerScores)
-    ) {
-      processedData["team2.playerScores"] = updateData.team2PlayerScores;
-
-      // Calculate team 2 total score from individual player scores
-      const team2Total = updateData.team2PlayerScores.reduce(
-        (sum: number, player: any) => {
-          return sum + (player.score || 0);
-        },
-        0,
-      );
-      processedData["team2.score"] = team2Total;
-
-      // Remove the original field to avoid conflicts
-      delete processedData.team2PlayerScores;
-    }
-
-    // Handle legacy team score updates (if individual scores not provided)
-    if (updateData.team1Score !== undefined) {
-      processedData["team1.score"] = updateData.team1Score;
-      delete processedData.team1Score;
-    }
-
-    if (updateData.team2Score !== undefined) {
-      processedData["team2.score"] = updateData.team2Score;
-      delete processedData.team2Score;
-    }
-
-    // Determine winner if both team scores are provided
-    if (
-      processedData["team1.score"] !== undefined &&
-      processedData["team2.score"] !== undefined
-    ) {
-      const team1Score = processedData["team1.score"];
-      const team2Score = processedData["team2.score"];
-
-      if (team1Score > team2Score) {
-        processedData.winner = "team1";
-      } else if (team2Score > team1Score) {
-        processedData.winner = "team2";
-      }
-      // If scores are tied, don't set winner
-    }
-
-    logger.debug(
-      "Processed match update:",
-      JSON.stringify(processedData, null, 2),
-    );
-    return processedData;
-  }
-
-  // Helper methods for round progression
 
   private getNextBracketRound(currentRound?: string): string | null {
     const roundOrder = ["quarterfinal", "semifinal", "final"];
@@ -1347,61 +881,6 @@ export class LiveTournamentController extends BaseController {
     }
   }
 
-  // Get teams advancing from current bracket round
-  private async getBracketAdvancingTeams(
-    tournament: ITournament,
-    currentRound?: string,
-  ): Promise<any[]> {
-    if (!currentRound) return [];
-
-    const matches = await Match.find({
-      tournamentId: tournament._id,
-      round: currentRound,
-      status: "completed",
-    });
-
-    const advancingTeams: any[] = [];
-
-    matches.forEach((match) => {
-      if (match.winner) {
-        const winningTeam =
-          match.winner === "team1" ? match.team1 : match.team2;
-        advancingTeams.push({
-          teamId: `${winningTeam.playerNames.join("_")}`,
-          teamName: winningTeam.playerNames.join(" & "),
-          players: winningTeam.players.map((playerId, index) => ({
-            playerId,
-            playerName: winningTeam.playerNames[index] || "Unknown",
-            seed: winningTeam.seed,
-          })),
-          combinedSeed: winningTeam.seed || 0,
-        });
-      }
-    });
-
-    logger.debug(
-      `${advancingTeams.length} teams advancing from ${currentRound}`,
-    );
-    return advancingTeams;
-  }
-
-  // Generate bracket matches for specific round with advancing teams
-  private async generateBracketMatchesForRound(
-    tournament: ITournament,
-    teams: any[],
-    round: string,
-  ): Promise<void> {
-    // Use existing bracket match generation but with specific advancing teams
-    const matches = await this.generateBracketMatches(
-      tournament,
-      teams,
-      round,
-      1,
-    );
-    await Match.insertMany(matches);
-    logger.debug(`Generated ${matches.length} matches for ${round}`);
-  }
-
   // Set tournament champion when tournament completes
   private async setTournamentChampion(tournament: ITournament): Promise<void> {
     try {
@@ -1442,7 +921,7 @@ export class LiveTournamentController extends BaseController {
     }
   }
 
-  // Update player career statistics (placeholder for Phase 3.2)
+  // Update player career statistics
   private async updatePlayerCareerStats(
     tournament: ITournament,
   ): Promise<void> {
@@ -1759,7 +1238,7 @@ export class LiveTournamentController extends BaseController {
     }
 
     // Generate bracket matches
-    await this.createMatchesForRound(tournament, startRound);
+    await MatchController.createMatchesForRound(tournament, startRound);
     return tournament;
   }
 
@@ -1775,79 +1254,6 @@ export class LiveTournamentController extends BaseController {
       logger.error("Error finalizing tournament stats on completion:", err);
     }
     return await tournament.save();
-  }
-
-  // Double-elimination helpers
-  private async getBracketLosingTeams(
-    tournament: ITournament,
-    round: string,
-  ): Promise<any[]> {
-    const matches = await Match.find({
-      tournamentId: tournament._id,
-      round,
-      status: "completed",
-    });
-    const losers: any[] = [];
-    matches.forEach((match) => {
-      if (!match.winner) return;
-      const losingTeam = match.winner === "team1" ? match.team2 : match.team1;
-      losers.push({
-        teamId: `${losingTeam.playerNames.join("_")}`,
-        teamName: losingTeam.playerNames.join(" & "),
-        players: losingTeam.players.map((playerId, index) => ({
-          playerId,
-          playerName: losingTeam.playerNames[index] || "Unknown",
-          seed: losingTeam.seed,
-        })),
-        combinedSeed: losingTeam.seed || 0,
-      });
-    });
-    return losers;
-  }
-
-  private async generateLosersMatchesForRound(
-    tournament: ITournament,
-    teams: any[],
-    round: string,
-  ): Promise<IMatch[]> {
-    if (!teams || teams.length < 2) return [] as any;
-
-    // Get the highest existing matchNumber for this tournament to avoid conflicts
-    const highestMatch = await Match.findOne({ tournamentId: tournament._id })
-      .sort({ matchNumber: -1 })
-      .select("matchNumber")
-      .lean();
-    let matchNumber = highestMatch ? highestMatch.matchNumber + 1 : 1;
-
-    // Pair sequentially: [0,1],[2,3],...
-    const matches: any[] = [];
-    for (let i = 0; i < teams.length; i += 2) {
-      if (!teams[i + 1]) break;
-      matches.push({
-        tournamentId: tournament._id,
-        matchNumber: matchNumber++,
-        round,
-        roundNumber: getRoundNumber(round as any),
-        team1: {
-          players: teams[i].players.map((p: any) => p.playerId),
-          playerNames: teams[i].players.map((p: any) => p.playerName),
-          score: 0,
-          seed: teams[i].combinedSeed,
-        },
-        team2: {
-          players: teams[i + 1].players.map((p: any) => p.playerId),
-          playerNames: teams[i + 1].players.map((p: any) => p.playerName),
-          score: 0,
-          seed: teams[i + 1].combinedSeed,
-        },
-        status: "scheduled",
-        scheduledDate: new Date(),
-      });
-    }
-    if (matches.length === 0) return [] as any;
-    const created = await Match.insertMany(matches);
-    logger.debug(`Generated ${created.length} matches for ${round}`);
-    return created as any;
   }
 
   private async advanceDoubleElimination(
@@ -1896,22 +1302,22 @@ export class LiveTournamentController extends BaseController {
 
     // After QF complete, generate SF and LBR round 1 (from QF losers)
     if (qfCompleted && !hasSF) {
-      const sfTeams = await this.getBracketAdvancingTeams(
+      const sfTeams = await MatchController.getBracketAdvancingTeams(
         tournament,
         "quarterfinal",
       );
-      await this.generateBracketMatchesForRound(
+      await MatchController.generateBracketMatchesForRound(
         tournament,
         sfTeams,
         "semifinal",
       );
     }
     if (qfCompleted && !hasL1) {
-      const qfLosers = await this.getBracketLosingTeams(
+      const qfLosers = await MatchController.getBracketLosingTeams(
         tournament,
         "quarterfinal",
       );
-      await this.generateLosersMatchesForRound(
+      await MatchController.generateLosersMatchesForRound(
         tournament,
         qfLosers,
         "lbr-round-1",
@@ -1920,24 +1326,28 @@ export class LiveTournamentController extends BaseController {
 
     // After SF complete, generate winners Final and LBR semifinal (losers of SF vs winners of LBR round 1)
     if (sfCompleted && !hasWF) {
-      const wfTeams = await this.getBracketAdvancingTeams(
+      const wfTeams = await MatchController.getBracketAdvancingTeams(
         tournament,
         "semifinal",
       );
-      await this.generateBracketMatchesForRound(tournament, wfTeams, "final");
+      await MatchController.generateBracketMatchesForRound(
+        tournament,
+        wfTeams,
+        "final",
+      );
     }
     if (sfCompleted && hasL1 && l1Completed && !hasLSF) {
-      const sfLosers = await this.getBracketLosingTeams(
+      const sfLosers = await MatchController.getBracketLosingTeams(
         tournament,
         "semifinal",
       );
       // Winners from LBR round 1
-      const l1Winners = await this.getBracketAdvancingTeams(
+      const l1Winners = await MatchController.getBracketAdvancingTeams(
         tournament as any,
         "lbr-round-1" as any,
       );
       const lsfTeams = [...sfLosers, ...l1Winners];
-      await this.generateLosersMatchesForRound(
+      await MatchController.generateLosersMatchesForRound(
         tournament,
         lsfTeams,
         "lbr-semifinal",
@@ -1946,11 +1356,11 @@ export class LiveTournamentController extends BaseController {
 
     // After LBR semifinal complete, generate LBR final
     if (hasLSF && lsfCompleted && !hasLF) {
-      const lsfWinners = await this.getBracketAdvancingTeams(
+      const lsfWinners = await MatchController.getBracketAdvancingTeams(
         tournament as any,
         "lbr-semifinal" as any,
       );
-      await this.generateLosersMatchesForRound(
+      await MatchController.generateLosersMatchesForRound(
         tournament,
         lsfWinners,
         "lbr-final",
@@ -1959,13 +1369,16 @@ export class LiveTournamentController extends BaseController {
 
     // If winners Final and LBR final complete, generate grand final
     if (wfCompleted && hasLF && lfCompleted && !hasGF) {
-      const wfWinner = await this.getBracketAdvancingTeams(tournament, "final");
-      const lfWinner = await this.getBracketAdvancingTeams(
+      const wfWinner = await MatchController.getBracketAdvancingTeams(
+        tournament,
+        "final",
+      );
+      const lfWinner = await MatchController.getBracketAdvancingTeams(
         tournament as any,
         "lbr-final" as any,
       );
       const gfTeams = [...wfWinner, ...lfWinner];
-      await this.generateLosersMatchesForRound(
+      await MatchController.generateLosersMatchesForRound(
         tournament,
         gfTeams,
         "grand-final",
@@ -1980,623 +1393,6 @@ export class LiveTournamentController extends BaseController {
     await Match.deleteMany({ tournamentId: tournament._id });
     tournament.status = "scheduled";
     return await tournament.save();
-  }
-
-  private async createMatchesForRound(
-    tournament: ITournament,
-    round: string,
-  ): Promise<IMatch[]> {
-    try {
-      // Clear any existing matches for this round to avoid duplicates
-      await Match.deleteMany({
-        tournamentId: tournament._id,
-        round: round as any,
-      });
-
-      // Get the highest existing matchNumber for this tournament to avoid conflicts
-      const highestMatch = await Match.findOne({ tournamentId: tournament._id })
-        .sort({ matchNumber: -1 })
-        .select("matchNumber")
-        .lean();
-      const startingMatchNumber = highestMatch
-        ? highestMatch.matchNumber + 1
-        : 1;
-
-      // Get teams from tournament setup data, or synthesize from selected players if missing
-      logger.debug("DEBUG: Entering Match/Teams check");
-      let teams = tournament.generatedTeams || [];
-      logger.debug("DEBUG: Teams count:", teams.length);
-      if (!teams || teams.length === 0) {
-        // Build lightweight teams from selected players + generatedSeeds metadata
-        const seedMap: Record<
-          string,
-          { playerId: any; playerName: string; seed?: number }
-        > = {};
-        const seeds = (tournament as any).generatedSeeds || [];
-        for (const s of seeds) {
-          const pid = (s.playerId || s._id || s.id || "").toString();
-          if (pid)
-            seedMap[pid] = {
-              playerId: s.playerId || s._id || s.id,
-              playerName: s.playerName || s.name || `Player ${pid}`,
-              seed: s.seed,
-            };
-        }
-
-        // Normalize and dedupe player IDs while preserving order
-        const raw = Array.isArray((tournament as any).players)
-          ? (tournament as any).players
-          : [];
-        const uniqueIds: string[] = [];
-        const seen = new Set<string>();
-        for (const pid of raw) {
-          const key = (pid || "").toString();
-          if (!key) continue;
-          if (seen.has(key)) continue;
-          seen.add(key);
-          uniqueIds.push(key);
-        }
-
-        // Derive display meta
-        const playersMeta = uniqueIds.map((id, idx) => ({
-          playerId: id,
-          playerName: seedMap[id]?.playerName || `Player ${idx + 1}`,
-          seed: seedMap[id]?.seed || idx + 1,
-        }));
-
-        // Determine team size: 1 for singles formats, else 2
-        const fmt = ((tournament as any).format || "").toString().toLowerCase();
-        const isSingles = fmt.includes("singles");
-        const teamSize = isSingles ? 1 : 2;
-
-        if (playersMeta.length < teamSize) {
-          throw new Error("Not enough unique players to form teams");
-        }
-
-        // Group into teams and dedupe by composition
-        const synthesizedTeams: any[] = [];
-        const teamSeen = new Set<string>();
-        for (let i = 0; i < playersMeta.length; i += teamSize) {
-          const group = playersMeta.slice(i, i + teamSize);
-          if (group.length === 0) continue;
-          const sig = group
-            .map((g) => g.playerId.toString())
-            .sort()
-            .join("|");
-          if (teamSeen.has(sig)) continue;
-          teamSeen.add(sig);
-
-          const teamName = group.map((g) => g.playerName).join(" & ");
-          const combinedSeed = Math.ceil(
-            group.reduce((sum, g) => sum + (g.seed || i + 1), 0) / group.length,
-          );
-          synthesizedTeams.push({
-            teamId: `${(tournament as any)._id || "tourn"}-T${synthesizedTeams.length + 1}`,
-            teamName,
-            players: group,
-            combinedSeed,
-            combinedStatistics: {},
-          });
-        }
-
-        teams = synthesizedTeams;
-        if (teams.length === 0) {
-          // Fallback: reconstruct teams from TournamentResult (for historical data)
-          teams = await this.reconstructTeamsFromResults(tournament);
-          if (teams.length === 0) {
-            throw new Error("No teams found in tournament setup data or results");
-          }
-          // Persist reconstructed teams to tournament for future use
-          (tournament.generatedTeams as any) = teams;
-          await tournament.save();
-          logger.debug(`Reconstructed ${teams.length} teams from TournamentResult`);
-        }
-      }
-
-      let matches: any[] = [];
-
-      // Determine round type and generate appropriate matches
-      // Use the starting match number calculated above to avoid conflicts
-      if (isRoundRobinRound(round)) {
-        matches = await this.generateRoundRobinMatches(
-          tournament,
-          teams,
-          round,
-          startingMatchNumber,
-        );
-      } else {
-        // Bracket matches (quarterfinal, semifinal, final)
-        matches = await this.generateBracketMatches(
-          tournament,
-          teams,
-          round,
-          startingMatchNumber,
-        );
-      }
-
-      // Create matches in database
-      logger.error(
-        `DEBUG: About to insert ${matches.length} matches for ${round}`,
-      );
-      const createdMatches = await Match.insertMany(matches);
-      logger.debug(`Created ${createdMatches.length} matches for ${round}`);
-
-      return createdMatches as IMatch[];
-    } catch (error) {
-      logger.error(`Error creating matches for round ${round}:`, error);
-      throw error;
-    }
-  }
-
-  // Generate round-robin matches where every team plays every other team
-  private async generateRoundRobinMatches(
-    tournament: any,
-    teams: any[],
-    round: string,
-    startMatchNumber: number,
-  ): Promise<any[]> {
-    const matches = [];
-    let matchNumber = startMatchNumber;
-
-    logger.debug("Team structure sample:", JSON.stringify(teams[0], null, 2));
-
-    // Generate all possible team pairings (combinatorial)
-    for (let i = 0; i < teams.length; i++) {
-      for (let j = i + 1; j < teams.length; j++) {
-        const team1 = teams[i];
-        const team2 = teams[j];
-
-        // Ensure player names are populated properly
-        const team1PlayerNames = team1.players.map((p: any) => {
-          return (
-            p.playerName || p.name || `Player ${p.playerId || p._id || p.id}`
-          );
-        });
-
-        const team2PlayerNames = team2.players.map((p: any) => {
-          return (
-            p.playerName || p.name || `Player ${p.playerId || p._id || p.id}`
-          );
-        });
-
-        const match = {
-          tournamentId: tournament._id,
-          matchNumber: matchNumber++,
-          round: round,
-          roundNumber: getRoundNumber(round as any),
-          team1: {
-            players: team1.players.map((p: any) => p.playerId || p._id || p.id),
-            playerNames: team1PlayerNames,
-            score: 0,
-            seed: team1.combinedSeed,
-          },
-          team2: {
-            players: team2.players.map((p: any) => p.playerId || p._id || p.id),
-            playerNames: team2PlayerNames,
-            score: 0,
-            seed: team2.combinedSeed,
-          },
-          status: "scheduled",
-          scheduledDate: new Date(),
-        };
-
-        logger.debug(
-          `Match ${matchNumber - 1}: ${team1PlayerNames.join(" & ")} vs ${team2PlayerNames.join(" & ")}`,
-        );
-        matches.push(match);
-      }
-    }
-
-    logger.debug(`Generated ${matches.length} round-robin matches`);
-    return matches;
-  }
-
-  // Generate bracket matches based on seeding and tournament progression
-  private async generateBracketMatches(
-    tournament: any,
-    teams: any[],
-    round: string,
-    startMatchNumber: number,
-  ): Promise<any[]> {
-    const matches = [];
-    let matchNumber = startMatchNumber;
-
-    // For bracket play, we need to determine which teams advance
-    // This is a simplified version - would need to get actual standings
-    let bracketTeams = teams;
-
-    // Sort teams by performance (would use actual standings in real implementation)
-    bracketTeams.sort((a: any, b: any) => a.combinedSeed - b.combinedSeed);
-
-    // Determine number of teams for this bracket round
-    const roundTeamCounts: Record<string, number> = {
-      quarterfinal: 8,
-      semifinal: 4,
-      final: 2,
-      "third-place": 4, // Special case for 3rd/4th place
-    };
-
-    const requiredTeams = roundTeamCounts[round] || bracketTeams.length;
-    const activeTeams = bracketTeams.slice(0, requiredTeams);
-
-    // Generate bracket matches based on seeding
-    if (round === "quarterfinal") {
-      // QF: 1v8, 4v5, 3v6, 2v7
-      const pairings = [
-        [0, 7],
-        [3, 4],
-        [2, 5],
-        [1, 6],
-      ];
-
-      for (const [i, j] of pairings) {
-        if (activeTeams[i] && activeTeams[j]) {
-          matches.push(
-            this.createBracketMatch(
-              tournament,
-              activeTeams[i],
-              activeTeams[j],
-              matchNumber++,
-              round,
-              1,
-            ),
-          );
-        }
-      }
-    } else if (round === "semifinal") {
-      // SF: Winners from QF
-      for (let i = 0; i < activeTeams.length; i += 2) {
-        if (activeTeams[i] && activeTeams[i + 1]) {
-          matches.push(
-            this.createBracketMatch(
-              tournament,
-              activeTeams[i],
-              activeTeams[i + 1],
-              matchNumber++,
-              round,
-              2,
-            ),
-          );
-        }
-      }
-    } else if (round === "final") {
-      // Final: Winners from SF
-      if (activeTeams.length >= 2) {
-        matches.push(
-          this.createBracketMatch(
-            tournament,
-            activeTeams[0],
-            activeTeams[1],
-            matchNumber++,
-            round,
-            3,
-          ),
-        );
-      }
-    }
-
-    logger.debug(`Generated ${matches.length} ${round} matches`);
-    return matches;
-  }
-
-  // Helper method to create a single bracket match
-  private createBracketMatch(
-    tournament: any,
-    team1: any,
-    team2: any,
-    matchNumber: number,
-    round: string,
-    roundNumber: number,
-  ): any {
-    return {
-      tournamentId: tournament._id,
-      matchNumber,
-      round,
-      roundNumber,
-      team1: {
-        players: team1.players.map((p: any) => p.playerId),
-        playerNames: team1.players.map((p: any) => p.playerName),
-        score: 0,
-        seed: team1.combinedSeed,
-      },
-      team2: {
-        players: team2.players.map((p: any) => p.playerId),
-        playerNames: team2.players.map((p: any) => p.playerName),
-        score: 0,
-        seed: team2.combinedSeed,
-      },
-      status: "scheduled",
-      scheduledDate: new Date(),
-    };
-  }
-
-  private async updateTournamentStatistics(match: IMatch): Promise<void> {
-    try {
-      logger.debug(
-        `Updating tournament statistics for match ${match.matchNumber}`,
-      );
-
-      // Get tournament to access setup data
-      const tournament = await Tournament.findById(match.tournamentId);
-      if (!tournament) {
-        logger.error("Tournament not found for statistics update");
-        return;
-      }
-
-      // Determine winner and loser
-      if (
-        !match.winner ||
-        match.team1.score === undefined ||
-        match.team2.score === undefined
-      ) {
-        logger.debug(
-          "Match does not have winner or scores, skipping statistics update",
-        );
-        return;
-      }
-
-      const winningTeam = match.winner === "team1" ? match.team1 : match.team2;
-      const losingTeam = match.winner === "team1" ? match.team2 : match.team1;
-
-      // Update or create tournament result records for both teams
-      await this.updateTeamTournamentResult(
-        tournament,
-        winningTeam,
-        match,
-        true,
-      );
-      await this.updateTeamTournamentResult(
-        tournament,
-        losingTeam,
-        match,
-        false,
-      );
-
-      // If this is a bracket match, update bracket progression
-      if (["quarterfinal", "semifinal", "final"].includes(match.round)) {
-        await this.updateBracketProgression(tournament, match);
-      }
-
-      logger.debug(
-        `Statistics updated successfully for match ${match.matchNumber}`,
-      );
-    } catch (error) {
-      logger.error("Error updating tournament statistics:", error);
-    }
-  }
-
-  // Update or create tournament result record for a team
-  private async updateTeamTournamentResult(
-    tournament: any,
-    team: any,
-    match: IMatch,
-    won: boolean,
-  ): Promise<void> {
-    try {
-      // Find existing tournament result or create new one
-      let result = await TournamentResult.findOne({
-        tournamentId: tournament._id,
-        $or: [
-          { players: { $in: team.players } },
-          { teamName: team.playerNames.join(" & ") },
-        ],
-      });
-
-      if (!result) {
-        // Create new tournament result
-        result = new TournamentResult({
-          tournamentId: tournament._id,
-          players: team.players,
-          teamName: team.playerNames.join(" & "),
-          seed: team.seed || 0,
-          division: tournament.format,
-          roundRobinScores: {
-            round1: 0,
-            round2: 0,
-            round3: 0,
-            rrWon: 0,
-            rrLost: 0,
-            rrPlayed: 0,
-            rrWinPercentage: 0,
-          },
-          bracketScores: {
-            r16Won: 0,
-            r16Lost: 0,
-            qfWon: 0,
-            qfLost: 0,
-            sfWon: 0,
-            sfLost: 0,
-            finalsWon: 0,
-            finalsLost: 0,
-            bracketWon: 0,
-            bracketLost: 0,
-            bracketPlayed: 0,
-          },
-          totalStats: {
-            totalWon: 0,
-            totalLost: 0,
-            totalPlayed: 0,
-            winPercentage: 0,
-          },
-        });
-      }
-
-      // Initialize missing subdocuments for legacy records
-      if (!result.roundRobinScores) {
-        (result as any).roundRobinScores = {
-          round1: 0,
-          round2: 0,
-          round3: 0,
-          rrWon: 0,
-          rrLost: 0,
-          rrPlayed: 0,
-          rrWinPercentage: 0,
-        };
-      }
-      if (!result.bracketScores) {
-        (result as any).bracketScores = {
-          r16Won: 0,
-          r16Lost: 0,
-          qfWon: 0,
-          qfLost: 0,
-          sfWon: 0,
-          sfLost: 0,
-          finalsWon: 0,
-          finalsLost: 0,
-          bracketWon: 0,
-          bracketLost: 0,
-          bracketPlayed: 0,
-        };
-      }
-      if (!result.totalStats) {
-        (result as any).totalStats = {
-          totalWon: 0,
-          totalLost: 0,
-          totalPlayed: 0,
-          winPercentage: 0,
-        };
-      }
-      // Clean up invalid legacy values
-      if (
-        (result as any).totalStats &&
-        (result as any).totalStats.bodFinish === 0
-      ) {
-        delete (result as any).totalStats.bodFinish;
-      }
-
-      // Update scores based on match round
-      if (isRoundRobinRound(match.round)) {
-        result.roundRobinScores.rrPlayed += 1;
-        if (won) {
-          result.roundRobinScores.rrWon += 1;
-        } else {
-          result.roundRobinScores.rrLost += 1;
-        }
-        result.roundRobinScores.rrWinPercentage =
-          result.roundRobinScores.rrPlayed > 0
-            ? result.roundRobinScores.rrWon / result.roundRobinScores.rrPlayed
-            : 0;
-      } else {
-        // Bracket match
-        result.bracketScores.bracketPlayed += 1;
-        if (won) {
-          result.bracketScores.bracketWon += 1;
-          // Update specific bracket round wins
-          this.updateBracketRoundScore(result, match.round, "won");
-        } else {
-          result.bracketScores.bracketLost += 1;
-          // Update specific bracket round losses
-          this.updateBracketRoundScore(result, match.round, "lost");
-        }
-      }
-
-      // Update total stats
-      result.totalStats.totalPlayed =
-        result.roundRobinScores.rrPlayed + result.bracketScores.bracketPlayed;
-      result.totalStats.totalWon =
-        result.roundRobinScores.rrWon + result.bracketScores.bracketWon;
-      result.totalStats.totalLost =
-        result.roundRobinScores.rrLost + result.bracketScores.bracketLost;
-      result.totalStats.winPercentage =
-        result.totalStats.totalPlayed > 0
-          ? result.totalStats.totalWon / result.totalStats.totalPlayed
-          : 0;
-
-      await result.save();
-      // Get team name from populated players or construct from IDs
-      const teamName = result.populated("players")
-        ? (result.players as any[])
-          .map((p: any) => p.name || p.toString())
-          .join(" & ")
-        : result.players.map((p: any) => p.toString()).join(" & ");
-      logger.debug(`Updated tournament result for team: ${teamName}`);
-    } catch (error) {
-      logger.error("Error updating team tournament result:", error);
-    }
-  }
-
-  // Helper to update specific bracket round scores
-  private updateBracketRoundScore(
-    result: any,
-    round: string,
-    outcome: "won" | "lost",
-  ): void {
-    const roundMapping: Record<string, string> = {
-      "round-of-16": "r16",
-      quarterfinal: "qf",
-      semifinal: "sf",
-      final: "finals",
-    };
-
-    const roundPrefix = roundMapping[round];
-    if (roundPrefix) {
-      const field = `${roundPrefix}${outcome === "won" ? "Won" : "Lost"}`;
-      if (result.bracketScores[field] !== undefined) {
-        result.bracketScores[field] += 1;
-      }
-    }
-  }
-
-  // Update bracket progression tracking
-  private async updateBracketProgression(
-    tournament: any,
-    match: IMatch,
-  ): Promise<void> {
-    // This would update tournament's bracket progression tracking
-    // For now, log the progression
-    logger.debug(
-      `Bracket progression: ${match.round} winner is team ${match.winner}`,
-    );
-  }
-
-  /**
-   * Reconstruct generatedTeams from TournamentResult data.
-   * Used for historical tournaments that have results but no match/team data.
-   */
-  private async reconstructTeamsFromResults(
-    tournament: ITournament,
-  ): Promise<any[]> {
-    try {
-      const results = await TournamentResult.find({ tournamentId: tournament._id })
-        .populate("players", "name")
-        .sort({ seed: 1, "totalStats.bodFinish": 1 });
-
-      if (!results || results.length === 0) {
-        logger.debug("No TournamentResults to reconstruct teams from");
-        return [];
-      }
-
-      const teams: any[] = [];
-
-      for (const result of results) {
-        // Each result represents one team's participation
-        const players = (result.players || []).map((p: any, idx: number) => ({
-          playerId: p._id?.toString() || p.toString(),
-          playerName: p.name || `Player ${idx + 1}`,
-          seed: result.seed || idx + 1,
-          statistics: result.totalStats || {},
-        }));
-
-        if (players.length === 0) continue;
-
-        const teamName = players.map((p: any) => p.playerName).join(" & ");
-        const teamId = `${tournament._id}-R${teams.length + 1}`;
-
-        teams.push({
-          teamId,
-          teamName,
-          players,
-          combinedSeed: result.seed || teams.length + 1,
-          combinedStatistics: result.totalStats || {},
-        });
-      }
-
-      logger.debug(`Reconstructed ${teams.length} teams from ${results.length} results`);
-      return teams;
-    } catch (error) {
-      logger.error("Error reconstructing teams from results:", error);
-      return [];
-    }
   }
 }
 

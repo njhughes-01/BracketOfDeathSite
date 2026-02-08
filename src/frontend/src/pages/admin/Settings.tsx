@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 import logger from "../../utils/logger";
 import apiClient from "../../services/api";
 import type { SystemSettings } from "../../services/api";
@@ -376,6 +377,31 @@ const SettingsPage: React.FC = () => {
             Manage global system configurations and integrations
           </p>
         </div>
+        <Link
+          to="/admin"
+          className="p-2 rounded-full bg-white/5 hover:bg-white/10 transition-colors"
+        >
+          <span className="material-symbols-outlined text-white">close</span>
+        </Link>
+      </div>
+
+      {/* Settings Navigation Tabs */}
+      <div className="flex gap-2 border-b border-white/10 pb-4">
+        <div className="px-4 py-2 bg-primary/20 text-primary font-bold rounded-lg border border-primary/30">
+          Email
+        </div>
+        <Link
+          to="/admin/settings/stripe"
+          className="px-4 py-2 bg-white/5 text-slate-400 hover:text-white hover:bg-white/10 font-bold rounded-lg border border-white/10 transition-colors"
+        >
+          Stripe
+        </Link>
+        <Link
+          to="/admin/settings/discounts"
+          className="px-4 py-2 bg-white/5 text-slate-400 hover:text-white hover:bg-white/10 font-bold rounded-lg border border-white/10 transition-colors"
+        >
+          Discounts
+        </Link>
       </div>
 
       {error && (

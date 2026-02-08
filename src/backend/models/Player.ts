@@ -48,6 +48,12 @@ const playerSchema = new Schema<IPlayer>(
       lowercase: true,
       sparse: true,
     },
+    keycloakUserId: {
+      type: String,
+      trim: true,
+      sparse: true,
+      index: true,
+    },
     bodsPlayed: {
       type: Number,
       default: 0,

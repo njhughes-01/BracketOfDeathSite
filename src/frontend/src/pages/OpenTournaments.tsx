@@ -5,6 +5,7 @@ import { useAuth } from "../contexts/AuthContext";
 import { apiClient } from "../services/api";
 import LoadingSpinner from "../components/ui/LoadingSpinner";
 
+
 interface ITournament {
   id: string;
   bodNumber: number;
@@ -26,8 +27,6 @@ const OpenTournaments: React.FC = () => {
   const [tournaments, setTournaments] = useState<ITournament[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [joiningId, setJoiningId] = useState<string | null>(null);
-
   useEffect(() => {
     fetchOpenTournaments();
   }, []);
@@ -45,37 +44,17 @@ const OpenTournaments: React.FC = () => {
     }
   };
 
-  const handleJoin = async (tournamentId: string) => {
+  const handleJoin = (tournamentId: string) => {
     if (!isAuthenticated) {
       navigate(
-        `/login?returnUrl=${encodeURIComponent(window.location.pathname)}`,
+        `/login?returnUrl=${encodeURIComponent(`/tournaments/${tournamentId}`)}`,
       );
       return;
     }
 
-    try {
-      setJoiningId(tournamentId);
-
-      const profileResponse = await apiClient.getProfile();
-      const playerId = profileResponse.data?.player?._id || profileResponse.data?.user?.playerId;
-      
-      if (!playerId) {
-        navigate("/onboarding");
-        return;
-      }
-
-      await apiClient.joinTournament(tournamentId, playerId);
-
-      // Refresh list to show updated status
-      await fetchOpenTournaments();
-      alert("Successfully registered!");
-    } catch (err: any) {
-      logger.error("Join failed:", err);
-      const msg = err.response?.data?.error || "Failed to join tournament.";
-      alert(msg);
-    } finally {
-      setJoiningId(null);
-    }
+    // Navigate to tournament detail page which has the full checkout flow
+    // (reservation → payment → ticket)
+    navigate(`/tournaments/${tournamentId}`);
   };
 
   if (loading) return <LoadingSpinner />;
@@ -186,23 +165,16 @@ const OpenTournaments: React.FC = () => {
 
                   <button
                     onClick={() => handleJoin(tournament.id)}
-                    disabled={joiningId === tournament.id}
                     className={`w-full py-4 rounded-xl font-bold text-base transition-all flex items-center justify-center gap-2 ${
                       isFull
                         ? "bg-amber-500/10 text-amber-500 hover:bg-amber-500 hover:text-black border border-amber-500/20"
                         : "bg-primary text-black hover:bg-primary-dark shadow-[0_0_20px_rgba(34,197,94,0.3)] hover:shadow-[0_0_30px_rgba(34,197,94,0.5)]"
                     }`}
                   >
-                    {joiningId === tournament.id ? (
-                      <span className="animate-pulse">Processing...</span>
-                    ) : (
-                      <>
-                        <span>{isFull ? "Join Waitlist" : "Register Now"}</span>
-                        <span className="material-symbols-outlined">
-                          arrow_forward
-                        </span>
-                      </>
-                    )}
+                    <span>{isFull ? "Join Waitlist" : "Register Now"}</span>
+                    <span className="material-symbols-outlined">
+                      arrow_forward
+                    </span>
                   </button>
                 </div>
               </div>

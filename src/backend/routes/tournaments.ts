@@ -2,6 +2,11 @@ import { Router } from "express";
 import TournamentController from "../controllers/TournamentController";
 import TournamentAdminController from "../controllers/TournamentAdminController";
 import LiveTournamentController from "../controllers/LiveTournamentController";
+import MatchController from "../controllers/MatchController";
+import TournamentStatsController from "../controllers/TournamentStatsController";
+import { checkoutController } from "../controllers/CheckoutController";
+import { ticketController } from "../controllers/TicketController";
+import { invitationController } from "../controllers/InvitationController";
 import { requireAuth, requireAdmin } from "../middleware/auth";
 import {
   validateObjectId,
@@ -40,7 +45,7 @@ router.post("/", requireAdmin, TournamentController.create);
 router.put(
   "/matches/:matchId",
   requireAdmin,
-  LiveTournamentController.updateMatch,
+  MatchController.updateMatch,
 );
 router.put("/:id", requireAdmin, validateObjectId, TournamentController.update);
 router.delete(
@@ -106,17 +111,17 @@ router.get(
 router.get(
   "/:id/live-stats",
   validateObjectId,
-  LiveTournamentController.getLiveStats,
+  TournamentStatsController.getLiveStats,
 );
 router.get(
   "/:id/player-stats",
   validateObjectId,
-  LiveTournamentController.getTournamentPlayerStats,
+  TournamentStatsController.getTournamentPlayerStats,
 );
 router.get(
   "/:id/stream",
   validateObjectId,
-  LiveTournamentController.streamTournamentEvents,
+  TournamentStatsController.streamTournamentEvents,
 );
 router.post(
   "/:id/action",
@@ -127,30 +132,113 @@ router.post(
 router.get(
   "/:id/matches",
   validateObjectId,
-  LiveTournamentController.getTournamentMatches,
+  MatchController.getTournamentMatches,
 );
 router.post(
   "/:id/checkin",
   requireAdmin,
   validateObjectId,
-  LiveTournamentController.checkInTeam,
+  MatchController.checkInTeam,
 );
 router.post(
   "/:id/generate-matches",
   requireAdmin,
   validateObjectId,
-  LiveTournamentController.generateMatches,
+  MatchController.generateMatches,
 );
 router.post(
   "/:id/matches/confirm-completed",
   requireAdmin,
   validateObjectId,
-  LiveTournamentController.confirmCompletedMatches,
+  MatchController.confirmCompletedMatches,
 );
 
 // Match management routes (create separate route file later if needed)
 
 // Admin routes
 router.post("/bulk-import", requireAdmin, TournamentController.bulkImport);
+
+// ===== Phase 4: Slot Reservation Routes =====
+router.post(
+  "/:id/reserve",
+  requireAuth,
+  validateObjectId,
+  checkoutController.reserveSlot,
+);
+router.delete(
+  "/:id/reserve",
+  requireAuth,
+  validateObjectId,
+  checkoutController.cancelReservation,
+);
+router.get(
+  "/:id/reservation",
+  requireAuth,
+  validateObjectId,
+  checkoutController.getReservation,
+);
+
+// ===== Phase 4: Tournament Ticket Routes (Admin) =====
+router.get(
+  "/:id/tickets",
+  requireAdmin,
+  validateObjectId,
+  ticketController.getTournamentTickets,
+);
+router.get(
+  "/:id/tickets/stats",
+  requireAdmin,
+  validateObjectId,
+  ticketController.getTournamentTicketStats,
+);
+
+router.get(
+  "/:id/transactions",
+  requireAdmin,
+  validateObjectId,
+  ticketController.getTournamentTransactions,
+);
+
+// ===== Phase 4: Invitation Routes (Admin) =====
+router.get(
+  "/:id/invitations",
+  requireAdmin,
+  validateObjectId,
+  invitationController.getInvitations,
+);
+router.post(
+  "/:id/invitations",
+  requireAdmin,
+  validateObjectId,
+  invitationController.sendInvitations,
+);
+router.post(
+  "/:id/invitations/:playerId/remind",
+  requireAdmin,
+  [
+    param("id").isMongoId().withMessage("Invalid tournament ID"),
+    param("playerId").isMongoId().withMessage("Invalid player ID"),
+  ],
+  validateRequest,
+  invitationController.sendReminder,
+);
+router.delete(
+  "/:id/invitations/:playerId",
+  requireAdmin,
+  [
+    param("id").isMongoId().withMessage("Invalid tournament ID"),
+    param("playerId").isMongoId().withMessage("Invalid player ID"),
+  ],
+  validateRequest,
+  invitationController.revokeInvitation,
+);
+
+// Check invitation status (for user)
+router.get(
+  "/:id/invitation-status",
+  requireAuth,
+  validateObjectId,
+  invitationController.checkInvitation,
+);
 
 export default router;

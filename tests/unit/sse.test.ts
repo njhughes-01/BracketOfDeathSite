@@ -1,5 +1,5 @@
 import { Request, Response } from 'express';
-import { LiveTournamentController } from '../../src/backend/controllers/LiveTournamentController';
+import { TournamentStatsController } from '../../src/backend/controllers/TournamentStatsController';
 import { eventBus } from '../../src/backend/services/EventBus';
 import { Tournament } from '../../src/backend/models/Tournament';
 import { Match } from '../../src/backend/models/Match';
@@ -10,14 +10,14 @@ jest.mock('../../src/backend/models/Tournament');
 jest.mock('../../src/backend/models/Match');
 jest.mock('../../src/backend/models/TournamentResult');
 
-describe('LiveTournamentController SSE', () => {
-  let controller: LiveTournamentController;
+describe('TournamentStatsController SSE', () => {
+  let controller: TournamentStatsController;
   let req: Partial<Request>;
   let res: Partial<Response>;
   let writeMock: any;
 
   beforeEach(() => {
-    controller = new LiveTournamentController();
+    controller = new TournamentStatsController();
     writeMock = jest.fn();
     req = {
       params: { id: 't1' },

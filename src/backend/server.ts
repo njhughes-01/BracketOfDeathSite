@@ -13,6 +13,8 @@ import { notFoundHandler } from "./middleware/notFoundHandler";
 import { sanitizeInput, validatePagination } from "./middleware/validation";
 import apiRoutes from "./routes";
 import systemRoutes from "./routes/system";
+import { stripeWebhookController } from "./controllers/StripeWebhookController";
+import ReservationCleanupService from "./services/ReservationCleanupService";
 
 // Load environment variables
 config();
@@ -42,6 +44,9 @@ app.use("/api/", limiter as unknown as express.RequestHandler);
 
 // Logging
 app.use(morgan("combined"));
+
+// Stripe webhook route MUST be before JSON body parser (needs raw body for signature verification)
+app.post("/api/stripe/webhooks", express.raw({ type: "application/json" }), stripeWebhookController.handleWebhook);
 
 // Body parsing middleware
 app.use(express.json({ limit: "10mb" }));
@@ -86,6 +91,9 @@ app.use(errorHandler);
 export const startServer = async (): Promise<void> => {
   try {
     await connectToDatabase();
+    
+    // Start background services
+    ReservationCleanupService.startCleanupService();
 
     const server = app.listen(PORT, () => {
       logger.info(`Server running on port ${PORT}`);
@@ -95,6 +103,7 @@ export const startServer = async (): Promise<void> => {
     // Graceful shutdown
     process.on("SIGTERM", () => {
       logger.info("SIGTERM received, shutting down gracefully");
+      ReservationCleanupService.stopCleanupService();
       server.close(() => {
         logger.info("Process terminated");
         process.exit(0);

@@ -59,6 +59,59 @@ export interface SystemSettings {
   brandSecondaryColor: string;
 }
 
+// Stripe Settings types
+export interface StripeSettings {
+  stripeConfigured: boolean;
+  stripeConfigSource: "environment" | "database" | null;
+  stripePublishableKey: string;
+  hasSecretKey: boolean;
+  hasWebhookSecret: boolean;
+  defaultEntryFee: number; // In cents
+  annualMembershipFee: number | null; // In cents
+  monthlyMembershipFee: number | null; // In cents
+}
+
+export interface StripeSettingsUpdate {
+  stripePublishableKey?: string;
+  stripeSecretKey?: string;
+  stripeWebhookSecret?: string;
+  defaultEntryFee?: number; // In cents
+}
+
+// Discount Code types
+export interface DiscountCode {
+  _id: string;
+  code: string;
+  stripeCouponId: string;
+  type: "percent" | "amount";
+  percentOff?: number;
+  amountOff?: number; // In cents
+  maxRedemptions?: number | null;
+  redemptionCount: number;
+  expiresAt?: string | null;
+  tournamentIds?: string[];
+  active: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface DiscountCodeInput {
+  code: string;
+  type: "percent" | "amount";
+  percentOff?: number;
+  amountOff?: number; // In cents
+  maxRedemptions?: number | null;
+  expiresAt?: string | null;
+  tournamentIds?: string[];
+}
+
+export interface DiscountCodeUpdate {
+  maxRedemptions?: number | null;
+  expiresAt?: string | null;
+  tournamentIds?: string[];
+  active?: boolean;
+}
+
 // ... existing code ...
 
 // Global token getter function - will be set by AuthContext
@@ -822,6 +875,139 @@ class ApiClient {
     return this.post<ApiResponse>("/auth/verify-email-request", {});
   }
 
+  // Ticket API methods
+  async getTickets(): Promise<ApiResponse<{ tickets: any[] }>> {
+    return this.get<ApiResponse<{ tickets: any[] }>>('/tickets');
+  }
+
+  async getTicket(id: string): Promise<ApiResponse<any>> {
+    return this.get<ApiResponse<any>>(`/tickets/${id}`);
+  }
+
+  async getMyTicketForTournament(tournamentId: string): Promise<ApiResponse<{
+    ticket: {
+      _id: string;
+      ticketCode: string;
+      status: "valid" | "checked_in" | "refunded" | "void";
+      paymentStatus: "paid" | "free" | "refunded";
+      amountPaid: number;
+    };
+  } | null>> {
+    return this.get<ApiResponse<{
+      ticket: {
+        _id: string;
+        ticketCode: string;
+        status: "valid" | "checked_in" | "refunded" | "void";
+        paymentStatus: "paid" | "free" | "refunded";
+        amountPaid: number;
+      };
+    } | null>>(`/tickets/tournament/${tournamentId}/mine`);
+  }
+
+  async resendTicketEmail(ticketId: string): Promise<ApiResponse> {
+    return this.post<ApiResponse>(`/tickets/${ticketId}/resend`, {});
+  }
+
+  // Admin ticket lookup by QR code
+  async lookupTicketByCode(code: string): Promise<ApiResponse<{
+    ticket: {
+      id: string;
+      ticketCode: string;
+      status: "valid" | "checked_in" | "refunded" | "void";
+      player: { id: string; firstName: string; lastName: string };
+      team?: { id: string; name: string };
+      tournament: { id: string; name: string };
+      checkedInAt?: string;
+      checkedInBy?: { id: string; name: string };
+    };
+    alreadyCheckedIn: boolean;
+    canCheckIn: boolean;
+  }>> {
+    return this.get<ApiResponse<{
+      ticket: {
+        id: string;
+        ticketCode: string;
+        status: "valid" | "checked_in" | "refunded" | "void";
+        player: { id: string; firstName: string; lastName: string };
+        team?: { id: string; name: string };
+        tournament: { id: string; name: string };
+        checkedInAt?: string;
+        checkedInBy?: { id: string; name: string };
+      };
+      alreadyCheckedIn: boolean;
+      canCheckIn: boolean;
+    }>>(`/tickets/lookup/${encodeURIComponent(code)}`);
+  }
+
+  // Admin ticket check-in
+  async checkInTicket(ticketId: string): Promise<ApiResponse<{ message: string; checkedInAt: string }>> {
+    return this.post<ApiResponse<{ message: string; checkedInAt: string }>>(`/tickets/${ticketId}/check-in`, {});
+  }
+
+  // Admin void ticket
+  async voidTicket(ticketId: string): Promise<ApiResponse<{ message: string }>> {
+    return this.post<ApiResponse<{ message: string }>>(`/tickets/${ticketId}/void`, {});
+  }
+
+  // Checkout API methods
+  async getCheckoutSession(sessionId: string): Promise<ApiResponse<any>> {
+    return this.get<ApiResponse<any>>(`/checkout/session/${sessionId}`);
+  }
+
+  async createCheckoutSession(data: {
+    tournamentId: string;
+    reservationId: string;
+    discountCode?: string;
+  }): Promise<ApiResponse<{ sessionId: string; url: string; expiresAt: string }>> {
+    return this.post<ApiResponse<{ sessionId: string; url: string; expiresAt: string }>>(
+      '/checkout/create-session',
+      data
+    );
+  }
+
+  async completeFreeRegistration(data: {
+    tournamentId: string;
+    reservationId: string;
+  }): Promise<ApiResponse<{ ticketId: string; ticketCode: string; message: string }>> {
+    return this.post<ApiResponse<{ ticketId: string; ticketCode: string; message: string }>>(
+      '/checkout/free',
+      data
+    );
+  }
+
+  // Slot Reservation API methods
+  async reserveSlot(tournamentId: string): Promise<ApiResponse<{
+    reservationId: string;
+    expiresAt: string;
+    remainingSeconds: number;
+    tournamentId: string;
+    spotsRemaining: number;
+  }>> {
+    return this.post<ApiResponse<{
+      reservationId: string;
+      expiresAt: string;
+      remainingSeconds: number;
+      tournamentId: string;
+      spotsRemaining: number;
+    }>>(`/tournaments/${tournamentId}/reserve`, {});
+  }
+
+  async cancelReservation(tournamentId: string): Promise<ApiResponse> {
+    return this.delete<ApiResponse>(`/tournaments/${tournamentId}/reserve`);
+  }
+
+  async getReservationStatus(tournamentId: string): Promise<ApiResponse<{
+    reservationId: string;
+    expiresAt: string;
+    remainingSeconds: number;
+  } | null>> {
+    return this.get<ApiResponse<{
+      reservationId: string;
+      expiresAt: string;
+      remainingSeconds: number;
+    } | null>>(`/tournaments/${tournamentId}/reservation`);
+  }
+
   async updateHistoricalMatchScore(
     matchId: string,
     team1Score: number,
@@ -853,6 +1039,97 @@ class ApiClient {
       `/admin/tournaments/${tournamentId}/send-reminders`,
       {},
     );
+  }
+
+  // Stripe Settings API methods
+  async getStripeSettings(): Promise<ApiResponse<StripeSettings>> {
+    return this.get<ApiResponse<StripeSettings>>("/settings/stripe");
+  }
+
+  async updateStripeSettings(settings: StripeSettingsUpdate): Promise<ApiResponse> {
+    return this.put<ApiResponse>("/settings/stripe", settings);
+  }
+
+  // Discount Code API methods
+  async getDiscountCodes(options?: {
+    active?: boolean;
+    includeExpired?: boolean;
+  }): Promise<ApiResponse<{ codes: DiscountCode[] }>> {
+    const params = new URLSearchParams();
+    if (options?.active !== undefined) {
+      params.append("active", String(options.active));
+    }
+    if (options?.includeExpired !== undefined) {
+      params.append("includeExpired", String(options.includeExpired));
+    }
+    const queryString = params.toString();
+    const url = queryString ? `/discount-codes?${queryString}` : "/discount-codes";
+    return this.get<ApiResponse<{ codes: DiscountCode[] }>>(url);
+  }
+
+  async getDiscountCode(id: string): Promise<ApiResponse<{ code: DiscountCode }>> {
+    return this.get<ApiResponse<{ code: DiscountCode }>>(`/discount-codes/${id}`);
+  }
+
+  async createDiscountCode(data: DiscountCodeInput): Promise<ApiResponse<{ code: DiscountCode }>> {
+    return this.post<ApiResponse<{ code: DiscountCode }>>("/discount-codes", data);
+  }
+
+  async updateDiscountCode(
+    id: string,
+    data: DiscountCodeUpdate
+  ): Promise<ApiResponse<{ code: DiscountCode }>> {
+    return this.put<ApiResponse<{ code: DiscountCode }>>(`/discount-codes/${id}`, data);
+  }
+
+  async deactivateDiscountCode(id: string): Promise<ApiResponse> {
+    return this.delete<ApiResponse>(`/discount-codes/${id}`);
+  }
+
+  // Ticket Management API methods
+  async getTransactionHistory(): Promise<ApiResponse<{ transactions: any[] }>> {
+    return this.get<ApiResponse<{ transactions: any[] }>>('/tickets/history');
+  }
+
+  async getTournamentTransactions(
+    tournamentId: string,
+    filters?: { status?: string; search?: string }
+  ): Promise<ApiResponse<{ tickets: any[]; stats: any }>> {
+    const params = new URLSearchParams();
+    if (filters?.status && filters.status !== 'all') {
+      params.append('status', filters.status);
+    }
+    if (filters?.search) {
+      params.append('search', filters.search);
+    }
+    const queryString = params.toString();
+    const url = `/tournaments/${tournamentId}/transactions${queryString ? `?${queryString}` : ''}`;
+    return this.get<ApiResponse<{ tickets: any[]; stats: any }>>(url);
+  }
+
+  async refundTicket(ticketId: string, amount?: number): Promise<ApiResponse<{ message: string }>> {
+    return this.post<ApiResponse<{ message: string }>>(`/tickets/${ticketId}/refund`, { amount });
+  }
+
+  async removeTicket(ticketId: string): Promise<ApiResponse<{ message: string }>> {
+    return this.post<ApiResponse<{ message: string }>>(`/tickets/${ticketId}/remove`, {});
+  }
+
+  async validateDiscountCode(
+    code: string,
+    tournamentId?: string
+  ): Promise<ApiResponse<{
+    valid: boolean;
+    discountCode?: DiscountCode;
+    discountAmount?: number;
+    message?: string;
+  }>> {
+    return this.post<ApiResponse<{
+      valid: boolean;
+      discountCode?: DiscountCode;
+      discountAmount?: number;
+      message?: string;
+    }>>("/discount-codes/validate", { code, tournamentId });
   }
 }
 

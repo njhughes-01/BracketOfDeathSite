@@ -63,24 +63,60 @@
 ### Phase 4: Payments & Ticketing (Stripe)
 *Priority: HIGH - Client requirement for paid tournaments*
 
-#### 4.1 Stripe Integration
+#### 4.1 Stripe Admin Panel
+*New "Stripe" tab in Admin Settings*
+
+- [ ] Global pricing settings
+  - [ ] Annual membership fee (skeleton for future)
+  - [ ] Monthly membership fee (skeleton for future)
+  - [ ] Default tournament entry fee
+- [ ] Discount code management
+  - [ ] Create/edit/delete discount codes via UI
+  - [ ] Stripe Coupons integration
+  - [ ] Code usage limits and expiry dates
+- [ ] Master payment/action log
+  - [ ] All Stripe events (payments, refunds, disputes)
+  - [ ] Filterable by date, player, tournament
+  - [ ] Export capability
+- [ ] Revenue reporting (admin only)
+  - [ ] Per-tournament breakdown
+  - [ ] Date range reports
+  - [ ] Payment method distribution
+
+#### 4.2 Stripe Integration
 - [ ] Stripe account setup and API keys (env vars)
-- [ ] Tournament pricing configuration
-  - [ ] Entry fee per tournament (optional, $0 = free)
-  - [ ] Early bird pricing with deadline
-  - [ ] Team vs individual pricing
+- [ ] Per-tournament pricing
+  - [ ] Admin sets entry fee per tournament (including $0 for free)
+  - [ ] Discount code application at checkout
 - [ ] Stripe Checkout integration
   - [ ] Redirect to Stripe hosted checkout
   - [ ] Success/cancel return URLs
   - [ ] Metadata: tournament ID, player ID, team info
 - [ ] Webhook handling
-  - [ ] `checkout.session.completed` → confirm registration
-  - [ ] `charge.refunded` → update registration status
+  - [ ] `checkout.session.completed` → confirm registration, generate QR
+  - [ ] `charge.refunded` → invalidate QR, remove from roster, restore spots
   - [ ] Webhook signature verification
-- [ ] Stripe Customer Portal link (for refund requests)
+- [ ] Stripe Customer Portal link
+  - [ ] View payment history
+  - [ ] Download receipts
+  - [ ] Request refunds (if enabled)
 
-#### 4.2 QR Ticket System
-- [ ] Ticket generation on successful payment
+#### 4.3 Slot Reservation System
+*Prevents race conditions when tournament fills*
+
+- [ ] Reserve slot on "Register" click
+  - [ ] 20-minute hold timer
+  - [ ] Decrement available spots immediately
+- [ ] Checkout timer banner
+  - [ ] Countdown at top of page during checkout
+  - [ ] Warning at 5 minutes, 1 minute
+- [ ] Auto-release on timeout
+  - [ ] Background job checks expired reservations
+  - [ ] Restore spots to available pool
+  - [ ] Optional: notify player their slot expired
+
+#### 4.4 QR Ticket System
+- [ ] Ticket generation (ALL registrations, paid or free)
   - [ ] Unique ticket ID (UUID or short code)
   - [ ] QR code generation (qrcode library)
   - [ ] Store ticket in database with payment reference
@@ -93,17 +129,30 @@
   - [ ] Manual ticket ID lookup fallback
   - [ ] Show player name, team, payment status
   - [ ] One-tap check-in confirmation
-- [ ] Admin ticket management
-  - [ ] View all tickets for tournament
-  - [ ] Filter: paid, checked-in, refunded
-  - [ ] Manual ticket generation (cash payments)
-  - [ ] Void/refund ticket
+  - [ ] **Duplicate scan detection** → warn scanner, reject check-in
+- [ ] Player self-service
+  - [ ] Profile page shows tournament registrations
+  - [ ] "Resend ticket" button for each registration
 
-#### 4.3 Registration Flow Updates
+#### 4.5 Registration Flow Updates
 - [ ] Tournament detail page shows price
-- [ ] "Register" → Stripe Checkout (if paid) or direct (if free)
-- [ ] Registration status: pending_payment, paid, refunded, checked_in
-- [ ] Capacity limits with waitlist
+- [ ] "Register" click → reserve slot → Stripe Checkout (or direct if $0)
+- [ ] Free tournaments ($0) still generate QR for tracking
+- [ ] Registration statuses: `reserved`, `paid`, `refunded`, `checked_in`
+- [ ] Capacity limits with waitlist (future: Phase 6)
+
+#### 4.6 Pre-Selected (Invite-Only) Tournaments
+- [ ] Admin pre-selects players for tournament
+  - [ ] Require email address (prompt if missing)
+  - [ ] Bulk select from player list
+- [ ] Invitation email sent automatically
+  - [ ] "Congratulations! You're invited to [Tournament]"
+  - [ ] Payment link with tournament fee
+  - [ ] Deadline to pay (configurable)
+- [ ] Track "invited but unpaid" status
+  - [ ] Admin view: who hasn't paid yet
+  - [ ] Reminder emails (optional)
+  - [ ] Release spot if deadline passes
 
 ---
 
@@ -257,7 +306,7 @@
 
 | Version | Focus | Target |
 |---------|-------|--------|
-| v2.1.0 | Stripe payments + QR tickets | Q1 2026 |
+| v2.1.0 | Stripe payments + QR tickets + membership skeleton | Q1 2026 |
 | v2.2.0 | PWA + Mobile scoring | Q1 2026 |
 | v2.3.0 | Real-time WebSocket | Q2 2026 |
 | v3.0.0 | Advanced tournament formats | Q2 2026 |
@@ -283,7 +332,7 @@
 - Native mobile apps (iOS/Android) - PWA sufficient
 - Multi-organization support - single org focus
 - Video integration - manual scoring only
-- Complex pricing (subscriptions, memberships) - per-tournament fees only
+- Manual ticket generation for comps/sponsors - future phase
 
 ### Dependencies
 - Keycloak must be maintained/upgraded separately

@@ -1,9 +1,9 @@
 import { jest } from "@jest/globals";
-import { LiveTournamentController } from "../../src/backend/controllers/LiveTournamentController";
+import { MatchController } from "../../src/backend/controllers/MatchController";
 
-describe("LiveTournamentController.processMatchUpdate", () => {
+describe("MatchController.processMatchUpdate", () => {
   it("computes team totals from per-player scores and sets winner when totals provided", () => {
-    const ctl: any = new LiveTournamentController();
+    const ctl: any = new MatchController();
     const input = {
       team1PlayerScores: [
         { playerId: "p1", playerName: "A", score: 8 },

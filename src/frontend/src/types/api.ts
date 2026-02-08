@@ -95,6 +95,13 @@ export interface Tournament {
   registeredPlayers?: Array<{ _id: string; name: string }>;
   waitlistPlayers?: Array<{ _id: string; name: string }>;
   currentPlayerCount?: number;
+  // Pricing fields (Phase 4)
+  entryFee?: number; // In cents (0 = free)
+  earlyBirdFee?: number; // Discounted fee in cents
+  earlyBirdDeadline?: string; // ISO timestamp
+  inviteOnly?: boolean;
+  paymentDeadlineHours?: number;
+  spotsReserved?: number; // Currently held reservations
   champion?: {
     playerId: string;
     playerName: string;
@@ -216,6 +223,32 @@ export interface RegistrationInfo {
   maxPlayers?: number;
   isRegistrationOpen: boolean;
   canRegister: boolean;
+}
+
+// Ticket types (Phase 4)
+export interface TournamentTicket {
+  _id: string;
+  ticketCode: string;
+  tournamentId: string;
+  userId: string;
+  playerId: string;
+  teamId?: string;
+  status: "valid" | "checked_in" | "refunded" | "void";
+  paymentStatus: "paid" | "free" | "refunded";
+  amountPaid: number;
+  discountCodeUsed?: string;
+  checkedInAt?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+// Reservation types (Phase 4)
+export interface SlotReservation {
+  reservationId: string;
+  tournamentId: string;
+  expiresAt: string;
+  remainingSeconds: number;
+  status: "active" | "completed" | "expired" | "cancelled";
 }
 
 export interface PlayerSeed {
