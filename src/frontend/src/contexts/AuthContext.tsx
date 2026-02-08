@@ -416,18 +416,12 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const logout = () => {
     logger.debug("Logout initiated");
 
+    // Capture keycloak state before clearing
+    const shouldKeycloakLogout = keycloak != null;
+
     // Clear authentication state
     setIsAuthenticated(false);
     setUser(null);
-
-    // Clear keycloak tokens
-    if (keycloak) {
-      keycloak.token = undefined;
-      keycloak.refreshToken = undefined;
-      keycloak.idToken = undefined;
-      keycloak.authenticated = false;
-      keycloak.tokenParsed = undefined;
-    }
 
     // Clear any stored session data
     sessionStorage.removeItem("redirectAfterLogin");
@@ -436,8 +430,13 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     // Clear persisted tokens
     clearTokens();
 
-    // Redirect to login page
-    window.location.href = "/login";
+    // End Keycloak server-side session (clears SSO cookie) and redirect
+    if (shouldKeycloakLogout) {
+      logger.debug("Ending Keycloak session");
+      keycloak.logout({ redirectUri: window.location.origin + "/login" });
+    } else {
+      window.location.href = "/login";
+    }
 
     logger.debug("Logout completed");
   };
