@@ -27,6 +27,13 @@ export interface ISystemSettings extends Document {
   monthlyMembershipFee?: number;  // In cents, future use
   defaultEntryFee?: number;       // Default tournament fee in cents
   
+  // Stripe Connect settings
+  stripeConnectedAccountId?: string;
+  connectOnboardingComplete?: boolean;
+  platformFeePercent?: number;
+  connectedAccountName?: string;
+  connectedAccountEmail?: string;
+
   // Branding settings
   siteLogo?: string; // Base64 or URL
   siteLogoUrl?: string; // External URL fallback
@@ -70,6 +77,13 @@ const SystemSettingsSchema: Schema = new Schema(
     monthlyMembershipFee: { type: Number, min: 0 },  // In cents
     defaultEntryFee: { type: Number, min: 0, default: 0 }, // In cents
     
+    // Stripe Connect settings
+    stripeConnectedAccountId: { type: String },
+    connectOnboardingComplete: { type: Boolean, default: false },
+    platformFeePercent: { type: Number, min: 0, max: 100, default: 0 },
+    connectedAccountName: { type: String },
+    connectedAccountEmail: { type: String },
+
     // Branding settings
     siteLogo: { type: String }, // Base64 encoded image
     siteLogoUrl: { type: String }, // External URL fallback

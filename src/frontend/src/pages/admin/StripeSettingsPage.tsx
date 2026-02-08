@@ -3,14 +3,21 @@ import { Link } from "react-router-dom";
 import logger from "../../utils/logger";
 import apiClient from "../../services/api";
 import type { StripeSettings, StripeSettingsUpdate } from "../../services/api";
+import { useAuth } from "../../contexts/AuthContext";
 import LoadingSpinner from "../../components/ui/LoadingSpinner";
 
 const StripeSettingsPage: React.FC = () => {
+  const { user } = useAuth();
+  const isSuperAdmin = user?.isSuperAdmin || false;
   const [settings, setSettings] = useState<StripeSettings | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
+
+  // Platform fee state (superadmin only)
+  const [platformFeePercent, setPlatformFeePercent] = useState<string>("0");
+  const [savingFee, setSavingFee] = useState(false);
 
   // Form state - Stripe Keys
   const [publishableKey, setPublishableKey] = useState("");
@@ -41,6 +48,17 @@ const StripeSettingsPage: React.FC = () => {
       setDefaultEntryFee(centsToDisplayDollars(data.defaultEntryFee || 0));
       setAnnualMembershipFee(centsToDisplayDollars(data.annualMembershipFee || 0));
       setMonthlyMembershipFee(centsToDisplayDollars(data.monthlyMembershipFee || 0));
+
+      // Load platform fee if superadmin
+      if (isSuperAdmin) {
+        try {
+          const feeResponse = await apiClient.get<any>("/settings/stripe/platform-fee");
+          const feeData = feeResponse.data?.data || feeResponse.data;
+          setPlatformFeePercent(String(feeData.platformFeePercent || 0));
+        } catch {
+          // Ignore - may not have access
+        }
+      }
     } catch (err: any) {
       logger.error(err);
       setError(
@@ -101,6 +119,31 @@ const StripeSettingsPage: React.FC = () => {
     } finally {
       setSaving(false);
     }
+  };
+
+  const handleSavePlatformFee = async () => {
+    try {
+      setSavingFee(true);
+      setError("");
+      setSuccess("");
+      await apiClient.put("/settings/stripe/platform-fee", {
+        platformFeePercent: Number(platformFeePercent),
+      });
+      setSuccess("Platform fee updated successfully!");
+    } catch (err: any) {
+      logger.error(err);
+      setError(err.response?.data?.error || "Failed to save platform fee");
+    } finally {
+      setSavingFee(false);
+    }
+  };
+
+  // Preview calculation for platform fee
+  const feePreview = (entryFee: number) => {
+    const fee = Number(platformFeePercent) || 0;
+    const platformAmount = Math.round(entryFee * fee / 100) / 100;
+    const organizerAmount = entryFee - platformAmount;
+    return { platformAmount, organizerAmount };
   };
 
   if (loading) {
@@ -441,6 +484,80 @@ const StripeSettingsPage: React.FC = () => {
           </div>
         </form>
       </div>
+
+      {/* Platform Fee Configuration (Superadmin only) */}
+      {isSuperAdmin && (
+        <div className="bg-[#1c2230] border border-white/5 rounded-2xl p-6 shadow-2xl">
+          <div className="flex items-center gap-3 mb-6 border-b border-white/5 pb-4">
+            <div className="w-10 h-10 rounded-full bg-orange-500/20 flex items-center justify-center text-orange-500">
+              <span className="material-symbols-outlined">percent</span>
+            </div>
+            <div>
+              <h2 className="text-xl font-bold text-white">Platform Fee</h2>
+              <p className="text-sm text-slate-400">
+                Configure the platform's cut of tournament payments
+              </p>
+            </div>
+          </div>
+
+          <div className="space-y-4">
+            <div className="flex items-end gap-4">
+              <div className="space-y-2 flex-1 max-w-xs">
+                <label className="text-sm font-bold text-slate-400 uppercase tracking-wider">
+                  Platform Fee Percentage
+                </label>
+                <div className="relative">
+                  <input
+                    type="number"
+                    step="0.1"
+                    min="0"
+                    max="100"
+                    value={platformFeePercent}
+                    onChange={(e) => setPlatformFeePercent(e.target.value)}
+                    className="w-full h-12 bg-black/20 border border-white/10 rounded-xl px-4 pr-10 text-white focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-all"
+                  />
+                  <span className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-500">%</span>
+                </div>
+              </div>
+              <button
+                onClick={handleSavePlatformFee}
+                disabled={savingFee}
+                className="h-12 px-6 bg-primary hover:bg-primary-dark text-black font-bold rounded-xl shadow-lg shadow-primary/20 flex items-center gap-2 disabled:opacity-50 transition-all"
+              >
+                {savingFee ? (
+                  <LoadingSpinner size="sm" color="black" />
+                ) : (
+                  <>
+                    <span className="material-symbols-outlined">save</span>
+                    Save
+                  </>
+                )}
+              </button>
+            </div>
+
+            {/* Fee Preview */}
+            <div className="bg-black/20 rounded-xl p-4 mt-4">
+              <p className="text-xs text-slate-500 uppercase font-bold mb-3">Payment Split Preview</p>
+              <div className="space-y-2">
+                {[25, 50, 100].map((amount) => {
+                  const { platformAmount, organizerAmount } = feePreview(amount);
+                  return (
+                    <div key={amount} className="flex items-center justify-between text-sm">
+                      <span className="text-slate-400">${amount} entry fee</span>
+                      <span className="text-white">
+                        Organizer gets <span className="text-green-500 font-bold">${organizerAmount.toFixed(2)}</span>
+                        {platformAmount > 0 && (
+                          <>, Platform gets <span className="text-orange-500 font-bold">${platformAmount.toFixed(2)}</span></>
+                        )}
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Stripe Dashboard Links */}
       <div className="bg-[#1c2230] border border-white/5 rounded-2xl p-6 shadow-2xl">

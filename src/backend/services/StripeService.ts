@@ -83,6 +83,8 @@ export interface CreateCheckoutSessionParams {
   discountCode?: string;
   successUrl: string;
   cancelUrl: string;
+  connectedAccountId?: string;
+  applicationFeeAmount?: number; // In cents
 }
 
 /**
@@ -104,6 +106,8 @@ export const createCheckoutSession = async (
     discountCode,
     successUrl,
     cancelUrl,
+    connectedAccountId,
+    applicationFeeAmount,
   } = params;
   
   const sessionParams: Stripe.Checkout.SessionCreateParams = {
@@ -132,8 +136,18 @@ export const createCheckoutSession = async (
     },
     success_url: successUrl,
     cancel_url: cancelUrl,
-    expires_at: Math.floor(Date.now() / 1000) + (20 * 60), // 20 minutes
+    expires_at: Math.floor(Date.now() / 1000) + (35 * 60), // 35 minutes (Stripe requires >= 30 min)
   };
+  
+  // Add Connect destination if connected account exists
+  if (connectedAccountId) {
+    sessionParams.payment_intent_data = {
+      application_fee_amount: applicationFeeAmount || 0,
+      transfer_data: {
+        destination: connectedAccountId,
+      },
+    };
+  }
   
   // Apply discount if provided
   if (discountCode) {
@@ -311,6 +325,67 @@ export const createRefund = async (
   return refund;
 };
 
+/**
+ * Create a Stripe Connect Express account
+ */
+export const createConnectAccount = async (
+  email?: string,
+  businessName?: string
+): Promise<Stripe.Account> => {
+  const stripe = await getStripeClient();
+  
+  const account = await stripe.accounts.create({
+    type: 'express',
+    ...(email && { email }),
+    ...(businessName && { business_profile: { name: businessName } }),
+    capabilities: {
+      card_payments: { requested: true },
+      transfers: { requested: true },
+    },
+  });
+  
+  logger.info(`Stripe Connect account created: ${account.id}`);
+  return account;
+};
+
+/**
+ * Create an account link for Connect onboarding
+ */
+export const createAccountLink = async (
+  accountId: string,
+  refreshUrl: string,
+  returnUrl: string
+): Promise<Stripe.AccountLink> => {
+  const stripe = await getStripeClient();
+  
+  return stripe.accountLinks.create({
+    account: accountId,
+    refresh_url: refreshUrl,
+    return_url: returnUrl,
+    type: 'account_onboarding',
+  });
+};
+
+/**
+ * Get Connect account status
+ */
+export const getAccountStatus = async (
+  accountId: string
+): Promise<Stripe.Account> => {
+  const stripe = await getStripeClient();
+  return stripe.accounts.retrieve(accountId);
+};
+
+/**
+ * Create a login link for the Express dashboard
+ */
+export const createLoginLink = async (
+  accountId: string
+): Promise<Stripe.LoginLink> => {
+  const stripe = await getStripeClient();
+  return stripe.accounts.createLoginLink(accountId);
+};
+
 export default {
   getStripeClient,
   isStripeConfigured,
@@ -324,4 +399,8 @@ export default {
   verifyWebhookSignature,
   retrieveCheckoutSession,
   createRefund,
+  createConnectAccount,
+  createAccountLink,
+  getAccountStatus,
+  createLoginLink,
 };

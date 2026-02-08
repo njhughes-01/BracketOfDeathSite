@@ -58,17 +58,23 @@ const TicketCard: React.FC<TicketCardProps> = ({ ticket, showQR = true, onResend
       <div className="p-5 border-b border-white/5">
         <div className="flex items-start justify-between gap-4">
           <div className="flex-1 min-w-0">
-            <Link
-              to={`/tournaments/${ticket.tournament.id}`}
-              className="text-lg font-bold text-white hover:text-primary transition-colors line-clamp-1"
-            >
-              {ticket.tournament.name}
-            </Link>
-            <div className="flex items-center gap-2 mt-1 text-sm text-slate-400">
-              <span className="material-symbols-outlined text-[16px]">calendar_today</span>
-              {formatDate(ticket.tournament.date)}
-            </div>
-            {ticket.tournament.location && (
+            {ticket.tournament ? (
+              <Link
+                to={`/tournaments/${ticket.tournament.id}`}
+                className="text-lg font-bold text-white hover:text-primary transition-colors line-clamp-1"
+              >
+                {ticket.tournament.name}
+              </Link>
+            ) : (
+              <span className="text-lg font-bold text-white">Tournament</span>
+            )}
+            {ticket.tournament?.date && (
+              <div className="flex items-center gap-2 mt-1 text-sm text-slate-400">
+                <span className="material-symbols-outlined text-[16px]">calendar_today</span>
+                {formatDate(ticket.tournament.date)}
+              </div>
+            )}
+            {ticket.tournament?.location && (
               <div className="flex items-center gap-2 mt-1 text-sm text-slate-400">
                 <span className="material-symbols-outlined text-[16px]">location_on</span>
                 {ticket.tournament.location}

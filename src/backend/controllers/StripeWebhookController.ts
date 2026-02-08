@@ -27,19 +27,27 @@ export class StripeWebhookController extends BaseController {
       
       let event: Stripe.Event;
       
-      // Verify webhook signature if secret is configured
+      // Verify webhook signature — ALWAYS required in production
       const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
-      if (webhookSecret && sig) {
+      if (!webhookSecret) {
+        if (process.env.NODE_ENV === 'production') {
+          logger.error('STRIPE_WEBHOOK_SECRET not configured in production — rejecting webhook');
+          return this.sendError(res, 'Webhook endpoint not configured', 500);
+        }
+        logger.warn('STRIPE_WEBHOOK_SECRET not set — accepting unverified webhook (dev only)');
+        event = typeof req.body === 'string' || Buffer.isBuffer(req.body) 
+          ? JSON.parse(req.body.toString()) 
+          : req.body;
+      } else if (!sig) {
+        logger.error('Webhook received without stripe-signature header');
+        return this.sendError(res, 'Missing stripe-signature header', 400);
+      } else {
         try {
           event = StripeService.verifyWebhookSignature(req.body, sig, webhookSecret);
         } catch (err: any) {
           logger.error('Webhook signature verification failed:', err.message);
           return this.sendError(res, `Webhook signature verification failed: ${err.message}`, 400);
         }
-      } else {
-        // Development mode - parse body directly (INSECURE)
-        logger.warn('Stripe webhook received without signature verification (dev mode)');
-        event = req.body;
       }
       
       if (!event || !event.type) {
@@ -62,6 +70,10 @@ export class StripeWebhookController extends BaseController {
           case 'charge.refunded':
             await this.handleRefund(event);
             break;
+
+          case 'account.updated':
+            await this.handleAccountUpdated(event);
+            break;
             
           default:
             logger.info(`Unhandled Stripe event type: ${event.type}`);
@@ -80,7 +92,7 @@ export class StripeWebhookController extends BaseController {
         await StripeEvent.logEvent(event, undefined, error.message);
         
         // Still return 200 to prevent Stripe retries for processing errors
-        res.status(200).json({ received: true, error: error.message });
+        res.status(200).json({ received: true });
       }
     }
   );
@@ -108,7 +120,7 @@ export class StripeWebhookController extends BaseController {
     // Create the ticket
     const ticket = new TournamentTicket({
       tournamentId: new Types.ObjectId(tournamentId),
-      userId: new Types.ObjectId(userId),
+      userId: userId,
       playerId: new Types.ObjectId(playerId),
       status: 'valid',
       paymentStatus: 'paid',
@@ -147,7 +159,7 @@ export class StripeWebhookController extends BaseController {
     // Log with extracted data
     await StripeEvent.logEvent(event, {
       tournamentId: new Types.ObjectId(tournamentId),
-      userId: new Types.ObjectId(userId),
+      userId: userId,
       playerId: new Types.ObjectId(playerId),
       ticketId: ticket._id as Types.ObjectId,
       amount: session.amount_total,
@@ -303,6 +315,40 @@ export class StripeWebhookController extends BaseController {
     }
     
     logger.info(`Refund processed: ticket ${ticket.ticketCode} refunded`);
+  }
+  // Handle Connect account status update
+  private async handleAccountUpdated(event: any): Promise<void> {
+    const account = event.data.object;
+    const accountId = account.id;
+
+    // Check if this is our connected account
+    const SystemSettings = (await import("../models/SystemSettings")).default;
+    const settings = await SystemSettings.findOne();
+
+    if (!settings || settings.stripeConnectedAccountId !== accountId) {
+      logger.info(`Account update for unknown account ${accountId}, ignoring`);
+      return;
+    }
+
+    const chargesEnabled = account.charges_enabled || false;
+    const updates: any = {
+      updatedBy: "stripe-webhook",
+    };
+
+    if (chargesEnabled) {
+      updates.connectOnboardingComplete = true;
+    }
+
+    if (account.business_profile?.name) {
+      updates.connectedAccountName = account.business_profile.name;
+    }
+    if (account.email) {
+      updates.connectedAccountEmail = account.email;
+    }
+
+    await SystemSettings.findOneAndUpdate({}, updates);
+
+    logger.info(`Connect account ${accountId} updated: charges_enabled=${chargesEnabled}`);
   }
 }
 

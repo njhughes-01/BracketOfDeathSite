@@ -8,6 +8,7 @@ import { Player } from "../models/Player";
 import { Types } from "mongoose";
 import logger from "../utils/logger";
 import StripeService from "../services/StripeService";
+import SystemSettings from "../models/SystemSettings";
 import QRCodeService from "../services/QRCodeService";
 import emailService from "../services/EmailService";
 import { generateTicketConfirmationEmail } from "../services/email/templates/ticketConfirmation";
@@ -80,7 +81,7 @@ export class CheckoutController extends BaseController {
       // Create reservation
       const reservation = await SlotReservation.createReservation(
         new Types.ObjectId(tournamentId),
-        new Types.ObjectId(userId),
+        userId,
         player._id as Types.ObjectId,
         RESERVATION_TIMEOUT_MINUTES
       );
@@ -116,7 +117,7 @@ export class CheckoutController extends BaseController {
       
       const reservation = await SlotReservation.getActiveReservation(
         new Types.ObjectId(tournamentId),
-        new Types.ObjectId(userId)
+        userId
       );
       
       if (!reservation) {
@@ -146,7 +147,7 @@ export class CheckoutController extends BaseController {
       
       const reservation = await SlotReservation.getActiveReservation(
         new Types.ObjectId(tournamentId),
-        new Types.ObjectId(userId)
+        userId
       );
       
       if (!reservation) {
@@ -246,6 +247,16 @@ export class CheckoutController extends BaseController {
       const successUrl = `${appUrl}/checkout/success?session_id={CHECKOUT_SESSION_ID}`;
       const cancelUrl = `${appUrl}/checkout/cancel?tournament_id=${tournamentId}`;
       
+      // Look up Connect account for destination charges
+      const settings = await SystemSettings.findOne();
+      const connectedAccountId = settings?.stripeConnectedAccountId && settings?.connectOnboardingComplete
+        ? settings.stripeConnectedAccountId
+        : undefined;
+      const platformFeePercent = settings?.platformFeePercent || 0;
+      const applicationFeeAmount = connectedAccountId
+        ? Math.round(price * platformFeePercent / 100)
+        : undefined;
+
       // Create Stripe Checkout Session
       const session = await StripeService.createCheckoutSession({
         tournamentId,
@@ -258,6 +269,8 @@ export class CheckoutController extends BaseController {
         discountCode: appliedDiscount?.code,
         successUrl,
         cancelUrl,
+        connectedAccountId,
+        applicationFeeAmount,
       });
       
       // Update reservation with Stripe session ID
@@ -322,7 +335,7 @@ export class CheckoutController extends BaseController {
       // Create ticket
       const ticket = new TournamentTicket({
         tournamentId: new Types.ObjectId(tournamentId),
-        userId: new Types.ObjectId(userId),
+        userId: userId,
         playerId: reservation.playerId,
         status: 'valid',
         paymentStatus: 'free',
@@ -420,9 +433,22 @@ export class CheckoutController extends BaseController {
           });
         }
         
+        // Fetch tournament info for the success page
+        let tournament = null;
+        if (session.metadata?.tournamentId) {
+          const t = await Tournament.findById(session.metadata.tournamentId);
+          if (t) {
+            tournament = { id: t._id.toString(), name: `BOD Tournament #${t.bodNumber}`, date: t.date, location: t.location };
+          }
+        }
+
         this.sendSuccess(res, {
+          ticketId: ticket?.id || null,
+          ticketCode: ticket?.ticketCode || null,
+          tournament,
+          amountPaid: session.amount_total || 0,
+          status: session.payment_status,
           sessionId,
-          status: session.status,
           paymentStatus: session.payment_status,
           amountTotal: session.amount_total,
           currency: session.currency,

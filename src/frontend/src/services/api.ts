@@ -1086,6 +1086,35 @@ class ApiClient {
     return this.delete<ApiResponse>(`/discount-codes/${id}`);
   }
 
+  // Ticket Management API methods
+  async getTransactionHistory(): Promise<ApiResponse<{ transactions: any[] }>> {
+    return this.get<ApiResponse<{ transactions: any[] }>>('/tickets/history');
+  }
+
+  async getTournamentTransactions(
+    tournamentId: string,
+    filters?: { status?: string; search?: string }
+  ): Promise<ApiResponse<{ tickets: any[]; stats: any }>> {
+    const params = new URLSearchParams();
+    if (filters?.status && filters.status !== 'all') {
+      params.append('status', filters.status);
+    }
+    if (filters?.search) {
+      params.append('search', filters.search);
+    }
+    const queryString = params.toString();
+    const url = `/tournaments/${tournamentId}/transactions${queryString ? `?${queryString}` : ''}`;
+    return this.get<ApiResponse<{ tickets: any[]; stats: any }>>(url);
+  }
+
+  async refundTicket(ticketId: string, amount?: number): Promise<ApiResponse<{ message: string }>> {
+    return this.post<ApiResponse<{ message: string }>>(`/tickets/${ticketId}/refund`, { amount });
+  }
+
+  async removeTicket(ticketId: string): Promise<ApiResponse<{ message: string }>> {
+    return this.post<ApiResponse<{ message: string }>>(`/tickets/${ticketId}/remove`, {});
+  }
+
   async validateDiscountCode(
     code: string,
     tournamentId?: string

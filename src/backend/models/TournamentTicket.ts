@@ -9,7 +9,7 @@ export interface ITournamentTicket extends Document {
   qrCodeData?: string; // Base64 encoded QR image
   
   tournamentId: mongoose.Types.ObjectId;
-  userId: mongoose.Types.ObjectId;
+  userId: string;
   playerId: mongoose.Types.ObjectId;
   teamId?: mongoose.Types.ObjectId;
   
@@ -24,7 +24,7 @@ export interface ITournamentTicket extends Document {
   
   // Check-in tracking
   checkedInAt?: Date;
-  checkedInBy?: mongoose.Types.ObjectId;
+  checkedInBy?: string;
   
   // Email tracking
   emailSentAt?: Date;
@@ -38,7 +38,7 @@ export interface ITournamentTicket extends Document {
   isCheckedIn: boolean;
   
   // Methods
-  checkIn(adminUserId: mongoose.Types.ObjectId): Promise<boolean>;
+  checkIn(adminUserId: string): Promise<boolean>;
   voidTicket(): Promise<void>;
   refund(): Promise<void>;
   recordEmailSent(): Promise<void>;
@@ -71,7 +71,7 @@ const TournamentTicketSchema: Schema = new Schema(
       index: true,
     },
     userId: {
-      type: Schema.Types.ObjectId,
+      type: String,
       required: true,
       index: true,
     },
@@ -125,7 +125,7 @@ const TournamentTicketSchema: Schema = new Schema(
       type: Date,
     },
     checkedInBy: {
-      type: Schema.Types.ObjectId,
+      type: String,
     },
     
     // Email tracking
@@ -158,7 +158,7 @@ TournamentTicketSchema.virtual("isCheckedIn").get(function(this: ITournamentTick
 });
 
 // Instance method to check in
-TournamentTicketSchema.methods.checkIn = async function(adminUserId: mongoose.Types.ObjectId): Promise<boolean> {
+TournamentTicketSchema.methods.checkIn = async function(adminUserId: string): Promise<boolean> {
   if (this.status !== 'valid') {
     return false;
   }
@@ -198,7 +198,7 @@ TournamentTicketSchema.statics.findByCode = async function(code: string): Promis
 };
 
 // Static method to get tickets for a user
-TournamentTicketSchema.statics.getForUser = async function(userId: mongoose.Types.ObjectId): Promise<ITournamentTicket[]> {
+TournamentTicketSchema.statics.getForUser = async function(userId: string): Promise<ITournamentTicket[]> {
   return this.find({ userId })
     .populate('tournamentId', 'bodNumber date location format status')
     .sort({ createdAt: -1 });
@@ -250,7 +250,7 @@ TournamentTicketSchema.set('toObject', { virtuals: true });
 
 export interface ITournamentTicketModel extends mongoose.Model<ITournamentTicket> {
   findByCode(code: string): Promise<ITournamentTicket | null>;
-  getForUser(userId: mongoose.Types.ObjectId): Promise<ITournamentTicket[]>;
+  getForUser(userId: string): Promise<ITournamentTicket[]>;
   getForTournament(tournamentId: mongoose.Types.ObjectId, status?: TicketStatus): Promise<ITournamentTicket[]>;
   getStatsForTournament(tournamentId: mongoose.Types.ObjectId): Promise<{
     total: number;

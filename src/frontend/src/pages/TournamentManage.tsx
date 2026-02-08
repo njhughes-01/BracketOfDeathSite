@@ -490,6 +490,15 @@ const TournamentManage: React.FC = () => {
 
           <div className="flex items-center gap-2">
             <Link
+              to={`/admin/tournaments/${id}/tickets`}
+              className="size-9 rounded-full bg-white/5 flex items-center justify-center hover:bg-white/10 transition-colors"
+              title="Manage Tickets"
+            >
+              <span className="material-symbols-outlined text-white text-[20px]">
+                confirmation_number
+              </span>
+            </Link>
+            <Link
               to={`/tournaments/${id}`}
               className="size-9 rounded-full bg-white/5 flex items-center justify-center hover:bg-white/10 transition-colors"
               title="View Public Page"

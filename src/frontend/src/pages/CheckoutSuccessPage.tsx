@@ -126,13 +126,15 @@ const CheckoutSuccessPage: React.FC = () => {
           <div className="bg-[#1c2230] rounded-3xl border border-white/5 overflow-hidden shadow-2xl">
             {/* Tournament info */}
             <div className="p-6 border-b border-white/5 bg-gradient-to-r from-primary/5 to-transparent">
-              <h2 className="text-xl font-bold text-white mb-2">{sessionData.tournament.name}</h2>
+              <h2 className="text-xl font-bold text-white mb-2">{sessionData.tournament?.name || 'Tournament'}</h2>
               <div className="flex flex-wrap gap-4 text-sm text-slate-400">
+                {sessionData.tournament?.date && (
                 <div className="flex items-center gap-2">
                   <span className="material-symbols-outlined text-[18px] text-primary">calendar_today</span>
                   {formatDate(sessionData.tournament.date)}
                 </div>
-                {sessionData.tournament.location && (
+                )}
+                {sessionData.tournament?.location && (
                   <div className="flex items-center gap-2">
                     <span className="material-symbols-outlined text-[18px] text-primary">location_on</span>
                     {sessionData.tournament.location}

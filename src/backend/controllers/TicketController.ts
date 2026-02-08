@@ -7,6 +7,7 @@ import { Types } from "mongoose";
 import logger from "../utils/logger";
 import emailService from "../services/EmailService";
 import { generateTicketConfirmationEmail } from "../services/email/templates/ticketConfirmation";
+import StripeService from "../services/StripeService";
 
 export class TicketController extends BaseController {
   constructor() {
@@ -22,9 +23,58 @@ export class TicketController extends BaseController {
         return this.sendError(res, "Authentication required", 401);
       }
       
-      const tickets = await TournamentTicket.getForUser(new Types.ObjectId(userId));
+      const rawTickets = await TournamentTicket.getForUser(userId);
+      
+      // Transform tickets to match frontend TicketData interface
+      const tickets = rawTickets.map((t: any) => {
+        const doc = t.toObject ? t.toObject() : t;
+        const tournament = doc.tournamentId && typeof doc.tournamentId === 'object' ? {
+          id: doc.tournamentId._id?.toString() || doc.tournamentId.toString(),
+          name: `BOD Tournament #${doc.tournamentId.bodNumber || '?'}`,
+          date: doc.tournamentId.date,
+          location: doc.tournamentId.location,
+        } : null;
+        return {
+          id: doc._id?.toString(),
+          ticketCode: doc.ticketCode,
+          tournament,
+          status: doc.status,
+          paymentStatus: doc.paymentStatus,
+          amountPaid: doc.amountPaid || 0,
+          checkedInAt: doc.checkedInAt,
+          createdAt: doc.createdAt,
+        };
+      });
       
       this.sendSuccess(res, { tickets }, "Tickets retrieved successfully");
+    }
+  );
+
+  // Get user's ticket for a specific tournament (GET /api/tickets/tournament/:tournamentId/mine)
+  getMyTicketForTournament = this.asyncHandler(
+    async (req: Request, res: Response): Promise<void> => {
+      const userId = (req as any).user?.sub || (req as any).user?.id;
+      const { tournamentId } = req.params;
+      
+      if (!userId) {
+        return this.sendError(res, "Authentication required", 401);
+      }
+      
+      if (!Types.ObjectId.isValid(tournamentId)) {
+        return this.sendError(res, "Invalid tournament ID", 400);
+      }
+      
+      const ticket = await TournamentTicket.findOne({ 
+        tournamentId: new Types.ObjectId(tournamentId),
+        userId: userId,
+        status: { $nin: ['void'] }
+      });
+      
+      if (!ticket) {
+        return this.sendSuccess(res, { ticket: null }, "No ticket found");
+      }
+      
+      this.sendSuccess(res, { ticket }, "Ticket found");
     }
   );
 
@@ -204,7 +254,7 @@ export class TicketController extends BaseController {
         return this.sendError(res, `Cannot check in ticket with status: ${ticket.status}`, 400);
       }
       
-      const success = await ticket.checkIn(new Types.ObjectId(adminUserId));
+      const success = await ticket.checkIn(adminUserId);
       
       if (!success) {
         return this.sendError(res, "Failed to check in ticket", 500);
@@ -284,6 +334,247 @@ export class TicketController extends BaseController {
       );
       
       this.sendSuccess(res, { stats }, "Tournament ticket stats retrieved");
+    }
+  );
+  // Admin: Refund ticket (POST /api/tickets/:id/refund)
+  refundTicket = this.asyncHandler(
+    async (req: Request, res: Response): Promise<void> => {
+      const { id } = req.params;
+      const { amount } = req.body; // Optional: partial refund amount in cents
+      const adminUserId = (req as any).user?.sub || (req as any).user?.id;
+
+      if (!Types.ObjectId.isValid(id)) {
+        return this.sendError(res, "Invalid ticket ID", 400);
+      }
+
+      const ticket = await TournamentTicket.findById(id)
+        .populate('playerId', 'firstName lastName')
+        .populate('tournamentId');
+
+      if (!ticket) {
+        return this.sendNotFound(res, "Ticket");
+      }
+
+      if (ticket.status === 'refunded') {
+        return this.sendError(res, "Ticket is already refunded", 400);
+      }
+
+      if (ticket.paymentStatus !== 'paid') {
+        return this.sendError(res, "Ticket has no paid payment to refund", 400);
+      }
+
+      if (!ticket.stripePaymentIntentId) {
+        return this.sendError(res, "No Stripe payment intent associated with this ticket", 400);
+      }
+
+      // Validate partial refund amount
+      if (amount !== undefined) {
+        if (typeof amount !== 'number' || amount <= 0) {
+          return this.sendError(res, "Refund amount must be a positive number", 400);
+        }
+        if (amount > ticket.amountPaid) {
+          return this.sendError(res, "Refund amount cannot exceed amount paid", 400);
+        }
+      }
+
+      // Issue refund via Stripe
+      try {
+        await StripeService.createRefund(
+          ticket.stripePaymentIntentId,
+          amount, // undefined = full refund
+          'requested_by_customer'
+        );
+      } catch (error: any) {
+        logger.error(`Stripe refund failed for ticket ${ticket.ticketCode}:`, error);
+        return this.sendError(res, `Stripe refund failed: ${error.message}`, 500);
+      }
+
+      // Update ticket
+      ticket.status = 'refunded';
+      ticket.paymentStatus = 'refunded';
+      await ticket.save();
+
+      // Free up tournament slot
+      const tournament = ticket.tournamentId as any;
+      if (tournament && tournament._id) {
+        await Tournament.findByIdAndUpdate(tournament._id, {
+          $pull: {
+            players: ticket.playerId._id || ticket.playerId,
+            registeredPlayers: { playerId: ticket.playerId._id || ticket.playerId },
+          },
+        });
+      }
+
+      const refundAmount = amount || ticket.amountPaid;
+
+      logger.info(`Ticket refunded: ${ticket.ticketCode} by admin ${adminUserId}, amount: ${refundAmount}`);
+
+      this.sendSuccess(res, {
+        ticket: {
+          id: ticket._id,
+          ticketCode: ticket.ticketCode,
+          status: ticket.status,
+          paymentStatus: ticket.paymentStatus,
+          refundAmount,
+          player: ticket.playerId,
+        },
+      }, "Ticket refunded successfully");
+    }
+  );
+
+  // Admin: Remove from tournament without refund (POST /api/tickets/:id/remove)
+  removeFromTournament = this.asyncHandler(
+    async (req: Request, res: Response): Promise<void> => {
+      const { id } = req.params;
+      const adminUserId = (req as any).user?.sub || (req as any).user?.id;
+
+      if (!Types.ObjectId.isValid(id)) {
+        return this.sendError(res, "Invalid ticket ID", 400);
+      }
+
+      const ticket = await TournamentTicket.findById(id)
+        .populate('playerId', 'firstName lastName')
+        .populate('tournamentId');
+
+      if (!ticket) {
+        return this.sendNotFound(res, "Ticket");
+      }
+
+      if (ticket.status === 'void') {
+        return this.sendError(res, "Ticket is already void", 400);
+      }
+
+      if (ticket.status === 'refunded') {
+        return this.sendError(res, "Ticket is already refunded", 400);
+      }
+
+      // Void the ticket without refunding
+      ticket.status = 'void';
+      await ticket.save();
+
+      // Free up tournament slot
+      const tournament = ticket.tournamentId as any;
+      if (tournament && tournament._id) {
+        await Tournament.findByIdAndUpdate(tournament._id, {
+          $pull: {
+            players: ticket.playerId._id || ticket.playerId,
+            registeredPlayers: { playerId: ticket.playerId._id || ticket.playerId },
+          },
+        });
+      }
+
+      logger.info(`Ticket removed (no refund): ${ticket.ticketCode} by admin ${adminUserId}`);
+
+      this.sendSuccess(res, {
+        ticket: {
+          id: ticket._id,
+          ticketCode: ticket.ticketCode,
+          status: ticket.status,
+          paymentStatus: ticket.paymentStatus,
+          player: ticket.playerId,
+        },
+      }, "Player removed from tournament (no refund)");
+    }
+  );
+
+  // Admin: Per-tournament transaction log (GET /api/tournaments/:id/transactions)
+  getTournamentTransactions = this.asyncHandler(
+    async (req: Request, res: Response): Promise<void> => {
+      const { id: tournamentId } = req.params;
+      const { status } = req.query;
+
+      if (!Types.ObjectId.isValid(tournamentId)) {
+        return this.sendError(res, "Invalid tournament ID", 400);
+      }
+
+      const query: any = { tournamentId: new Types.ObjectId(tournamentId) };
+
+      // Filter by payment status if provided
+      if (status && ['paid', 'free', 'refunded'].includes(status as string)) {
+        query.paymentStatus = status;
+      }
+      // Also support filtering by ticket status
+      if (status === 'void') {
+        query.status = 'void';
+      }
+
+      const tickets = await TournamentTicket.find(query)
+        .populate('playerId', 'firstName lastName')
+        .populate('teamId', 'name')
+        .sort({ createdAt: -1 });
+
+      const transactions = tickets.map((ticket: any) => ({
+        ticketId: ticket._id,
+        ticketCode: ticket.ticketCode,
+        player: ticket.playerId ? {
+          id: ticket.playerId._id,
+          name: `${ticket.playerId.firstName || ''} ${ticket.playerId.lastName || ''}`.trim(),
+        } : null,
+        team: ticket.teamId ? {
+          id: ticket.teamId._id,
+          name: ticket.teamId.name,
+        } : null,
+        status: ticket.status,
+        paymentStatus: ticket.paymentStatus,
+        amountPaid: ticket.amountPaid,
+        discountCodeUsed: ticket.discountCodeUsed,
+        stripePaymentIntentId: ticket.stripePaymentIntentId,
+        createdAt: ticket.createdAt,
+        updatedAt: ticket.updatedAt,
+      }));
+
+      // Summary stats
+      const summary = {
+        totalTickets: tickets.length,
+        totalRevenue: tickets.filter((t: any) => t.paymentStatus === 'paid').reduce((sum: number, t: any) => sum + t.amountPaid, 0),
+        totalRefunded: tickets.filter((t: any) => t.paymentStatus === 'refunded').reduce((sum: number, t: any) => sum + t.amountPaid, 0),
+        paidCount: tickets.filter((t: any) => t.paymentStatus === 'paid').length,
+        freeCount: tickets.filter((t: any) => t.paymentStatus === 'free').length,
+        refundedCount: tickets.filter((t: any) => t.paymentStatus === 'refunded').length,
+        voidCount: tickets.filter((t: any) => t.status === 'void').length,
+      };
+
+      this.sendSuccess(res, { transactions, summary }, "Tournament transactions retrieved");
+    }
+  );
+
+  // Player: Transaction history (GET /api/tickets/history)
+  getTransactionHistory = this.asyncHandler(
+    async (req: Request, res: Response): Promise<void> => {
+      const userId = (req as any).user?.sub || (req as any).user?.id;
+
+      if (!userId) {
+        return this.sendError(res, "Authentication required", 401);
+      }
+
+      const tickets = await TournamentTicket.find({ userId })
+        .populate('tournamentId', 'bodNumber date location format status')
+        .populate('teamId', 'name')
+        .sort({ createdAt: -1 });
+
+      const history = tickets.map((ticket: any) => ({
+        ticketId: ticket._id,
+        ticketCode: ticket.ticketCode,
+        tournament: ticket.tournamentId ? {
+          id: ticket.tournamentId._id,
+          bodNumber: ticket.tournamentId.bodNumber,
+          date: ticket.tournamentId.date,
+          location: ticket.tournamentId.location,
+          format: ticket.tournamentId.format,
+          status: ticket.tournamentId.status,
+        } : null,
+        team: ticket.teamId ? {
+          id: ticket.teamId._id,
+          name: ticket.teamId.name,
+        } : null,
+        status: ticket.status,
+        paymentStatus: ticket.paymentStatus,
+        amountPaid: ticket.amountPaid,
+        discountCodeUsed: ticket.discountCodeUsed,
+        createdAt: ticket.createdAt,
+      }));
+
+      this.sendSuccess(res, { history }, "Transaction history retrieved");
     }
   );
 }

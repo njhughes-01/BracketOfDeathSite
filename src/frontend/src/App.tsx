@@ -24,7 +24,11 @@ import News from "./pages/News";
 import Admin from "./pages/Admin";
 import SettingsPage from "./pages/admin/Settings";
 import StripeSettingsPage from "./pages/admin/StripeSettingsPage";
+import StripeConnectPage from "./pages/admin/StripeConnectPage";
 import DiscountCodesPage from "./pages/admin/DiscountCodesPage";
+import TournamentTicketsPage from "./pages/admin/TournamentTicketsPage";
+import ScannerPage from "./pages/admin/ScannerPage";
+import TransactionHistory from "./pages/profile/TransactionHistory";
 import UserManagement from "./pages/UserManagement";
 import NotFound from "./pages/NotFound";
 import Setup from "./pages/Setup";
@@ -40,7 +44,7 @@ function App() {
     <ErrorBoundary>
       <AuthProvider>
         <Router>
-          <div className="min-h-screen bg-gray-50">
+          <div className="min-h-screen bg-background-dark">
             <Layout>
             <Routes>
               <Route path="/login" element={<Login />} />
@@ -79,6 +83,14 @@ function App() {
               <Route element={<RequireProfile />}>
                 <Route path="/" element={<Home />} />
                 <Route path="/profile" element={<Profile />} />
+                <Route
+                  path="/profile/transactions"
+                  element={
+                    <ProtectedRoute>
+                      <TransactionHistory />
+                    </ProtectedRoute>
+                  }
+                />
                 <Route path="/players" element={<Players />} />
                 <Route path="/players/:id" element={<PlayerDetail />} />
                 <Route path="/tournaments" element={<Tournaments />} />
@@ -197,12 +209,38 @@ function App() {
                   }
                 />
                 <Route
+                  path="/admin/stripe-connect"
+                  element={
+                    <ProtectedRoute requireAdmin>
+                      <StripeConnectPage />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
                   path="/admin/settings/discounts"
                   element={
                     <ProtectedRoute
                       requirePermission={PERMISSIONS.SYSTEM_MANAGE_SETTINGS}
                     >
                       <DiscountCodesPage />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/admin/scanner"
+                  element={
+                    <ProtectedRoute requireAdmin>
+                      <ScannerPage />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/admin/tournaments/:id/tickets"
+                  element={
+                    <ProtectedRoute
+                      requirePermission={PERMISSIONS.TOURNAMENT_CREATE}
+                    >
+                      <TournamentTicketsPage />
                     </ProtectedRoute>
                   }
                 />

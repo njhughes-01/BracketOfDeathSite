@@ -465,7 +465,7 @@ const TournamentDetail: React.FC = () => {
         }
 
         const reservationResponse = await apiClient.getReservationStatus(id);
-        if (reservationResponse.data) {
+        if (reservationResponse.data?.hasReservation && reservationResponse.data?.reservationId) {
           setReservation(reservationResponse.data);
           setRegistrationState("reserved");
           return;

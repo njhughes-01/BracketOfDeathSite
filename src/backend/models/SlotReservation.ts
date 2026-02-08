@@ -4,7 +4,7 @@ export type ReservationStatus = 'active' | 'completed' | 'expired' | 'cancelled'
 
 export interface ISlotReservation extends Document {
   tournamentId: mongoose.Types.ObjectId;
-  userId: mongoose.Types.ObjectId;
+  userId: string;
   playerId: mongoose.Types.ObjectId;
   expiresAt: Date;
   status: ReservationStatus;
@@ -22,7 +22,7 @@ export interface ISlotReservation extends Document {
 }
 
 // Default reservation timeout in minutes
-export const RESERVATION_TIMEOUT_MINUTES = 20;
+export const RESERVATION_TIMEOUT_MINUTES = 35;
 
 const SlotReservationSchema: Schema = new Schema(
   {
@@ -33,7 +33,7 @@ const SlotReservationSchema: Schema = new Schema(
       index: true,
     },
     userId: {
-      type: Schema.Types.ObjectId,
+      type: String,
       required: true,
       index: true,
     },
@@ -82,7 +82,7 @@ SlotReservationSchema.virtual("remainingSeconds").get(function(this: ISlotReserv
 // Static method to create a new reservation
 SlotReservationSchema.statics.createReservation = async function(
   tournamentId: mongoose.Types.ObjectId,
-  userId: mongoose.Types.ObjectId,
+  userId: string,
   playerId: mongoose.Types.ObjectId,
   timeoutMinutes: number = RESERVATION_TIMEOUT_MINUTES
 ): Promise<ISlotReservation> {
@@ -117,7 +117,7 @@ SlotReservationSchema.statics.expireStaleReservations = async function(): Promis
 // Static method to get active reservation for user/tournament
 SlotReservationSchema.statics.getActiveReservation = async function(
   tournamentId: mongoose.Types.ObjectId,
-  userId: mongoose.Types.ObjectId
+  userId: string
 ): Promise<ISlotReservation | null> {
   return this.findOne({
     tournamentId,
@@ -160,14 +160,14 @@ SlotReservationSchema.set('toObject', { virtuals: true });
 export interface ISlotReservationModel extends mongoose.Model<ISlotReservation> {
   createReservation(
     tournamentId: mongoose.Types.ObjectId,
-    userId: mongoose.Types.ObjectId,
+    userId: string,
     playerId: mongoose.Types.ObjectId,
     timeoutMinutes?: number
   ): Promise<ISlotReservation>;
   expireStaleReservations(): Promise<number>;
   getActiveReservation(
     tournamentId: mongoose.Types.ObjectId,
-    userId: mongoose.Types.ObjectId
+    userId: string
   ): Promise<ISlotReservation | null>;
   countActiveReservations(tournamentId: mongoose.Types.ObjectId): Promise<number>;
 }

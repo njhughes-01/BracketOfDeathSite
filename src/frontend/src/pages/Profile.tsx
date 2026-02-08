@@ -8,6 +8,7 @@ import type { Player } from "../types/api";
 import { Modal } from "../components/ui";
 import ChangePasswordModal from "../components/auth/ChangePasswordModal";
 import ProfileEditForm from "../components/profile/ProfileEditForm";
+import MyTicketsSection from "./profile/MyTicketsSection";
 
 const Profile: React.FC = () => {
   const { user, isAdmin, logout, refreshUser } = useAuth();
@@ -286,6 +287,9 @@ const Profile: React.FC = () => {
             </div>
           </div>
 
+          {/* My Tickets */}
+          <MyTicketsSection />
+
           {/* Account Settings */}
           <div className="bg-[#1c2230] rounded-3xl border border-white/5 p-6 space-y-4 hover:border-white/10 transition-colors">
             <h3 className="text-lg font-bold text-white flex items-center gap-2">
@@ -336,6 +340,27 @@ const Profile: React.FC = () => {
                   Change
                 </button>
               </div>
+
+              {/* Transaction History */}
+              <Link
+                to="/profile/transactions"
+                className="p-4 rounded-xl bg-background-dark border border-white/5 flex items-center justify-between group"
+              >
+                <div className="flex items-center gap-4">
+                  <div className="size-10 rounded-lg bg-white/5 flex items-center justify-center text-slate-400 group-hover:bg-primary/20 group-hover:text-primary transition-colors">
+                    <span className="material-symbols-outlined">receipt_long</span>
+                  </div>
+                  <div>
+                    <p className="text-sm font-bold text-white">Transaction History</p>
+                    <p className="text-xs text-slate-500">
+                      View your ticket purchases and receipts
+                    </p>
+                  </div>
+                </div>
+                <span className="text-xs font-bold text-primary hover:text-white px-3 py-1.5 rounded-lg hover:bg-white/10 transition-colors">
+                  View
+                </span>
+              </Link>
 
               {/* Notifications - Hidden for Alpha
                             <div className="p-4 rounded-xl bg-background-dark border border-white/5 flex items-center justify-between opacity-50 cursor-not-allowed">

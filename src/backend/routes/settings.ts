@@ -1,5 +1,6 @@
 import express from "express";
 import SettingsController from "../controllers/SettingsController"; // Import default export
+import { connectController } from "../controllers/ConnectController";
 import { requireSuperAdmin, requireAuth } from "../middleware/auth";
 
 const router = express.Router();
@@ -30,6 +31,10 @@ router.get("/stripe", requireSuperAdmin, SettingsController.getStripeSettings);
 
 // PUT /api/settings/stripe - Update Stripe settings
 router.put("/stripe", requireSuperAdmin, SettingsController.updateStripeSettings);
+
+// Platform fee routes (superadmin only)
+router.get("/stripe/platform-fee", requireSuperAdmin, connectController.getPlatformFee);
+router.put("/stripe/platform-fee", requireSuperAdmin, connectController.setPlatformFee);
 
 export default router;
 

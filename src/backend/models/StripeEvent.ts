@@ -7,7 +7,7 @@ export interface IStripeEvent extends Document {
   
   // Extracted references for querying
   tournamentId?: mongoose.Types.ObjectId;
-  userId?: mongoose.Types.ObjectId;
+  userId?: string;
   playerId?: mongoose.Types.ObjectId;
   ticketId?: mongoose.Types.ObjectId;
   
@@ -50,7 +50,7 @@ const StripeEventSchema: Schema = new Schema(
       index: true,
     },
     userId: {
-      type: Schema.Types.ObjectId,
+      type: String,
       index: true,
     },
     playerId: {
@@ -109,7 +109,7 @@ StripeEventSchema.statics.logEvent = async function(
   stripeEvent: any,
   extractedData?: {
     tournamentId?: mongoose.Types.ObjectId;
-    userId?: mongoose.Types.ObjectId;
+    userId?: string;
     playerId?: mongoose.Types.ObjectId;
     ticketId?: mongoose.Types.ObjectId;
     amount?: number;
@@ -140,7 +140,7 @@ StripeEventSchema.statics.logEvent = async function(
 StripeEventSchema.statics.getEvents = async function(options: {
   type?: string;
   tournamentId?: mongoose.Types.ObjectId;
-  userId?: mongoose.Types.ObjectId;
+  userId?: string;
   startDate?: Date;
   endDate?: Date;
   page?: number;
@@ -276,7 +276,7 @@ export interface IStripeEventModel extends mongoose.Model<IStripeEvent> {
     stripeEvent: any,
     extractedData?: {
       tournamentId?: mongoose.Types.ObjectId;
-      userId?: mongoose.Types.ObjectId;
+      userId?: string;
       playerId?: mongoose.Types.ObjectId;
       ticketId?: mongoose.Types.ObjectId;
       amount?: number;
@@ -287,7 +287,7 @@ export interface IStripeEventModel extends mongoose.Model<IStripeEvent> {
   getEvents(options: {
     type?: string;
     tournamentId?: mongoose.Types.ObjectId;
-    userId?: mongoose.Types.ObjectId;
+    userId?: string;
     startDate?: Date;
     endDate?: Date;
     page?: number;

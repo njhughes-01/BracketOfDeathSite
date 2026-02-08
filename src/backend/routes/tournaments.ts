@@ -192,6 +192,13 @@ router.get(
   ticketController.getTournamentTicketStats,
 );
 
+router.get(
+  "/:id/transactions",
+  requireAdmin,
+  validateObjectId,
+  ticketController.getTournamentTransactions,
+);
+
 // ===== Phase 4: Invitation Routes (Admin) =====
 router.get(
   "/:id/invitations",

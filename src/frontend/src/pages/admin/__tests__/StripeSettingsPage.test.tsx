@@ -12,6 +12,14 @@ vi.mock("../../../services/api", () => ({
   },
 }));
 
+// Mock useAuth
+vi.mock("../../../contexts/AuthContext", () => ({
+  useAuth: () => ({
+    user: { isSuperAdmin: true },
+    isAuthenticated: true,
+  }),
+}));
+
 // Mock logger to prevent console noise during tests
 vi.mock("../../../utils/logger", () => ({
   default: {
@@ -253,7 +261,7 @@ describe("StripeSettingsPage", () => {
       });
 
       // Click save
-      fireEvent.click(screen.getByRole("button", { name: /save/i }));
+      fireEvent.click(screen.getByRole("button", { name: /save settings/i }));
 
       await waitFor(() => {
         expect(apiClient.updateStripeSettings).toHaveBeenCalledWith(
@@ -284,7 +292,7 @@ describe("StripeSettingsPage", () => {
         target: { value: "30" },
       });
 
-      fireEvent.click(screen.getByRole("button", { name: /save/i }));
+      fireEvent.click(screen.getByRole("button", { name: /save settings/i }));
 
       await waitFor(() => {
         expect(screen.getByText(/saved successfully/i)).toBeInTheDocument();
@@ -303,7 +311,7 @@ describe("StripeSettingsPage", () => {
         expect(screen.getByLabelText(/default entry fee/i)).toBeInTheDocument();
       });
 
-      fireEvent.click(screen.getByRole("button", { name: /save/i }));
+      fireEvent.click(screen.getByRole("button", { name: /save settings/i }));
 
       await waitFor(() => {
         expect(screen.getByText(/failed to save/i)).toBeInTheDocument();
@@ -325,7 +333,7 @@ describe("StripeSettingsPage", () => {
         target: { value: "35.50" },
       });
 
-      fireEvent.click(screen.getByRole("button", { name: /save/i }));
+      fireEvent.click(screen.getByRole("button", { name: /save settings/i }));
 
       await waitFor(() => {
         expect(apiClient.updateStripeSettings).toHaveBeenCalledWith(

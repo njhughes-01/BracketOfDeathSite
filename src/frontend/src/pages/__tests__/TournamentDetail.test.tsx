@@ -611,6 +611,7 @@ describe("TournamentDetail Page", () => {
         const expiresAt = new Date(Date.now() + 15 * 60 * 1000).toISOString();
         (apiClient.getReservationStatus as any).mockResolvedValue({
           data: {
+            hasReservation: true,
             reservationId: "res123",
             expiresAt,
             remainingSeconds: 900,
@@ -633,6 +634,7 @@ describe("TournamentDetail Page", () => {
         const expiresAt = new Date(Date.now() + 5 * 1000).toISOString();
         (apiClient.getReservationStatus as any).mockResolvedValue({
           data: {
+            hasReservation: true,
             reservationId: "res123",
             expiresAt,
             remainingSeconds: 5,
@@ -665,6 +667,7 @@ describe("TournamentDetail Page", () => {
         const expiresAt = new Date(Date.now() + 15 * 60 * 1000).toISOString();
         (apiClient.getReservationStatus as any).mockResolvedValue({
           data: {
+            hasReservation: true,
             reservationId: "res123",
             expiresAt,
             remainingSeconds: 900,
@@ -698,6 +701,7 @@ describe("TournamentDetail Page", () => {
         const expiresAt = new Date(Date.now() + 15 * 60 * 1000).toISOString();
         (apiClient.getReservationStatus as any).mockResolvedValue({
           data: {
+            hasReservation: true,
             reservationId: "res123",
             expiresAt,
             remainingSeconds: 900,

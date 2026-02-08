@@ -3,6 +3,7 @@ import { BaseDocument } from "./common";
 export interface IPlayer extends BaseDocument {
   name: string;
   email?: string;
+  keycloakUserId?: string;
   bodsPlayed: number;
   bestResult: number;
   avgFinish: number;

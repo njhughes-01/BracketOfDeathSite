@@ -134,11 +134,10 @@ describe("OpenTournaments Page", () => {
     );
   });
 
-  it("redirects to onboarding if no profile", async () => {
+  it("redirects to tournament detail if no profile (onboarding handled there)", async () => {
     (useAuth as any).mockReturnValue({
       isAuthenticated: true,
     });
-    // User has no playerId - should redirect to onboarding
     (apiClient.getProfile as any).mockResolvedValue({ data: { user: {} } });
 
     render(
@@ -154,15 +153,10 @@ describe("OpenTournaments Page", () => {
     const registerBtn = screen.getAllByRole("button")[0];
     fireEvent.click(registerBtn);
 
-    await waitFor(() => {
-      expect(mockNavigate).toHaveBeenCalledWith("/onboarding");
-    });
+    expect(mockNavigate).toHaveBeenCalledWith("/tournaments/1");
   });
 
-  it("calls join api when clicking register (happy path)", async () => {
-    (apiClient.getProfile as any).mockResolvedValue({ data: { user: { playerId: "p1" } } });
-    (apiClient.joinTournament as any).mockResolvedValue({ success: true });
-
+  it("navigates to tournament detail when clicking register (happy path)", async () => {
     render(
       <MemoryRouter>
         <OpenTournaments />
@@ -174,11 +168,8 @@ describe("OpenTournaments Page", () => {
     );
 
     const registerBtn = screen.getAllByRole("button")[0];
-    fireEvent.click(registerBtn); // Click first tournament (not full)
+    fireEvent.click(registerBtn);
 
-    await waitFor(() => {
-      expect(apiClient.getProfile).toHaveBeenCalled();
-      expect(apiClient.joinTournament).toHaveBeenCalledWith("1", "p1");
-    });
+    expect(mockNavigate).toHaveBeenCalledWith("/tournaments/1");
   });
 });
