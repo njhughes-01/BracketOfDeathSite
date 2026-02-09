@@ -25,12 +25,12 @@ export class SettingsController extends BaseController {
       const defaults = SettingsController.PUBLIC_BRANDING_DEFAULTS;
 
       const data = {
-        brandName: settings?.brandName || defaults.brandName,
-        brandPrimaryColor: settings?.brandPrimaryColor || defaults.brandPrimaryColor,
-        brandSecondaryColor: settings?.brandSecondaryColor || defaults.brandSecondaryColor,
-        siteLogo: settings?.siteLogo || defaults.siteLogo,
-        siteLogoUrl: settings?.siteLogoUrl || defaults.siteLogoUrl,
-        favicon: settings?.favicon || defaults.favicon,
+        brandName: settings?.brandName ?? defaults.brandName,
+        brandPrimaryColor: settings?.brandPrimaryColor ?? defaults.brandPrimaryColor,
+        brandSecondaryColor: settings?.brandSecondaryColor ?? defaults.brandSecondaryColor,
+        siteLogo: settings?.siteLogo ?? defaults.siteLogo,
+        siteLogoUrl: settings?.siteLogoUrl ?? defaults.siteLogoUrl,
+        favicon: settings?.favicon ?? defaults.favicon,
       };
 
       this.sendSuccess(res, data, "Public settings retrieved successfully");

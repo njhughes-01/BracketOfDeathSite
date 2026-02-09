@@ -3,10 +3,11 @@ import { apiClient } from "../services/api";
 import type { PublicBranding } from "../services/api";
 import logger from "../utils/logger";
 
-const DEFAULTS: PublicBranding = {
-  brandName: "Bracket of Death",
-  brandPrimaryColor: "#4CAF50",
-  brandSecondaryColor: "#008CBA",
+// Minimal placeholders shown while loading; backend is the source of truth for defaults.
+const PLACEHOLDERS: PublicBranding = {
+  brandName: "",
+  brandPrimaryColor: "#ffffff",
+  brandSecondaryColor: "#ffffff",
   siteLogo: "",
   siteLogoUrl: "",
   favicon: "",
@@ -16,7 +17,7 @@ let cachedBranding: PublicBranding | null = null;
 
 export function useBranding() {
   const [branding, setBranding] = useState<PublicBranding>(
-    cachedBranding || DEFAULTS,
+    cachedBranding || PLACEHOLDERS,
   );
   const [loading, setLoading] = useState(!cachedBranding);
 

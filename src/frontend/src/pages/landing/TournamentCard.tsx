@@ -1,6 +1,8 @@
 import React from "react";
 import type { Tournament } from "../../types/api";
 
+const DEFAULT_MAX_PLAYERS = 32;
+
 interface TournamentCardProps {
   tournament: Tournament;
   onRegister: (id: string) => void;
@@ -21,7 +23,7 @@ const TournamentCard: React.FC<TournamentCardProps> = ({
   const registered =
     tournament.currentPlayerCount ??
     (tournament.registeredPlayers?.length || 0);
-  const max = tournament.maxPlayers || 32;
+  const max = tournament.maxPlayers || DEFAULT_MAX_PLAYERS;
   const isFull = registered >= max;
   const isOpen =
     tournament.status === "open" || tournament.allowSelfRegistration;

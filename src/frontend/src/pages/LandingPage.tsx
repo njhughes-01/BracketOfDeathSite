@@ -27,6 +27,7 @@ const LandingPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    let cancelled = false;
     const fetchData = async () => {
       try {
         const [openRes, upcomingRes, recentRes] = await Promise.all([
@@ -34,6 +35,7 @@ const LandingPage: React.FC = () => {
           apiClient.getUpcomingTournaments(10),
           apiClient.getRecentTournaments(12),
         ]);
+        if (cancelled) return;
         setOpenTournaments(openRes.data || []);
         setUpcomingTournaments(upcomingRes.data || []);
 
@@ -44,12 +46,13 @@ const LandingPage: React.FC = () => {
         );
         setRecentTournaments(past.slice(0, 12));
       } catch (err) {
-        logger.error("Failed to load landing page data:", err);
+        if (!cancelled) logger.error("Failed to load landing page data:", err);
       } finally {
-        setLoading(false);
+        if (!cancelled) setLoading(false);
       }
     };
     fetchData();
+    return () => { cancelled = true; };
   }, []);
 
   // Merge open + upcoming, deduplicate by id, sort by date
