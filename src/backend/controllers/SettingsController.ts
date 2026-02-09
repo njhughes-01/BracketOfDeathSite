@@ -9,18 +9,28 @@ export class SettingsController extends BaseController {
   constructor() {
     super();
   }
+  static readonly PUBLIC_BRANDING_DEFAULTS = {
+    brandName: "Bracket of Death",
+    brandPrimaryColor: "#4CAF50",
+    brandSecondaryColor: "#008CBA",
+    siteLogo: "",
+    siteLogoUrl: "",
+    favicon: "",
+  };
+
   // Get public branding settings (no auth required)
   getPublicSettings = this.asyncHandler(
     async (_req: Request, res: Response): Promise<void> => {
-      const settings = await SystemSettings.findOne();
+      const settings = await SystemSettings.findOne().select("brandName brandPrimaryColor brandSecondaryColor siteLogo siteLogoUrl favicon");
+      const defaults = SettingsController.PUBLIC_BRANDING_DEFAULTS;
 
       const data = {
-        brandName: settings?.brandName || "Bracket of Death",
-        brandPrimaryColor: settings?.brandPrimaryColor || "#4CAF50",
-        brandSecondaryColor: settings?.brandSecondaryColor || "#008CBA",
-        siteLogo: settings?.siteLogo || "",
-        siteLogoUrl: settings?.siteLogoUrl || "",
-        favicon: settings?.favicon || "",
+        brandName: settings?.brandName || defaults.brandName,
+        brandPrimaryColor: settings?.brandPrimaryColor || defaults.brandPrimaryColor,
+        brandSecondaryColor: settings?.brandSecondaryColor || defaults.brandSecondaryColor,
+        siteLogo: settings?.siteLogo || defaults.siteLogo,
+        siteLogoUrl: settings?.siteLogoUrl || defaults.siteLogoUrl,
+        favicon: settings?.favicon || defaults.favicon,
       };
 
       this.sendSuccess(res, data, "Public settings retrieved successfully");
