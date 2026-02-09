@@ -8,7 +8,7 @@ const Navigation: React.FC = () => {
   const { canViewAdmin, canManageUsers } = usePermissions();
 
   const navItems = [
-    { path: "/", label: "Home", icon: "🏠" },
+    { path: "/dashboard", label: "Home", icon: "🏠" },
     { path: "/players", label: "Players", icon: "👥" },
     { path: "/rankings", label: "Rankings", icon: "📈" },
     { path: "/tournaments", label: "Tournaments", icon: "🏆" },

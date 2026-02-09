@@ -16,7 +16,7 @@ const News: React.FC = () => {
 
         <div className="absolute top-0 left-0 right-0 p-4 flex items-center justify-between z-20">
           <Link
-            to="/"
+            to="/dashboard"
             className="size-10 rounded-full bg-black/20 backdrop-blur-md text-white flex items-center justify-center hover:bg-white/20 transition-all"
           >
             <span className="material-symbols-outlined">arrow_back</span>

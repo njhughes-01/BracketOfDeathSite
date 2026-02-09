@@ -19,7 +19,7 @@ const Onboarding: React.FC = () => {
   const { user, refreshUser, forceTokenRefresh } = useAuth();
 
   // Get redirect path from location state or default to dashboard
-  const from = (location.state as any)?.from?.pathname || "/";
+  const from = (location.state as any)?.from?.pathname || "/dashboard";
 
   useEffect(() => {
     const checkSystemStatus = async () => {

@@ -23,3 +23,6 @@ status.txt
 coverage/
 .nyc_output/
 tests/e2e/.auth/
+
+# macOS
+.DS_Store

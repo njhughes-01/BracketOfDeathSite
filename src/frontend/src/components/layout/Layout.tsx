@@ -15,8 +15,10 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
 
   // Pages that should not show navigation
   const noNavPages = ["/login", "/register", "/setup", "/onboarding"];
+  const isLandingPage = location.pathname === "/";
   const showNav =
     isAuthenticated &&
+    !isLandingPage &&
     !noNavPages.some((page) => location.pathname.startsWith(page));
 
   // Check if superadmin and email not configured
@@ -36,9 +38,8 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
   }, [isAuthenticated, isAdmin, user?.username]);
 
   const isActive = (path: string) => {
-    // Exact match for home, startsWith for others to handle sub-routes
-    if (path === "/") {
-      return location.pathname === "/"
+    if (path === "/dashboard") {
+      return location.pathname === "/dashboard"
         ? "text-primary scale-110"
         : "text-slate-400 group-hover:text-white";
     }
@@ -48,8 +49,8 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
   };
 
   const getTextClass = (path: string) => {
-    if (path === "/") {
-      return location.pathname === "/"
+    if (path === "/dashboard") {
+      return location.pathname === "/dashboard"
         ? "text-primary"
         : "text-slate-400 group-hover:text-white";
     }
@@ -59,7 +60,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
   };
 
   const navItems = [
-    { path: "/", icon: "dashboard", label: "Home" },
+    { path: "/dashboard", icon: "dashboard", label: "Home" },
     { path: "/tournaments", icon: "emoji_events", label: "Tournaments" },
     { path: "/open-tournaments", icon: "public", label: "Open Events" },
     { path: "/players", icon: "groups", label: "Players" },
@@ -113,15 +114,15 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
               <Link
                 key={item.path}
                 to={item.path}
-                className={`flex items-center gap-4 px-4 py-3 rounded-xl transition-all group ${(item.path === "/" && location.pathname === "/") ||
-                    (item.path !== "/" && location.pathname.startsWith(item.path))
+                className={`flex items-center gap-4 px-4 py-3 rounded-xl transition-all group ${(item.path === "/dashboard" && location.pathname === "/dashboard") ||
+                    (item.path !== "/dashboard" && location.pathname.startsWith(item.path))
                     ? "bg-primary/10 text-primary border border-primary/20"
                     : "text-slate-400 hover:bg-white/5 hover:text-white"
                   }`}
               >
                 <span
-                  className={`material-symbols-outlined text-[24px] ${(item.path === "/" && location.pathname === "/") ||
-                      (item.path !== "/" &&
+                  className={`material-symbols-outlined text-[24px] ${(item.path === "/dashboard" && location.pathname === "/dashboard") ||
+                      (item.path !== "/dashboard" &&
                         location.pathname.startsWith(item.path))
                       ? "text-primary"
                       : "text-slate-400 group-hover:text-white"
@@ -166,16 +167,16 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
           <div className="flex items-center justify-between max-w-md mx-auto">
             {/* Home Tab */}
             <Link
-              to="/"
+              to="/dashboard"
               className="flex flex-col items-center justify-center gap-1 group"
             >
               <span
-                className={`material-symbols-outlined text-2xl transition-all duration-300 group-hover:scale-110 ${isActive("/").includes("text-primary") ? "text-primary" : "text-slate-500"}`}
+                className={`material-symbols-outlined text-2xl transition-all duration-300 group-hover:scale-110 ${isActive("/dashboard").includes("text-primary") ? "text-primary" : "text-slate-500"}`}
               >
                 home
               </span>
               <span
-                className={`text-[10px] font-medium transition-colors ${getTextClass("/")}`}
+                className={`text-[10px] font-medium transition-colors ${getTextClass("/dashboard")}`}
               >
                 Home
               </span>

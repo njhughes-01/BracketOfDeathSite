@@ -29,7 +29,7 @@ const NotFound: React.FC = () => {
 
         <div className="flex flex-col gap-3">
           <Link
-            to="/"
+            to="/dashboard"
             className="w-full py-4 bg-primary text-black font-bold rounded-xl hover:bg-primary-dark hover:scale-[1.02] active:scale-[0.98] transition-all shadow-lg shadow-primary/20"
           >
             Return Home

@@ -34,6 +34,15 @@ import type {
   UserRole,
 } from "../types/user";
 
+export interface PublicBranding {
+  brandName: string;
+  brandPrimaryColor: string;
+  brandSecondaryColor: string;
+  siteLogo: string;
+  siteLogoUrl: string;
+  favicon: string;
+}
+
 export interface SystemSettings {
   // Email Provider
   activeProvider: "mailjet" | "mailgun";
@@ -774,6 +783,10 @@ class ApiClient {
   async claimSuperAdmin(): Promise<ApiResponse> {
     await ensureFreshToken();
     return this.post<ApiResponse>("/system/claim-admin", {});
+  }
+
+  async getPublicSettings(): Promise<ApiResponse<PublicBranding>> {
+    return this.get<ApiResponse<PublicBranding>>("/settings/public");
   }
 
   async getSystemSettings(): Promise<SystemSettings> {

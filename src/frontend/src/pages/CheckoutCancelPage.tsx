@@ -68,7 +68,7 @@ const CheckoutCancelPage: React.FC = () => {
             </Link>
           )}
           <Link
-            to="/"
+            to="/dashboard"
             className="px-8 py-4 bg-white/10 text-white font-bold rounded-xl hover:bg-white/20 transition-colors flex items-center justify-center gap-2"
           >
             <span className="material-symbols-outlined">home</span>

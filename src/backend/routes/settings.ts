@@ -5,6 +5,9 @@ import { requireSuperAdmin, requireAuth } from "../middleware/auth";
 
 const router = express.Router();
 
+// GET /api/settings/public - Public branding settings (no auth required)
+router.get("/public", SettingsController.getPublicSettings);
+
 // GET /api/settings/email/status - Check if email is configured (any authenticated user)
 router.get("/email/status", requireAuth, SettingsController.isEmailConfigured);
 

@@ -38,6 +38,7 @@ import CheckoutCancelPage from "./pages/CheckoutCancelPage";
 import RequireProfile from "./components/RequireProfile";
 import Onboarding from "./pages/Onboarding";
 import OpenTournaments from "./pages/OpenTournaments";
+import LandingPage from "./pages/LandingPage";
 
 function App() {
   return (
@@ -59,6 +60,7 @@ function App() {
                   </ProtectedRoute>
                 }
               />
+              <Route path="/" element={<LandingPage />} />
               <Route path="/open-tournaments" element={<OpenTournaments />} />
 
               {/* Checkout Routes - Protected */}
@@ -81,7 +83,7 @@ function App() {
 
               {/* Profile Required Routes */}
               <Route element={<RequireProfile />}>
-                <Route path="/" element={<Home />} />
+                <Route path="/dashboard" element={<Home />} />
                 <Route path="/profile" element={<Profile />} />
                 <Route
                   path="/profile/transactions"

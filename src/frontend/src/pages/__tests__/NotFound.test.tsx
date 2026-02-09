@@ -20,7 +20,7 @@ describe("NotFound", () => {
 
     const homeLink = screen.getByRole("link", { name: /home|back|return/i });
     expect(homeLink).toBeInTheDocument();
-    expect(homeLink).toHaveAttribute("href", "/");
+    expect(homeLink).toHaveAttribute("href", "/dashboard");
   });
 
   it("should display helpful message", () => {
