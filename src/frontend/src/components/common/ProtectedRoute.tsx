@@ -19,7 +19,7 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   requireAdmin = false,
   requirePermission,
   requireAnyPermission,
-  fallbackPath = "/",
+  fallbackPath = "/dashboard",
 }) => {
   const { isAuthenticated, loading, login, user } = useAuth();
   const {

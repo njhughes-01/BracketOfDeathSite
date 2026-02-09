@@ -38,7 +38,7 @@ const Login: React.FC = () => {
 
   const from =
     returnUrl ||
-    (typeof stateFrom === "string" ? stateFrom : stateFrom?.pathname || "/");
+    (typeof stateFrom === "string" ? stateFrom : stateFrom?.pathname || "/dashboard");
 
   useEffect(() => {
     // Check for initialization status first

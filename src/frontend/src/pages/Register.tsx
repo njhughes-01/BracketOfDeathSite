@@ -151,7 +151,7 @@ const Register: React.FC = () => {
   };
 
   if (isAuthenticated) {
-    navigate("/");
+    navigate("/dashboard");
     return null; // Or a redirect component
   }
 

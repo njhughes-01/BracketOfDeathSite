@@ -52,7 +52,7 @@ const Admin: React.FC = () => {
         <p className="text-slate-400 max-w-md">
           You need administrative privileges to access this area.
         </p>
-        <Link to="/" className="mt-6 btn btn-primary">
+        <Link to="/dashboard" className="mt-6 btn btn-primary">
           Go Home
         </Link>
       </div>
@@ -97,7 +97,7 @@ const Admin: React.FC = () => {
             </p>
           </div>
           <Link
-            to="/"
+            to="/dashboard"
             className="p-2 rounded-full bg-white/5 hover:bg-white/10 transition-colors"
           >
             <span className="material-symbols-outlined text-white">close</span>

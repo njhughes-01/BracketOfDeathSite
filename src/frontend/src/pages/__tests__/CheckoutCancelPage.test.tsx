@@ -80,7 +80,7 @@ describe("CheckoutCancelPage", () => {
 
     const homeButton = screen.getByRole("link", { name: /go home/i });
     expect(homeButton).toBeInTheDocument();
-    expect(homeButton).toHaveAttribute("href", "/");
+    expect(homeButton).toHaveAttribute("href", "/dashboard");
   });
 
   it("shows contact support link", () => {

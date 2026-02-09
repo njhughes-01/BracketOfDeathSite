@@ -9,6 +9,24 @@ export class SettingsController extends BaseController {
   constructor() {
     super();
   }
+  // Get public branding settings (no auth required)
+  getPublicSettings = this.asyncHandler(
+    async (_req: Request, res: Response): Promise<void> => {
+      const settings = await SystemSettings.findOne();
+
+      const data = {
+        brandName: settings?.brandName || "Bracket of Death",
+        brandPrimaryColor: settings?.brandPrimaryColor || "#4CAF50",
+        brandSecondaryColor: settings?.brandSecondaryColor || "#008CBA",
+        siteLogo: settings?.siteLogo || "",
+        siteLogoUrl: settings?.siteLogoUrl || "",
+        favicon: settings?.favicon || "",
+      };
+
+      this.sendSuccess(res, data, "Public settings retrieved successfully");
+    },
+  );
+
   // Get current settings (masked)
   getSettings = this.asyncHandler(
     async (req: Request, res: Response): Promise<void> => {
