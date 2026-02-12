@@ -81,6 +81,9 @@ export class MatchController extends BaseController {
       if (processedUpdateData.notes !== undefined) {
         (matchDoc as any).notes = processedUpdateData.notes;
       }
+      if (processedUpdateData.adminOverride !== undefined) {
+        (matchDoc as any).adminOverride = processedUpdateData.adminOverride;
+      }
       // Map client times to model fields
       if ((processedUpdateData as any).startTime) {
         (matchDoc as any).scheduledDate = new Date(
@@ -99,6 +102,8 @@ export class MatchController extends BaseController {
         typeof t1Score === "number" && typeof t2Score === "number";
 
       if (processedUpdateData.status) {
+        // Respect the client-specified status. When "in-progress" is sent (Save button),
+        // don't auto-complete — this allows quick score entry during live tournaments.
         (matchDoc as any).status = processedUpdateData.status;
         if (
           processedUpdateData.status === "completed" &&
@@ -108,6 +113,7 @@ export class MatchController extends BaseController {
           (matchDoc as any).winner = t1Score > t2Score ? "team1" : "team2";
         }
       } else if (bothScored && t1Score !== t2Score) {
+        // No explicit status from client — auto-complete for backward compatibility
         (matchDoc as any).winner = t1Score > t2Score ? "team1" : "team2";
         (matchDoc as any).status = "completed";
       }
