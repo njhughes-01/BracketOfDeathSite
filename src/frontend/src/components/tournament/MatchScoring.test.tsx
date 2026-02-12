@@ -79,6 +79,90 @@ describe("MatchScoring Component", () => {
     );
   });
 
+  it("Save sends in-progress status even when scores are non-tied", () => {
+    // This is the core bug fix test: Save should NOT auto-complete.
+    // Previously, entering non-tied scores and clicking Save would trigger
+    // completed-match validation on the backend because status was ignored.
+    const matchWithScores = {
+      ...defaultMatch,
+      team1: {
+        ...defaultMatch.team1,
+        score: 5,
+        playerScores: [{ playerId: "p1", playerName: "PlayerOne", score: 5 }],
+      },
+      team2: {
+        ...defaultMatch.team2,
+        score: 3,
+        playerScores: [{ playerId: "p2", playerName: "PlayerTwo", score: 3 }],
+      },
+    };
+
+    render(
+      <MatchScoring
+        match={matchWithScores as any}
+        onUpdateMatch={mockUpdateMatch}
+      />,
+    );
+
+    const saveBtns = screen.getAllByText("Save");
+    fireEvent.click(saveBtns[0]);
+
+    expect(mockUpdateMatch).toHaveBeenCalledWith(
+      expect.objectContaining({
+        matchId: "m1",
+        status: "in-progress",
+      }),
+    );
+    // Must NOT send status "completed"
+    expect(mockUpdateMatch).not.toHaveBeenCalledWith(
+      expect.objectContaining({
+        status: "completed",
+      }),
+    );
+  });
+
+  it("Save does not include endTime (only Confirm Result does)", () => {
+    render(
+      <MatchScoring
+        match={defaultMatch as any}
+        onUpdateMatch={mockUpdateMatch}
+      />,
+    );
+
+    const saveBtns = screen.getAllByText("Save");
+    fireEvent.click(saveBtns[0]);
+
+    const call = mockUpdateMatch.mock.calls[0][0];
+    expect(call.endTime).toBeUndefined();
+  });
+
+  it("Confirm Result sends completed status with endTime", () => {
+    const validMatch = {
+      ...defaultMatch,
+      team1: { ...defaultMatch.team1, score: 6 },
+      team2: { ...defaultMatch.team2, score: 4 },
+    };
+
+    render(
+      <MatchScoring
+        match={validMatch as any}
+        onUpdateMatch={mockUpdateMatch}
+        strictTotals={false}
+      />,
+    );
+
+    const confirmBtns = screen.getAllByText("Confirm Result");
+    fireEvent.click(confirmBtns[0]);
+
+    expect(mockUpdateMatch).toHaveBeenCalledWith(
+      expect.objectContaining({
+        matchId: "m1",
+        status: "completed",
+        endTime: expect.any(String),
+      }),
+    );
+  });
+
   it("validates valid tennis score (6-4)", () => {
     const validMatch = {
       ...defaultMatch,
