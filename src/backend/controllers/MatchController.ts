@@ -1057,8 +1057,10 @@ export class MatchController extends BaseController {
       delete processedData.team2Score;
     }
 
-    // Determine winner if both team scores are provided
+    // Determine winner if both team scores are provided AND match is being completed.
+    // Don't set winner for in-progress saves (Save button) — only for completions.
     if (
+      processedData.status !== "in-progress" &&
       processedData["team1.score"] !== undefined &&
       processedData["team2.score"] !== undefined
     ) {
