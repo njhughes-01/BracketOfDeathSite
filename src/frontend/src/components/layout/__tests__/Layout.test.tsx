@@ -17,9 +17,9 @@ describe("Layout", () => {
         vi.clearAllMocks();
     });
 
-    const renderWithRouter = (component: React.ReactElement) => {
+    const renderWithRouter = (component: React.ReactElement, route = "/dashboard") => {
         return render(
-            <MemoryRouter initialEntries={["/"]}>{component}</MemoryRouter>
+            <MemoryRouter initialEntries={[route]}>{component}</MemoryRouter>
         );
     };
 

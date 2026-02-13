@@ -81,6 +81,18 @@ export class MatchController extends BaseController {
       if (processedUpdateData.notes !== undefined) {
         (matchDoc as any).notes = processedUpdateData.notes;
       }
+      if (processedUpdateData.adminOverride !== undefined) {
+        if (!req.user?.isAdmin) {
+          return this.sendForbidden(res, "Admin privileges required to override match validation.");
+        }
+        // Populate author and timestamp from server to prevent audit log spoofing
+        // Ignore any client-provided values for these security-sensitive fields
+        (matchDoc as any).adminOverride = {
+          reason: processedUpdateData.adminOverride.reason,
+          authorizedBy: req.user.name || req.user.email || req.user.username || "unknown",
+          timestamp: new Date(),
+        };
+      }
       // Map client times to model fields
       if ((processedUpdateData as any).startTime) {
         (matchDoc as any).scheduledDate = new Date(
@@ -99,6 +111,8 @@ export class MatchController extends BaseController {
         typeof t1Score === "number" && typeof t2Score === "number";
 
       if (processedUpdateData.status) {
+        // Respect the client-specified status. When "in-progress" is sent (Save button),
+        // don't auto-complete — this allows quick score entry during live tournaments.
         (matchDoc as any).status = processedUpdateData.status;
         if (
           processedUpdateData.status === "completed" &&
@@ -108,6 +122,7 @@ export class MatchController extends BaseController {
           (matchDoc as any).winner = t1Score > t2Score ? "team1" : "team2";
         }
       } else if (bothScored && t1Score !== t2Score) {
+        // No explicit status from client — auto-complete for backward compatibility
         (matchDoc as any).winner = t1Score > t2Score ? "team1" : "team2";
         (matchDoc as any).status = "completed";
       }
@@ -1051,8 +1066,10 @@ export class MatchController extends BaseController {
       delete processedData.team2Score;
     }
 
-    // Determine winner if both team scores are provided
+    // Determine winner if both team scores are provided AND match is being completed.
+    // Don't set winner for in-progress saves (Save button) — only for completions.
     if (
+      processedData.status !== "in-progress" &&
       processedData["team1.score"] !== undefined &&
       processedData["team2.score"] !== undefined
     ) {
