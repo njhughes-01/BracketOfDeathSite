@@ -1,7 +1,7 @@
 import { defineConfig, devices } from '@playwright/test';
 import path from 'path';
 
-const baseURL = process.env.PLAYWRIGHT_BASE_URL || 'http://localhost:5174';
+const baseURL = process.env.PLAYWRIGHT_BASE_URL || 'http://localhost:5173';
 const authDir = path.join(__dirname, 'tests/e2e/.auth');
 
 export default defineConfig({

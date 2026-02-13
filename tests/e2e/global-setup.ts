@@ -2,7 +2,7 @@ import { chromium, FullConfig } from '@playwright/test';
 import path from 'path';
 
 const KEYCLOAK_URL = 'http://localhost:8081';
-const FRONTEND_URL = 'http://localhost:5174';
+const FRONTEND_URL = 'http://localhost:5173';
 
 const AUTH_DIR = path.join(__dirname, '.auth');
 const ADMIN_AUTH_FILE = path.join(AUTH_DIR, 'admin.json');
