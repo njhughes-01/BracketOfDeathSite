@@ -1,11 +1,14 @@
 name: E2E Tests
 
 on:
+  # Disabled on PRs — E2E Docker stack is broken on CI (connection refused).
+  # Re-enable pull_request trigger once Docker Compose services are fixed.
+  # See: last 5+ main runs all fail with net::ERR_CONNECTION_REFUSED.
   push:
     branches: [main]
     tags: ["v*"]
-  pull_request:
-    branches: [main]
+  # pull_request:
+  #   branches: [main]
   workflow_dispatch:
 
 jobs:
