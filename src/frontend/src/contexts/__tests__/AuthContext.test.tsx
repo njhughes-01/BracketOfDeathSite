@@ -149,6 +149,10 @@ describe("AuthContext", () => {
             screen.getByText("Logout").click();
         });
 
-        expect(window.location.href).toContain("/login");
+        expect(mockLogout).toHaveBeenCalledWith(
+            expect.objectContaining({
+                redirectUri: expect.stringContaining("/login"),
+            }),
+        );
     });
 });
