@@ -82,6 +82,9 @@ export class MatchController extends BaseController {
         (matchDoc as any).notes = processedUpdateData.notes;
       }
       if (processedUpdateData.adminOverride !== undefined) {
+        if (!req.user?.isAdmin) {
+          return this.sendForbidden(res, "Admin privileges required to override match validation.");
+        }
         (matchDoc as any).adminOverride = processedUpdateData.adminOverride;
       }
       // Map client times to model fields

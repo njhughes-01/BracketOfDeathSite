@@ -14,8 +14,8 @@ import {
 } from "./base";
 import { validateTennisScore } from "../utils/tennisValidation";
 
-// Match-specific calculations
-const calculateMatchStats = (match: IMatch): void => {
+// Match-specific calculations (exported for testing)
+export const calculateMatchStats = (match: IMatch): void => {
   // Ensure dates are properly formatted
   if (match.scheduledDate && typeof match.scheduledDate === "string") {
     match.scheduledDate = new Date(match.scheduledDate);
@@ -24,8 +24,14 @@ const calculateMatchStats = (match: IMatch): void => {
     match.completedDate = new Date(match.completedDate);
   }
 
-  // Auto-determine winner based on scores
-  if (match.team1.score !== undefined && match.team2.score !== undefined) {
+  // Auto-determine winner based on scores — but only if the match isn't being
+  // explicitly kept in-progress (Save button during live tournaments).
+  const statusExplicitlyInProgress =
+    typeof match.isModified === "function" &&
+    match.isModified("status") &&
+    match.status === "in-progress";
+
+  if (!statusExplicitlyInProgress && match.team1.score !== undefined && match.team2.score !== undefined) {
     if (match.team1.score > match.team2.score) {
       match.winner = "team1";
     } else if (match.team2.score > match.team1.score) {
@@ -34,7 +40,8 @@ const calculateMatchStats = (match: IMatch): void => {
   }
 
   // Auto-set completion date and status
-  if (match.winner && match.status === "in-progress") {
+  // BUT only if status wasn't explicitly set to 'in-progress' by the controller (Save button)
+  if (match.winner && match.status === "in-progress" && !statusExplicitlyInProgress) {
     match.status = "completed";
     match.completedDate = match.completedDate || new Date();
   }
