@@ -16,10 +16,10 @@ jobs:
   lint:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v5
         with:
           node-version: "20"
           cache: "npm"
@@ -47,10 +47,10 @@ jobs:
       packages: write
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Log in to Container Registry
-        uses: docker/login-action@v3
+        uses: docker/login-action@v4
         with:
           registry: ${{ env.REGISTRY }}
           username: ${{ github.actor }}
@@ -61,7 +61,7 @@ jobs:
 
       - name: Extract metadata for Backend
         id: meta-backend
-        uses: docker/metadata-action@v5
+        uses: docker/metadata-action@v6
         with:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_PREFIX }}-backend
           tags: |
@@ -71,7 +71,7 @@ jobs:
             type=raw,value=latest,enable={{is_default_branch}}
 
       - name: Build and push Backend
-        uses: docker/build-push-action@v5
+        uses: docker/build-push-action@v6
         with:
           context: ./src/backend
           file: ./src/backend/Dockerfile
@@ -83,7 +83,7 @@ jobs:
 
       - name: Extract metadata for Frontend
         id: meta-frontend
-        uses: docker/metadata-action@v5
+        uses: docker/metadata-action@v6
         with:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_PREFIX }}-frontend
           tags: |
@@ -93,7 +93,7 @@ jobs:
             type=raw,value=latest,enable={{is_default_branch}}
 
       - name: Build and push Frontend
-        uses: docker/build-push-action@v5
+        uses: docker/build-push-action@v6
         with:
           context: ./src/frontend
           file: ./src/frontend/Dockerfile
@@ -105,7 +105,7 @@ jobs:
 
       - name: Extract metadata for Secrets Init
         id: meta-secrets-init
-        uses: docker/metadata-action@v5
+        uses: docker/metadata-action@v6
         with:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_PREFIX }}-secrets-init
           tags: |
@@ -115,7 +115,7 @@ jobs:
             type=raw,value=latest,enable={{is_default_branch}}
 
       - name: Build and push Secrets Init
-        uses: docker/build-push-action@v5
+        uses: docker/build-push-action@v6
         with:
           context: .
           file: ./scripts/Dockerfile.secrets-init
@@ -127,7 +127,7 @@ jobs:
 
       - name: Extract metadata for Keycloak Init
         id: meta-keycloak-init
-        uses: docker/metadata-action@v5
+        uses: docker/metadata-action@v6
         with:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_PREFIX }}-keycloak-init
           tags: |
@@ -137,7 +137,7 @@ jobs:
             type=raw,value=latest,enable={{is_default_branch}}
 
       - name: Build and push Keycloak Init
-        uses: docker/build-push-action@v5
+        uses: docker/build-push-action@v6
         with:
           context: .
           file: ./scripts/Dockerfile.keycloak-init
@@ -149,7 +149,7 @@ jobs:
 
       - name: Extract metadata for Data Init
         id: meta-data-init
-        uses: docker/metadata-action@v5
+        uses: docker/metadata-action@v6
         with:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_PREFIX }}-data-init
           tags: |
@@ -159,7 +159,7 @@ jobs:
             type=raw,value=latest,enable={{is_default_branch}}
 
       - name: Build and push Data Init
-        uses: docker/build-push-action@v5
+        uses: docker/build-push-action@v6
         with:
           context: .
           file: ./scripts/Dockerfile.data-init
