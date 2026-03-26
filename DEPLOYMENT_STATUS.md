@@ -64,28 +64,74 @@ Access at:
 
 ### Production Deployment (Pull from GHCR)
 
-1. **Authenticate with GHCR**
+#### Option 1: Single-File Deployment (Recommended for Production)
+No need to clone the repository - just download the GHCR compose file:
+
 ```bash
+# Download the GHCR compose file
+wget https://raw.githubusercontent.com/njhughes-01/BracketOfDeathSite/main/docker-compose.ghcr.yml
+
+# Create environment file with secure passwords
+cat > .env << 'EOF'
+NODE_ENV=production
+APP_URL=http://10.50.50.101:5173
+CORS_ORIGIN=http://10.50.50.101:5173
+
+# Generate secure passwords (or set your own)
+MONGO_INITDB_ROOT_PASSWORD=<SECURE_PASSWORD>
+KEYCLOAK_DB_PASSWORD=<SECURE_PASSWORD>
+KEYCLOAK_ADMIN_PASSWORD=<SECURE_PASSWORD>
+JWT_SECRET=<SECURE_SECRET>
+KEYCLOAK_CLIENT_SECRET=<SECURE_SECRET>
+EOF
+
+# Login to GHCR
 echo $GITHUB_TOKEN | docker login ghcr.io -u njhughes-01 --password-stdin
+
+# Pull and start
+docker compose -f docker-compose.ghcr.yml pull
+docker compose -f docker-compose.ghcr.yml up -d
 ```
 
-2. **Clone and pull images**
+#### Option 2: Full Repository Clone
 ```bash
 git clone https://github.com/njhughes-01/BracketOfDeathSite.git
 cd BracketOfDeathSite
-docker-compose pull
+
+# Login to GHCR
+echo $GITHUB_TOKEN | docker login ghcr.io -u njhughes-01 --password-stdin
+
+# Use GHCR compose file
+docker compose -f docker-compose.ghcr.yml pull
+docker compose -f docker-compose.ghcr.yml up -d
 ```
 
-3. **Start services**
+#### Deployment on dockhand (10.50.50.101)
 ```bash
-docker-compose up -d
+# SSH to dockhand
+ssh dockhand
+
+# Stop old version if running
+cd /path/to/current/bod
+docker compose down
+
+# Deploy new version
+cd ~
+wget https://raw.githubusercontent.com/njhughes-01/BracketOfDeathSite/main/docker-compose.ghcr.yml
+docker compose -f docker-compose.ghcr.yml pull
+docker compose -f docker-compose.ghcr.yml up -d
+
+# Verify
+docker compose -f docker-compose.ghcr.yml ps
+curl http://localhost:5173
+curl http://localhost:3001/api/health
 ```
 
-4. **Check status**
+#### Check Status
 ```bash
-docker-compose ps
-docker logs bod-backend
-docker logs bod-frontend
+docker compose -f docker-compose.ghcr.yml ps
+docker logs bod-backend | tail -20
+docker logs bod-frontend | tail -20
 ```
 
 ---
