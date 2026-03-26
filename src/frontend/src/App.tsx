@@ -39,6 +39,7 @@ import RequireProfile from "./components/RequireProfile";
 import Onboarding from "./pages/Onboarding";
 import OpenTournaments from "./pages/OpenTournaments";
 import LandingPage from "./pages/LandingPage";
+import Rules from "./pages/Rules";
 
 function App() {
   return (
@@ -62,6 +63,7 @@ function App() {
               />
               <Route path="/" element={<LandingPage />} />
               <Route path="/open-tournaments" element={<OpenTournaments />} />
+              <Route path="/rules" element={<Rules />} />
 
               {/* Checkout Routes - Protected */}
               <Route

@@ -6,25 +6,25 @@ const Header: React.FC = () => {
   const { isAuthenticated, user, logout, loading } = useAuth();
 
   return (
-    <header className="bg-white shadow">
-      <div className="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
+    <header className="bg-white border-b border-gray-200">
+      <div className="max-w-7xl mx-auto py-4 px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-4">
-            <Link to="/">
+            <Link to="/" className="flex items-center space-x-3 group">
               <img 
                 src="/bod-logo.jpg" 
                 alt="Bracket of Death Logo" 
-                className="h-16 w-16 object-contain"
+                className="h-20 w-20 object-contain transition-transform group-hover:scale-105"
               />
+              <div>
+                <h1 className="text-2xl font-bold text-bod-black tracking-tight">
+                  Bracket of Death
+                </h1>
+                <p className="text-bod-gray text-sm italic">
+                  Because Tennis
+                </p>
+              </div>
             </Link>
-            <div>
-              <h1 className="text-3xl font-bold text-gradient">
-                Bracket of Death
-              </h1>
-              <p className="text-gray-600 text-sm mt-1">
-                Tennis Tournament Score Tracking
-              </p>
-            </div>
           </div>
 
           <div className="flex items-center space-x-4">

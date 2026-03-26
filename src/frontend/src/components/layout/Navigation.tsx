@@ -13,6 +13,7 @@ const Navigation: React.FC = () => {
     { path: "/rankings", label: "Rankings", icon: "📈" },
     { path: "/tournaments", label: "Tournaments", icon: "🏆" },
     { path: "/results", label: "Results", icon: "📊" },
+    { path: "/rules", label: "Rules", icon: "📋" },
     { path: "/news", label: "News", icon: "📰" },
   ];
 

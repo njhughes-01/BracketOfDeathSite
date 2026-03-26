@@ -5,22 +5,29 @@ export default {
   theme: {
     extend: {
       colors: {
-        primary: "#104dc6", // Deep Electric Blue
-        "primary-hover": "#0e3da0",
-        "primary-dark": "#0a3690",
-        // Standardizing accent to the neon lime/yellow from design
-        accent: "#DFFF00",
-        "accent-lime": "#ccff00",
+        // Bracket of Death brand colors (from logo)
+        'bod-black': '#000000',
+        'bod-gray': '#808080',
+        'bod-charcoal': '#333333',
+        'bod-light': '#F5F5F5',
+        'bod-white': '#FFFFFF',
+        
+        // Keep existing colors for gradual migration
+        primary: "#000000", // Changed to black to match BOD branding
+        "primary-hover": "#333333", // Charcoal
+        "primary-dark": "#000000",
+        accent: "#808080", // Gray accent
+        "accent-lime": "#ccff00", // Keep for tennis theme
         "tennis-green": "#ccff00",
         "neon-accent": "#ccff00",
-        "background-light": "#f6f6f8",
-        "background-dark": "#0f1115", // Deep charcoal from plan
-        "surface-dark": "#1a2230",
-        "surface-dark-lighter": "#242c3d",
-        "card-dark": "#161b26",
-        surface: "#1c1f27",
-        "input-dark": "#242a38",
-        "input-border": "#3b4354",
+        "background-light": "#FFFFFF",
+        "background-dark": "#000000",
+        "surface-dark": "#1a1a1a",
+        "surface-dark-lighter": "#333333",
+        "card-dark": "#1a1a1a",
+        surface: "#F5F5F5",
+        "input-dark": "#333333",
+        "input-border": "#808080",
         error: "#ef4444",
       },
       fontFamily: {
