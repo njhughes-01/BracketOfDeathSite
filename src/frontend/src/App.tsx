@@ -40,6 +40,7 @@ import Onboarding from "./pages/Onboarding";
 import OpenTournaments from "./pages/OpenTournaments";
 import LandingPage from "./pages/LandingPage";
 import Rules from "./pages/Rules";
+import FAQ from "./pages/FAQ";
 
 function App() {
   return (
@@ -64,6 +65,7 @@ function App() {
               <Route path="/" element={<LandingPage />} />
               <Route path="/open-tournaments" element={<OpenTournaments />} />
               <Route path="/rules" element={<Rules />} />
+              <Route path="/faq" element={<FAQ />} />
 
               {/* Checkout Routes - Protected */}
               <Route

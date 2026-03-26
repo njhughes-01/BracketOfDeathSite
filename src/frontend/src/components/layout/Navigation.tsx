@@ -14,6 +14,7 @@ const Navigation: React.FC = () => {
     { path: "/tournaments", label: "Tournaments", icon: "🏆" },
     { path: "/results", label: "Results", icon: "📊" },
     { path: "/rules", label: "Rules", icon: "📋" },
+    { path: "/faq", label: "FAQ", icon: "❓" },
     { path: "/news", label: "News", icon: "📰" },
   ];
 

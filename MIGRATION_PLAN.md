@@ -1,7 +1,7 @@
 # Bracket of Death - Site Migration Plan
 
 ## Goal
-Replace bracketofdeath.net (WordPress) with modern React app while preserving branding, content, and UX.
+Keep the modern tournament management app design/functionality, but add all public-facing content from bracketofdeath.net. The logo is incorporated — we just need to ensure FAQ, History, and other informational pages exist alongside the tournament management features.
 
 ---
 
@@ -110,29 +110,11 @@ Replace bracketofdeath.net (WordPress) with modern React app while preserving br
 
 ---
 
-## Design System Updates
+## Design System (Keep Existing)
 
-### Typography
-- **Headings**: Bold, black (#000000)
-- **Body**: Clean sans-serif (current uses default WP font)
-- **Logo font**: Gothic/Old English style (from logo)
+**DO NOT CHANGE** the modern tournament app styling. Just add public content pages that match the existing design system.
 
-### Layout
-- **Header**:
-  - Logo (left, clickable)
-  - Title + tagline (next to logo)
-  - Navigation (right, horizontal)
-  - Clean white background
-
-- **Content**:
-  - Max-width container (centered)
-  - Generous whitespace
-  - Simple black text on white
-
-- **Footer**:
-  - Minimal (copyright, powered by info)
-
-### Components to Build
+### Components to Build (matching current app style)
 1. **Statistics Panel** (home page "By the Numbers")
 2. **Rules Page** (content-heavy, clean formatting)
 3. **Events List** (upcoming tournaments)
