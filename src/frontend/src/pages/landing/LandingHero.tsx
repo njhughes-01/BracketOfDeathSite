@@ -11,7 +11,8 @@ const LandingHero: React.FC<LandingHeroProps> = ({
   branding,
   isAuthenticated,
 }) => {
-  const logoSrc = branding.siteLogo || branding.siteLogoUrl || null;
+  // Use BOD logo as fallback if no branding logo is set
+  const logoSrc = branding.siteLogo || branding.siteLogoUrl || "/bod-logo.jpg";
 
   return (
     <section className="relative overflow-hidden">
