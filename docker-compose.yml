@@ -13,7 +13,7 @@ services:
 
   # Keycloak Authentication Server (internal only)
   keycloak:
-    image: quay.io/keycloak/keycloak:23.0
+    image: quay.io/keycloak/keycloak:26.5.6
     container_name: bod-keycloak
     restart: unless-stopped
     entrypoint: ["/bin/sh", "/scripts/keycloak-entrypoint.sh", "start-dev"]
@@ -47,7 +47,7 @@ services:
 
   # Keycloak Database
   keycloak-db:
-    image: postgres:15
+    image: postgres:15.17
     container_name: bod-keycloak-db
     restart: unless-stopped
     depends_on:
@@ -70,7 +70,7 @@ services:
 
   # MongoDB Database (internal only)
   mongodb:
-    image: mongo:8.0.17  # Pinned for CVE-2025-14847
+    image: mongo:8.0.19  # Latest stable with security fixes (CVE-2026-1847-1850, CVE-2026-25609-25613)
     container_name: bod-mongodb
     restart: unless-stopped
     command:

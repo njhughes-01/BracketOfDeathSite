@@ -1,5 +1,5 @@
 # Frontend Dockerfile - Development/Production
-FROM node:20-alpine
+FROM node:20.20.2-alpine
 
 # Install system dependencies for healthcheck
 RUN apk add --no-cache curl
