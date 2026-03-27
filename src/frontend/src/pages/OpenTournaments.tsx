@@ -3,7 +3,7 @@ import logger from "../utils/logger";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
 import { apiClient } from "../services/api";
-import LoadingSpinner from "../components/ui/LoadingSpinner";
+import { Heading, Text, Stack, Container, ResponsiveGrid, Button, LoadingSpinner } from "../components/ui";
 
 
 interface ITournament {
@@ -52,8 +52,6 @@ const OpenTournaments: React.FC = () => {
       return;
     }
 
-    // Navigate to tournament detail page which has the full checkout flow
-    // (reservation → payment → ticket)
     navigate(`/tournaments/${tournamentId}`);
   };
 
@@ -61,13 +59,13 @@ const OpenTournaments: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-background-dark font-display text-white">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-        <h1 className="text-4xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-primary to-green-400 mb-2">
+      <Container maxWidth="xl" padding="md" className="py-12">
+        <Heading level={1} responsive className="text-transparent bg-clip-text bg-gradient-to-r from-primary to-green-400 mb-2">
           Open Tournaments
-        </h1>
-        <p className="text-slate-400 mb-10 text-lg">
+        </Heading>
+        <Text size="lg" color="muted" className="mb-10">
           Discover and join upcoming Bracket of Death tournaments.
-        </p>
+        </Text>
 
         {error && (
           <div className="bg-red-500/10 border border-red-500/20 text-red-500 p-4 rounded-xl mb-8">
@@ -80,22 +78,22 @@ const OpenTournaments: React.FC = () => {
             <span className="material-symbols-outlined text-6xl text-slate-600 mb-4">
               event_busy
             </span>
-            <p className="text-xl text-slate-400">
+            <Text size="lg" color="muted" className="mt-4">
               No open tournaments at the moment.
-            </p>
-            <p className="text-slate-500 mt-2">
+            </Text>
+            <Text color="muted" className="mt-2">
               Check back later for upcoming events!
-            </p>
+            </Text>
           </div>
         )}
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <ResponsiveGrid cols={{ mobile: 1, tablet: 2, desktop: 3 }} gap={6}>
           {tournaments.map((tournament) => {
             const registeredPlayers = tournament.registeredPlayers || [];
             const registered = registeredPlayers.length;
             const max = tournament.maxPlayers || 32;
             const isFull = registered >= max;
-            const userIsRegistered = user?.playerId 
+            const userIsRegistered = user?.playerId
               ? registeredPlayers.some(
                   (p: any) => (typeof p === 'string' ? p : p._id) === user.playerId
                 )
@@ -111,9 +109,9 @@ const OpenTournaments: React.FC = () => {
                   className={`h-1.5 w-full ${isFull ? "bg-amber-500" : "bg-primary"}`}
                 ></div>
 
-                <div className="p-6">
-                  <div className="flex justify-between items-start mb-4">
-                    <div className="flex items-center gap-2 text-primary font-bold tracking-wider text-sm uppercase">
+                <Stack direction="vertical" className="p-6">
+                  <Stack direction="horizontal" justify="between" align="start" className="mb-4">
+                    <Stack direction="horizontal" gap={2} align="center" className="text-primary font-bold tracking-wider text-sm uppercase">
                       <span className="material-symbols-outlined text-lg">
                         calendar_month
                       </span>
@@ -122,36 +120,36 @@ const OpenTournaments: React.FC = () => {
                         day: "numeric",
                         year: "numeric",
                       })}
-                    </div>
+                    </Stack>
                     {isFull && (
                       <span className="px-3 py-1 bg-amber-500/10 text-amber-500 text-xs font-bold rounded-full border border-amber-500/20">
                         WAITLIST
                       </span>
                     )}
-                  </div>
+                  </Stack>
 
-                  <h3 className="text-2xl font-bold text-white mb-2 group-hover:text-primary transition-colors">
+                  <Heading level={3} className="!text-2xl mb-2 group-hover:text-primary transition-colors">
                     {tournament.location}
-                  </h3>
+                  </Heading>
 
-                  <div className="flex items-center gap-2 text-slate-400 text-sm mb-6">
+                  <Stack direction="horizontal" gap={2} align="center" className="text-slate-400 text-sm mb-6">
                     <span className="material-symbols-outlined text-lg">
                       format_list_numbered
                     </span>
                     BOD #{tournament.bodNumber}
                     <span className="mx-2">•</span>
                     {tournament.format}
-                  </div>
+                  </Stack>
 
-                  <div className="space-y-3 mb-8">
-                    <div className="flex justify-between text-sm">
-                      <span className="text-slate-500">Spots Filled</span>
+                  <Stack direction="vertical" gap={3} className="mb-8">
+                    <Stack direction="horizontal" justify="between" className="text-sm">
+                      <Text size="sm" color="muted">Spots Filled</Text>
                       <span
                         className={`font-bold ${isFull ? "text-amber-500" : "text-white"}`}
                       >
                         {registered} / {max}
                       </span>
-                    </div>
+                    </Stack>
                     {/* Progress Bar */}
                     <div className="h-2 bg-black/40 rounded-full overflow-hidden">
                       <div
@@ -161,27 +159,27 @@ const OpenTournaments: React.FC = () => {
                         }}
                       ></div>
                     </div>
-                  </div>
+                  </Stack>
 
-                  <button
+                  <Button
+                    variant={isFull ? "secondary" : "primary"}
+                    fullWidth
                     onClick={() => handleJoin(tournament.id)}
-                    className={`w-full py-4 rounded-xl font-bold text-base transition-all flex items-center justify-center gap-2 ${
-                      isFull
-                        ? "bg-amber-500/10 text-amber-500 hover:bg-amber-500 hover:text-black border border-amber-500/20"
-                        : "bg-primary text-black hover:bg-primary-dark shadow-[0_0_20px_rgba(34,197,94,0.3)] hover:shadow-[0_0_30px_rgba(34,197,94,0.5)]"
-                    }`}
+                    icon="arrow_forward"
+                    iconPosition="right"
+                    className={isFull
+                      ? "!bg-amber-500/10 !text-amber-500 hover:!bg-amber-500 hover:!text-black !border-amber-500/20"
+                      : "shadow-[0_0_20px_rgba(34,197,94,0.3)] hover:shadow-[0_0_30px_rgba(34,197,94,0.5)]"
+                    }
                   >
-                    <span>{isFull ? "Join Waitlist" : "Register Now"}</span>
-                    <span className="material-symbols-outlined">
-                      arrow_forward
-                    </span>
-                  </button>
-                </div>
+                    {isFull ? "Join Waitlist" : "Register Now"}
+                  </Button>
+                </Stack>
               </div>
             );
           })}
-        </div>
-      </div>
+        </ResponsiveGrid>
+      </Container>
     </div>
   );
 };

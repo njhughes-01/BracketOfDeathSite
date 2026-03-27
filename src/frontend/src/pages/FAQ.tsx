@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { Heading, Text, Container, Stack } from '../components/ui';
 
 interface FAQItem {
   question: string;
@@ -88,19 +89,19 @@ const FAQ: React.FC = () => {
   const renderAnswer = (answer: string | string[]) => {
     if (Array.isArray(answer)) {
       return answer.map((paragraph, idx) => (
-        <p key={idx} className="text-gray-300 mb-2">
+        <Text key={idx} color="muted" className="mb-2">
           {paragraph}
-        </p>
+        </Text>
       ));
     }
-    return <p className="text-gray-300">{answer}</p>;
+    return <Text color="muted">{answer}</Text>;
   };
 
   return (
-    <div className="max-w-4xl mx-auto py-12 px-4 sm:px-6 lg:px-8">
-      <h1 className="text-4xl font-bold text-white mb-6">Frequently Asked Questions</h1>
-      
-      <div className="space-y-4">
+    <Container maxWidth="md" padding="md" className="py-12">
+      <Heading level={1} responsive className="mb-6">Frequently Asked Questions</Heading>
+
+      <Stack direction="vertical" gap={4}>
         {faqs.map((faq, index) => (
           <div
             key={index}
@@ -110,14 +111,14 @@ const FAQ: React.FC = () => {
               onClick={() => toggleFAQ(index)}
               className="w-full text-left px-6 py-4 flex items-center justify-between hover:bg-surface-dark-lighter transition-colors"
             >
-              <h3 className="text-lg font-semibold text-white pr-8">
+              <Heading level={3} className="!text-lg pr-8">
                 {faq.question}
-              </h3>
+              </Heading>
               <span className="text-tennis-green text-2xl flex-shrink-0">
                 {openIndex === index ? '−' : '+'}
               </span>
             </button>
-            
+
             {openIndex === index && (
               <div className="px-6 py-4 border-t border-gray-700 bg-background-dark/50">
                 {renderAnswer(faq.answer)}
@@ -125,17 +126,17 @@ const FAQ: React.FC = () => {
             )}
           </div>
         ))}
-      </div>
+      </Stack>
 
       <div className="mt-12 p-6 bg-tennis-green/10 border-2 border-tennis-green rounded-lg">
-        <p className="text-lg text-white font-semibold mb-2">
+        <Text size="lg" color="white" className="font-semibold mb-2">
           No more questions.
-        </p>
-        <p className="text-gray-300">
+        </Text>
+        <Text color="muted">
           Register first, ask questions later.
-        </p>
+        </Text>
       </div>
-    </div>
+    </Container>
   );
 };
 

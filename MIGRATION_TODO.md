@@ -4,8 +4,8 @@
 
 ## Progress Overview
 
-**Completed:** 12/35 pages (34%)
-**Remaining:** 23 pages
+**Completed:** 16/35 pages (46%)
+**Remaining:** 19 pages
 **Target:** 100% component system adoption
 
 ---
@@ -66,15 +66,15 @@
 
 ---
 
-## ⏳ Phase 5: Public Pages (0/4 complete - 0%)
+## ✅ Phase 5: Public Pages (4/4 complete - 100%)
 
 ### High Priority (Public-Facing)
-- [ ] **Home.tsx / Landing.tsx** - Main landing page
-- [ ] **Rules.tsx** - Tournament rules (already has content)
-- [ ] **FAQ.tsx** - FAQ page (already has content)
+- [x] **Home.tsx** - Authenticated home/dashboard page - Sprint 3
+- [x] **Rules.tsx** - Tournament rules - Sprint 3
+- [x] **FAQ.tsx** - FAQ page - Sprint 3
 
 ### Medium Priority
-- [ ] OpenTournaments.tsx - Public tournament list
+- [x] OpenTournaments.tsx - Public tournament list - Sprint 3
 
 ---
 
@@ -258,5 +258,5 @@ Open http://localhost:5173 and resize to:
 ---
 
 **Last Updated:** March 26, 2026
-**Completed:** 12/35 pages (34%)
-**Next Target:** Sprint 3 - Home/Landing.tsx, Rules.tsx, FAQ.tsx, OpenTournaments.tsx
+**Completed:** 16/35 pages (46%)
+**Next Target:** Sprint 4 - BracketView.tsx, MatchScoring.tsx, ResultsTableEditor.tsx, ScannerPage.tsx

@@ -4,6 +4,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { useApi } from "../hooks/useApi";
 import apiClient from "../services/api";
 import { useAuth } from "../contexts/AuthContext";
+import { Heading, Text, Stack, Container } from "../components/ui";
 
 const Home: React.FC = () => {
   const { user } = useAuth();
@@ -55,9 +56,7 @@ const Home: React.FC = () => {
     return list.length > 0 ? list[0] : null;
   }, [upcomingData]);
 
-  // Upcoming list (skip the first one if it's the hero, or show all?)
-  // Usually hero is the immediate next. Let's show all upcoming in the list excluding hero if desired,
-  // but for now showing all is fine or slice(1).
+  // Upcoming list
   const upcomingList = useMemo(() => {
     const raw = upcomingData as any;
     const list = Array.isArray(raw)
@@ -82,7 +81,6 @@ const Home: React.FC = () => {
   // Fetch matches for the latest completed tournament to show "results"
   const getFinalsMatches = useCallback(() => {
     if (latestCompleted) {
-      // Try to get finals
       return apiClient.getTournamentMatches(latestCompleted.id, "final");
     }
     return Promise.resolve({ success: true, data: [] });
@@ -105,11 +103,11 @@ const Home: React.FC = () => {
   }, [finalsMatchesData]);
 
   return (
-    <div className="flex flex-col gap-6 pb-24">
+    <Stack direction="vertical" gap={6} className="pb-24">
       {/* Top App Bar - Home Specific */}
       <div className="sticky top-0 z-30 bg-background-light/80 dark:bg-background-dark/80 backdrop-blur-md border-b border-gray-200 dark:border-white/5 p-4 pb-2 transition-all duration-200">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
+        <Stack direction="horizontal" justify="between" align="center">
+          <Stack direction="horizontal" gap={3} align="center">
             <div className="relative">
               <div
                 className="bg-center bg-no-repeat bg-cover rounded-full size-10 border-2 border-accent bg-gray-600"
@@ -121,24 +119,24 @@ const Home: React.FC = () => {
               <div className="absolute bottom-0 right-0 size-3 bg-accent rounded-full border-2 border-background-dark"></div>
             </div>
             <div>
-              <p className="text-xs text-slate-500 dark:text-slate-400 font-medium uppercase tracking-wider">
+              <Text size="xs" color="muted" className="font-medium uppercase tracking-wider">
                 Welcome back
-              </p>
-              <h2 className="text-slate-900 dark:text-white text-lg font-bold leading-tight">
+              </Text>
+              <Heading level={2} className="!text-lg">
                 {user ? user.username : "Guest"}
-              </h2>
+              </Heading>
             </div>
-          </div>
+          </Stack>
           <button className="relative flex items-center justify-center size-10 rounded-full hover:bg-black/5 dark:hover:bg-white/10 transition-colors">
             <span className="material-symbols-outlined text-slate-700 dark:text-white">
               notifications
             </span>
             <span className="absolute top-2 right-2 size-2 bg-red-500 rounded-full border border-background-dark"></span>
           </button>
-        </div>
+        </Stack>
       </div>
 
-      <div className="flex flex-col gap-6 px-4">
+      <Stack direction="vertical" gap={6} className="px-4">
         {/* Dynamic Hero Card */}
         {nextTournament ? (
           <Link
@@ -155,8 +153,8 @@ const Home: React.FC = () => {
             ></div>
             <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent"></div>
 
-            <div className="relative p-5 flex flex-col h-full justify-between">
-              <div className="flex justify-between items-start">
+            <Stack direction="vertical" justify="between" className="relative p-5 h-full">
+              <Stack direction="horizontal" justify="between" align="start">
                 <span className="inline-flex items-center px-2 py-1 rounded bg-accent text-black text-xs font-bold uppercase tracking-wider">
                   <span className="size-1.5 bg-black rounded-full mr-1.5 animate-pulse"></span>
                   Next Match
@@ -166,17 +164,17 @@ const Home: React.FC = () => {
                     arrow_forward
                   </span>
                 </div>
-              </div>
+              </Stack>
 
               <div className="space-y-1 mt-auto pt-10">
-                <p className="text-white/80 text-sm font-medium tracking-wide border-l-2 border-accent pl-2 mb-2">
+                <Text size="sm" color="white" className="font-medium tracking-wide border-l-2 border-accent pl-2 mb-2 opacity-80">
                   {nextTournament.division || "Open Division"}
-                </p>
-                <h3 className="text-white text-2xl font-bold leading-tight line-clamp-2 md:line-clamp-1">
+                </Text>
+                <Heading level={3} className="!text-2xl text-white line-clamp-2 md:line-clamp-1">
                   {nextTournament.name || `${nextTournament.format} Tournament`}
-                </h3>
-                <div className="flex items-center gap-4 text-white/90 text-sm mt-2 pt-3 border-t border-white/10">
-                  <div className="flex items-center gap-1.5">
+                </Heading>
+                <Stack direction="horizontal" gap={4} align="center" className="text-white/90 text-sm mt-2 pt-3 border-t border-white/10">
+                  <Stack direction="horizontal" gap={1} align="center">
                     <span className="material-symbols-outlined text-[18px]">
                       calendar_today
                     </span>
@@ -186,16 +184,16 @@ const Home: React.FC = () => {
                         { weekday: "short", month: "short", day: "numeric" },
                       )}
                     </span>
-                  </div>
-                  <div className="flex items-center gap-1.5">
+                  </Stack>
+                  <Stack direction="horizontal" gap={1} align="center">
                     <span className="material-symbols-outlined text-[18px]">
                       location_on
                     </span>
                     <span>{nextTournament.location || "TBD"}</span>
-                  </div>
-                </div>
+                  </Stack>
+                </Stack>
               </div>
-            </div>
+            </Stack>
           </Link>
         ) : (
           // Placeholder / Empty State for Hero
@@ -206,10 +204,10 @@ const Home: React.FC = () => {
                   event_busy
                 </span>
               </div>
-              <h3 className="text-white font-bold">No Upcoming Events</h3>
-              <p className="text-slate-400 text-sm mt-1">
+              <Heading level={3}>No Upcoming Events</Heading>
+              <Text size="sm" color="muted" className="mt-1">
                 Check back later for new tournaments
-              </p>
+              </Text>
             </div>
           </div>
         )}
@@ -225,9 +223,9 @@ const Home: React.FC = () => {
                 how_to_reg
               </span>
             </div>
-            <span className="text-xs font-medium text-slate-400 group-hover:text-white transition-colors">
+            <Text size="xs" color="muted" className="font-medium group-hover:text-white transition-colors">
               Register
-            </span>
+            </Text>
           </Link>
           <Link
             to="/tournaments"
@@ -238,9 +236,9 @@ const Home: React.FC = () => {
                 calendar_month
               </span>
             </div>
-            <span className="text-xs font-medium text-slate-400 group-hover:text-white transition-colors">
+            <Text size="xs" color="muted" className="font-medium group-hover:text-white transition-colors">
               Schedule
-            </span>
+            </Text>
           </Link>
           <Link
             to="/rankings"
@@ -251,9 +249,9 @@ const Home: React.FC = () => {
                 leaderboard
               </span>
             </div>
-            <span className="text-xs font-medium text-slate-400 group-hover:text-white transition-colors">
+            <Text size="xs" color="muted" className="font-medium group-hover:text-white transition-colors">
               Rankings
-            </span>
+            </Text>
           </Link>
           <Link to="/news" className="flex flex-col items-center gap-2 group">
             <div className="size-14 rounded-2xl bg-white dark:bg-card-dark shadow-sm border border-slate-200 dark:border-white/5 flex items-center justify-center group-hover:bg-primary group-hover:border-primary transition-all duration-300">
@@ -261,25 +259,25 @@ const Home: React.FC = () => {
                 newspaper
               </span>
             </div>
-            <span className="text-xs font-medium text-slate-400 group-hover:text-white transition-colors">
+            <Text size="xs" color="muted" className="font-medium group-hover:text-white transition-colors">
               News
-            </span>
+            </Text>
           </Link>
         </div>
 
         {/* Upcoming Tournaments (Horizontal List) */}
-        <div className="flex flex-col gap-3">
-          <div className="flex items-center justify-between px-1">
-            <h3 className="text-slate-900 dark:text-white text-base font-bold tracking-tight uppercase">
+        <Stack direction="vertical" gap={3}>
+          <Stack direction="horizontal" justify="between" align="center" className="px-1">
+            <Heading level={3} className="!text-base uppercase">
               Upcoming Tournaments
-            </h3>
+            </Heading>
             <Link
               to="/tournaments"
               className="text-primary hover:text-accent text-sm font-medium transition-colors"
             >
               View All
             </Link>
-          </div>
+          </Stack>
 
           <div className="flex gap-4 overflow-x-auto no-scrollbar pb-2 -mx-4 px-4 snap-x">
             {recentLoading || upcomingLoading ? (
@@ -302,19 +300,18 @@ const Home: React.FC = () => {
                       {tournament.format || "Standard"}
                     </div>
                   </div>
-                  <div className="p-4 flex flex-col gap-3">
+                  <Stack direction="vertical" gap={3} className="p-4">
                     <div>
-                      <h4 className="text-slate-900 dark:text-white font-bold text-lg leading-tight group-hover:text-primary transition-colors truncate">
+                      <Heading level={4} className="!text-lg group-hover:text-primary transition-colors truncate">
                         {tournament.name || `BOD #${tournament.bodNumber}`}
-                      </h4>
-                      <p className="text-slate-500 dark:text-slate-400 text-sm mt-1">
+                      </Heading>
+                      <Text size="sm" color="muted" className="mt-1">
                         {new Date(tournament.date).toLocaleDateString()} •{" "}
                         {tournament.location || "Local Court"}
-                      </p>
+                      </Text>
                     </div>
-                    <div className="flex items-center justify-between mt-1">
+                    <Stack direction="horizontal" justify="between" align="center" className="mt-1">
                       <div className="flex -space-x-2">
-                        {/* Mock avatars for visual flair as per New UI */}
                         <div className="size-6 rounded-full bg-gray-600 border border-card-dark"></div>
                         <div className="size-6 rounded-full bg-gray-500 border border-card-dark"></div>
                         <div className="size-6 rounded-full bg-gray-400 border border-card-dark flex items-center justify-center text-[8px] text-white">
@@ -324,8 +321,8 @@ const Home: React.FC = () => {
                       <span className="text-accent-lime text-sm font-bold bg-accent-lime/10 px-3 py-1.5 rounded hover:bg-accent-lime hover:text-black transition-all">
                         Register
                       </span>
-                    </div>
-                  </div>
+                    </Stack>
+                  </Stack>
                 </Link>
               ))
             )}
@@ -335,47 +332,50 @@ const Home: React.FC = () => {
               </div>
             )}
           </div>
-        </div>
+        </Stack>
 
         {/* Recent Results (Dynamic) */}
         {latestCompleted && (
-          <div className="flex flex-col gap-3">
-            <div className="flex items-center justify-between px-1">
-              <h3 className="text-slate-900 dark:text-white text-base font-bold tracking-tight uppercase">
+          <Stack direction="vertical" gap={3}>
+            <Stack direction="horizontal" justify="between" align="center" className="px-1">
+              <Heading level={3} className="!text-base uppercase">
                 Recent Results
-              </h3>
+              </Heading>
               <Link
                 to={`/tournaments/${latestCompleted.id}`}
                 className="text-primary hover:text-accent text-sm font-medium transition-colors"
               >
                 Full Bracket
               </Link>
-            </div>
+            </Stack>
 
-            <div className="flex flex-col gap-2">
-              <div className="text-xs text-slate-400 font-bold uppercase tracking-wider pl-1">
+            <Stack direction="vertical" gap={2}>
+              <Text size="xs" color="muted" className="font-bold uppercase tracking-wider pl-1">
                 {latestCompleted.name || `BOD #${latestCompleted.bodNumber}`}
-              </div>
+              </Text>
               {recentResults.length > 0 ? (
                 recentResults.map((match: any) => (
-                  <div
+                  <Stack
                     key={match.id}
-                    className="bg-white dark:bg-card-dark rounded-lg p-3 border border-slate-200 dark:border-white/5 flex items-center justify-between"
+                    direction="horizontal"
+                    align="center"
+                    justify="between"
+                    className="bg-white dark:bg-card-dark rounded-lg p-3 border border-slate-200 dark:border-white/5"
                   >
                     {/* Match Info */}
-                    <div className="flex items-center gap-3 flex-1">
-                      <div className="flex flex-col items-center gap-1 min-w-[50px]">
+                    <Stack direction="horizontal" gap={3} align="center" className="flex-1">
+                      <Stack direction="vertical" gap={1} align="center" className="min-w-[50px]">
                         <span className="text-[10px] text-slate-500 font-bold uppercase">
                           {match.round === "final" ? "Final" : "Semi"}
                         </span>
-                        <span className="text-xs text-slate-300">Ended</span>
-                      </div>
+                        <Text size="xs" color="muted">Ended</Text>
+                      </Stack>
                       <div className="h-8 w-px bg-slate-200 dark:bg-white/10"></div>
 
-                      <div className="flex flex-col gap-1 flex-1">
+                      <Stack direction="vertical" gap={1} className="flex-1">
                         {/* Team 1 */}
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-2">
+                        <Stack direction="horizontal" align="center" justify="between">
+                          <Stack direction="horizontal" gap={2} align="center">
                             <div
                               className={`size-5 rounded-full ${match.team1.score > match.team2.score ? "bg-primary" : "bg-gray-600"} flex items-center justify-center text-[10px] text-white`}
                             >
@@ -391,11 +391,11 @@ const Home: React.FC = () => {
                                 check_circle
                               </span>
                             )}
-                          </div>
-                        </div>
+                          </Stack>
+                        </Stack>
                         {/* Team 2 */}
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-2">
+                        <Stack direction="horizontal" align="center" justify="between">
+                          <Stack direction="horizontal" gap={2} align="center">
                             <div
                               className={`size-5 rounded-full ${match.team2.score > match.team1.score ? "bg-primary" : "bg-gray-600"} flex items-center justify-center text-[10px] text-white`}
                             >
@@ -411,13 +411,13 @@ const Home: React.FC = () => {
                                 check_circle
                               </span>
                             )}
-                          </div>
-                        </div>
-                      </div>
-                    </div>
+                          </Stack>
+                        </Stack>
+                      </Stack>
+                    </Stack>
 
                     {/* Scores Column */}
-                    <div className="ml-4 pl-4 border-l border-white/10 flex flex-col justify-center items-end gap-0.5 min-w-[30px]">
+                    <Stack direction="vertical" justify="center" align="end" className="ml-4 pl-4 border-l border-white/10 min-w-[30px]" gap={0}>
                       <span
                         className={`font-mono text-sm ${match.team1.score > match.team2.score ? "text-accent font-bold" : "text-slate-500"}`}
                       >
@@ -428,19 +428,21 @@ const Home: React.FC = () => {
                       >
                         {match.team2.score}
                       </span>
-                    </div>
-                  </div>
+                    </Stack>
+                  </Stack>
                 ))
               ) : (
-                <div className="p-4 bg-surface-dark/50 rounded-lg text-center text-slate-500 text-sm">
-                  No match results available for this tournament yet.
+                <div className="p-4 bg-surface-dark/50 rounded-lg text-center">
+                  <Text size="sm" color="muted">
+                    No match results available for this tournament yet.
+                  </Text>
                 </div>
               )}
-            </div>
-          </div>
+            </Stack>
+          </Stack>
         )}
-      </div>
-    </div>
+      </Stack>
+    </Stack>
   );
 };
 
