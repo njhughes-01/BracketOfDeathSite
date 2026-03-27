@@ -11,6 +11,7 @@ import type {
 } from "../components/tournament/TournamentTable";
 import TournamentFilters from "../components/tournament/TournamentFilters";
 import type { Tournament } from "../types/api";
+import { Stack, Heading, Text, Button } from "../components/ui";
 
 const Tournaments: React.FC = () => {
   const { isAdmin, user } = useAuth();
@@ -200,13 +201,14 @@ const Tournaments: React.FC = () => {
               sports_tennis
             </span>
           </div>
-          <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-1">
+          <Heading level={3} className="mb-1">
             No tournaments found
-          </h3>
-          <p className="text-slate-500 dark:text-slate-400 text-sm mb-4">
+          </Heading>
+          <Text size="sm" color="muted" className="mb-4">
             Try adjusting your filters.
-          </p>
-          <button
+          </Text>
+          <Button
+            variant="ghost"
             onClick={() => {
               setActiveFilter("All");
               setSearchTerm("");
@@ -214,10 +216,9 @@ const Tournaments: React.FC = () => {
               setFormatFilter(null);
               setStatusFilter(null);
             }}
-            className="text-primary font-bold text-sm hover:underline"
           >
             Clear Filters
-          </button>
+          </Button>
         </div>
       );
     }
@@ -251,7 +252,7 @@ const Tournaments: React.FC = () => {
 
             <div className="flex-1 min-w-0">
               <div className="flex justify-between items-start">
-                <h3 className="text-base font-bold text-slate-900 dark:text-gray-100 truncate pr-2">{`BOD #${tournament.bodNumber}`}</h3>
+                <Heading level={3} className="truncate pr-2 !text-base">{`BOD #${tournament.bodNumber}`}</Heading>
                 <span
                   className={`shrink-0 inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium ring-1 ring-inset ${
                     status === "active"
@@ -269,11 +270,11 @@ const Tournaments: React.FC = () => {
                   {status === "active" ? "Live" : status}
                 </span>
               </div>
-              <p className="text-sm text-slate-500 dark:text-slate-400 mt-0.5 flex items-center gap-1">
+              <Text size="sm" color="muted" className="mt-0.5 flex items-center gap-1">
                 {tournament.location}{" "}
-                <span className="text-slate-700 dark:text-slate-600">•</span>{" "}
+                <span className="text-slate-700 dark:text-slate-600">&bull;</span>{" "}
                 {tournament.format}
-              </p>
+              </Text>
               <div className="mt-2 flex items-center gap-2 flex-wrap">
                 <span className="inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[10px] font-medium bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400">
                   <span className="material-symbols-outlined text-[12px]">
@@ -324,42 +325,35 @@ const Tournaments: React.FC = () => {
       {/* Header Section - Sticky */}
       <div className="flex-none bg-background-light dark:bg-background-dark z-10 border-b border-gray-200 dark:border-white/5 sticky top-0">
         {/* Top Bar */}
-        <div className="flex items-center px-4 py-3 justify-between">
-          <div className="flex items-center gap-3">
+        <Stack direction="horizontal" align="center" justify="between" className="px-4 py-3">
+          <Stack direction="horizontal" align="center" gap={3}>
             {/* Admin Add Button in Header or user defaults */}
             {isAdmin && (
               <Link
                 to="/tournaments/setup"
-                className="flex items-center justify-center w-8 h-8 rounded-full hover:bg-gray-200 dark:hover:bg-white/10 transition-colors text-primary"
               >
-                <span className="material-symbols-outlined text-[24px]">
-                  add_circle
-                </span>
+                <Button variant="ghost" icon="add_circle" size="sm" />
               </Link>
             )}
-            <h1 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-white">
+            <Heading level={1} className="!text-2xl">
               Tournaments
-            </h1>
-          </div>
+            </Heading>
+          </Stack>
 
-          <div className="flex items-center gap-2">
-            <button
+          <Stack direction="horizontal" align="center" gap={2}>
+            <Button
+              variant="ghost"
+              icon="refresh"
+              size="sm"
               onClick={() => refresh()}
-              className="relative p-2 rounded-full hover:bg-gray-200 dark:hover:bg-white/10 transition-colors"
-            >
-              <span className="material-symbols-outlined text-slate-600 dark:text-slate-400 text-[24px]">
-                refresh
-              </span>
-            </button>
+            />
             {/* Notification */}
-            <button className="relative p-2 rounded-full hover:bg-gray-200 dark:hover:bg-white/10 transition-colors">
-              <span className="material-symbols-outlined text-slate-600 dark:text-slate-400 text-[24px]">
-                notifications
-              </span>
+            <div className="relative">
+              <Button variant="ghost" icon="notifications" size="sm" />
               <span className="absolute top-2 right-2 h-2 w-2 rounded-full bg-neon-accent shadow-[0_0_8px_rgba(212,248,0,0.6)]"></span>
-            </button>
-          </div>
-        </div>
+            </div>
+          </Stack>
+        </Stack>
 
         {/* Search Bar */}
         <div className="px-4 pb-2">
@@ -391,64 +385,31 @@ const Tournaments: React.FC = () => {
 
         {/* Chips / Tabs */}
         <div className="flex gap-2 px-4 py-3 overflow-x-auto no-scrollbar items-center">
-          {/* All Events */}
-          <button
-            onClick={() => setActiveFilter("All")}
-            className={`shrink-0 flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium transition-all ${
-              activeFilter === "All"
-                ? "bg-primary text-white shadow-lg shadow-primary/25"
-                : "bg-white dark:bg-surface-dark border border-gray-200 dark:border-white/5 text-slate-600 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-white/5"
-            }`}
-          >
-            <span>All Events</span>
-          </button>
-
-          {/* Live Now */}
-          <button
-            onClick={() => setActiveFilter("Live")}
-            className={`shrink-0 flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium transition-all ${
-              activeFilter === "Live"
-                ? "bg-primary text-white shadow-lg shadow-primary/25"
-                : "bg-white dark:bg-surface-dark border border-gray-200 dark:border-white/5 text-slate-600 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-white/5"
-            }`}
-          >
-            <span
-              className={`w-2 h-2 rounded-full bg-neon-accent shadow-[0_0_6px_rgba(212,248,0,0.8)] ${activeFilter === "Live" ? "animate-none" : "animate-pulse"}`}
-            ></span>
-            <span>Live Now</span>
-          </button>
-
-          {/* Upcoming */}
-          <button
-            onClick={() => setActiveFilter("Upcoming")}
-            className={`shrink-0 flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium transition-all ${
-              activeFilter === "Upcoming"
-                ? "bg-primary text-white shadow-lg shadow-primary/25"
-                : "bg-white dark:bg-surface-dark border border-gray-200 dark:border-white/5 text-slate-600 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-white/5"
-            }`}
-          >
-            <span>Upcoming</span>
-          </button>
-
-          {/* My Registered */}
-          <button
-            onClick={() => setActiveFilter("My Registered")}
-            className={`shrink-0 flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium transition-all ${
-              activeFilter === "My Registered"
-                ? "bg-primary text-white shadow-lg shadow-primary/25"
-                : "bg-white dark:bg-[#1c2230] border border-gray-200 dark:border-gray-700 text-slate-600 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-gray-800"
-            }`}
-          >
-            <span>My Registered</span>
-          </button>
+          {(["All", "Live", "Upcoming", "My Registered"] as const).map((filter) => (
+            <button
+              key={filter}
+              onClick={() => setActiveFilter(filter)}
+              className={`shrink-0 flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium transition-all ${
+                activeFilter === filter
+                  ? "bg-primary text-white shadow-lg shadow-primary/25"
+                  : "bg-white dark:bg-surface-dark border border-gray-200 dark:border-white/5 text-slate-600 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-white/5"
+              }`}
+            >
+              {filter === "Live" && (
+                <span
+                  className={`w-2 h-2 rounded-full bg-neon-accent shadow-[0_0_6px_rgba(212,248,0,0.8)] ${activeFilter === "Live" ? "animate-none" : "animate-pulse"}`}
+                ></span>
+              )}
+              <span>{filter === "All" ? "All Events" : filter === "Live" ? "Live Now" : filter}</span>
+            </button>
+          ))}
         </div>
 
-        {/* Secondary Filters (Hidden for now or static) */}
+        {/* Secondary Filters */}
         <div className="flex items-center justify-between px-4 pb-3 pt-1 border-t border-gray-100 dark:border-gray-800/50">
-          <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">
+          <Text size="xs" className="font-semibold uppercase tracking-wider text-slate-500">
             {filteredTournaments.length} Tournaments
-          </p>
-          {/* Sorting placeholder if needed */}
+          </Text>
         </div>
       </div>
 
@@ -483,7 +444,7 @@ const Tournaments: React.FC = () => {
               </span>
             </div>
 
-            <div className="flex flex-col sm:flex-row">
+            <Stack direction="responsive" className="!gap-0">
               <div className="h-32 w-full sm:w-32 sm:h-auto relative bg-gray-800 shrink-0">
                 <div
                   className="absolute inset-0 bg-cover bg-center opacity-80 group-hover:opacity-100 transition-opacity"
@@ -497,11 +458,11 @@ const Tournaments: React.FC = () => {
 
               <div className="flex-1 p-4 pt-2 sm:p-5 sm:pl-2">
                 <div className="flex justify-between items-start mb-1">
-                  <span className="text-xs font-bold text-primary uppercase tracking-wider">
+                  <Text size="xs" className="font-bold text-primary uppercase tracking-wider">
                     Major Event
-                  </span>
+                  </Text>
                 </div>
-                <h3 className="text-lg font-bold text-white mb-1 leading-tight">{`BOD #${liveTournament.bodNumber}`}</h3>
+                <Heading level={3} className="mb-1 leading-tight">{`BOD #${liveTournament.bodNumber}`}</Heading>
                 <div className="flex items-center text-slate-400 text-xs mb-3 gap-2">
                   <span className="flex items-center gap-1">
                     <span className="material-symbols-outlined text-[14px]">
@@ -536,7 +497,7 @@ const Tournaments: React.FC = () => {
                   </span>
                 </div>
               </div>
-            </div>
+            </Stack>
           </Link>
         )}
 

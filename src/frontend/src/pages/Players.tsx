@@ -4,6 +4,7 @@ import { useApi } from "../hooks/useApi";
 import apiClient from "../services/api";
 import { useAuth } from "../contexts/AuthContext";
 import type { Player } from "../types/api";
+import { Stack, Heading, Text, Button, Select, FormField } from "../components/ui";
 
 const Players: React.FC = () => {
   const { isAdmin } = useAuth();
@@ -55,32 +56,27 @@ const Players: React.FC = () => {
       {/* Header Section - Sticky */}
       <div className="flex-none bg-background-light dark:bg-background-dark z-10 border-b border-gray-200 dark:border-white/5 sticky top-0">
         {/* Top Bar */}
-        <div className="flex items-center px-4 py-3 justify-between">
-          <div className="flex items-center gap-3">
-            <h1 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-white">
-              Players
-            </h1>
-          </div>
+        <Stack direction="horizontal" align="center" justify="between" className="px-4 py-3">
+          <Heading level={1} className="!text-2xl">
+            Players
+          </Heading>
 
-          <div className="flex items-center gap-2">
-            <button
+          <Stack direction="horizontal" align="center" gap={2}>
+            <Button
+              variant="ghost"
+              icon="refresh"
+              size="sm"
               onClick={() => refresh()}
-              className="relative p-2 rounded-full hover:bg-gray-200 dark:hover:bg-white/10 transition-colors"
-            >
-              <span className="material-symbols-outlined text-slate-600 dark:text-slate-400 text-[24px]">
-                refresh
-              </span>
-            </button>
-            <button
+            />
+            <Button
+              variant="ghost"
+              icon="tune"
+              size="sm"
               onClick={() => setShowFilters(!showFilters)}
-              className={`relative p-2 rounded-full hover:bg-gray-200 dark:hover:bg-white/10 transition-colors ${showFilters ? "text-primary" : "text-slate-600 dark:text-slate-400"}`}
-            >
-              <span className="material-symbols-outlined text-[24px]">
-                tune
-              </span>
-            </button>
-          </div>
-        </div>
+              className={showFilters ? "text-primary" : ""}
+            />
+          </Stack>
+        </Stack>
 
         {/* Search Bar */}
         <div className="px-4 pb-2">
@@ -114,21 +110,18 @@ const Players: React.FC = () => {
         {showFilters && (
           <div className="px-4 py-3 bg-gray-50 dark:bg-white/5 border-t border-gray-200 dark:border-white/5 animate-in slide-in-from-top-2">
             <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="text-[10px] uppercase font-bold text-slate-500 mb-1 block">
-                  Sort By
-                </label>
-                <select
+              <FormField label="Sort By">
+                <Select
                   value={filters.sort}
                   onChange={handleSortChange}
-                  className="w-full rounded-lg bg-white dark:bg-[#1c2230] border border-gray-200 dark:border-gray-700 text-sm py-2 pl-3 pr-8 focus:ring-primary focus:border-primary"
+                  size="sm"
                 >
                   <option value="name">Name (A-Z)</option>
                   <option value="-winningPercentage">Win Rate</option>
                   <option value="-totalChampionships">Championships</option>
                   <option value="-gamesPlayed">Games Played</option>
-                </select>
-              </div>
+                </Select>
+              </FormField>
             </div>
           </div>
         )}
@@ -164,7 +157,7 @@ const Players: React.FC = () => {
                         .toUpperCase()
                     : "?"}
                 </div>
-                {/* Rank Badge for Top Players (Mock logic: if win rate > 0.5) */}
+                {/* Rank Badge for Top Players */}
                 {(player.winningPercentage || 0) >= 0.5 && (
                   <div className="absolute -bottom-1 -right-1 bg-background-dark rounded-full p-0.5">
                     <div className="size-5 flex items-center justify-center bg-accent text-black text-[10px] font-bold rounded-full border border-background-dark">
@@ -176,9 +169,9 @@ const Players: React.FC = () => {
 
               <div className="flex-1 min-w-0">
                 <div className="flex justify-between items-start mb-0.5">
-                  <h3 className="text-base font-bold text-slate-900 dark:text-white truncate pr-2 group-hover:text-primary transition-colors">
+                  <Heading level={3} className="!text-base truncate pr-2 group-hover:text-primary transition-colors">
                     {player.name}
-                  </h3>
+                  </Heading>
                   <div className="flex items-center gap-1">
                     {(player.totalChampionships || 0) > 0 && (
                       <span className="inline-flex items-center gap-1 text-[10px] font-bold bg-yellow-500/10 text-yellow-500 px-1.5 py-0.5 rounded border border-yellow-500/20">
@@ -191,7 +184,7 @@ const Players: React.FC = () => {
                   </div>
                 </div>
 
-                <div className="flex items-center gap-3 text-xs text-slate-500 dark:text-slate-400">
+                <Stack direction="horizontal" gap={3} className="text-xs text-slate-500 dark:text-slate-400">
                   <div className="flex items-center gap-1">
                     <span className="material-symbols-outlined text-[14px]">
                       sports_tennis
@@ -207,7 +200,7 @@ const Players: React.FC = () => {
                       Rate
                     </span>
                   </div>
-                </div>
+                </Stack>
               </div>
 
               <span className="material-symbols-outlined text-slate-300 dark:text-slate-600 group-hover:text-white transition-colors">
@@ -222,12 +215,12 @@ const Players: React.FC = () => {
                 group_off
               </span>
             </div>
-            <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-1">
+            <Heading level={3} className="mb-1">
               No players found
-            </h3>
-            <p className="text-slate-500 dark:text-slate-400 text-sm">
+            </Heading>
+            <Text size="sm" color="muted">
               Try adjusting your search.
-            </p>
+            </Text>
           </div>
         )}
       </div>

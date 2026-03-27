@@ -14,6 +14,7 @@ import type { RegistrationState, ReservationInfo, UserTicket } from "../componen
 import { getTournamentStatus } from "../utils/tournamentStatus";
 import type { Tournament, Match, TournamentResult, Player } from "../types/api";
 import logger from "../utils/logger";
+import { Stack, Heading, Text } from "../components/ui";
 
 const TournamentDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -675,15 +676,15 @@ const TournamentDetail: React.FC = () => {
 
   if (!tournament) {
     return (
-      <div className="p-10 text-center text-gray-500">Tournament not found</div>
+      <div className="p-10 text-center"><Text color="muted">Tournament not found</Text></div>
     );
   }
 
   const renderMatchList = () => {
     if (matches.length === 0)
       return (
-        <div className="text-center py-10 text-gray-500">
-          No matches scheduled yet
+        <div className="text-center py-10">
+          <Text color="muted">No matches scheduled yet</Text>
         </div>
       );
 
@@ -714,9 +715,9 @@ const TournamentDetail: React.FC = () => {
           <div key={round} className="space-y-3">
             <div className="flex items-center gap-2">
               <div className="h-px bg-white/10 flex-1"></div>
-              <h4 className="text-slate-400 font-bold uppercase text-xs tracking-wider">
+              <Heading level={4} className="!text-xs text-slate-400 uppercase tracking-wider">
                 {roundNames[round] || round}
-              </h4>
+              </Heading>
               <div className="h-px bg-white/10 flex-1"></div>
             </div>
 
@@ -892,7 +893,7 @@ const TournamentDetail: React.FC = () => {
                     <span className="material-symbols-outlined text-primary">
                       live_tv
                     </span>
-                    <h3 className="text-white font-bold">Live Coverage</h3>
+                    <Heading level={3}>Live Coverage</Heading>
                   </div>
                   <LiveStats
                     tournamentId={id!}
@@ -1332,12 +1333,12 @@ const TournamentDetail: React.FC = () => {
                       leaderboard
                     </span>
                   </div>
-                  <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-1">
+                  <Heading level={3} className="mb-1">
                     No Results Available
-                  </h3>
-                  <p className="text-slate-500 dark:text-slate-400 text-sm">
+                  </Heading>
+                  <Text size="sm" color="muted">
                     Results will appear after the tournament is completed.
-                  </p>
+                  </Text>
                 </div>
               )}
             </div>
@@ -1351,12 +1352,12 @@ const TournamentDetail: React.FC = () => {
               {tournament.generatedSeeds &&
                 tournament.generatedSeeds.length > 0 ? (
                 <div className="space-y-3">
-                  <h4 className="text-white font-bold text-sm uppercase tracking-wider flex items-center gap-2">
+                  <Heading level={4} className="!text-sm uppercase tracking-wider flex items-center gap-2">
                     <span className="material-symbols-outlined text-primary text-lg">
                       list_alt
                     </span>
                     Player Seeds
-                  </h4>
+                  </Heading>
                   {tournament.generatedSeeds.map(
                     (seedInfo: {
                       playerId?: string;
@@ -1400,12 +1401,12 @@ const TournamentDetail: React.FC = () => {
                 tournament.generatedTeams.length > 0 ? (
                 /* Show Generated Teams if available */
                 <div className="space-y-3">
-                  <h4 className="text-white font-bold text-sm uppercase tracking-wider flex items-center gap-2">
+                  <Heading level={4} className="!text-sm uppercase tracking-wider flex items-center gap-2">
                     <span className="material-symbols-outlined text-primary text-lg">
                       groups
                     </span>
                     Teams
-                  </h4>
+                  </Heading>
                   {tournament.generatedTeams.map((team: {
                     teamId?: string;
                     combinedSeed?: number;
@@ -1465,12 +1466,12 @@ const TournamentDetail: React.FC = () => {
               ) : tournament.players?.length ? (
                 /* Fallback to simple player list */
                 <div className="space-y-3">
-                  <h4 className="text-white font-bold text-sm uppercase tracking-wider flex items-center gap-2">
+                  <Heading level={4} className="!text-sm uppercase tracking-wider flex items-center gap-2">
                     <span className="material-symbols-outlined text-primary text-lg">
                       person
                     </span>
                     Registered Players
-                  </h4>
+                  </Heading>
                   {tournament.players.map((player: Player) => (
                     <Link
                       to={`/players/${player._id}`}
@@ -1498,12 +1499,12 @@ const TournamentDetail: React.FC = () => {
                     tournament.waitlistPlayers.length > 0 && (
                       <>
                         <div className="h-px bg-white/10 my-4"></div>
-                        <h4 className="text-white font-bold text-sm uppercase tracking-wider flex items-center gap-2">
+                        <Heading level={4} className="!text-sm uppercase tracking-wider flex items-center gap-2">
                           <span className="material-symbols-outlined text-yellow-500 text-lg">
                             hourglass_empty
                           </span>
                           Waitlist ({tournament.waitlistPlayers.length})
-                        </h4>
+                        </Heading>
                         {tournament.waitlistPlayers.map(
                           (player: Player, idx: number) => (
                             <Link
@@ -1539,12 +1540,12 @@ const TournamentDetail: React.FC = () => {
               ) : individualPlayers.length > 0 ? (
                 /* Show individual players from results for completed tournaments */
                 <div className="space-y-3">
-                  <h4 className="text-white font-bold text-sm uppercase tracking-wider flex items-center gap-2">
+                  <Heading level={4} className="!text-sm uppercase tracking-wider flex items-center gap-2">
                     <span className="material-symbols-outlined text-primary text-lg">
                       person
                     </span>
                     Tournament Players ({individualPlayers.length})
-                  </h4>
+                  </Heading>
                   {individualPlayers.map((player) => (
                     <Link
                       to={`/players/${player._id}`}
@@ -1599,14 +1600,14 @@ const TournamentDetail: React.FC = () => {
                       group
                     </span>
                   </div>
-                  <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-1">
+                  <Heading level={3} className="mb-1">
                     No Players Available
-                  </h3>
-                  <p className="text-slate-500 dark:text-slate-400 text-sm">
+                  </Heading>
+                  <Text size="sm" color="muted">
                     {status === "completed"
                       ? "Player data is not available for this tournament."
                       : "Players will appear after registration."}
-                  </p>
+                  </Text>
                 </div>
               )}
             </div>
