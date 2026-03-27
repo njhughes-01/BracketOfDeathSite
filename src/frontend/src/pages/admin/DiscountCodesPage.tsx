@@ -225,26 +225,27 @@ const DiscountCodesPage: React.FC = () => {
 
   return (
     <div className="max-w-6xl mx-auto space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-black italic text-white tracking-tight uppercase">
+          <h1 className="text-2xl sm:text-3xl font-black italic text-white tracking-tight uppercase">
             Discount <span className="text-primary">Codes</span>
           </h1>
-          <p className="text-slate-400 mt-2">
+          <p className="text-slate-400 mt-1 sm:mt-2 text-sm sm:text-base">
             Create and manage promotional discount codes
           </p>
         </div>
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-3 w-full sm:w-auto">
           <Link
             to="/admin/settings/stripe"
-            className="text-slate-400 hover:text-white flex items-center gap-2 transition-colors"
+            className="text-slate-400 hover:text-white flex items-center gap-1 sm:gap-2 transition-colors text-sm sm:text-base"
           >
-            <span className="material-symbols-outlined">arrow_back</span>
-            Back to Stripe Settings
+            <span className="material-symbols-outlined text-[20px]">arrow_back</span>
+            <span className="hidden sm:inline">Back to Stripe Settings</span>
+            <span className="sm:hidden">Back</span>
           </Link>
           <button
             onClick={openCreateModal}
-            className="h-12 px-6 bg-primary hover:bg-primary-dark text-black font-bold rounded-xl shadow-lg shadow-primary/20 flex items-center gap-2 transition-all"
+            className="flex-1 sm:flex-none h-11 sm:h-12 px-4 sm:px-6 bg-primary hover:bg-primary-dark text-black font-bold rounded-xl shadow-lg shadow-primary/20 flex items-center justify-center gap-2 transition-all min-h-[44px]"
           >
             <span className="material-symbols-outlined">add</span>
             Create Code
@@ -296,7 +297,71 @@ const DiscountCodesPage: React.FC = () => {
             </button>
           </div>
         ) : (
-          <div className="overflow-x-auto">
+          {/* Mobile Card View */}
+          <div className="md:hidden space-y-3 p-4">
+            {codes.map((code) => (
+              <div
+                key={code._id}
+                className="bg-background-dark border border-white/10 rounded-xl p-4"
+              >
+                <div className="flex items-center justify-between mb-3">
+                  <span className="font-mono font-bold text-white text-lg">
+                    {code.code}
+                  </span>
+                  {code.active ? (
+                    <span className="px-2 py-1 bg-green-500/20 text-green-500 text-xs font-bold rounded-full">
+                      Active
+                    </span>
+                  ) : (
+                    <span className="px-2 py-1 bg-slate-500/20 text-slate-400 text-xs font-bold rounded-full">
+                      Inactive
+                    </span>
+                  )}
+                </div>
+                <div className="grid grid-cols-2 gap-2 text-sm mb-3">
+                  <div>
+                    <span className="text-slate-500 text-xs uppercase">Type</span>
+                    <p className="text-slate-300 capitalize">{code.type}</p>
+                  </div>
+                  <div>
+                    <span className="text-slate-500 text-xs uppercase">Value</span>
+                    <p className="text-white font-bold">{formatValue(code)}</p>
+                  </div>
+                  <div>
+                    <span className="text-slate-500 text-xs uppercase">Redemptions</span>
+                    <p className="text-slate-300">{formatRedemptions(code)}</p>
+                  </div>
+                  <div>
+                    <span className="text-slate-500 text-xs uppercase">Expires</span>
+                    <p className="text-slate-300">{formatExpiry(code)}</p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2 pt-3 border-t border-white/5">
+                  <button
+                    onClick={() => openEditModal(code)}
+                    className="flex-1 flex items-center justify-center gap-2 p-2.5 rounded-lg bg-white/5 hover:bg-white/10 text-slate-300 hover:text-white transition-colors min-h-[44px]"
+                    aria-label="Edit"
+                  >
+                    <span className="material-symbols-outlined text-sm">edit</span>
+                    Edit
+                  </button>
+                  {code.active && (
+                    <button
+                      onClick={() => handleDeactivate(code)}
+                      className="flex-1 flex items-center justify-center gap-2 p-2.5 rounded-lg bg-red-500/10 hover:bg-red-500/20 text-red-400 hover:text-red-500 transition-colors min-h-[44px]"
+                      aria-label="Deactivate"
+                    >
+                      <span className="material-symbols-outlined text-sm">block</span>
+                      Deactivate
+                    </button>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Desktop Table View */}
+          <div className="hidden md:block overflow-x-auto">
             <table className="w-full">
               <thead>
                 <tr className="border-b border-white/10">
@@ -439,7 +504,7 @@ const DiscountCodesPage: React.FC = () => {
             </p>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="space-y-2">
               <label
                 htmlFor="type"
@@ -565,18 +630,18 @@ const DiscountCodesPage: React.FC = () => {
             </p>
           </div>
 
-          <div className="flex items-center justify-end gap-4 pt-4 border-t border-white/5">
+          <div className="flex flex-col-reverse sm:flex-row items-stretch sm:items-center justify-end gap-3 sm:gap-4 pt-4 border-t border-white/5">
             <button
               type="button"
               onClick={closeModal}
-              className="h-12 px-6 text-slate-400 hover:text-white font-bold rounded-xl transition-colors"
+              className="h-12 px-6 text-slate-400 hover:text-white font-bold rounded-xl transition-colors min-h-[44px]"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={modalSaving}
-              className="h-12 px-6 bg-primary hover:bg-primary-dark text-black font-bold rounded-xl shadow-lg shadow-primary/20 flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+              className="w-full sm:w-auto h-12 px-6 bg-primary hover:bg-primary-dark text-black font-bold rounded-xl shadow-lg shadow-primary/20 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed transition-all min-h-[44px]"
             >
               {modalSaving ? (
                 <LoadingSpinner size="sm" color="black" />

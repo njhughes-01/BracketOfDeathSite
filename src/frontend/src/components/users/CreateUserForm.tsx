@@ -336,12 +336,12 @@ const CreateUserForm: React.FC<CreateUserFormProps> = ({
           </label>
         </div>
 
-        <div className="flex justify-end gap-3 pt-4 border-t border-white/5">
+        <div className="flex flex-col-reverse sm:flex-row justify-end gap-3 pt-4 border-t border-white/5">
           {onCancel && (
             <button
               type="button"
               onClick={onCancel}
-              className="px-6 py-2.5 rounded-xl border border-white/10 text-white font-bold hover:bg-white/5 transition-all"
+              className="w-full sm:w-auto px-6 py-2.5 rounded-xl border border-white/10 text-white font-bold hover:bg-white/5 transition-all min-h-[44px]"
               disabled={loading}
             >
               Cancel
@@ -349,7 +349,7 @@ const CreateUserForm: React.FC<CreateUserFormProps> = ({
           )}
           <button
             type="submit"
-            className="px-8 py-2.5 rounded-xl bg-primary text-black font-bold shadow-lg shadow-primary/20 hover:bg-primary-dark hover:scale-105 active:scale-95 transition-all disabled:opacity-50 disabled:scale-100 disabled:cursor-not-allowed"
+            className="w-full sm:w-auto px-8 py-2.5 rounded-xl bg-primary text-black font-bold shadow-lg shadow-primary/20 hover:bg-primary-dark hover:scale-105 active:scale-95 transition-all disabled:opacity-50 disabled:scale-100 disabled:cursor-not-allowed min-h-[44px]"
             disabled={loading}
           >
             {loading ? (

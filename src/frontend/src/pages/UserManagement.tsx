@@ -343,43 +343,46 @@ const UserManagement: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-background-dark pb-20">
-      <div className="max-w-7xl mx-auto px-6 py-8">
-        <div className="flex justify-between items-center mb-8">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
+        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-6 sm:mb-8">
           <div>
-            <h1 className="text-3xl font-bold text-white tracking-tight">
+            <h1 className="text-2xl sm:text-3xl font-bold text-white tracking-tight">
               User Management
             </h1>
-            <p className="text-slate-400 mt-1">
+            <p className="text-slate-400 mt-1 text-sm sm:text-base">
               Manage system access, roles, and user accounts
             </p>
           </div>
-          <button
-            onClick={() => setShowCreateForm(!showCreateForm)}
-            className={`flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold transition-all ${
-              showCreateForm
-                ? "bg-red-500/10 text-red-500 hover:bg-red-500/20 border border-red-500/20"
-                : "bg-primary text-black hover:bg-white hover:scale-105 shadow-lg shadow-primary/20"
-            }`}
-          >
-            {showCreateForm ? (
-              <>
-                <span className="material-symbols-outlined">close</span> Cancel
-              </>
-            ) : (
-              <>
-                <span className="material-symbols-outlined">person_add</span>{" "}
-                Create User
-              </>
-            )}
-          </button>
+          <div className="flex gap-2 w-full sm:w-auto">
+            <button
+              onClick={() => setShowCreateForm(!showCreateForm)}
+              className={`flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 sm:px-5 py-2.5 rounded-xl font-bold transition-all min-h-[44px] ${
+                showCreateForm
+                  ? "bg-red-500/10 text-red-500 hover:bg-red-500/20 border border-red-500/20"
+                  : "bg-primary text-black hover:bg-white hover:scale-105 shadow-lg shadow-primary/20"
+              }`}
+            >
+              {showCreateForm ? (
+                <>
+                  <span className="material-symbols-outlined">close</span>
+                  <span className="sm:inline">Cancel</span>
+                </>
+              ) : (
+                <>
+                  <span className="material-symbols-outlined">person_add</span>
+                  <span className="sm:inline">Create User</span>
+                </>
+              )}
+            </button>
 
-          <button
-            onClick={() => setShowClaimModal(true)}
-            className="flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold transition-all bg-emerald-500/10 text-emerald-500 hover:bg-emerald-500/20 border border-emerald-500/20 ml-2"
-          >
-            <span className="material-symbols-outlined">mark_email_unread</span>{" "}
-            Invite User
-          </button>
+            <button
+              onClick={() => setShowClaimModal(true)}
+              className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 sm:px-5 py-2.5 rounded-xl font-bold transition-all bg-emerald-500/10 text-emerald-500 hover:bg-emerald-500/20 border border-emerald-500/20 min-h-[44px]"
+            >
+              <span className="material-symbols-outlined">mark_email_unread</span>
+              <span className="sm:inline">Invite</span>
+            </button>
+          </div>
         </div>
 
         {error && (

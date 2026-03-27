@@ -368,18 +368,18 @@ const SettingsPage: React.FC = () => {
 
   return (
     <div className="max-w-4xl mx-auto space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-black italic text-white tracking-tight uppercase">
+      <div className="flex items-start justify-between gap-4">
+        <div className="min-w-0">
+          <h1 className="text-2xl sm:text-3xl font-black italic text-white tracking-tight uppercase">
             System <span className="text-primary">Settings</span>
           </h1>
-          <p className="text-slate-400 mt-2">
+          <p className="text-slate-400 mt-1 sm:mt-2 text-sm sm:text-base">
             Manage global system configurations and integrations
           </p>
         </div>
         <Link
           to="/admin"
-          className="p-2 rounded-full bg-white/5 hover:bg-white/10 transition-colors"
+          className="p-2 rounded-full bg-white/5 hover:bg-white/10 transition-colors shrink-0 min-w-[44px] min-h-[44px] flex items-center justify-center"
         >
           <span className="material-symbols-outlined text-white">close</span>
         </Link>
@@ -670,7 +670,7 @@ const SettingsPage: React.FC = () => {
               <button
                 type="submit"
                 disabled={saving}
-                className="h-12 px-8 bg-primary hover:bg-primary-dark text-black font-bold rounded-xl shadow-lg shadow-primary/20 flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+                className="w-full sm:w-auto h-12 px-8 bg-primary hover:bg-primary-dark text-black font-bold rounded-xl shadow-lg shadow-primary/20 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed transition-all min-h-[44px]"
                 title="Save settings"
               >
                 {saving ? (
@@ -688,18 +688,18 @@ const SettingsPage: React.FC = () => {
 
         {/* Test Email Section - Always visible when a provider is selected */}
         <div className="mt-6 pt-6 border-t border-white/5">
-          <div className="flex items-center justify-between mb-4">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-4">
             <h3 className="text-lg font-bold text-white">
               Test Email Configuration
             </h3>
             {!testEmailSuccess && hasChanges && (
-              <span className="text-xs text-blue-400 flex items-center gap-1 px-3 py-1 bg-blue-400/10 rounded-full border border-blue-400/20">
+              <span className="text-xs text-blue-400 flex items-center gap-1 px-3 py-1 bg-blue-400/10 rounded-full border border-blue-400/20 self-start">
                 <span className="material-symbols-outlined text-sm">info</span>
                 Testing recommended
               </span>
             )}
             {testEmailSuccess && (
-              <span className="text-xs text-green-500 flex items-center gap-1 px-3 py-1 bg-green-500/10 rounded-full border border-green-500/20">
+              <span className="text-xs text-green-500 flex items-center gap-1 px-3 py-1 bg-green-500/10 rounded-full border border-green-500/20 self-start">
                 <span className="material-symbols-outlined text-sm">
                   check_circle
                 </span>
@@ -713,7 +713,7 @@ const SettingsPage: React.FC = () => {
               hasChanges &&
               " Testing is recommended but optional."}
           </p>
-          <div className="flex gap-4">
+          <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
             <input
               type="email"
               value={testEmailAddress}
@@ -725,7 +725,7 @@ const SettingsPage: React.FC = () => {
               type="button"
               onClick={handleTestEmail}
               disabled={testing || !testEmailAddress}
-              className="h-12 px-6 bg-blue-500 hover:bg-blue-600 text-white font-bold rounded-xl flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+              className="w-full sm:w-auto h-12 px-6 bg-blue-500 hover:bg-blue-600 text-white font-bold rounded-xl flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed transition-all min-h-[44px]"
             >
               {testing ? (
                 <LoadingSpinner size="sm" color="white" />
@@ -917,7 +917,7 @@ const SettingsPage: React.FC = () => {
             type="button"
             onClick={handleSubmit as any}
             disabled={saving}
-            className="h-12 px-8 bg-primary hover:bg-primary-dark text-black font-bold rounded-xl shadow-lg shadow-primary/20 flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+            className="w-full sm:w-auto h-12 px-8 bg-primary hover:bg-primary-dark text-black font-bold rounded-xl shadow-lg shadow-primary/20 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed transition-all min-h-[44px]"
           >
             {saving ? (
               <LoadingSpinner size="sm" color="black" />

@@ -80,8 +80,8 @@ const UserDetailModal: React.FC<UserDetailModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in duration-200">
-      <div className="bg-[#1c2230] rounded-2xl border border-white/10 w-full max-w-2xl shadow-2xl relative animate-in zoom-in-95 duration-200 overflow-hidden">
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center sm:p-4 bg-black/50 backdrop-blur-sm animate-in fade-in duration-200">
+      <div className="bg-[#1c2230] rounded-t-2xl sm:rounded-2xl border border-white/10 w-full max-w-2xl shadow-2xl relative animate-in zoom-in-95 duration-200 overflow-hidden max-h-[90vh] overflow-y-auto">
         {/* Header Background */}
         <div className="h-32 bg-gradient-to-r from-blue-900/40 via-purple-900/40 to-red-900/40 relative overflow-hidden">
           <div className="absolute inset-0 bg-[url('/grid-pattern.svg')] opacity-10"></div>
@@ -105,7 +105,7 @@ const UserDetailModal: React.FC<UserDetailModalProps> = ({
         </div>
 
         {/* User Info Header */}
-        <div className="px-8 relative -mt-12 flex flex-col sm:flex-row items-end sm:items-end gap-6 mb-8">
+        <div className="px-4 sm:px-8 relative -mt-12 flex flex-col sm:flex-row items-center sm:items-end gap-4 sm:gap-6 mb-6 sm:mb-8">
           <div className="size-24 rounded-full bg-gradient-to-br from-gray-700 to-gray-800 border-4 border-[#1c2230] flex items-center justify-center text-white font-bold text-3xl shadow-xl">
             {(user.fullName || user.username).charAt(0).toUpperCase()}
           </div>
@@ -131,7 +131,7 @@ const UserDetailModal: React.FC<UserDetailModalProps> = ({
           </div>
         </div>
 
-        <div className="px-8 pb-8 space-y-8">
+        <div className="px-4 sm:px-8 pb-6 sm:pb-8 space-y-6 sm:space-y-8">
           {/* Details Section */}
           {isEditing ? (
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 bg-white/5 p-6 rounded-xl border border-white/10">

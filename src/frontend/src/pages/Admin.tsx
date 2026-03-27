@@ -86,26 +86,26 @@ const Admin: React.FC = () => {
   return (
     <div className="min-h-screen bg-background-dark pb-20">
       {/* Header */}
-      <div className="sticky top-0 z-20 bg-background-dark/95 backdrop-blur-md border-b border-white/10 px-6 py-6">
-        <div className="max-w-7xl mx-auto flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl font-bold text-white tracking-tight">
+      <div className="sticky top-0 z-20 bg-background-dark/95 backdrop-blur-md border-b border-white/10 px-4 sm:px-6 py-4 sm:py-6">
+        <div className="max-w-7xl mx-auto flex items-center justify-between gap-4">
+          <div className="min-w-0">
+            <h1 className="text-xl sm:text-2xl font-bold text-white tracking-tight">
               Admin Dashboard
             </h1>
-            <p className="text-slate-400 text-sm mt-1">
+            <p className="text-slate-400 text-xs sm:text-sm mt-1">
               Manage tournaments, users, and settings
             </p>
           </div>
           <Link
             to="/dashboard"
-            className="p-2 rounded-full bg-white/5 hover:bg-white/10 transition-colors"
+            className="p-2 rounded-full bg-white/5 hover:bg-white/10 transition-colors shrink-0 min-w-[44px] min-h-[44px] flex items-center justify-center"
           >
             <span className="material-symbols-outlined text-white">close</span>
           </Link>
         </div>
       </div>
 
-      <div className="max-w-7xl mx-auto px-6 py-8 space-y-8">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-8 space-y-6 sm:space-y-8">
         {error && (
           <div className="bg-red-500/10 border border-red-500/30 rounded-xl p-4 flex items-center gap-3">
             <span className="material-symbols-outlined text-red-500">

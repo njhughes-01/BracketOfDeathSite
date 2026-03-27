@@ -160,18 +160,18 @@ const StripeSettingsPage: React.FC = () => {
 
   return (
     <div className="max-w-4xl mx-auto space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-black italic text-white tracking-tight uppercase">
+      <div className="flex items-start justify-between gap-4">
+        <div className="min-w-0">
+          <h1 className="text-2xl sm:text-3xl font-black italic text-white tracking-tight uppercase">
             Stripe <span className="text-primary">Settings</span>
           </h1>
-          <p className="text-slate-400 mt-2">
+          <p className="text-slate-400 mt-1 sm:mt-2 text-sm sm:text-base">
             Configure Stripe payment processing and pricing
           </p>
         </div>
         <Link
           to="/admin/settings"
-          className="p-2 rounded-full bg-white/5 hover:bg-white/10 transition-colors"
+          className="p-2 rounded-full bg-white/5 hover:bg-white/10 transition-colors shrink-0 min-w-[44px] min-h-[44px] flex items-center justify-center"
         >
           <span className="material-symbols-outlined text-white">close</span>
         </Link>
@@ -458,10 +458,10 @@ const StripeSettingsPage: React.FC = () => {
           </div>
 
           {/* Save Button */}
-          <div className="pt-4 border-t border-white/5 flex items-center justify-between">
+          <div className="pt-4 border-t border-white/5 flex flex-col-reverse sm:flex-row items-stretch sm:items-center justify-between gap-3">
             <Link
               to="/admin/settings/discounts"
-              className="text-primary hover:text-primary-light flex items-center gap-2 transition-colors"
+              className="text-primary hover:text-primary-light flex items-center justify-center sm:justify-start gap-2 transition-colors min-h-[44px]"
             >
               <span className="material-symbols-outlined">local_offer</span>
               Manage Discount Codes
@@ -470,7 +470,7 @@ const StripeSettingsPage: React.FC = () => {
             <button
               type="submit"
               disabled={saving}
-              className="h-12 px-8 bg-primary hover:bg-primary-dark text-black font-bold rounded-xl shadow-lg shadow-primary/20 flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+              className="w-full sm:w-auto h-12 px-8 bg-primary hover:bg-primary-dark text-black font-bold rounded-xl shadow-lg shadow-primary/20 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed transition-all min-h-[44px]"
             >
               {saving ? (
                 <LoadingSpinner size="sm" color="black" />
@@ -501,8 +501,8 @@ const StripeSettingsPage: React.FC = () => {
           </div>
 
           <div className="space-y-4">
-            <div className="flex items-end gap-4">
-              <div className="space-y-2 flex-1 max-w-xs">
+            <div className="flex flex-col sm:flex-row sm:items-end gap-3 sm:gap-4">
+              <div className="space-y-2 flex-1 sm:max-w-xs">
                 <label className="text-sm font-bold text-slate-400 uppercase tracking-wider">
                   Platform Fee Percentage
                 </label>
@@ -522,7 +522,7 @@ const StripeSettingsPage: React.FC = () => {
               <button
                 onClick={handleSavePlatformFee}
                 disabled={savingFee}
-                className="h-12 px-6 bg-primary hover:bg-primary-dark text-black font-bold rounded-xl shadow-lg shadow-primary/20 flex items-center gap-2 disabled:opacity-50 transition-all"
+                className="w-full sm:w-auto h-12 px-6 bg-primary hover:bg-primary-dark text-black font-bold rounded-xl shadow-lg shadow-primary/20 flex items-center justify-center gap-2 disabled:opacity-50 transition-all min-h-[44px]"
               >
                 {savingFee ? (
                   <LoadingSpinner size="sm" color="black" />
@@ -542,12 +542,12 @@ const StripeSettingsPage: React.FC = () => {
                 {[25, 50, 100].map((amount) => {
                   const { platformAmount, organizerAmount } = feePreview(amount);
                   return (
-                    <div key={amount} className="flex items-center justify-between text-sm">
+                    <div key={amount} className="flex flex-col sm:flex-row sm:items-center sm:justify-between text-sm gap-1">
                       <span className="text-slate-400">${amount} entry fee</span>
-                      <span className="text-white">
-                        Organizer gets <span className="text-green-500 font-bold">${organizerAmount.toFixed(2)}</span>
+                      <span className="text-white text-xs sm:text-sm">
+                        Organizer: <span className="text-green-500 font-bold">${organizerAmount.toFixed(2)}</span>
                         {platformAmount > 0 && (
-                          <>, Platform gets <span className="text-orange-500 font-bold">${platformAmount.toFixed(2)}</span></>
+                          <> / Platform: <span className="text-orange-500 font-bold">${platformAmount.toFixed(2)}</span></>
                         )}
                       </span>
                     </div>
