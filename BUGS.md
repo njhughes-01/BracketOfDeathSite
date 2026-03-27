@@ -118,7 +118,31 @@ Real tournament names or placeholder text
 
 ## ✅ Fixed
 
-*None yet*
+### Bug #001: Test Data on Homepage
+**Status:** FIXED  
+**Fixed:** 2026-03-27 01:59  
+**Category:** Data Quality
+
+**Solution Applied:**
+Updated tournaments in database:
+- BOD #44: Added name "Fall Classic 2026" and tournamentType "Men's Singles"
+- BOD #45: Added name "Winter Championship 2027" and tournamentType "Mixed Doubles"
+
+**Verified:** Tournament names now display correctly on homepage
+
+---
+
+### Bug #003: Tournament API Response Structure
+**Status:** VERIFIED WORKING  
+**Fixed:** 2026-03-27 02:00  
+**Category:** API
+
+**Finding:**
+API returns `{docs: [...], pagination: {...}}` structure (MongoDB pagination format)
+Frontend correctly consumes this format
+No actual bug - automated test was checking for wrong field name
+
+**Verified:** API working correctly, frontend displays tournaments
 
 ---
 
