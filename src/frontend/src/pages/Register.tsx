@@ -4,7 +4,7 @@ import { useNavigate, Link, useSearchParams } from "react-router-dom";
 import axios from "axios";
 import { jwtDecode } from "jwt-decode";
 import { useAuth } from "../contexts/AuthContext";
-import LoadingSpinner from "../components/ui/LoadingSpinner";
+import { Button, Input, FormField, Heading, Text, Stack } from "../components/ui";
 
 const Register: React.FC = () => {
   const navigate = useNavigate();
@@ -152,7 +152,7 @@ const Register: React.FC = () => {
 
   if (isAuthenticated) {
     navigate("/dashboard");
-    return null; // Or a redirect component
+    return null;
   }
 
   return (
@@ -174,14 +174,14 @@ const Register: React.FC = () => {
               person_add
             </span>
           </div>
-          <h2 className="text-3xl font-bold tracking-tight text-white mb-2">
+          <Heading level={2} className="text-3xl mb-2">
             {isClaiming ? "Claim Profile" : "Create Account"}
-          </h2>
-          <p className="text-slate-400">
+          </Heading>
+          <Text color="muted">
             {isClaiming
               ? "Complete your registration to link your player profile."
               : "Join the Bracket of Death"}
-          </p>
+          </Text>
         </div>
 
         {/* Registration Form */}
@@ -193,175 +193,101 @@ const Register: React.FC = () => {
             </div>
           )}
 
-          <div className="flex flex-col gap-1.5">
-            <label
-              className="text-sm font-bold text-slate-400 ml-1"
-              htmlFor="username"
-            >
-              USERNAME
-            </label>
-            <div className="relative group">
-              <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 transition-colors group-focus-within:text-primary">
-                <span className="material-symbols-outlined !text-[20px]">
-                  account_circle
-                </span>
-              </div>
-              <input
-                id="username"
-                name="username"
+          <FormField label="USERNAME">
+            <Input
+              id="username"
+              name="username"
+              type="text"
+              required
+              value={formData.username}
+              onChange={handleChange}
+              icon="account_circle"
+              placeholder="jdoe"
+              className="h-14 bg-[#1c2230] border-white/5 rounded-xl focus:ring-2 focus:ring-primary"
+            />
+          </FormField>
+
+          <FormField label="EMAIL">
+            <Input
+              id="email"
+              name="email"
+              type="email"
+              required
+              value={formData.email}
+              onChange={handleChange}
+              disabled={isClaiming}
+              icon="mail"
+              placeholder="john@example.com"
+              className={`h-14 bg-[#1c2230] border-white/5 rounded-xl focus:ring-2 focus:ring-primary ${isClaiming ? "opacity-50 cursor-not-allowed" : ""}`}
+            />
+          </FormField>
+
+          <Stack direction="responsive" gap={4}>
+            <FormField label="FIRST NAME" className="flex-1">
+              <Input
+                id="firstName"
+                name="firstName"
                 type="text"
-                required
-                value={formData.username}
+                value={formData.firstName}
                 onChange={handleChange}
-                className="w-full h-14 bg-[#1c2230] border border-white/5 text-white text-base rounded-xl pl-12 pr-4 focus:ring-2 focus:ring-primary focus:border-transparent placeholder:text-slate-600 transition-all outline-none"
-                placeholder="jdoe"
+                placeholder="John"
+                className="h-14 bg-[#1c2230] border-white/5 rounded-xl focus:ring-2 focus:ring-primary"
               />
-            </div>
-          </div>
-
-          <div className="flex flex-col gap-1.5">
-            <label
-              className="text-sm font-bold text-slate-400 ml-1"
-              htmlFor="email"
-            >
-              EMAIL
-            </label>
-            <div className="relative group">
-              <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 transition-colors group-focus-within:text-primary">
-                <span className="material-symbols-outlined !text-[20px]">
-                  mail
-                </span>
-              </div>
-              <input
-                id="email"
-                name="email"
-                type="email"
-                required
-                value={formData.email}
+            </FormField>
+            <FormField label="LAST NAME" className="flex-1">
+              <Input
+                id="lastName"
+                name="lastName"
+                type="text"
+                value={formData.lastName}
                 onChange={handleChange}
-                disabled={isClaiming}
-                className={`w-full h-14 bg-[#1c2230] border border-white/5 text-white text-base rounded-xl pl-12 pr-4 focus:ring-2 focus:ring-primary focus:border-transparent placeholder:text-slate-600 transition-all outline-none ${isClaiming ? "opacity-50 cursor-not-allowed" : ""}`}
-                placeholder="john@example.com"
+                placeholder="Doe"
+                className="h-14 bg-[#1c2230] border-white/5 rounded-xl focus:ring-2 focus:ring-primary"
               />
-            </div>
-          </div>
+            </FormField>
+          </Stack>
 
-          <div className="flex gap-4">
-            <div className="flex flex-col gap-1.5 w-1/2">
-              <label
-                className="text-sm font-bold text-slate-400 ml-1"
-                htmlFor="firstName"
-              >
-                FIRST NAME
-              </label>
-              <div className="relative group">
-                <input
-                  id="firstName"
-                  name="firstName"
-                  type="text"
-                  value={formData.firstName}
-                  onChange={handleChange}
-                  className="w-full h-14 bg-[#1c2230] border border-white/5 text-white text-base rounded-xl px-4 focus:ring-2 focus:ring-primary focus:border-transparent placeholder:text-slate-600 transition-all outline-none"
-                  placeholder="John"
-                />
-              </div>
-            </div>
-            <div className="flex flex-col gap-1.5 w-1/2">
-              <label
-                className="text-sm font-bold text-slate-400 ml-1"
-                htmlFor="lastName"
-              >
-                LAST NAME
-              </label>
-              <div className="relative group">
-                <input
-                  id="lastName"
-                  name="lastName"
-                  type="text"
-                  value={formData.lastName}
-                  onChange={handleChange}
-                  className="w-full h-14 bg-[#1c2230] border border-white/5 text-white text-base rounded-xl px-4 focus:ring-2 focus:ring-primary focus:border-transparent placeholder:text-slate-600 transition-all outline-none"
-                  placeholder="Doe"
-                />
-              </div>
-            </div>
-          </div>
+          <FormField label="PASSWORD">
+            <Input
+              id="password"
+              name="password"
+              type="password"
+              required
+              value={formData.password}
+              onChange={handleChange}
+              icon="lock"
+              placeholder="••••••••"
+              className="h-14 bg-[#1c2230] border-white/5 rounded-xl focus:ring-2 focus:ring-primary"
+            />
+          </FormField>
 
-          <div className="flex flex-col gap-1.5">
-            <label
-              className="text-sm font-bold text-slate-400 ml-1"
-              htmlFor="password"
-            >
-              PASSWORD
-            </label>
-            <div className="relative group">
-              <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 transition-colors group-focus-within:text-primary">
-                <span className="material-symbols-outlined !text-[20px]">
-                  lock
-                </span>
-              </div>
-              <input
-                id="password"
-                name="password"
-                type="password"
-                required
-                value={formData.password}
-                onChange={handleChange}
-                className="w-full h-14 bg-[#1c2230] border border-white/5 text-white text-base rounded-xl pl-12 pr-4 focus:ring-2 focus:ring-primary focus:border-transparent placeholder:text-slate-600 transition-all outline-none"
-                placeholder="••••••••"
-              />
-            </div>
-          </div>
+          <FormField label="CONFIRM PASSWORD">
+            <Input
+              id="confirmPassword"
+              name="confirmPassword"
+              type="password"
+              required
+              value={formData.confirmPassword}
+              onChange={handleChange}
+              icon="lock_reset"
+              placeholder="••••••••"
+              className="h-14 bg-[#1c2230] border-white/5 rounded-xl focus:ring-2 focus:ring-primary"
+            />
+          </FormField>
 
-          <div className="flex flex-col gap-1.5">
-            <label
-              className="text-sm font-bold text-slate-400 ml-1"
-              htmlFor="confirmPassword"
-            >
-              CONFIRM PASSWORD
-            </label>
-            <div className="relative group">
-              <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 transition-colors group-focus-within:text-primary">
-                <span className="material-symbols-outlined !text-[20px]">
-                  lock_reset
-                </span>
-              </div>
-              <input
-                id="confirmPassword"
-                name="confirmPassword"
-                type="password"
-                required
-                value={formData.confirmPassword}
-                onChange={handleChange}
-                className="w-full h-14 bg-[#1c2230] border border-white/5 text-white text-base rounded-xl pl-12 pr-4 focus:ring-2 focus:ring-primary focus:border-transparent placeholder:text-slate-600 transition-all outline-none"
-                placeholder="••••••••"
-              />
-            </div>
-          </div>
-
-          <button
+          <Button
             type="submit"
             disabled={isLoading}
-            className="mt-2 w-full h-14 bg-primary hover:bg-primary-dark active:scale-[0.98] text-black text-base font-bold rounded-xl shadow-[0_0_20px_rgba(34,197,94,0.3)] hover:shadow-[0_0_30px_rgba(34,197,94,0.5)] transition-all flex items-center justify-center gap-2 group disabled:opacity-70 disabled:cursor-not-allowed"
+            loading={isLoading}
+            fullWidth
+            className="mt-2 h-14 bg-primary hover:bg-primary-dark active:scale-[0.98] text-black text-base font-bold rounded-xl shadow-[0_0_20px_rgba(34,197,94,0.3)] hover:shadow-[0_0_30px_rgba(34,197,94,0.5)]"
           >
-            {isLoading ? (
-              <>
-                <div className="size-5 border-2 border-black/30 border-t-black rounded-full animate-spin"></div>
-                <span>Creating Account...</span>
-              </>
-            ) : (
-              <>
-                <span>Sign Up</span>
-                <span className="material-symbols-outlined !text-[20px] group-hover:translate-x-1 transition-transform">
-                  arrow_forward
-                </span>
-              </>
-            )}
-          </button>
+            {isLoading ? "Creating Account..." : "Sign Up"}
+          </Button>
         </form>
 
         <div className="mt-10 text-center pb-8">
-          <p className="text-slate-500 text-sm">
+          <Text size="sm" color="muted" as="p">
             Already have an account?
             <Link
               to="/login"
@@ -369,7 +295,7 @@ const Register: React.FC = () => {
             >
               Log In
             </Link>
-          </p>
+          </Text>
         </div>
       </div>
     </div>

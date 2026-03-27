@@ -4,8 +4,8 @@
 
 ## Progress Overview
 
-**Completed:** 8/35 pages (23%)
-**Remaining:** 27 pages
+**Completed:** 12/35 pages (34%)
+**Remaining:** 23 pages
 **Target:** 100% component system adoption
 
 ---
@@ -41,7 +41,7 @@
 
 ---
 
-## ⏳ Phase 3: Player Pages (1/4 complete - 25%)
+## ⏳ Phase 3: Player Pages (2/4 complete - 50%)
 
 ### High Priority
 - [x] **Players.tsx** - Browse players - Sprint 1
@@ -49,16 +49,16 @@
 - [ ] **Rankings.tsx** - Player rankings table
 
 ### Medium Priority
-- [ ] Profile.tsx - User's own profile page
+- [x] Profile.tsx - User's own profile page - Sprint 2
 
 ---
 
-## ⏳ Phase 4: Form Pages (0/5 complete - 0%)
+## ⏳ Phase 4: Form Pages (3/5 complete - 60%)
 
 ### High Priority (User Entry Points)
-- [ ] **Login.tsx** - Login form
-- [ ] **Register.tsx** - Registration form
-- [ ] **Onboarding.tsx** - New user onboarding
+- [x] **Login.tsx** - Login form - Sprint 2
+- [x] **Register.tsx** - Registration form - Sprint 2
+- [x] **Onboarding.tsx** - New user onboarding - Sprint 2
 
 ### Medium Priority
 - [ ] ForgotPassword.tsx - Password reset
@@ -258,5 +258,5 @@ Open http://localhost:5173 and resize to:
 ---
 
 **Last Updated:** March 26, 2026
-**Completed:** 8/35 pages (23%)
-**Next Target:** Sprint 2 - Login.tsx, Register.tsx, Profile.tsx, Onboarding.tsx
+**Completed:** 12/35 pages (34%)
+**Next Target:** Sprint 3 - Home/Landing.tsx, Rules.tsx, FAQ.tsx, OpenTournaments.tsx

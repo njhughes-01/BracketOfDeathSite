@@ -7,7 +7,7 @@ import {
   Link,
   useSearchParams,
 } from "react-router-dom";
-import LoadingSpinner from "../components/ui/LoadingSpinner";
+import { LoadingSpinner, Button, Input, FormField, Heading, Text } from "../components/ui";
 import ForgotPasswordModal from "../components/auth/ForgotPasswordModal";
 import { apiClient } from "../services/api";
 
@@ -168,7 +168,7 @@ const Login: React.FC = () => {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background-dark">
         <LoadingSpinner size="lg" />
-        <p className="ml-4 text-slate-400">Redirecting...</p>
+        <Text size="sm" className="ml-4">Redirecting...</Text>
       </div>
     );
   }
@@ -193,10 +193,10 @@ const Login: React.FC = () => {
               sports_tennis
             </span>
           </div>
-          <h2 className="text-3xl font-bold tracking-tight text-white mb-2">
+          <Heading level={2} className="text-3xl mb-2">
             Welcome Back
-          </h2>
-          <p className="text-slate-400">Sign in to manage your tournaments</p>
+          </Heading>
+          <Text color="muted">Sign in to manage your tournaments</Text>
         </div>
 
         {/* Login Form */}
@@ -212,70 +212,48 @@ const Login: React.FC = () => {
           )}
 
           {/* Email Field */}
-          <div className="flex flex-col gap-1.5">
-            <label
-              className="text-sm font-bold text-slate-400 ml-1"
-              htmlFor="email"
-            >
-              EMAIL OR USERNAME
-            </label>
-            <div className="relative group">
-              <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 transition-colors group-focus-within:text-primary">
-                <span className="material-symbols-outlined !text-[20px]">
-                  person
-                </span>
-              </div>
-              <input
-                id="email"
-                name="email"
-                type="text"
-                autoComplete="username"
-                required
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                className="w-full h-14 bg-[#1c2230] border border-white/5 text-white text-base rounded-xl pl-12 pr-4 focus:ring-2 focus:ring-primary focus:border-transparent placeholder:text-slate-600 transition-all outline-none"
-                placeholder="admin"
-              />
-            </div>
-          </div>
+          <FormField label="EMAIL OR USERNAME">
+            <Input
+              id="email"
+              name="email"
+              type="text"
+              autoComplete="username"
+              required
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              icon="person"
+              placeholder="admin"
+              className="h-14 bg-[#1c2230] border-white/5 rounded-xl focus:ring-2 focus:ring-primary"
+            />
+          </FormField>
 
           {/* Password Field */}
-          <div className="flex flex-col gap-1.5">
-            <div className="flex justify-between items-center ml-1">
-              <label
-                className="text-sm font-bold text-slate-400"
-                htmlFor="password"
-              >
-                PASSWORD
-              </label>
-            </div>
-            <div className="relative group">
-              <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 transition-colors group-focus-within:text-primary">
-                <span className="material-symbols-outlined !text-[20px]">
-                  lock
-                </span>
+          <div>
+            <FormField label="PASSWORD">
+              <div className="relative">
+                <Input
+                  id="password"
+                  name="password"
+                  type={showPassword ? "text" : "password"}
+                  autoComplete="current-password"
+                  required
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  icon="lock"
+                  placeholder="••••••••"
+                  className="h-14 bg-[#1c2230] border-white/5 rounded-xl pr-12 focus:ring-2 focus:ring-primary"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-500 hover:text-white transition-colors focus:outline-none"
+                >
+                  <span className="material-symbols-outlined !text-[20px]">
+                    {showPassword ? "visibility_off" : "visibility"}
+                  </span>
+                </button>
               </div>
-              <input
-                id="password"
-                name="password"
-                type={showPassword ? "text" : "password"}
-                autoComplete="current-password"
-                required
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                className="w-full h-14 bg-[#1c2230] border border-white/5 text-white text-base rounded-xl pl-12 pr-12 focus:ring-2 focus:ring-primary focus:border-transparent placeholder:text-slate-600 transition-all outline-none"
-                placeholder="••••••••"
-              />
-              <button
-                type="button"
-                onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-500 hover:text-white transition-colors focus:outline-none"
-              >
-                <span className="material-symbols-outlined !text-[20px]">
-                  {showPassword ? "visibility_off" : "visibility"}
-                </span>
-              </button>
-            </div>
+            </FormField>
             {/* Forgot Password Link */}
             <div className="flex justify-end mt-1">
               <button
@@ -289,25 +267,15 @@ const Login: React.FC = () => {
           </div>
 
           {/* Login Button */}
-          <button
+          <Button
             type="submit"
             disabled={isLoggingIn}
-            className="mt-2 w-full h-14 bg-primary hover:bg-primary-dark active:scale-[0.98] text-black text-base font-bold rounded-xl shadow-[0_0_20px_rgba(34,197,94,0.3)] hover:shadow-[0_0_30px_rgba(34,197,94,0.5)] transition-all flex items-center justify-center gap-2 group disabled:opacity-70 disabled:cursor-not-allowed"
+            loading={isLoggingIn}
+            fullWidth
+            className="mt-2 h-14 bg-primary hover:bg-primary-dark active:scale-[0.98] text-black text-base font-bold rounded-xl shadow-[0_0_20px_rgba(34,197,94,0.3)] hover:shadow-[0_0_30px_rgba(34,197,94,0.5)]"
           >
-            {isLoggingIn ? (
-              <>
-                <div className="size-5 border-2 border-black/30 border-t-black rounded-full animate-spin"></div>
-                <span>Signing In...</span>
-              </>
-            ) : (
-              <>
-                <span>Log In</span>
-                <span className="material-symbols-outlined !text-[20px] group-hover:translate-x-1 transition-transform">
-                  arrow_forward
-                </span>
-              </>
-            )}
-          </button>
+            {isLoggingIn ? "Signing In..." : "Log In"}
+          </Button>
         </form>
 
         {/* Divider */}
@@ -322,25 +290,30 @@ const Login: React.FC = () => {
           </div>
         </div>
 
-        {/* Social Actions (Mock) */}
+        {/* Social Actions */}
         <div className="grid grid-cols-2 gap-3">
-          <button
+          <Button
             type="button"
+            variant="secondary"
             onClick={handleKeycloakLogin}
-            className="flex h-12 items-center justify-center gap-2 rounded-xl border border-white/10 bg-[#1c2230] text-white hover:bg-white/5 transition-colors"
+            icon="verified_user"
+            className="h-12 rounded-xl bg-[#1c2230] border-white/10"
           >
-            <span className="material-symbols-outlined">verified_user</span>
-            <span className="text-sm font-bold">Keycloak SSO</span>
-          </button>
-          <button className="flex h-12 items-center justify-center gap-2 rounded-xl border border-white/10 bg-[#1c2230] text-white hover:bg-white/5 transition-colors">
-            <span className="material-symbols-outlined">mail</span>
-            <span className="text-sm font-bold">Google</span>
-          </button>
+            Keycloak SSO
+          </Button>
+          <Button
+            type="button"
+            variant="secondary"
+            icon="mail"
+            className="h-12 rounded-xl bg-[#1c2230] border-white/10"
+          >
+            Google
+          </Button>
         </div>
 
         {/* Sign Up Footer */}
         <div className="mt-10 text-center pb-8">
-          <p className="text-slate-500 text-sm">
+          <Text size="sm" color="muted" as="p">
             Don't have an account?
             <Link
               to="/register"
@@ -348,7 +321,7 @@ const Login: React.FC = () => {
             >
               Sign Up
             </Link>
-          </p>
+          </Text>
         </div>
       </div>
 

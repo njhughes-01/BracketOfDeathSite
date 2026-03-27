@@ -3,7 +3,7 @@ import logger from "../utils/logger";
 import { useNavigate, useLocation } from "react-router-dom";
 import { apiClient } from "../services/api";
 import { useAuth } from "../contexts/AuthContext";
-import LoadingSpinner from "../components/ui/LoadingSpinner";
+import { LoadingSpinner, Button, Select, FormField, Heading, Text } from "../components/ui";
 
 const Onboarding: React.FC = () => {
   const [step, setStep] = useState<"loading" | "claim-admin" | "profile">(
@@ -118,14 +118,14 @@ const Onboarding: React.FC = () => {
               {step === "claim-admin" ? "admin_panel_settings" : "badge"}
             </span>
           </div>
-          <h2 className="text-3xl font-bold tracking-tight text-white mb-2">
+          <Heading level={2} className="text-3xl mb-2">
             {step === "claim-admin" ? "System Setup" : "Complete Profile"}
-          </h2>
-          <p className="text-slate-400">
+          </Heading>
+          <Text color="muted">
             {step === "claim-admin"
               ? "Welcome! You are the first user. Let's set up your Super Admin account."
               : `Welcome, ${user?.firstName || user?.username}! Let's finish setting you up.`}
-          </p>
+          </Text>
         </div>
 
         {/* Form Container */}
@@ -156,44 +156,35 @@ const Onboarding: React.FC = () => {
                       shield_person
                     </span>
                   </div>
-                  <h3 className="text-2xl font-bold text-white mb-2">
+                  <Heading level={3} className="text-2xl mb-2">
                     System Initialization
-                  </h3>
+                  </Heading>
                   <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-amber-500/10 border border-amber-500/20 text-amber-500 text-xs font-mono font-bold tracking-wider uppercase">
                     <span className="size-1.5 rounded-full bg-amber-500 animate-pulse"></span>
                     Root Access Detected
                   </div>
                 </div>
 
-                <p className="text-slate-400 text-sm leading-relaxed text-center mb-8 max-w-sm mx-auto">
+                <Text size="sm" color="muted" className="leading-relaxed text-center mb-8 max-w-sm mx-auto">
                   The system has detected that no Super Administrator exists. As
                   the first user, you can claim this role to verify your
                   identity and gain full control.
-                </p>
+                </Text>
 
-                <button
+                <Button
                   onClick={handleClaimAdmin}
                   disabled={isLoading}
-                  className="w-full h-14 bg-gradient-to-r from-amber-600 to-amber-500 hover:from-amber-500 hover:to-amber-400 text-black text-base font-bold rounded-xl shadow-[0_0_20px_rgba(245,158,11,0.3)] hover:shadow-[0_0_30px_rgba(245,158,11,0.5)] transition-all flex items-center justify-center gap-2 group disabled:opacity-70 disabled:cursor-not-allowed transform active:scale-[0.99]"
+                  loading={isLoading}
+                  fullWidth
+                  icon="terminal"
+                  className="h-14 bg-gradient-to-r from-amber-600 to-amber-500 hover:from-amber-500 hover:to-amber-400 text-black text-base font-bold rounded-xl shadow-[0_0_20px_rgba(245,158,11,0.3)] hover:shadow-[0_0_30px_rgba(245,158,11,0.5)] active:scale-[0.99]"
                 >
-                  {isLoading ? (
-                    <>
-                      <div className="size-5 border-2 border-black/30 border-t-black rounded-full animate-spin"></div>
-                      <span>Initializing Core...</span>
-                    </>
-                  ) : (
-                    <>
-                      <span className="material-symbols-outlined">
-                        terminal
-                      </span>
-                      <span>Initialize System</span>
-                    </>
-                  )}
-                </button>
+                  {isLoading ? "Initializing Core..." : "Initialize System"}
+                </Button>
 
-                <p className="text-center mt-4 text-xs text-slate-600 font-mono">
+                <Text size="xs" color="muted" className="text-center mt-4 font-mono text-slate-600">
                   SECURE_BOOT_SEQUENCE_INITIATED
-                </p>
+                </Text>
               </div>
             </div>
           ) : (
@@ -201,26 +192,23 @@ const Onboarding: React.FC = () => {
               onSubmit={handleProfileSubmit}
               className="flex flex-col gap-6"
             >
-              <div className="flex flex-col gap-1.5">
-                <label
-                  htmlFor="gender"
-                  className="text-sm font-bold text-slate-400 ml-1"
-                >
-                  GENDER
-                </label>
-                <div className="relative group">
-                  <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 transition-colors group-focus-within:text-primary z-10 pointer-events-none">
+              <FormField
+                label="GENDER"
+                hint="Required for tournament bracket generation."
+              >
+                <div className="relative">
+                  <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 z-10 pointer-events-none">
                     <span className="material-symbols-outlined !text-[20px]">
                       wc
                     </span>
                   </div>
-                  <select
+                  <Select
                     id="gender"
                     name="gender"
                     value={formData.gender}
                     onChange={handleChange}
                     required
-                    className="w-full h-14 bg-[#1c2230] border border-white/5 text-white text-base rounded-xl pl-12 pr-10 focus:ring-2 focus:ring-primary focus:border-transparent transition-all outline-none appearance-none cursor-pointer"
+                    className="h-14 bg-[#1c2230] border-white/5 rounded-xl pl-12 pr-10 focus:ring-2 focus:ring-primary cursor-pointer"
                   >
                     <option value="" disabled>
                       Select Gender
@@ -228,37 +216,24 @@ const Onboarding: React.FC = () => {
                     <option value="male">Male</option>
                     <option value="female">Female</option>
                     <option value="other">Other</option>
-                  </select>
+                  </Select>
                   <div className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-500 pointer-events-none">
                     <span className="material-symbols-outlined">
                       expand_more
                     </span>
                   </div>
                 </div>
-                <p className="text-xs text-slate-500 ml-1">
-                  Required for tournament bracket generation.
-                </p>
-              </div>
+              </FormField>
 
-              <button
+              <Button
                 type="submit"
                 disabled={isLoading}
-                className="mt-2 w-full h-14 bg-indigo-600 hover:bg-indigo-500 active:scale-[0.98] text-white text-base font-bold rounded-xl shadow-lg transition-all flex items-center justify-center gap-2 group disabled:opacity-70 disabled:cursor-not-allowed"
+                loading={isLoading}
+                fullWidth
+                className="mt-2 h-14 bg-indigo-600 hover:bg-indigo-500 active:scale-[0.98] text-white text-base font-bold rounded-xl shadow-lg"
               >
-                {isLoading ? (
-                  <>
-                    <div className="size-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
-                    <span>Saving Profile...</span>
-                  </>
-                ) : (
-                  <>
-                    <span>Complete Setup</span>
-                    <span className="material-symbols-outlined !text-[20px] group-hover:translate-x-1 transition-transform">
-                      check
-                    </span>
-                  </>
-                )}
-              </button>
+                {isLoading ? "Saving Profile..." : "Complete Setup"}
+              </Button>
             </form>
           )}
         </div>

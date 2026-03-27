@@ -5,7 +5,7 @@ import { Link } from "react-router-dom";
 import { apiClient } from "../services/api";
 import { useApi } from "../hooks/useApi";
 import type { Player } from "../types/api";
-import { Modal } from "../components/ui";
+import { Modal, Button, Input, Heading, Text, Stack, Container } from "../components/ui";
 import ChangePasswordModal from "../components/auth/ChangePasswordModal";
 import ProfileEditForm from "../components/profile/ProfileEditForm";
 import MyTicketsSection from "./profile/MyTicketsSection";
@@ -81,7 +81,6 @@ const Profile: React.FC = () => {
       setIsLinkModalOpen(false);
     } catch (error) {
       logger.error("Failed to link profile", error);
-      // Optionally show toast error
     } finally {
       setIsLinking(false);
     }
@@ -95,11 +94,11 @@ const Profile: React.FC = () => {
             person_off
           </span>
         </div>
-        <h2 className="text-2xl font-bold text-white mb-3">Not Signed In</h2>
-        <p className="text-slate-400 mb-8 max-w-sm mx-auto leading-relaxed">
+        <Heading level={2} className="mb-3">Not Signed In</Heading>
+        <Text color="muted" className="mb-8 max-w-sm mx-auto leading-relaxed">
           Please sign in to view your profile and manage your tournament
           settings.
-        </p>
+        </Text>
         <Link
           to="/login"
           className="px-8 py-3 bg-primary text-black font-bold rounded-xl shadow-[0_0_20px_rgba(204,255,0,0.3)] hover:shadow-[0_0_30px_rgba(204,255,0,0.5)] hover:bg-white transition-all transform hover:scale-105 active:scale-95"
@@ -123,39 +122,40 @@ const Profile: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-background-dark pb-20">
-      <div className="max-w-4xl mx-auto px-4 py-8 space-y-8">
+      <Container maxWidth="md" padding="md" className="space-y-8">
         {/* Verify Email Banner */}
         {user && user.emailVerified === false && (
-          <div className="p-4 rounded-xl bg-yellow-500/10 border border-yellow-500/20 flex flex-col sm:flex-row items-center justify-between gap-4">
+          <Stack direction="responsive" align="center" justify="between" className="p-4 rounded-xl bg-yellow-500/10 border border-yellow-500/20">
             <div className="flex items-center gap-3">
               <span className="material-symbols-outlined text-yellow-500">
                 warning
               </span>
               <div>
-                <p className="font-bold text-yellow-500">
+                <Text size="sm" color="white" className="font-bold text-yellow-500">
                   Verify your email address
-                </p>
-                <p className="text-xs text-yellow-500/80">
+                </Text>
+                <Text size="xs" className="text-yellow-500/80">
                   Please verify your email to ensure account security.
-                </p>
+                </Text>
               </div>
             </div>
             {verificationSent ? (
-              <span className="text-xs font-bold text-green-500 flex items-center gap-1">
+              <Text size="xs" color="success" className="font-bold flex items-center gap-1">
                 <span className="material-symbols-outlined text-[16px]">
                   check_circle
                 </span>
                 Sent
-              </span>
+              </Text>
             ) : (
-              <button
+              <Button
                 onClick={handleSendVerification}
-                className="text-xs font-bold bg-yellow-500 hover:bg-yellow-400 text-black px-3 py-1.5 rounded-lg transition-colors"
+                size="sm"
+                className="bg-yellow-500 hover:bg-yellow-400 text-black font-bold"
               >
                 Verify Now
-              </button>
+              </Button>
             )}
-          </div>
+          </Stack>
         )}
 
         {/* Profile Header Card */}
@@ -180,12 +180,12 @@ const Profile: React.FC = () => {
 
             {/* Info */}
             <div className="flex-1 text-center md:text-left space-y-2 pt-2">
-              <h1 className="text-4xl font-black text-white tracking-tight">
+              <Heading level={1} className="text-4xl font-black tracking-tight">
                 {displayName}
-              </h1>
-              <p className="text-slate-400 font-bold font-mono text-sm bg-white/5 px-3 py-1 rounded-lg inline-block">
+              </Heading>
+              <Text size="sm" className="font-bold font-mono bg-white/5 px-3 py-1 rounded-lg inline-block">
                 {user.email}
-              </p>
+              </Text>
               <div className="flex flex-wrap gap-2 justify-center md:justify-start mt-4">
                 {user.roles.map((role) => (
                   <span
@@ -200,15 +200,13 @@ const Profile: React.FC = () => {
 
             {/* Actions */}
             <div className="flex flex-col gap-3 min-w-[140px]">
-              <button
+              <Button
                 onClick={logout}
-                className="px-6 py-3 rounded-xl bg-red-500/10 hover:bg-red-500/20 text-red-500 font-bold border border-red-500/20 hover:border-red-500/40 transition-all flex items-center justify-center gap-2 group"
+                variant="danger"
+                icon="logout"
               >
-                <span className="material-symbols-outlined text-[20px] group-hover:-translate-x-1 transition-transform">
-                  logout
-                </span>
                 Sign Out
-              </button>
+              </Button>
             </div>
           </div>
         </div>
@@ -218,12 +216,12 @@ const Profile: React.FC = () => {
           {/* My Player Stats */}
           <div className="bg-[#1c2230] rounded-3xl border border-white/5 p-6 space-y-4 hover:border-white/10 transition-colors flex flex-col h-full">
             <div className="flex items-center justify-between">
-              <h3 className="text-lg font-bold text-white flex items-center gap-2">
+              <Heading level={4} className="flex items-center gap-2">
                 <span className="material-symbols-outlined text-primary">
                   analytics
                 </span>
                 Player Stats
-              </h3>
+              </Heading>
               {user.playerId && (
                 <Link
                   to={`/players/${user.playerId}`}
@@ -247,17 +245,17 @@ const Profile: React.FC = () => {
                         <div className="text-2xl font-black text-white">
                           {playerStats?.matchesWithPoints || 0}
                         </div>
-                        <div className="text-xs text-slate-500 uppercase tracking-wider font-bold mt-1">
+                        <Text size="xs" color="muted" className="uppercase tracking-wider font-bold mt-1">
                           Matches
-                        </div>
+                        </Text>
                       </div>
                       <div className="bg-black/20 p-4 rounded-xl border border-white/5">
                         <div className="text-2xl font-black text-primary">
                           {playerStats?.totalPoints || 0}
                         </div>
-                        <div className="text-xs text-slate-500 uppercase tracking-wider font-bold mt-1">
+                        <Text size="xs" color="muted" className="uppercase tracking-wider font-bold mt-1">
                           Total Points
-                        </div>
+                        </Text>
                       </div>
                     </div>
                   </div>
@@ -269,19 +267,18 @@ const Profile: React.FC = () => {
                       link_off
                     </span>
                   </div>
-                  <p className="text-slate-400 text-sm max-w-xs mx-auto">
+                  <Text size="sm" color="muted" className="max-w-xs mx-auto">
                     Link your account to a player profile to see your personal
                     statistics here.
-                  </p>
-                  <button
+                  </Text>
+                  <Button
                     onClick={() => setIsLinkModalOpen(true)}
-                    className="inline-flex items-center gap-2 mt-2 px-5 py-2.5 bg-primary text-black hover:bg-white rounded-xl text-sm font-bold transition-all shadow-lg shadow-primary/20"
+                    icon="link"
+                    size="sm"
+                    className="mt-2 shadow-lg shadow-primary/20"
                   >
-                    <span className="material-symbols-outlined text-sm">
-                      link
-                    </span>
                     Link Player Profile
-                  </button>
+                  </Button>
                 </div>
               )}
             </div>
@@ -292,12 +289,12 @@ const Profile: React.FC = () => {
 
           {/* Account Settings */}
           <div className="bg-[#1c2230] rounded-3xl border border-white/5 p-6 space-y-4 hover:border-white/10 transition-colors">
-            <h3 className="text-lg font-bold text-white flex items-center gap-2">
+            <Heading level={4} className="flex items-center gap-2">
               <span className="material-symbols-outlined text-blue-400">
                 manage_accounts
               </span>
               Account Settings
-            </h3>
+            </Heading>
             <div className="py-2 space-y-3">
               {/* Edit Profile */}
               <div className="p-4 rounded-xl bg-background-dark border border-white/5 flex items-center justify-between group">
@@ -306,18 +303,20 @@ const Profile: React.FC = () => {
                     <span className="material-symbols-outlined">person</span>
                   </div>
                   <div>
-                    <p className="text-sm font-bold text-white">Profile</p>
-                    <p className="text-xs text-slate-500">
+                    <Text size="sm" color="white" className="font-bold">Profile</Text>
+                    <Text size="xs" color="muted">
                       Update your name and details
-                    </p>
+                    </Text>
                   </div>
                 </div>
-                <button
+                <Button
                   onClick={() => setShowEditProfile(true)}
-                  className="text-xs font-bold text-primary hover:text-white px-3 py-1.5 rounded-lg hover:bg-white/10 transition-colors"
+                  variant="ghost"
+                  size="sm"
+                  className="text-primary hover:text-white"
                 >
                   Edit
-                </button>
+                </Button>
               </div>
 
               {/* Password Change */}
@@ -327,18 +326,20 @@ const Profile: React.FC = () => {
                     <span className="material-symbols-outlined">lock</span>
                   </div>
                   <div>
-                    <p className="text-sm font-bold text-white">Password</p>
-                    <p className="text-xs text-slate-500">
+                    <Text size="sm" color="white" className="font-bold">Password</Text>
+                    <Text size="xs" color="muted">
                       Update your account password
-                    </p>
+                    </Text>
                   </div>
                 </div>
-                <button
+                <Button
                   onClick={() => setShowChangePassword(true)}
-                  className="text-xs font-bold text-primary hover:text-white px-3 py-1.5 rounded-lg hover:bg-white/10 transition-colors"
+                  variant="ghost"
+                  size="sm"
+                  className="text-primary hover:text-white"
                 >
                   Change
-                </button>
+                </Button>
               </div>
 
               {/* Transaction History */}
@@ -351,33 +352,16 @@ const Profile: React.FC = () => {
                     <span className="material-symbols-outlined">receipt_long</span>
                   </div>
                   <div>
-                    <p className="text-sm font-bold text-white">Transaction History</p>
-                    <p className="text-xs text-slate-500">
+                    <Text size="sm" color="white" className="font-bold">Transaction History</Text>
+                    <Text size="xs" color="muted">
                       View your ticket purchases and receipts
-                    </p>
+                    </Text>
                   </div>
                 </div>
                 <span className="text-xs font-bold text-primary hover:text-white px-3 py-1.5 rounded-lg hover:bg-white/10 transition-colors">
                   View
                 </span>
               </Link>
-
-              {/* Notifications - Hidden for Alpha
-                            <div className="p-4 rounded-xl bg-background-dark border border-white/5 flex items-center justify-between opacity-50 cursor-not-allowed">
-                                <div className="flex items-center gap-4">
-                                    <div className="size-10 rounded-lg bg-white/5 flex items-center justify-center text-slate-500">
-                                        <span className="material-symbols-outlined">notifications</span>
-                                    </div>
-                                    <div>
-                                        <p className="text-sm font-bold text-white">Notifications</p>
-                                        <p className="text-xs text-slate-500">Email preferences</p>
-                                    </div>
-                                </div>
-                                <button className="text-xs font-bold text-slate-500 px-3 py-1.5" disabled>
-                                    Manage
-                                </button>
-                            </div>
-                            */}
             </div>
           </div>
         </div>
@@ -385,7 +369,7 @@ const Profile: React.FC = () => {
         {isAdmin && (
           <div className="group relative">
             <div className="absolute -inset-0.5 bg-gradient-to-r from-primary to-blue-600 rounded-2xl opacity-20 group-hover:opacity-40 blur transition duration-500"></div>
-            <div className="relative bg-[#1c2230] rounded-xl p-6 flex flex-col sm:flex-row items-center justify-between gap-4 border border-white/5">
+            <Stack direction="responsive" align="center" justify="between" className="relative bg-[#1c2230] rounded-xl p-6 border border-white/5">
               <div className="flex items-center gap-4">
                 <div className="size-12 rounded-xl bg-primary/20 flex items-center justify-center">
                   <span className="material-symbols-outlined text-primary text-2xl">
@@ -393,12 +377,12 @@ const Profile: React.FC = () => {
                   </span>
                 </div>
                 <div>
-                  <h3 className="text-lg font-bold text-white mb-1">
+                  <Heading level={4} className="mb-1">
                     Admin Dashboard
-                  </h3>
-                  <p className="text-slate-400 text-sm">
+                  </Heading>
+                  <Text size="sm" color="muted">
                     Access system management tools and user controls
-                  </p>
+                  </Text>
                 </div>
               </div>
               <Link
@@ -408,10 +392,10 @@ const Profile: React.FC = () => {
                 <span className="material-symbols-outlined">dashboard</span>
                 Open Dashboard
               </Link>
-            </div>
+            </Stack>
           </div>
         )}
-      </div>
+      </Container>
 
       {/* Change Password Modal */}
       {showChangePassword && (
@@ -426,21 +410,21 @@ const Profile: React.FC = () => {
         size="md"
       >
         <div className="space-y-4 relative">
-              <p className="text-sm text-slate-400">
+              <Text size="sm" color="muted">
                 Search for your player name to link it to your account. This
                 allows you to track your stats.
-              </p>
+              </Text>
 
               <div className="relative">
                 <span className="absolute left-3 top-1/2 -translate-y-1/2 material-symbols-outlined text-slate-500">
                   search
                 </span>
-                <input
+                <Input
                   type="text"
                   placeholder="Search by name..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full bg-black/20 border border-white/10 rounded-xl py-3 pl-10 pr-4 text-white focus:outline-none focus:border-primary/50 focus:ring-1 focus:ring-primary/50 transition-all"
+                  className="pl-10 bg-black/20 border-white/10 focus:border-primary/50 focus:ring-1 focus:ring-primary/50"
                   autoFocus
                 />
               </div>
@@ -470,11 +454,11 @@ const Profile: React.FC = () => {
                               {player.firstName} {player.lastName}
                             </div>
                             {(player.nickname || player.email) && (
-                              <div className="text-xs text-slate-500">
+                              <Text size="xs" color="muted">
                                 {player.nickname
                                   ? `"${player.nickname}"`
                                   : player.email}
-                              </div>
+                              </Text>
                             )}
                           </div>
                         </div>
@@ -504,9 +488,9 @@ const Profile: React.FC = () => {
           {isLinking && (
             <div className="absolute inset-0 bg-black/60 backdrop-blur-sm rounded-2xl flex items-center justify-center z-10 flex-col gap-3">
               <div className="animate-spin size-8 border-2 border-primary border-t-transparent rounded-full"></div>
-              <span className="text-white font-bold text-sm">
+              <Text size="sm" color="white" className="font-bold">
                 Linking Profile...
-              </span>
+              </Text>
             </div>
           )}
         </div>
