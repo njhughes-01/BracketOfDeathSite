@@ -293,8 +293,9 @@ const DiscountCodesPage: React.FC = () => {
             </button>
           </div>
         ) : (
-          {/* Mobile Card View */}
-          <div className="md:hidden space-y-3 p-4">
+          <>
+            {/* Mobile Card View */}
+            <div className="md:hidden space-y-3 p-4">
             {codes.map((code) => (
               <div
                 key={code._id}
@@ -457,6 +458,7 @@ const DiscountCodesPage: React.FC = () => {
               </tbody>
             </table>
           </div>
+          </>
         )}
       </div>
 
