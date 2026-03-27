@@ -4,7 +4,7 @@ import logger from "../../utils/logger";
 import apiClient from "../../services/api";
 import type { StripeSettings, StripeSettingsUpdate } from "../../services/api";
 import { useAuth } from "../../contexts/AuthContext";
-import LoadingSpinner from "../../components/ui/LoadingSpinner";
+import { LoadingSpinner, Stack, Button, ButtonGroup, Text } from "../../components/ui";
 
 const StripeSettingsPage: React.FC = () => {
   const { user } = useAuth();
@@ -160,14 +160,14 @@ const StripeSettingsPage: React.FC = () => {
 
   return (
     <div className="max-w-4xl mx-auto space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
-      <div className="flex items-start justify-between gap-4">
+      <Stack direction="horizontal" align="start" justify="between" gap={4}>
         <div className="min-w-0">
           <h1 className="text-2xl sm:text-3xl font-black italic text-white tracking-tight uppercase">
             Stripe <span className="text-primary">Settings</span>
           </h1>
-          <p className="text-slate-400 mt-1 sm:mt-2 text-sm sm:text-base">
+          <Text size="sm" responsive className="mt-1 sm:mt-2">
             Configure Stripe payment processing and pricing
-          </p>
+          </Text>
         </div>
         <Link
           to="/admin/settings"
@@ -175,7 +175,7 @@ const StripeSettingsPage: React.FC = () => {
         >
           <span className="material-symbols-outlined text-white">close</span>
         </Link>
-      </div>
+      </Stack>
 
       {error && (
         <div className="bg-red-500/10 border border-red-500/20 rounded-xl p-4 flex items-center gap-3">
@@ -458,7 +458,7 @@ const StripeSettingsPage: React.FC = () => {
           </div>
 
           {/* Save Button */}
-          <div className="pt-4 border-t border-white/5 flex flex-col-reverse sm:flex-row items-stretch sm:items-center justify-between gap-3">
+          <ButtonGroup orientation="responsive" reversed align="end" gap={3} className="pt-4 border-t border-white/5 sm:justify-between">
             <Link
               to="/admin/settings/discounts"
               className="text-primary hover:text-primary-light flex items-center justify-center sm:justify-start gap-2 transition-colors min-h-[44px]"
@@ -467,21 +467,15 @@ const StripeSettingsPage: React.FC = () => {
               Manage Discount Codes
             </Link>
 
-            <button
+            <Button
               type="submit"
               disabled={saving}
-              className="w-full sm:w-auto h-12 px-8 bg-primary hover:bg-primary-dark text-black font-bold rounded-xl shadow-lg shadow-primary/20 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed transition-all min-h-[44px]"
+              loading={saving}
+              icon="save"
             >
-              {saving ? (
-                <LoadingSpinner size="sm" color="black" />
-              ) : (
-                <>
-                  <span className="material-symbols-outlined">save</span>
-                  Save Settings
-                </>
-              )}
-            </button>
-          </div>
+              Save Settings
+            </Button>
+          </ButtonGroup>
         </form>
       </div>
 
@@ -501,7 +495,7 @@ const StripeSettingsPage: React.FC = () => {
           </div>
 
           <div className="space-y-4">
-            <div className="flex flex-col sm:flex-row sm:items-end gap-3 sm:gap-4">
+            <Stack direction="responsive" align="end" gap={4}>
               <div className="space-y-2 flex-1 sm:max-w-xs">
                 <label className="text-sm font-bold text-slate-400 uppercase tracking-wider">
                   Platform Fee Percentage
@@ -519,21 +513,15 @@ const StripeSettingsPage: React.FC = () => {
                   <span className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-500">%</span>
                 </div>
               </div>
-              <button
+              <Button
                 onClick={handleSavePlatformFee}
                 disabled={savingFee}
-                className="w-full sm:w-auto h-12 px-6 bg-primary hover:bg-primary-dark text-black font-bold rounded-xl shadow-lg shadow-primary/20 flex items-center justify-center gap-2 disabled:opacity-50 transition-all min-h-[44px]"
+                loading={savingFee}
+                icon="save"
               >
-                {savingFee ? (
-                  <LoadingSpinner size="sm" color="black" />
-                ) : (
-                  <>
-                    <span className="material-symbols-outlined">save</span>
-                    Save
-                  </>
-                )}
-              </button>
-            </div>
+                Save
+              </Button>
+            </Stack>
 
             {/* Fee Preview */}
             <div className="bg-black/20 rounded-xl p-4 mt-4">

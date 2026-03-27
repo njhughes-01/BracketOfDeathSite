@@ -3,7 +3,7 @@ import { Link } from "react-router-dom";
 import logger from "../../utils/logger";
 import apiClient from "../../services/api";
 import type { SystemSettings } from "../../services/api";
-import LoadingSpinner from "../../components/ui/LoadingSpinner";
+import { LoadingSpinner, Stack, Button, ButtonGroup, Text } from "../../components/ui";
 
 const SettingsPage: React.FC = () => {
   const [settings, setSettings] = useState<SystemSettings | null>(null);
@@ -368,14 +368,14 @@ const SettingsPage: React.FC = () => {
 
   return (
     <div className="max-w-4xl mx-auto space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
-      <div className="flex items-start justify-between gap-4">
+      <Stack direction="horizontal" align="start" justify="between" gap={4}>
         <div className="min-w-0">
           <h1 className="text-2xl sm:text-3xl font-black italic text-white tracking-tight uppercase">
             System <span className="text-primary">Settings</span>
           </h1>
-          <p className="text-slate-400 mt-1 sm:mt-2 text-sm sm:text-base">
+          <Text size="sm" responsive className="mt-1 sm:mt-2">
             Manage global system configurations and integrations
-          </p>
+          </Text>
         </div>
         <Link
           to="/admin"
@@ -383,7 +383,7 @@ const SettingsPage: React.FC = () => {
         >
           <span className="material-symbols-outlined text-white">close</span>
         </Link>
-      </div>
+      </Stack>
 
       {/* Settings Navigation Tabs */}
       <div className="flex gap-2 border-b border-white/10 pb-4">
@@ -667,28 +667,22 @@ const SettingsPage: React.FC = () => {
             )}
 
             <div className="pt-4 border-t border-white/5 flex justify-end">
-              <button
+              <Button
                 type="submit"
                 disabled={saving}
-                className="w-full sm:w-auto h-12 px-8 bg-primary hover:bg-primary-dark text-black font-bold rounded-xl shadow-lg shadow-primary/20 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed transition-all min-h-[44px]"
+                loading={saving}
+                icon="save"
                 title="Save settings"
               >
-                {saving ? (
-                  <LoadingSpinner size="sm" color="black" />
-                ) : (
-                  <>
-                    <span className="material-symbols-outlined">save</span>
-                    Save Configuration
-                  </>
-                )}
-              </button>
+                Save Configuration
+              </Button>
             </div>
           </form>
         )}
 
         {/* Test Email Section - Always visible when a provider is selected */}
         <div className="mt-6 pt-6 border-t border-white/5">
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-4">
+          <Stack direction="responsive" align="center" justify="between" gap={2} className="mb-4">
             <h3 className="text-lg font-bold text-white">
               Test Email Configuration
             </h3>
@@ -706,14 +700,14 @@ const SettingsPage: React.FC = () => {
                 Test passed
               </span>
             )}
-          </div>
+          </Stack>
           <p className="text-sm text-slate-400 mb-4">
             Send a test email to verify your configuration is working correctly.
             {!testEmailSuccess &&
               hasChanges &&
               " Testing is recommended but optional."}
           </p>
-          <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
+          <Stack direction="responsive" gap={4}>
             <input
               type="email"
               value={testEmailAddress}
@@ -721,22 +715,17 @@ const SettingsPage: React.FC = () => {
               placeholder="Enter email address to test"
               className="flex-1 h-12 bg-black/20 border border-white/10 rounded-xl px-4 text-white focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-all placeholder:text-slate-600"
             />
-            <button
+            <Button
               type="button"
               onClick={handleTestEmail}
               disabled={testing || !testEmailAddress}
-              className="w-full sm:w-auto h-12 px-6 bg-blue-500 hover:bg-blue-600 text-white font-bold rounded-xl flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed transition-all min-h-[44px]"
+              loading={testing}
+              icon="send"
+              className="bg-blue-500 hover:bg-blue-600 text-white"
             >
-              {testing ? (
-                <LoadingSpinner size="sm" color="white" />
-              ) : (
-                <>
-                  <span className="material-symbols-outlined">send</span>
-                  Send Test
-                </>
-              )}
-            </button>
-          </div>
+              Send Test
+            </Button>
+          </Stack>
         </div>
       </div>
 
@@ -913,21 +902,15 @@ const SettingsPage: React.FC = () => {
         </div>
 
         <div className="pt-4 mt-6 border-t border-white/5 flex justify-end">
-          <button
+          <Button
             type="button"
             onClick={handleSubmit as any}
             disabled={saving}
-            className="w-full sm:w-auto h-12 px-8 bg-primary hover:bg-primary-dark text-black font-bold rounded-xl shadow-lg shadow-primary/20 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed transition-all min-h-[44px]"
+            loading={saving}
+            icon="save"
           >
-            {saving ? (
-              <LoadingSpinner size="sm" color="black" />
-            ) : (
-              <>
-                <span className="material-symbols-outlined">save</span>
-                Save Branding
-              </>
-            )}
-          </button>
+            Save Branding
+          </Button>
         </div>
       </div>
 

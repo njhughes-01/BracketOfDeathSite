@@ -9,6 +9,7 @@ export interface ModalProps {
   showCloseButton?: boolean;
   closeOnBackdrop?: boolean;
   closeOnEscape?: boolean;
+  mobileSheet?: boolean;
   className?: string;
 }
 
@@ -25,6 +26,7 @@ const Modal: React.FC<ModalProps> = ({
   showCloseButton = true,
   closeOnBackdrop = true,
   closeOnEscape = true,
+  mobileSheet = false,
   className = "",
 }) => {
   // Handle escape key
@@ -59,7 +61,7 @@ const Modal: React.FC<ModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+    <div className={`fixed inset-0 z-50 flex ${mobileSheet ? "items-end sm:items-center" : "items-center"} justify-center p-0 sm:p-4`}>
       {/* Backdrop */}
       <div
         className="absolute inset-0 bg-black/50 backdrop-blur-sm animate-in fade-in duration-200"
@@ -69,7 +71,11 @@ const Modal: React.FC<ModalProps> = ({
 
       {/* Modal container */}
       <div
-        className={`relative bg-[#1c2230] border border-white/10 rounded-2xl w-full ${sizeClasses[size]} max-h-[90vh] overflow-y-auto animate-in zoom-in-95 fade-in duration-200 ${className}`}
+        className={`relative bg-[#1c2230] border border-white/10 w-full ${sizeClasses[size]} max-h-[90vh] overflow-y-auto ${
+          mobileSheet
+            ? "rounded-t-2xl sm:rounded-2xl animate-in slide-in-from-bottom sm:zoom-in-95 sm:fade-in duration-200"
+            : "rounded-2xl mx-4 sm:mx-0 animate-in zoom-in-95 fade-in duration-200"
+        } ${className}`}
         role="dialog"
         aria-modal="true"
         aria-labelledby={title ? "modal-title" : undefined}

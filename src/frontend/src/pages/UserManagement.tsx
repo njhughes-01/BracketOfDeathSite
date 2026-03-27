@@ -7,8 +7,15 @@ import apiClient from "../services/api";
 import CreateUserForm from "../components/users/CreateUserForm";
 import UserList from "../components/users/UserList";
 import UserDetailModal from "../components/users/UserDetailModal";
-import LoadingSpinner from "../components/ui/LoadingSpinner";
 import ClaimUserModal from "../components/users/ClaimUserModal";
+import {
+  Container,
+  Stack,
+  Button,
+  ButtonGroup,
+  Heading,
+  Text,
+} from "../components/ui";
 
 const UserManagement: React.FC = () => {
   const { user } = useAuth();
@@ -329,68 +336,54 @@ const UserManagement: React.FC = () => {
 
   if (!canManageUsers) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-screen bg-background-dark p-4">
+      <Stack direction="vertical" align="center" justify="center" className="min-h-screen bg-background-dark p-4">
         <span className="material-symbols-outlined text-red-500 text-5xl mb-4">
           lock
         </span>
-        <h1 className="text-2xl font-bold text-white mb-2">Access Denied</h1>
-        <p className="text-slate-400">
+        <Heading level={2} className="mb-2">Access Denied</Heading>
+        <Text color="muted">
           You don't have permission to manage users.
-        </p>
-      </div>
+        </Text>
+      </Stack>
     );
   }
 
   return (
     <div className="min-h-screen bg-background-dark pb-20">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
-        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-6 sm:mb-8">
+      <Container padding="md" maxWidth="lg">
+        <Stack direction="responsive" justify="between" align="center" gap={4} className="mb-6 sm:mb-8">
           <div>
-            <h1 className="text-2xl sm:text-3xl font-bold text-white tracking-tight">
+            <Heading level={1} responsive>
               User Management
-            </h1>
-            <p className="text-slate-400 mt-1 text-sm sm:text-base">
+            </Heading>
+            <Text size="sm" color="muted" responsive className="mt-1">
               Manage system access, roles, and user accounts
-            </p>
+            </Text>
           </div>
-          <div className="flex gap-2 w-full sm:w-auto">
-            <button
+          <ButtonGroup orientation="responsive">
+            <Button
+              variant={showCreateForm ? "danger" : "primary"}
+              icon={showCreateForm ? "close" : "person_add"}
               onClick={() => setShowCreateForm(!showCreateForm)}
-              className={`flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 sm:px-5 py-2.5 rounded-xl font-bold transition-all min-h-[44px] ${
-                showCreateForm
-                  ? "bg-red-500/10 text-red-500 hover:bg-red-500/20 border border-red-500/20"
-                  : "bg-primary text-black hover:bg-white hover:scale-105 shadow-lg shadow-primary/20"
-              }`}
             >
-              {showCreateForm ? (
-                <>
-                  <span className="material-symbols-outlined">close</span>
-                  <span className="sm:inline">Cancel</span>
-                </>
-              ) : (
-                <>
-                  <span className="material-symbols-outlined">person_add</span>
-                  <span className="sm:inline">Create User</span>
-                </>
-              )}
-            </button>
-
-            <button
+              {showCreateForm ? "Cancel" : "Create User"}
+            </Button>
+            <Button
+              variant="success"
+              icon="mark_email_unread"
               onClick={() => setShowClaimModal(true)}
-              className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 sm:px-5 py-2.5 rounded-xl font-bold transition-all bg-emerald-500/10 text-emerald-500 hover:bg-emerald-500/20 border border-emerald-500/20 min-h-[44px]"
             >
-              <span className="material-symbols-outlined">mark_email_unread</span>
-              <span className="sm:inline">Invite</span>
-            </button>
-          </div>
-        </div>
+              Invite
+            </Button>
+          </ButtonGroup>
+        </Stack>
 
         {error && (
           <div className="mb-6 bg-red-500/10 border border-red-500/30 rounded-xl p-4 flex items-center gap-3 animate-in fade-in slide-in-from-top-2">
             <span className="material-symbols-outlined text-red-500">
               error
             </span>
-            <p className="text-red-400 text-sm font-bold">{error}</p>
+            <Text size="sm" color="error" className="font-bold">{error}</Text>
           </div>
         )}
 
@@ -409,7 +402,7 @@ const UserManagement: React.FC = () => {
           loading={loading}
           onSelectUser={setSelectedUser}
         />
-      </div>
+      </Container>
 
       {selectedUser && (
         <UserDetailModal

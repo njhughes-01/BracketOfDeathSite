@@ -8,7 +8,7 @@ import type {
   DiscountCodeUpdate,
   Tournament,
 } from "../../services/api";
-import { Modal, LoadingSpinner } from "../../components/ui";
+import { Modal, LoadingSpinner, Stack, Button, ButtonGroup, Text } from "../../components/ui";
 
 const DiscountCodesPage: React.FC = () => {
   const [codes, setCodes] = useState<DiscountCode[]>([]);
@@ -225,16 +225,16 @@ const DiscountCodesPage: React.FC = () => {
 
   return (
     <div className="max-w-6xl mx-auto space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+      <Stack direction="responsive" align="center" justify="between" gap={4}>
         <div>
           <h1 className="text-2xl sm:text-3xl font-black italic text-white tracking-tight uppercase">
             Discount <span className="text-primary">Codes</span>
           </h1>
-          <p className="text-slate-400 mt-1 sm:mt-2 text-sm sm:text-base">
+          <Text size="sm" responsive className="mt-1 sm:mt-2">
             Create and manage promotional discount codes
-          </p>
+          </Text>
         </div>
-        <div className="flex items-center gap-3 w-full sm:w-auto">
+        <Stack direction="horizontal" align="center" gap={3} className="w-full sm:w-auto">
           <Link
             to="/admin/settings/stripe"
             className="text-slate-400 hover:text-white flex items-center gap-1 sm:gap-2 transition-colors text-sm sm:text-base"
@@ -243,15 +243,11 @@ const DiscountCodesPage: React.FC = () => {
             <span className="hidden sm:inline">Back to Stripe Settings</span>
             <span className="sm:hidden">Back</span>
           </Link>
-          <button
-            onClick={openCreateModal}
-            className="flex-1 sm:flex-none h-11 sm:h-12 px-4 sm:px-6 bg-primary hover:bg-primary-dark text-black font-bold rounded-xl shadow-lg shadow-primary/20 flex items-center justify-center gap-2 transition-all min-h-[44px]"
-          >
-            <span className="material-symbols-outlined">add</span>
+          <Button onClick={openCreateModal} icon="add">
             Create Code
-          </button>
-        </div>
-      </div>
+          </Button>
+        </Stack>
+      </Stack>
 
       {error && (
         <div className="bg-red-500/10 border border-red-500/20 rounded-xl p-4 flex items-center gap-3">
@@ -630,29 +626,23 @@ const DiscountCodesPage: React.FC = () => {
             </p>
           </div>
 
-          <div className="flex flex-col-reverse sm:flex-row items-stretch sm:items-center justify-end gap-3 sm:gap-4 pt-4 border-t border-white/5">
-            <button
+          <ButtonGroup orientation="responsive" reversed align="end" gap={3} className="pt-4 border-t border-white/5">
+            <Button
+              variant="ghost"
               type="button"
               onClick={closeModal}
-              className="h-12 px-6 text-slate-400 hover:text-white font-bold rounded-xl transition-colors min-h-[44px]"
             >
               Cancel
-            </button>
-            <button
+            </Button>
+            <Button
               type="submit"
               disabled={modalSaving}
-              className="w-full sm:w-auto h-12 px-6 bg-primary hover:bg-primary-dark text-black font-bold rounded-xl shadow-lg shadow-primary/20 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed transition-all min-h-[44px]"
+              loading={modalSaving}
+              icon="save"
             >
-              {modalSaving ? (
-                <LoadingSpinner size="sm" color="black" />
-              ) : (
-                <>
-                  <span className="material-symbols-outlined">save</span>
-                  {modalMode === "create" ? "Create Code" : "Save Changes"}
-                </>
-              )}
-            </button>
-          </div>
+              {modalMode === "create" ? "Create Code" : "Save Changes"}
+            </Button>
+          </ButtonGroup>
         </form>
       </Modal>
     </div>
