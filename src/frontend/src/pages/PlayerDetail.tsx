@@ -3,7 +3,7 @@ import { useParams, useNavigate, Link } from "react-router-dom";
 import { useApi, useMutation } from "../hooks/useApi";
 import { useAuth } from "../contexts/AuthContext";
 import apiClient from "../services/api";
-import LoadingSpinner from "../components/ui/LoadingSpinner";
+import { Heading, Text, Button, Stack, ResponsiveGrid } from "../components/ui";
 
 const PlayerDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -66,33 +66,34 @@ const PlayerDetail: React.FC = () => {
     return (
       <div className="flex flex-col h-screen bg-background-dark animate-pulse">
         <div className="h-64 w-full bg-surface-dark/50"></div>
-        <div className="flex-1 p-6 space-y-4">
+        <Stack gap={4} className="flex-1 p-6">
           <div className="h-8 w-1/3 bg-surface-dark/50 rounded"></div>
           <div className="h-32 bg-surface-dark/50 rounded-xl"></div>
-        </div>
+        </Stack>
       </div>
     );
   }
 
   if (error || !player) {
     return (
-      <div className="flex flex-col items-center justify-center h-screen bg-background-dark text-center px-4">
+      <Stack align="center" justify="center" className="h-screen bg-background-dark text-center px-4">
         <div className="size-20 bg-surface-dark rounded-full flex items-center justify-center mb-4 border border-white/5">
           <span className="material-symbols-outlined text-slate-500 text-3xl">
             person_off
           </span>
         </div>
-        <h2 className="text-xl font-bold text-white mb-2">Player Not Found</h2>
-        <p className="text-slate-400 mb-6">
+        <Heading level={2} className="text-xl font-bold text-white mb-2">Player Not Found</Heading>
+        <Text color="muted" className="mb-6">
           The player you are looking for does not exist or has been removed.
-        </p>
-        <Link
-          to="/players"
-          className="px-6 py-3 bg-primary text-white rounded-xl font-bold shadow-lg shadow-primary/20 hover:bg-primary-dark transition-all"
+        </Text>
+        <Button
+          variant="primary"
+          onClick={() => navigate("/players")}
+          className="shadow-lg shadow-primary/20"
         >
           Return to Players
-        </Link>
-      </div>
+        </Button>
+      </Stack>
     );
   }
 
@@ -105,7 +106,7 @@ const PlayerDetail: React.FC = () => {
           style={{
             backgroundImage:
               'url("https://lh3.googleusercontent.com/aida-public/AB6AXuArfVEx5fb164F7A5wImLDhdzfcSW6LnHlwPVwOrKjRtLggvCj1itnaz5XN7nguDVCtG-LIKOmQulidI4n8ALkhyEmAG1WYypbKjBR8KWR6SihPLdXTyQ6OVw2NM56nRlyL--H7QHfytRz4iv9oUd7UwpBJCICbEYfvaVsubL9Qu-PN1eg_0DlZqGLQWLtSp2YbjgvUmr-s78-PTfyVElfYP0csdy5hZELB8ii7cq42JsinCdWrqMiKi_dP9NWOKWtbx6ksXq8z4ZI")',
-          }} // Use generic tennis texture if no specific image
+          }}
         ></div>
         <div className="absolute inset-0 bg-gradient-to-t from-background-dark via-transparent to-black/60"></div>
 
@@ -117,15 +118,16 @@ const PlayerDetail: React.FC = () => {
           >
             <span className="material-symbols-outlined">arrow_back</span>
           </Link>
-          <div className="flex items-center gap-2">
+          <Stack direction="horizontal" gap={2}>
             {isAdmin && (
-              <button
+              <Button
+                variant="danger"
+                size="sm"
+                icon="delete"
                 onClick={handleDelete}
-                className="size-10 rounded-full bg-red-500/80 backdrop-blur-md text-white flex items-center justify-center hover:bg-red-600 transition-all"
+                className="size-10 !rounded-full backdrop-blur-md !p-0"
                 title="Delete Player"
-              >
-                <span className="material-symbols-outlined">delete</span>
-              </button>
+              />
             )}
             <Link
               to={`/players/${id}/edit`}
@@ -133,7 +135,7 @@ const PlayerDetail: React.FC = () => {
             >
               <span className="material-symbols-outlined">edit</span>
             </Link>
-          </div>
+          </Stack>
         </div>
 
         {/* Player Info */}
@@ -156,71 +158,71 @@ const PlayerDetail: React.FC = () => {
             )}
           </div>
           <div className="flex-1 min-w-0 pb-2">
-            <h1 className="text-3xl font-bold text-white leading-tight shadow-black drop-shadow-md truncate">
+            <Heading level={1} className="text-3xl font-bold text-white leading-tight shadow-black drop-shadow-md truncate">
               {player.name}
-            </h1>
-            <p className="text-slate-300 text-sm font-medium">
+            </Heading>
+            <Text size="sm" color="muted" className="text-slate-300 font-medium">
               {player.pairing
                 ? `Pairs with ${player.pairing}`
                 : "Individual Player"}
-            </p>
+            </Text>
           </div>
         </div>
       </div>
 
       {/* Content Container */}
-      <div className="flex-1 -mt-4 rounded-t-3xl bg-background-dark relative z-10 flex flex-col pt-6 px-4 space-y-6">
+      <Stack gap={6} className="flex-1 -mt-4 rounded-t-3xl bg-background-dark relative z-10 pt-6 px-4">
         {/* Key Stats Grid */}
-        <div className="grid grid-cols-3 gap-3">
+        <ResponsiveGrid cols={{ mobile: 3, tablet: 3, desktop: 3 }} gap={3}>
           <div className="p-3 rounded-2xl bg-[#1c2230] border border-white/5 flex flex-col items-center justify-center gap-0.5 shadow-lg">
-            <span className="text-[10px] text-slate-500 uppercase tracking-wider font-bold">
+            <Text size="xs" className="text-[10px] text-slate-500 uppercase tracking-wider font-bold">
               Win Rate
-            </span>
+            </Text>
             <span className="text-lg font-bold text-primary">
               {((player.winningPercentage || 0) * 100).toFixed(0)}%
             </span>
           </div>
           <div className="p-3 rounded-2xl bg-[#1c2230] border border-white/5 flex flex-col items-center justify-center gap-0.5 shadow-lg">
-            <span className="text-[10px] text-slate-500 uppercase tracking-wider font-bold">
+            <Text size="xs" className="text-[10px] text-slate-500 uppercase tracking-wider font-bold">
               Games
-            </span>
+            </Text>
             <span className="text-lg font-bold text-white">
               {player.gamesPlayed || 0}
             </span>
           </div>
           <div className="p-3 rounded-2xl bg-[#1c2230] border border-white/5 flex flex-col items-center justify-center gap-0.5 shadow-lg">
-            <span className="text-[10px] text-slate-500 uppercase tracking-wider font-bold">
+            <Text size="xs" className="text-[10px] text-slate-500 uppercase tracking-wider font-bold">
               Titles
-            </span>
+            </Text>
             <span className="text-lg font-bold text-accent">
               {player.totalChampionships || 0}
             </span>
           </div>
-        </div>
+        </ResponsiveGrid>
 
         {/* Detailed Stats Row (Scrollable) */}
         <div className="flex gap-3 overflow-x-auto no-scrollbar pb-1">
           <div className="min-w-[120px] p-4 rounded-xl bg-[#1c2230] border border-white/5">
-            <span className="block text-xs text-slate-500 mb-1">
+            <Text size="xs" color="muted" className="block text-slate-500 mb-1">
               Avg Finish
-            </span>
+            </Text>
             <span className="text-xl font-bold text-white">
               {player.avgFinish?.toFixed(1) || "-"}
             </span>
           </div>
           <div className="min-w-[120px] p-4 rounded-xl bg-[#1c2230] border border-white/5">
-            <span className="block text-xs text-slate-500 mb-1">
+            <Text size="xs" color="muted" className="block text-slate-500 mb-1">
               Best Result
-            </span>
+            </Text>
             <span className="text-xl font-bold text-white">
               {player.bestResult || "-"}
             </span>
           </div>
           {(scoring as any)?.data?.totalPoints > 0 && (
             <div className="min-w-[120px] p-4 rounded-xl bg-[#1c2230] border border-white/5">
-              <span className="block text-xs text-slate-500 mb-1">
+              <Text size="xs" color="muted" className="block text-slate-500 mb-1">
                 Live Points
-              </span>
+              </Text>
               <span className="text-xl font-bold text-white">
                 {(scoring as any).data.totalPoints}
               </span>
@@ -253,16 +255,16 @@ const PlayerDetail: React.FC = () => {
         {/* Tab Content */}
         <div className="pb-8">
           {activeTab === "tournaments" && (
-            <div className="space-y-4">
+            <Stack gap={4}>
               {resultsLoading ? (
-                <div className="space-y-3">
+                <Stack gap={3}>
                   {[1, 2, 3].map((i) => (
                     <div
                       key={i}
                       className="h-24 bg-[#1c2230] rounded-xl animate-pulse"
                     ></div>
                   ))}
-                </div>
+                </Stack>
               ) : results.length > 0 ? (
                 results.map((result: any) => {
                   const tournament = result.tournamentId;
@@ -277,12 +279,12 @@ const PlayerDetail: React.FC = () => {
                     >
                       <div className="flex justify-between items-start mb-2">
                         <div>
-                          <h3 className="text-white font-bold text-sm tracking-tight">
+                          <Heading level={3} className="text-white font-bold text-sm tracking-tight">
                             {tournament.name || `BOD #${tournament.bodNumber}`}
-                          </h3>
-                          <span className="text-xs text-slate-500">
+                          </Heading>
+                          <Text size="xs" color="muted" as="span" className="text-slate-500">
                             {new Date(tournament.date).toLocaleDateString()}
-                          </span>
+                          </Text>
                         </div>
                         <div className="flex flex-col items-end">
                           <span
@@ -298,83 +300,78 @@ const PlayerDetail: React.FC = () => {
                                     : `${rank}th`
                               : "-"}
                           </span>
-                          <span className="text-[10px] text-slate-600 uppercase font-bold">
+                          <Text size="xs" as="span" className="text-[10px] text-slate-600 uppercase font-bold">
                             Rank
-                          </span>
+                          </Text>
                         </div>
                       </div>
-                      <div className="flex items-center gap-4 pt-2 border-t border-white/5">
+                      <Stack direction="horizontal" gap={4} className="pt-2 border-t border-white/5">
                         <div className="flex flex-col">
-                          <span className="text-[10px] text-slate-500 uppercase">
+                          <Text size="xs" as="span" className="text-[10px] text-slate-500 uppercase">
                             Record
-                          </span>
-                          <span className="text-xs font-mono text-white">
+                          </Text>
+                          <Text size="xs" as="span" className="font-mono text-white">
                             {result.totalStats?.totalWon || 0}W -{" "}
                             {result.totalStats?.totalLost || 0}L
-                          </span>
+                          </Text>
                         </div>
                         <div className="flex flex-col">
-                          <span className="text-[10px] text-slate-500 uppercase">
+                          <Text size="xs" as="span" className="text-[10px] text-slate-500 uppercase">
                             Seed
-                          </span>
-                          <span className="text-xs font-mono text-white">
+                          </Text>
+                          <Text size="xs" as="span" className="font-mono text-white">
                             #{result.seed || "-"}
-                          </span>
+                          </Text>
                         </div>
-                      </div>
+                      </Stack>
                     </Link>
                   );
                 })
               ) : (
-                <div className="text-center py-10 text-slate-500 text-sm">
+                <Text color="muted" className="text-center py-10 text-sm">
                   No tournament history found
-                </div>
+                </Text>
               )}
-            </div>
+            </Stack>
           )}
 
           {activeTab === "matches" && (
-            <div className="space-y-4">
-              {/* This would be populated similarly if the API returns granular matches here, currently reuse logic or simple placeholder if complex */}
-
+            <Stack gap={4}>
               {resultsLoading ? (
                 <div className="space-y-3 animate-pulse">
                   <div className="h-20 bg-[#1c2230] rounded-xl"></div>
                 </div>
               ) : results.length > 0 ? (
                 results.map((result: any) => {
-                  // Compact match summary for the tournament
                   return (
                     <div
                       key={result.id}
                       className="bg-[#1c2230] rounded-xl p-4 border border-white/5"
                     >
-                      <h4 className="text-xs font-bold text-slate-400 uppercase mb-3">
+                      <Heading level={4} className="text-xs font-bold text-slate-400 uppercase mb-3">
                         {result.tournamentId?.name || "Tournament"} Matches
-                      </h4>
-                      <div className="grid grid-cols-2 gap-2">
-                        {/* Mocking match display based on stats */}
+                      </Heading>
+                      <ResponsiveGrid cols={{ mobile: 2, tablet: 2, desktop: 2 }} gap={2}>
                         <div className="bg-background-dark p-2 rounded border border-white/5 flex justify-between items-center">
-                          <span className="text-xs text-slate-400">Total</span>
-                          <span className="text-xs font-bold text-white">
+                          <Text size="xs" as="span" color="muted">Total</Text>
+                          <Text size="xs" as="span" color="white" className="font-bold">
                             {result.totalStats?.totalWon}W -{" "}
                             {result.totalStats?.totalLost}L
-                          </span>
+                          </Text>
                         </div>
-                        {/* Just a summary for now as specific match objects aren't always in this endpoint fully detailed */}
-                      </div>
+                      </ResponsiveGrid>
                     </div>
                   );
                 })
               ) : (
-                <div className="text-center py-10 text-slate-500 text-sm">
+                <Text color="muted" className="text-center py-10 text-sm">
                   No match history found
-                </div>
+                </Text>
               )}
-            </div>
+            </Stack>
           )}
         </div>
-      </div>
+      </Stack>
     </div>
   );
 };

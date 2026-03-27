@@ -4,13 +4,13 @@
 
 ## Progress Overview
 
-**Completed:** 16/35 pages (46%)
-**Remaining:** 19 pages
+**Completed:** 20/35 pages (57%)
+**Remaining:** 15 pages
 **Target:** 100% component system adoption
 
 ---
 
-## ✅ Phase 1: Admin Pages (5/7 complete - 71%)
+## ✅ Phase 1: Admin Pages (7/7 complete - 100%)
 
 ### Completed
 - [x] UserManagement.tsx
@@ -20,8 +20,8 @@
 - [x] Admin.tsx (main dashboard) - Sprint 1
 
 ### Todo
-- [ ] ScannerPage.tsx
-- [ ] TournamentTicketsPage.tsx
+- [x] ScannerPage.tsx - Sprint 4
+- [x] TournamentTicketsPage.tsx - Sprint 4
 
 ---
 
@@ -41,12 +41,12 @@
 
 ---
 
-## ⏳ Phase 3: Player Pages (2/4 complete - 50%)
+## ⏳ Phase 3: Player Pages (4/4 complete - 100%)
 
 ### High Priority
 - [x] **Players.tsx** - Browse players - Sprint 1
-- [ ] **PlayerDetail.tsx** - Player profile + stats
-- [ ] **Rankings.tsx** - Player rankings table
+- [x] **PlayerDetail.tsx** - Player profile + stats - Sprint 4
+- [x] **Rankings.tsx** - Player rankings table - Sprint 4
 
 ### Medium Priority
 - [x] Profile.tsx - User's own profile page - Sprint 2

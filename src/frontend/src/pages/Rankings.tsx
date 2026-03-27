@@ -6,9 +6,9 @@ import { Link } from "react-router-dom";
 import type { LeaderboardEntry } from "../types/api";
 import LoadingSpinner from "../components/ui/LoadingSpinner";
 import YearRangeInput from "../components/YearRangeInput";
+import { Heading, Text, Select, Stack } from "../components/ui";
 
 const Rankings: React.FC = () => {
-  // Change default to string "2025" or current year
   const [year, setYear] = useState<string>(new Date().getFullYear().toString());
   const [format, setFormat] = useState<string>("");
   const [sort, setSort] = useState<string>("-points");
@@ -73,35 +73,37 @@ const Rankings: React.FC = () => {
         </div>
 
         <div className="absolute bottom-0 left-0 right-0 p-6 z-10">
-          <h1 className="text-4xl font-bold text-white shadow-black drop-shadow-md mb-2">
+          <Heading level={1} className="text-4xl font-bold text-white shadow-black drop-shadow-md mb-2">
             Rankings
-          </h1>
-          <p className="text-slate-300">Top performers of the season</p>
+          </Heading>
+          <Text color="muted" className="text-slate-300">Top performers of the season</Text>
         </div>
       </div>
 
       {/* Filters & Sorting */}
       <div className="sticky top-0 z-20 bg-background-dark/80 backdrop-blur-md border-b border-white/5 py-4 px-4 overflow-x-auto">
-        <div className="flex flex-col gap-3">
-          <div className="flex gap-3">
+        <Stack gap={3}>
+          <Stack direction="horizontal" gap={3}>
             <YearRangeInput
               value={year}
               onChange={setYear}
               availableRange={availableRange}
             />
 
-            <select
+            <Select
               value={format}
               onChange={(e) => setFormat(e.target.value)}
               title="Filter by Format"
-              className="bg-[#1c2230] text-white text-sm rounded-xl px-4 py-2 border border-white/10 focus:outline-none focus:border-primary"
+              fullWidth={false}
+              size="sm"
+              className="bg-[#1c2230] rounded-xl border-white/10"
             >
               <option value="">All Formats</option>
               <option value="Mixed">Mixed</option>
               <option value="M">Men's</option>
               <option value="W">Women's</option>
-            </select>
-          </div>
+            </Select>
+          </Stack>
 
           <div className="flex gap-2 overflow-x-auto pb-1 no-scrollbar">
             {[
@@ -122,19 +124,19 @@ const Rankings: React.FC = () => {
               </button>
             ))}
           </div>
-        </div>
+        </Stack>
       </div>
 
       {/* Leaderboard List */}
-      <div className="flex-1 p-4 max-w-4xl mx-auto w-full space-y-3">
+      <Stack gap={3} className="flex-1 p-4 max-w-4xl mx-auto w-full">
         {loading ? (
           <div className="flex justify-center py-12">
             <LoadingSpinner size="lg" />
           </div>
         ) : error ? (
-          <div className="text-center py-12 text-slate-500">
+          <Text color="muted" className="text-center py-12">
             Failed to load rankings
-          </div>
+          </Text>
         ) : rankings.length > 0 ? (
           rankings.map((player: LeaderboardEntry, index: number) => (
             <Link
@@ -171,39 +173,39 @@ const Rankings: React.FC = () => {
               </div>
 
               <div className="flex-1 min-w-0">
-                <h3 className="text-white font-bold truncate group-hover:text-primary transition-colors">
+                <Heading level={3} className="text-white font-bold truncate group-hover:text-primary transition-colors text-base">
                   {player.name}
-                </h3>
-                <div className="flex items-center gap-3 text-xs text-slate-500">
-                  <span
+                </Heading>
+                <Stack direction="horizontal" gap={3} align="center" className="text-xs text-slate-500">
+                  <Text as="span" size="xs"
                     className={
                       sort === "-totalChampionships"
                         ? "text-primary font-bold"
-                        : ""
+                        : "text-slate-500"
                     }
                   >
                     {player.totalChampionships || 0} Titles
-                  </span>
+                  </Text>
                   <span className="w-1 h-1 bg-slate-700 rounded-full"></span>
-                  <span
+                  <Text as="span" size="xs"
                     className={
                       sort === "-winningPercentage"
                         ? "text-primary font-bold"
-                        : ""
+                        : "text-slate-500"
                     }
                   >
                     {((player.winningPercentage || 0) * 100).toFixed(0)}% Win
                     Rate
-                  </span>
+                  </Text>
                   <span className="w-1 h-1 bg-slate-700 rounded-full"></span>
-                  <span
+                  <Text as="span" size="xs"
                     className={
-                      sort === "-totalWins" ? "text-primary font-bold" : ""
+                      sort === "-totalWins" ? "text-primary font-bold" : "text-slate-500"
                     }
                   >
                     {player.totalWins}W-{player.totalLosses}L
-                  </span>
-                </div>
+                  </Text>
+                </Stack>
               </div>
 
               <div className="text-right">
@@ -212,18 +214,18 @@ const Rankings: React.FC = () => {
                 >
                   {player.points || 0}
                 </div>
-                <div className="text-[10px] text-slate-500 uppercase tracking-wider">
+                <Text size="xs" as="div" className="text-[10px] text-slate-500 uppercase tracking-wider">
                   PTS
-                </div>
+                </Text>
               </div>
             </Link>
           ))
         ) : (
-          <div className="text-center py-12 text-slate-500">
+          <Text color="muted" className="text-center py-12">
             No rankings available for this filter
-          </div>
+          </Text>
         )}
-      </div>
+      </Stack>
     </div>
   );
 };
