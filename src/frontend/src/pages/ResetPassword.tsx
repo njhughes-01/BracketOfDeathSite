@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useSearchParams, useNavigate, Link } from "react-router-dom";
 import { apiClient } from "../services/api";
+import { Heading, Text, Button, Input, FormField, Stack } from "../components/ui";
 
 const ResetPassword: React.FC = () => {
   const [searchParams] = useSearchParams();
@@ -51,15 +52,12 @@ const ResetPassword: React.FC = () => {
           <div className="size-16 rounded-full bg-green-500/20 flex items-center justify-center mx-auto mb-6">
             <span className="material-symbols-outlined text-green-500 text-3xl">check_circle</span>
           </div>
-          <h2 className="text-2xl font-bold text-white mb-4">Password Reset Successful</h2>
-          <p className="text-slate-400 mb-6">
+          <Heading level={2} className="!text-2xl mb-4">Password Reset Successful</Heading>
+          <Text color="muted" className="mb-6">
             Your password has been updated. You can now sign in with your new password.
-          </p>
-          <Link
-            to="/login"
-            className="inline-block px-6 py-3 bg-primary text-black font-bold rounded-xl hover:bg-white transition-colors"
-          >
-            Go to Login
+          </Text>
+          <Link to="/login">
+            <Button variant="primary">Go to Login</Button>
           </Link>
         </div>
       </div>
@@ -73,8 +71,8 @@ const ResetPassword: React.FC = () => {
           <div className="size-16 rounded-full bg-primary/20 flex items-center justify-center mx-auto mb-4">
             <span className="material-symbols-outlined text-primary text-3xl">lock_reset</span>
           </div>
-          <h2 className="text-2xl font-bold text-white">Reset Your Password</h2>
-          <p className="text-slate-400 mt-2">Enter your new password below</p>
+          <Heading level={2} className="!text-2xl">Reset Your Password</Heading>
+          <Text color="muted" className="mt-2">Enter your new password below</Text>
         </div>
 
         {error && (
@@ -84,49 +82,44 @@ const ResetPassword: React.FC = () => {
           </div>
         )}
 
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="space-y-1.5">
-            <label className="text-sm font-bold text-slate-400 ml-1">NEW PASSWORD</label>
-            <input
-              type="password"
-              value={newPassword}
-              onChange={(e) => setNewPassword(e.target.value)}
-              placeholder="Enter new password"
-              className="w-full bg-black/20 border border-white/10 rounded-xl h-12 px-4 text-white focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-all"
-              required
-              minLength={8}
-              disabled={!token}
-            />
-          </div>
+        <form onSubmit={handleSubmit}>
+          <Stack direction="vertical" gap={4}>
+            <FormField label="NEW PASSWORD">
+              <Input
+                type="password"
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
+                placeholder="Enter new password"
+                required
+                disabled={!token}
+              />
+            </FormField>
 
-          <div className="space-y-1.5">
-            <label className="text-sm font-bold text-slate-400 ml-1">CONFIRM PASSWORD</label>
-            <input
-              type="password"
-              value={confirmPassword}
-              onChange={(e) => setConfirmPassword(e.target.value)}
-              placeholder="Confirm new password"
-              className="w-full bg-black/20 border border-white/10 rounded-xl h-12 px-4 text-white focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-all"
-              required
-              minLength={8}
-              disabled={!token}
-            />
-          </div>
+            <FormField label="CONFIRM PASSWORD">
+              <Input
+                type="password"
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                placeholder="Confirm new password"
+                required
+                disabled={!token}
+              />
+            </FormField>
 
-          <button
-            type="submit"
-            disabled={loading || !token}
-            className="w-full h-12 bg-primary hover:bg-white text-black font-bold rounded-xl flex items-center justify-center gap-2 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            {loading ? (
-              <div className="animate-spin size-5 border-2 border-black border-t-transparent rounded-full"></div>
-            ) : (
-              <>
-                <span className="material-symbols-outlined">lock_reset</span>
-                Reset Password
-              </>
-            )}
-          </button>
+            <Button
+              type="submit"
+              variant="primary"
+              fullWidth
+              disabled={loading || !token}
+              icon={loading ? undefined : "lock_reset"}
+            >
+              {loading ? (
+                <div className="animate-spin size-5 border-2 border-black border-t-transparent rounded-full"></div>
+              ) : (
+                "Reset Password"
+              )}
+            </Button>
+          </Stack>
         </form>
 
         <div className="mt-6 text-center">

@@ -3,9 +3,20 @@ import logger from "../utils/logger";
 import { useNavigate } from "react-router-dom";
 import { useApi } from "../hooks/useApi";
 import apiClient from "../services/api";
-import Card from "../components/ui/Card"; // Leaving this for now but might replace usage
-import LoadingSpinner from "../components/ui/LoadingSpinner";
-// import { EditableCard } from '../components/admin'; // Removed in favor of direct styling
+import Card from "../components/ui/Card";
+import {
+  Heading,
+  Text,
+  Button,
+  Input,
+  Select,
+  Textarea,
+  FormField,
+  Stack,
+  Container,
+  ResponsiveGrid,
+  LoadingSpinner,
+} from "../components/ui";
 import type {
   TournamentInput,
   TournamentSetup,
@@ -252,15 +263,12 @@ const TournamentSetupPage: React.FC = () => {
       case 0: // Basic Information
         return (
           <div className="bg-[#1c2230] p-6 rounded-2xl border border-white/5 space-y-4 animate-in fade-in zoom-in-95 duration-200">
-            <h2 className="text-lg font-bold text-white mb-4">
+            <Heading level={2} className="!text-lg mb-4">
               Tournament Details
-            </h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-xs font-bold text-slate-500 uppercase mb-1">
-                  Date *
-                </label>
-                <input
+            </Heading>
+            <ResponsiveGrid cols={{ mobile: 1, tablet: 2 }} gap={4}>
+              <FormField label="Date" required>
+                <Input
                   type="date"
                   value={
                     setupData.basicInfo.date instanceof Date
@@ -268,40 +276,31 @@ const TournamentSetupPage: React.FC = () => {
                       : setupData.basicInfo.date
                   }
                   onChange={(e) => updateBasicInfo("date", e.target.value)}
-                  className="w-full bg-background-dark border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-primary transition-colors"
                   required
                   data-testid="date-input"
                 />
-              </div>
-              <div>
-                <label className="block text-xs font-bold text-slate-500 uppercase mb-1">
-                  BOD Number
-                </label>
-                <input
+              </FormField>
+              <FormField
+                label="BOD Number"
+                hint={`Auto-generated as #${nextBodNumber} (can be overridden)`}
+              >
+                <Input
                   type="number"
                   value={setupData.basicInfo.bodNumber}
                   onChange={(e) =>
                     updateBasicInfo("bodNumber", parseInt(e.target.value))
                   }
-                  className="w-full bg-background-dark border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-primary transition-colors"
                   placeholder="e.g. 42"
                   min="1"
                 />
-                <p className="text-[10px] text-slate-500 mt-1">
-                  Auto-generated as #{nextBodNumber} (can be overridden)
-                </p>
-              </div>
-            </div>
+              </FormField>
+            </ResponsiveGrid>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-xs font-bold text-slate-500 uppercase mb-1">
-                  Format *
-                </label>
-                <select
+            <ResponsiveGrid cols={{ mobile: 1, tablet: 2 }} gap={4}>
+              <FormField label="Format" required>
+                <Select
                   value={setupData.basicInfo.format}
                   onChange={(e) => updateBasicInfo("format", e.target.value)}
-                  className="w-full bg-background-dark border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-primary transition-colors appearance-none"
                   required
                 >
                   {formatOptions.map((option) => (
@@ -309,77 +308,61 @@ const TournamentSetupPage: React.FC = () => {
                       {option.label}
                     </option>
                   ))}
-                </select>
-              </div>
-              <div>
-                <label className="block text-xs font-bold text-slate-500 uppercase mb-1">
-                  Max Players
-                </label>
-                <select
+                </Select>
+              </FormField>
+              <FormField label="Max Players">
+                <Select
                   value={setupData.maxPlayers}
                   onChange={(e) => {
                     const maxPlayers = parseInt(e.target.value);
                     setSetupData((prev) => ({ ...prev, maxPlayers }));
                     updateBasicInfo("maxPlayers", maxPlayers);
                   }}
-                  className="w-full bg-background-dark border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-primary transition-colors appearance-none"
                 >
                   <option value={8}>8 Players (4 Teams)</option>
                   <option value={16}>16 Players (8 Teams)</option>
                   <option value={32}>32 Players (16 Teams)</option>
                   <option value={64}>64 Players (32 Teams)</option>
-                </select>
-              </div>
-            </div>
+                </Select>
+              </FormField>
+            </ResponsiveGrid>
 
-            <div>
-              <label className="block text-xs font-bold text-slate-500 uppercase mb-1">
-                Location *
-              </label>
-              <input
+            <FormField label="Location" required>
+              <Input
                 type="text"
                 value={setupData.basicInfo.location}
                 onChange={(e) => updateBasicInfo("location", e.target.value)}
-                className="w-full bg-background-dark border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-primary transition-colors"
                 placeholder="Tournament location"
                 required
               />
-            </div>
+            </FormField>
 
-            <div>
-              <label className="block text-xs font-bold text-slate-500 uppercase mb-1">
-                Advancement Criteria
-              </label>
-              <textarea
+            <FormField label="Advancement Criteria">
+              <Textarea
                 value={setupData.basicInfo.advancementCriteria}
                 onChange={(e) =>
                   updateBasicInfo("advancementCriteria", e.target.value)
                 }
-                className="w-full bg-background-dark border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-primary transition-colors"
                 rows={3}
                 placeholder="How players advance through the tournament"
               />
-            </div>
+            </FormField>
 
-            <div>
-              <label className="block text-xs font-bold text-slate-500 uppercase mb-1">
-                Notes
-              </label>
-              <textarea
+            <FormField label="Notes">
+              <Textarea
                 value={setupData.basicInfo.notes || ""}
                 onChange={(e) => updateBasicInfo("notes", e.target.value)}
-                className="w-full bg-background-dark border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-primary transition-colors"
                 rows={2}
                 placeholder="Additional tournament notes"
               />
-            </div>
+            </FormField>
 
-            {/* Registration Type Selection */}
+            {/* Registration Type Selection - kept as raw buttons for complex selected/unselected state styling */}
             <div className="mt-6 pt-6 border-t border-white/10">
               <label className="block text-xs font-bold text-slate-500 uppercase mb-3">
                 Registration Type
               </label>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <ResponsiveGrid cols={{ mobile: 1, tablet: 2 }} gap={4}>
                 <button
                   type="button"
                   onClick={() => updateBasicInfo("registrationType", "preselected")}
@@ -393,9 +376,9 @@ const TournamentSetupPage: React.FC = () => {
                     <span className="material-symbols-outlined text-primary">group_add</span>
                     <span className="font-bold text-white">Pre-Selected Players</span>
                   </div>
-                  <p className="text-xs text-slate-400">
+                  <Text size="xs" color="muted">
                     You select players manually in the next step. Use for invite-only tournaments.
-                  </p>
+                  </Text>
                 </button>
                 <button
                   type="button"
@@ -410,11 +393,11 @@ const TournamentSetupPage: React.FC = () => {
                     <span className="material-symbols-outlined text-green-500">public</span>
                     <span className="font-bold text-white">Open Registration</span>
                   </div>
-                  <p className="text-xs text-slate-400">
+                  <Text size="xs" color="muted">
                     Players sign themselves up. Tournament appears in Open Events.
-                  </p>
+                  </Text>
                 </button>
-              </div>
+              </ResponsiveGrid>
             </div>
           </div>
         );
@@ -422,24 +405,26 @@ const TournamentSetupPage: React.FC = () => {
       case 1: // Player Selection
         return (
           <div className="bg-[#1c2230] p-6 rounded-2xl border border-white/5 space-y-4 animate-in fade-in zoom-in-95 duration-200">
-            <h2 className="text-lg font-bold text-white mb-2">
+            <Heading level={2} className="!text-lg mb-2">
               Select Tournament Players
-            </h2>
-            <div className="flex items-center justify-between bg-background-dark p-4 rounded-xl border border-white/5">
+            </Heading>
+            <Stack direction="horizontal" align="center" justify="between" className="bg-background-dark p-4 rounded-xl border border-white/5">
               <div>
-                <p className="text-sm text-white font-medium">
+                <Text size="sm" color="white" className="font-medium">
                   Select{" "}
                   <span className="text-primary font-bold">
                     {setupData.maxPlayers}
                   </span>{" "}
                   players
-                </p>
-                <p className="text-xs text-slate-500">
+                </Text>
+                <Text size="xs" color="muted" className="text-slate-500">
                   Selected: {selectedPlayers.length} / {setupData.maxPlayers}
-                </p>
+                </Text>
               </div>
-              <div className="flex space-x-2">
-                <button
+              <Stack direction="horizontal" gap={2}>
+                <Button
+                  variant="secondary"
+                  size="sm"
                   onClick={() => {
                     setError(null);
                     // Sort players by skill level (win percentage * championships + win percentage)
@@ -456,24 +441,24 @@ const TournamentSetupPage: React.FC = () => {
                     );
                     setSelectedPlayers(topPlayers.map((p) => p.id));
                   }}
-                  className="px-3 py-1.5 rounded-lg border border-primary text-primary text-xs font-bold hover:bg-primary hover:text-black transition-all"
-                  type="button"
+                  className="border-primary text-primary hover:bg-primary hover:text-black"
                 >
                   Select Top {setupData.maxPlayers}
-                </button>
-                <button
+                </Button>
+                <Button
+                  variant="danger"
+                  size="sm"
                   onClick={() => {
                     setError(null);
                     setSelectedPlayers([]);
                   }}
-                  className="px-3 py-1.5 rounded-lg border border-red-500/30 text-red-500 text-xs font-bold hover:bg-red-500 hover:text-white transition-all"
-                  type="button"
                 >
                   Clear All
-                </button>
-              </div>
-            </div>
+                </Button>
+              </Stack>
+            </Stack>
 
+            {/* Player selection cards - kept as raw divs for specialized checkbox+card behavior */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 max-h-96 overflow-y-auto custom-scrollbar">
               {availablePlayers.map((player) => {
                 const isSelected = selectedPlayers.includes(player.id);
@@ -527,16 +512,13 @@ const TournamentSetupPage: React.FC = () => {
 
       case 2: // Seeding & Teams
         return (
-          <div className="space-y-6 animate-in fade-in zoom-in-95 duration-200">
+          <Stack gap={6} className="animate-in fade-in zoom-in-95 duration-200">
             <div className="bg-[#1c2230] p-6 rounded-2xl border border-white/5 space-y-4">
-              <h2 className="text-lg font-bold text-white mb-2">
+              <Heading level={2} className="!text-lg mb-2">
                 Seeding Configuration
-              </h2>
-              <div>
-                <label className="block text-xs font-bold text-slate-500 uppercase mb-1">
-                  Seeding Method
-                </label>
-                <select
+              </Heading>
+              <FormField label="Seeding Method">
+                <Select
                   value={setupData.seedingConfig.method}
                   onChange={(e) =>
                     setSetupData((prev) => ({
@@ -547,7 +529,6 @@ const TournamentSetupPage: React.FC = () => {
                       },
                     }))
                   }
-                  className="w-full bg-background-dark border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-primary transition-colors appearance-none"
                 >
                   <option value="historical">Historical Performance</option>
                   <option value="recent_form">
@@ -555,11 +536,15 @@ const TournamentSetupPage: React.FC = () => {
                   </option>
                   <option value="elo">ELO Rating System</option>
                   <option value="manual">Manual Seeding</option>
-                </select>
-              </div>
+                </Select>
+              </FormField>
 
               {setupData.seedingConfig.method === "historical" && (
-                <div className="bg-background-dark p-4 rounded-xl border border-white/5 grid grid-cols-1 md:grid-cols-3 gap-4">
+                <ResponsiveGrid
+                  cols={{ mobile: 1, tablet: 3 }}
+                  gap={4}
+                  className="bg-background-dark p-4 rounded-xl border border-white/5"
+                >
                   <div>
                     <label className="block text-xs font-bold text-slate-500 mb-2">
                       Championship Weight
@@ -665,54 +650,61 @@ const TournamentSetupPage: React.FC = () => {
                       %
                     </span>
                   </div>
-                </div>
+                </ResponsiveGrid>
               )}
 
-              <button
+              <Button
+                variant="secondary"
+                fullWidth
                 onClick={generateSeeds}
                 disabled={loading || selectedPlayers.length === 0}
-                className="w-full py-3 bg-white/5 hover:bg-white/10 text-white font-bold rounded-xl border border-white/10 transition-all disabled:opacity-50"
+                loading={loading}
+                className="py-3"
               >
                 {loading ? "Generating..." : "Generate Player Seeds"}
-              </button>
+              </Button>
 
               {generatedSeeds.length > 0 && (
                 <div className="mt-4">
-                  <h4 className="text-xs font-bold text-slate-500 uppercase mb-2">
+                  <Heading level={4} className="!text-xs !font-bold text-slate-500 uppercase mb-2">
                     Generated Seeds
-                  </h4>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-2 max-h-40 overflow-y-auto custom-scrollbar">
+                  </Heading>
+                  <ResponsiveGrid
+                    cols={{ mobile: 1, tablet: 2 }}
+                    gap={2}
+                    className="max-h-40 overflow-y-auto custom-scrollbar"
+                  >
                     {generatedSeeds.map((seed) => (
-                      <div
+                      <Stack
                         key={`seed-${seed.playerId}`}
-                        className="flex items-center justify-between p-3 bg-background-dark/50 border border-white/5 rounded-lg"
+                        direction="horizontal"
+                        align="center"
+                        justify="between"
+                        className="p-3 bg-background-dark/50 border border-white/5 rounded-lg"
                       >
-                        <span className="text-sm font-bold text-white">
+                        <Text size="sm" color="white" className="font-bold">
                           <span className="text-primary mr-2">
                             #{seed.seed}
                           </span>{" "}
                           {seed.playerName}
-                        </span>
-                        <span className="text-[10px] text-slate-500">
+                        </Text>
+                        <Text size="xs" color="muted" as="span" className="text-[10px] text-slate-500">
                           {(seed.statistics.winningPercentage * 100).toFixed(0)}
                           % WR
-                        </span>
-                      </div>
+                        </Text>
+                      </Stack>
                     ))}
-                  </div>
+                  </ResponsiveGrid>
                 </div>
               )}
             </div>
 
             <div className="bg-[#1c2230] p-6 rounded-2xl border border-white/5 space-y-4">
-              <h2 className="text-lg font-bold text-white mb-2">
+              <Heading level={2} className="!text-lg mb-2">
                 Team Formation
-              </h2>
-              <div>
-                <label className="block text-xs font-bold text-slate-500 uppercase mb-1">
-                  Method
-                </label>
-                <select
+              </Heading>
+              <FormField label="Method">
+                <Select
                   value={setupData.teamFormationConfig.method}
                   onChange={(e) =>
                     setSetupData((prev) => ({
@@ -723,7 +715,6 @@ const TournamentSetupPage: React.FC = () => {
                       },
                     }))
                   }
-                  className="w-full bg-background-dark border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-primary transition-colors appearance-none"
                 >
                   <option value="preformed">Pre-formed Teams</option>
                   <option value="draft">Draft Style (Snake Draft)</option>
@@ -732,12 +723,12 @@ const TournamentSetupPage: React.FC = () => {
                   </option>
                   <option value="random">Random Pairing</option>
                   <option value="manual">Manual Assignment</option>
-                </select>
-              </div>
+                </Select>
+              </FormField>
 
               {setupData.teamFormationConfig.method ===
                 "statistical_pairing" && (
-                <div className="space-y-3 bg-background-dark p-4 rounded-xl border border-white/5">
+                <Stack gap={3} className="bg-background-dark p-4 rounded-xl border border-white/5">
                   <label className="flex items-center space-x-3 cursor-pointer">
                     <input
                       type="checkbox"
@@ -759,9 +750,9 @@ const TournamentSetupPage: React.FC = () => {
                       }
                       className="size-5 rounded border-slate-600 bg-transparent text-primary focus:ring-primary"
                     />
-                    <span className="text-sm text-white">
+                    <Text size="sm" color="white">
                       Balance team skill levels
-                    </span>
+                    </Text>
                   </label>
                   <label className="flex items-center space-x-3 cursor-pointer">
                     <input
@@ -784,70 +775,74 @@ const TournamentSetupPage: React.FC = () => {
                       }
                       className="size-5 rounded border-slate-600 bg-transparent text-primary focus:ring-primary"
                     />
-                    <span className="text-sm text-white">
+                    <Text size="sm" color="white">
                       Avoid recent tournament partners
-                    </span>
+                    </Text>
                   </label>
-                </div>
+                </Stack>
               )}
 
-              <button
+              <Button
+                variant="primary"
+                fullWidth
                 onClick={generateTeams}
                 disabled={loading || selectedPlayers.length === 0}
-                className="w-full py-3 bg-primary text-black font-bold rounded-xl shadow-lg shadow-primary/20 hover:bg-primary-dark transition-all disabled:opacity-50"
+                loading={loading}
+                className="py-3 shadow-lg shadow-primary/20"
               >
                 {loading ? "Generating..." : "Generate Teams"}
-              </button>
+              </Button>
 
               {generatedTeams.length > 0 && (
                 <div className="mt-4">
-                  <h4 className="text-xs font-bold text-slate-500 uppercase mb-2">
+                  <Heading level={4} className="!text-xs !font-bold text-slate-500 uppercase mb-2">
                     Generated Teams
-                  </h4>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-2 max-h-40 overflow-y-auto custom-scrollbar">
+                  </Heading>
+                  <ResponsiveGrid
+                    cols={{ mobile: 1, tablet: 2 }}
+                    gap={2}
+                    className="max-h-40 overflow-y-auto custom-scrollbar"
+                  >
                     {generatedTeams.map((team) => (
                       <div
                         key={`team-${team.teamId}`}
                         className="p-3 bg-background-dark border border-white/10 rounded-lg"
                       >
-                        <div className="flex items-center justify-between mb-1">
-                          <span className="font-bold text-sm text-white">
+                        <Stack direction="horizontal" align="center" justify="between" className="mb-1">
+                          <Text size="sm" color="white" as="span" className="font-bold">
                             <span className="text-accent mr-1">
                               #{team.combinedSeed}
                             </span>{" "}
                             {team.teamName}
-                          </span>
-                          <span className="text-[10px] text-slate-500">
+                          </Text>
+                          <Text size="xs" color="muted" as="span" className="text-[10px] text-slate-500">
                             {(
                               team.combinedStatistics?.combinedWinPercentage ||
                               0
                             ).toFixed(0)}
                             % Combo
-                          </span>
-                        </div>
-                        <div className="text-xs text-slate-400">
+                          </Text>
+                        </Stack>
+                        <Text size="xs" color="muted">
                           {team.players.map((p) => p.playerName).join(" & ")}
-                        </div>
+                        </Text>
                       </div>
                     ))}
-                  </div>
+                  </ResponsiveGrid>
                 </div>
               )}
             </div>
-          </div>
+          </Stack>
         );
 
       case 3: // Tournament Settings
         return (
-          <div className="bg-[#1c2230] p-6 rounded-2xl border border-white/5 space-y-4 animate-in fade-in zoom-in-95 duration-200">
-            <h2 className="text-lg font-bold text-white mb-2">
+          <Stack gap={4} className="bg-[#1c2230] p-6 rounded-2xl border border-white/5 animate-in fade-in zoom-in-95 duration-200">
+            <Heading level={2} className="!text-lg mb-2">
               Tournament Settings
-            </h2>
-            <div>
-              <label className="block text-xs font-bold text-slate-500 uppercase mb-1">
-                Bracket Type
-              </label>
-              <select
+            </Heading>
+            <FormField label="Bracket Type">
+              <Select
                 value={setupData.bracketType}
                 onChange={(e) =>
                   setSetupData((prev) => ({
@@ -855,21 +850,17 @@ const TournamentSetupPage: React.FC = () => {
                     bracketType: e.target.value as any,
                   }))
                 }
-                className="w-full bg-background-dark border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-primary transition-colors appearance-none"
               >
                 <option value="single_elimination">Single Elimination</option>
                 <option value="double_elimination">Double Elimination</option>
                 <option value="round_robin_playoff">
                   Round Robin + Playoffs
                 </option>
-              </select>
-            </div>
+              </Select>
+            </FormField>
 
-            <div>
-              <label className="block text-xs font-bold text-slate-500 uppercase mb-1">
-                Registration Deadline
-              </label>
-              <input
+            <FormField label="Registration Deadline">
+              <Input
                 type="datetime-local"
                 value={setupData.registrationDeadline || ""}
                 onChange={(e) =>
@@ -878,121 +869,116 @@ const TournamentSetupPage: React.FC = () => {
                     registrationDeadline: e.target.value,
                   }))
                 }
-                className="w-full bg-background-dark border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-primary transition-colors"
               />
-            </div>
+            </FormField>
 
-            <div>
-              <label className="block text-xs font-bold text-slate-500 uppercase mb-1">
-                Initial Status
-              </label>
-              <select
+            <FormField label="Initial Status">
+              <Select
                 value={setupData.basicInfo.status}
                 onChange={(e) => updateBasicInfo("status", e.target.value)}
-                className="w-full bg-background-dark border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-primary transition-colors appearance-none"
               >
                 <option value="scheduled">Scheduled</option>
                 <option value="open">Open for Registration</option>
                 <option value="active">Active</option>
-              </select>
-            </div>
-          </div>
+              </Select>
+            </FormField>
+          </Stack>
         );
 
       case 4: // Review & Create
         return (
-          <div className="space-y-6 animate-in fade-in zoom-in-95 duration-200">
+          <Stack gap={6} className="animate-in fade-in zoom-in-95 duration-200">
             <div className="bg-[#1c2230] p-6 rounded-2xl border border-white/5 space-y-4">
-              <h2 className="text-lg font-bold text-white mb-2">
+              <Heading level={2} className="!text-lg mb-2">
                 Tournament Summary
-              </h2>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              </Heading>
+              <ResponsiveGrid cols={{ mobile: 1, tablet: 2 }} gap={6}>
                 <div>
-                  <h4 className="text-xs font-bold text-slate-500 uppercase mb-2">
+                  <Heading level={4} className="!text-xs !font-bold text-slate-500 uppercase mb-2">
                     Basic Info
-                  </h4>
-                  <div className="space-y-2">
-                    <div className="flex justify-between border-b border-white/5 pb-1">
-                      <span className="text-slate-400 text-sm">Date</span>
-                      <span className="text-white text-sm">
+                  </Heading>
+                  <Stack gap={2}>
+                    <Stack direction="horizontal" justify="between" className="border-b border-white/5 pb-1">
+                      <Text size="sm" color="muted">Date</Text>
+                      <Text size="sm" color="white">
                         {new Date(setupData.basicInfo.date).toLocaleDateString(
                           undefined,
                           { timeZone: "UTC" },
                         )}
-                      </span>
-                    </div>
-                    <div className="flex justify-between border-b border-white/5 pb-1">
-                      <span className="text-slate-400 text-sm">BOD</span>
-                      <span className="text-white text-sm">
+                      </Text>
+                    </Stack>
+                    <Stack direction="horizontal" justify="between" className="border-b border-white/5 pb-1">
+                      <Text size="sm" color="muted">BOD</Text>
+                      <Text size="sm" color="white">
                         #{setupData.basicInfo.bodNumber}
-                      </span>
-                    </div>
-                    <div className="flex justify-between border-b border-white/5 pb-1">
-                      <span className="text-slate-400 text-sm">Format</span>
-                      <span className="text-white text-sm">
+                      </Text>
+                    </Stack>
+                    <Stack direction="horizontal" justify="between" className="border-b border-white/5 pb-1">
+                      <Text size="sm" color="muted">Format</Text>
+                      <Text size="sm" color="white">
                         {setupData.basicInfo.format}
-                      </span>
-                    </div>
-                    <div className="flex justify-between border-b border-white/5 pb-1">
-                      <span className="text-slate-400 text-sm">Players</span>
-                      <span className="text-white text-sm">
+                      </Text>
+                    </Stack>
+                    <Stack direction="horizontal" justify="between" className="border-b border-white/5 pb-1">
+                      <Text size="sm" color="muted">Players</Text>
+                      <Text size="sm" color="white">
                         {setupData.maxPlayers}
-                      </span>
-                    </div>
-                  </div>
+                      </Text>
+                    </Stack>
+                  </Stack>
                 </div>
                 <div>
-                  <h4 className="text-xs font-bold text-slate-500 uppercase mb-2">
+                  <Heading level={4} className="!text-xs !font-bold text-slate-500 uppercase mb-2">
                     Configuration
-                  </h4>
-                  <div className="space-y-2">
-                    <div className="flex justify-between border-b border-white/5 pb-1">
-                      <span className="text-slate-400 text-sm">Seeding</span>
-                      <span className="text-white text-sm capitalize">
+                  </Heading>
+                  <Stack gap={2}>
+                    <Stack direction="horizontal" justify="between" className="border-b border-white/5 pb-1">
+                      <Text size="sm" color="muted">Seeding</Text>
+                      <Text size="sm" color="white" className="capitalize">
                         {setupData.seedingConfig.method.replace("_", " ")}
-                      </span>
-                    </div>
-                    <div className="flex justify-between border-b border-white/5 pb-1">
-                      <span className="text-slate-400 text-sm">Teams</span>
-                      <span className="text-white text-sm capitalize">
+                      </Text>
+                    </Stack>
+                    <Stack direction="horizontal" justify="between" className="border-b border-white/5 pb-1">
+                      <Text size="sm" color="muted">Teams</Text>
+                      <Text size="sm" color="white" className="capitalize">
                         {setupData.teamFormationConfig.method.replace("_", " ")}
-                      </span>
-                    </div>
-                    <div className="flex justify-between border-b border-white/5 pb-1">
-                      <span className="text-slate-400 text-sm">Bracket</span>
-                      <span className="text-white text-sm capitalize">
+                      </Text>
+                    </Stack>
+                    <Stack direction="horizontal" justify="between" className="border-b border-white/5 pb-1">
+                      <Text size="sm" color="muted">Bracket</Text>
+                      <Text size="sm" color="white" className="capitalize">
                         {setupData.bracketType.replace("_", " ")}
-                      </span>
-                    </div>
-                    <div className="flex justify-between border-b border-white/5 pb-1">
-                      <span className="text-slate-400 text-sm">Selected</span>
-                      <span className="text-white text-sm">
+                      </Text>
+                    </Stack>
+                    <Stack direction="horizontal" justify="between" className="border-b border-white/5 pb-1">
+                      <Text size="sm" color="muted">Selected</Text>
+                      <Text size="sm" color="white">
                         {selectedPlayers.length} Players
-                      </span>
-                    </div>
-                  </div>
+                      </Text>
+                    </Stack>
+                  </Stack>
                 </div>
-              </div>
+              </ResponsiveGrid>
             </div>
 
-            <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-xl p-4 flex items-start gap-3">
+            <Stack direction="horizontal" gap={3} align="start" className="bg-yellow-500/10 border border-yellow-500/30 rounded-xl p-4">
               <span className="material-symbols-outlined text-yellow-500">
                 warning
               </span>
               <div>
-                <h4 className="font-bold text-yellow-500 text-sm">
+                <Heading level={4} className="!text-sm text-yellow-500">
                   Ready to Create
-                </h4>
-                <p className="text-xs text-yellow-500/80 mt-1">
+                </Heading>
+                <Text size="xs" className="text-yellow-500/80 mt-1">
                   Once created, the tournament will be set to{" "}
                   <strong>{setupData.basicInfo.status}</strong>.
                   {setupData.basicInfo.status === "open"
                     ? " Players can immediately start registering."
                     : " You can further manage it in the admin dashboard."}
-                </p>
+                </Text>
               </div>
-            </div>
-          </div>
+            </Stack>
+          </Stack>
         );
 
       default:
@@ -1002,29 +988,32 @@ const TournamentSetupPage: React.FC = () => {
 
   if (loading && currentStep === 0) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-screen bg-background-dark">
+      <Stack align="center" justify="center" className="min-h-screen bg-background-dark">
         <LoadingSpinner size="lg" />
-        <span className="mt-4 text-slate-500 animate-pulse">
+        <Text size="sm" color="muted" className="mt-4 animate-pulse">
           Initializing Setup...
-        </span>
-      </div>
+        </Text>
+      </Stack>
     );
   }
 
   return (
     <div className="min-h-screen bg-background-dark text-white pb-24">
       {/* Sticky Header */}
-      <div className="sticky top-0 z-20 bg-background-dark/95 backdrop-blur-md border-b border-white/10 px-4 py-4 flex items-center justify-between">
-        <h1 className="text-xl font-bold tracking-tight">Setup Tournament</h1>
-        <button
+      <Stack direction="horizontal" align="center" justify="between" className="sticky top-0 z-20 bg-background-dark/95 backdrop-blur-md border-b border-white/10 px-4 py-4">
+        <Heading level={1} className="!text-xl tracking-tight">
+          Setup Tournament
+        </Heading>
+        <Button
+          variant="ghost"
+          size="sm"
           onClick={() => navigate("/tournaments")}
-          className="text-sm font-bold text-slate-400 hover:text-white transition-colors"
         >
           Cancel
-        </button>
-      </div>
+        </Button>
+      </Stack>
 
-      <div className="max-w-5xl mx-auto px-4 py-6 space-y-6">
+      <Container maxWidth="md" padding="none" className="px-4 py-6 space-y-6">
         {/* Progress Bar */}
         <div className="bg-[#1c2230] rounded-2xl p-4 border border-white/5 overflow-x-auto no-scrollbar">
           <div className="flex items-center min-w-[300px]">
@@ -1066,20 +1055,22 @@ const TournamentSetupPage: React.FC = () => {
 
         {/* Error Display */}
         {error && (
-          <div className="bg-red-500/10 border border-red-500/30 p-4 rounded-xl flex items-center justify-between">
-            <div className="flex items-center gap-3">
+          <Stack direction="horizontal" align="center" justify="between" className="bg-red-500/10 border border-red-500/30 p-4 rounded-xl">
+            <Stack direction="horizontal" align="center" gap={3}>
               <span className="material-symbols-outlined text-red-500">
                 error
               </span>
-              <span className="text-sm text-red-400">{error}</span>
-            </div>
-            <button
+              <Text size="sm" color="error">{error}</Text>
+            </Stack>
+            <Button
+              variant="ghost"
+              size="sm"
               onClick={() => setError(null)}
               className="text-red-500 hover:text-white"
             >
               <span className="material-symbols-outlined">close</span>
-            </button>
-          </div>
+            </Button>
+          </Stack>
         )}
 
         {/* Step Content */}
@@ -1087,77 +1078,85 @@ const TournamentSetupPage: React.FC = () => {
 
         {/* Navigation Actions - with safe-area handling for iOS, z-50 to be above Layout nav */}
         <div className="fixed bottom-0 left-0 right-0 bg-[#1c2230] border-t border-white/10 p-4 pb-[max(1rem,env(safe-area-inset-bottom))] z-50">
-          <div className="max-w-5xl mx-auto flex items-center justify-between gap-4">
-            <button
-              disabled={currentStep === 0}
-              onClick={() => {
-                // Skip player selection step when going back if open registration
-                if (currentStep === 2 && setupData.basicInfo.registrationType === "open") {
-                  setCurrentStep(0);
-                } else {
-                  setCurrentStep((prev) => prev - 1);
-                }
-              }}
-              className="px-6 py-3 rounded-xl border border-white/10 text-white font-bold disabled:opacity-30 disabled:cursor-not-allowed hover:bg-white/5 transition-all"
-            >
-              Back
-            </button>
-
-            {currentStep < steps.length - 1 ? (
-              <button
+          <Container maxWidth="md" padding="none">
+            <Stack direction="horizontal" align="center" justify="between" gap={4}>
+              <Button
+                variant="secondary"
+                size="lg"
+                disabled={currentStep === 0}
                 onClick={() => {
-                  // Validation
-                  if (currentStep === 0) {
-                    if (!setupData.basicInfo.date) {
-                      setError("Date is required");
-                      return;
-                    }
-                    if (!setupData.basicInfo.format) {
-                      setError("Format is required");
-                      return;
-                    }
-                    if (!setupData.basicInfo.location) {
-                      setError("Location is required");
-                      return;
-                    }
-                    if (
-                      !setupData.basicInfo.bodNumber ||
-                      setupData.basicInfo.bodNumber <= 0
-                    ) {
-                      setError("Valid BOD Number is required");
-                      return;
-                    }
-                    // Skip player selection for open registration
-                    if (setupData.basicInfo.registrationType === "open") {
-                      setError(null);
-                      setCurrentStep(2); // Jump to seeding step
-                      return;
-                    }
+                  // Skip player selection step when going back if open registration
+                  if (currentStep === 2 && setupData.basicInfo.registrationType === "open") {
+                    setCurrentStep(0);
+                  } else {
+                    setCurrentStep((prev) => prev - 1);
                   }
-                  if (currentStep === 1 && selectedPlayers.length === 0) {
-                    setError("Please select at least one player");
-                    return;
-                  }
-
-                  setError(null);
-                  setCurrentStep((prev) => prev + 1);
                 }}
-                className="px-8 py-3 rounded-xl bg-primary text-black font-bold shadow-lg shadow-primary/20 hover:bg-primary-dark hover:scale-105 active:scale-95 transition-all"
               >
-                Next Step
-              </button>
-            ) : (
-              <button
-                onClick={createTournament}
-                disabled={loading}
-                className="px-8 py-3 rounded-xl bg-neon-accent text-black font-bold shadow-[0_0_20px_rgba(204,255,0,0.4)] hover:shadow-[0_0_30px_rgba(204,255,0,0.6)] hover:scale-105 active:scale-95 transition-all"
-              >
-                {loading ? "Creating..." : "Create Tournament"}
-              </button>
-            )}
-          </div>
+                Back
+              </Button>
+
+              {currentStep < steps.length - 1 ? (
+                <Button
+                  variant="primary"
+                  size="lg"
+                  onClick={() => {
+                    // Validation
+                    if (currentStep === 0) {
+                      if (!setupData.basicInfo.date) {
+                        setError("Date is required");
+                        return;
+                      }
+                      if (!setupData.basicInfo.format) {
+                        setError("Format is required");
+                        return;
+                      }
+                      if (!setupData.basicInfo.location) {
+                        setError("Location is required");
+                        return;
+                      }
+                      if (
+                        !setupData.basicInfo.bodNumber ||
+                        setupData.basicInfo.bodNumber <= 0
+                      ) {
+                        setError("Valid BOD Number is required");
+                        return;
+                      }
+                      // Skip player selection for open registration
+                      if (setupData.basicInfo.registrationType === "open") {
+                        setError(null);
+                        setCurrentStep(2); // Jump to seeding step
+                        return;
+                      }
+                    }
+                    if (currentStep === 1 && selectedPlayers.length === 0) {
+                      setError("Please select at least one player");
+                      return;
+                    }
+
+                    setError(null);
+                    setCurrentStep((prev) => prev + 1);
+                  }}
+                  className="shadow-lg shadow-primary/20 hover:scale-105 active:scale-95"
+                >
+                  Next Step
+                </Button>
+              ) : (
+                <Button
+                  variant="success"
+                  size="lg"
+                  onClick={createTournament}
+                  disabled={loading}
+                  loading={loading}
+                  className="bg-neon-accent text-black shadow-[0_0_20px_rgba(204,255,0,0.4)] hover:shadow-[0_0_30px_rgba(204,255,0,0.6)] hover:scale-105 active:scale-95"
+                >
+                  {loading ? "Creating..." : "Create Tournament"}
+                </Button>
+              )}
+            </Stack>
+          </Container>
         </div>
-      </div>
+      </Container>
     </div>
   );
 };

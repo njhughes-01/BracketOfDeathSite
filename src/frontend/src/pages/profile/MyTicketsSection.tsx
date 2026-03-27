@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import logger from '../../utils/logger';
 import { apiClient } from '../../services/api';
 import TicketCard, { type TicketData } from '../../components/tickets/TicketCard';
+import { Heading, Text, Button, Stack, LoadingSpinner } from '../../components/ui';
 
 interface TicketsResponse {
   tickets: TicketData[];
@@ -37,7 +38,6 @@ const MyTicketsSection: React.FC = () => {
     try {
       setResending(ticketId);
       await apiClient.resendTicketEmail(ticketId);
-      // Could add a toast notification here
     } catch (err) {
       logger.error('Failed to resend ticket email', err);
     } finally {
@@ -48,12 +48,12 @@ const MyTicketsSection: React.FC = () => {
   if (loading) {
     return (
       <div className="bg-[#1c2230] rounded-3xl border border-white/5 p-6">
-        <h3 className="text-lg font-bold text-white flex items-center gap-2 mb-4">
+        <Stack direction="horizontal" gap={2} align="center" className="mb-4">
           <span className="material-symbols-outlined text-primary">confirmation_number</span>
-          My Tickets
-        </h3>
+          <Heading level={3} className="!text-lg">My Tickets</Heading>
+        </Stack>
         <div className="flex items-center justify-center py-12">
-          <div className="animate-spin size-8 border-2 border-primary border-t-transparent rounded-full"></div>
+          <LoadingSpinner size="md" />
         </div>
       </div>
     );
@@ -62,21 +62,23 @@ const MyTicketsSection: React.FC = () => {
   if (error) {
     return (
       <div className="bg-[#1c2230] rounded-3xl border border-white/5 p-6">
-        <h3 className="text-lg font-bold text-white flex items-center gap-2 mb-4">
+        <Stack direction="horizontal" gap={2} align="center" className="mb-4">
           <span className="material-symbols-outlined text-primary">confirmation_number</span>
-          My Tickets
-        </h3>
+          <Heading level={3} className="!text-lg">My Tickets</Heading>
+        </Stack>
         <div className="text-center py-8">
           <div className="size-16 rounded-full bg-red-500/10 mx-auto flex items-center justify-center mb-4">
             <span className="material-symbols-outlined text-red-500 text-3xl">error</span>
           </div>
-          <p className="text-slate-400 mb-4">{error}</p>
-          <button
+          <Text color="muted" className="mb-4">{error}</Text>
+          <Button
+            variant="ghost"
             onClick={fetchTickets}
-            className="px-4 py-2 bg-primary/10 text-primary rounded-lg hover:bg-primary/20 transition-colors text-sm font-bold"
+            size="sm"
+            className="text-primary"
           >
             Try Again
-          </button>
+          </Button>
         </div>
       </div>
     );
@@ -84,17 +86,19 @@ const MyTicketsSection: React.FC = () => {
 
   return (
     <div className="bg-[#1c2230] rounded-3xl border border-white/5 p-6">
-      <div className="flex items-center justify-between mb-6">
-        <h3 className="text-lg font-bold text-white flex items-center gap-2">
+      <Stack direction="horizontal" align="center" justify="between" className="mb-6">
+        <Stack direction="horizontal" gap={2} align="center">
           <span className="material-symbols-outlined text-primary">confirmation_number</span>
-          My Tickets
+          <Heading level={3} className="!text-lg">
+            My Tickets
+          </Heading>
           {tickets.length > 0 && (
             <span className="ml-2 px-2 py-0.5 bg-primary/20 text-primary text-xs font-bold rounded-full">
               {tickets.length}
             </span>
           )}
-        </h3>
-      </div>
+        </Stack>
+      </Stack>
 
       {tickets.length === 0 ? (
         <div className="text-center py-12">
@@ -103,13 +107,13 @@ const MyTicketsSection: React.FC = () => {
               confirmation_number
             </span>
           </div>
-          <p className="text-slate-400 mb-2">No tickets yet</p>
-          <p className="text-sm text-slate-500 max-w-sm mx-auto">
+          <Text color="muted" className="mb-2">No tickets yet</Text>
+          <Text size="sm" color="muted" className="max-w-sm mx-auto">
             When you register for a paid tournament, your tickets will appear here.
-          </p>
+          </Text>
         </div>
       ) : (
-        <div className="grid gap-4">
+        <Stack direction="vertical" gap={4}>
           {tickets.map((ticket) => (
             <TicketCard
               key={ticket.id}
@@ -117,7 +121,7 @@ const MyTicketsSection: React.FC = () => {
               onResend={resending === ticket.id ? undefined : handleResend}
             />
           ))}
-        </div>
+        </Stack>
       )}
     </div>
   );

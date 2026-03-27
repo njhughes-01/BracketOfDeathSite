@@ -9,9 +9,7 @@ import React, {
 import { useParams, useLocation, Link } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
 import apiClient from "../services/api";
-// import Card from '../components/ui/Card'; // Replaced
-import LoadingSpinner from "../components/ui/LoadingSpinner";
-// import { EditableCard, EditableNumber } from '../components/admin'; // Replaced
+import { Heading, Text, Button, Select, Stack, Container, LoadingSpinner } from "../components/ui";
 import BracketView from "../components/tournament/BracketView";
 import LiveStats from "../components/tournament/LiveStats";
 import MatchScoring from "../components/tournament/MatchScoring";
@@ -417,48 +415,48 @@ const TournamentManage: React.FC = () => {
 
   if (!isAdmin) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-screen bg-background-dark text-center px-4">
+      <Stack direction="vertical" align="center" justify="center" className="min-h-screen bg-background-dark text-center px-4">
         <span className="material-symbols-outlined text-red-500 text-5xl mb-4">
           lock
         </span>
-        <h2 className="text-xl font-bold text-white mb-2">Access Denied</h2>
-        <p className="text-slate-400 mb-6">
+        <Heading level={2} className="text-xl mb-2">Access Denied</Heading>
+        <Text size="base" color="muted" className="mb-6">
           You need admin privileges to manage tournaments.
-        </p>
+        </Text>
         <Link to="/tournaments" className="btn btn-primary">
           Back to Tournaments
         </Link>
-      </div>
+      </Stack>
     );
   }
 
   if (loading && !liveTournament) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-screen bg-background-dark">
+      <Stack direction="vertical" align="center" justify="center" className="min-h-screen bg-background-dark">
         <LoadingSpinner size="lg" />
-        <span className="mt-4 text-slate-500 animate-pulse">
+        <Text as="span" size="base" color="muted" className="mt-4 animate-pulse">
           Loading tournament data...
-        </span>
-      </div>
+        </Text>
+      </Stack>
     );
   }
 
   if (!liveTournament) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-screen bg-background-dark text-center px-4">
+      <Stack direction="vertical" align="center" justify="center" className="min-h-screen bg-background-dark text-center px-4">
         <span className="material-symbols-outlined text-slate-500 text-5xl mb-4">
           error
         </span>
-        <h2 className="text-xl font-bold text-white mb-2">
+        <Heading level={2} className="text-xl mb-2">
           Tournament Not Found
-        </h2>
-        <p className="text-slate-400 mb-6">
+        </Heading>
+        <Text size="base" color="muted" className="mb-6">
           Could not load tournament management data.
-        </p>
+        </Text>
         <Link to="/tournaments" className="btn btn-primary">
           Back to Tournaments
         </Link>
-      </div>
+      </Stack>
     );
   }
 
@@ -468,10 +466,10 @@ const TournamentManage: React.FC = () => {
     <div className="min-h-screen bg-background-dark text-white pb-20">
       {/* Header */}
       <div className="sticky top-0 z-20 bg-background-dark/95 backdrop-blur-md border-b border-white/10 px-4 py-3">
-        <div className="flex items-center justify-between gap-4">
+        <Stack direction="horizontal" align="center" justify="between" gap={4}>
           <div className="min-w-0">
-            <div className="flex items-center gap-3">
-              <h1 className="text-lg font-bold truncate">{`BOD #${liveTournament.bodNumber}`}</h1>
+            <Stack direction="horizontal" align="center" gap={3}>
+              <Heading level={1} className="text-lg truncate">{`BOD #${liveTournament.bodNumber}`}</Heading>
               <div
                 className={`px-2 py-0.5 rounded-full text-[10px] uppercase font-bold flex items-center gap-1 ${phaseInfo.color}`}
               >
@@ -480,15 +478,15 @@ const TournamentManage: React.FC = () => {
                 </span>
                 {phaseInfo.label}
               </div>
-            </div>
-            <div className="text-xs text-slate-400 flex items-center gap-2 mt-0.5">
-              <span>{new Date(liveTournament.date).toLocaleDateString()}</span>
-              <span>•</span>
-              <span>{liveTournament.location}</span>
-            </div>
+            </Stack>
+            <Stack direction="horizontal" align="center" gap={2} className="mt-0.5">
+              <Text as="span" size="xs" color="muted">{new Date(liveTournament.date).toLocaleDateString()}</Text>
+              <Text as="span" size="xs" color="muted">•</Text>
+              <Text as="span" size="xs" color="muted">{liveTournament.location}</Text>
+            </Stack>
           </div>
 
-          <div className="flex items-center gap-2">
+          <Stack direction="horizontal" align="center" gap={2}>
             <Link
               to={`/admin/tournaments/${id}/tickets`}
               className="size-9 rounded-full bg-white/5 flex items-center justify-center hover:bg-white/10 transition-colors"
@@ -516,21 +514,21 @@ const TournamentManage: React.FC = () => {
                 close
               </span>
             </Link>
-          </div>
-        </div>
+          </Stack>
+        </Stack>
 
         {/* Phase Progress Bar for Current Phase */}
         {liveTournament.phase.currentRound && (
           <div className="mt-3">
-            <div className="flex justify-between text-[10px] text-slate-500 uppercase font-bold mb-1">
-              <span>
+            <Stack direction="horizontal" justify="between" className="text-[10px] text-slate-500 uppercase font-bold mb-1">
+              <Text as="span" size="xs" color="muted" className="text-[10px] uppercase font-bold">
                 {getRoundDisplayInfo(liveTournament.phase.currentRound)}
-              </span>
-              <span>
+              </Text>
+              <Text as="span" size="xs" color="muted" className="text-[10px] uppercase font-bold">
                 {liveTournament.phase.completedMatches}/
                 {liveTournament.phase.totalMatches} Matches
-              </span>
-            </div>
+              </Text>
+            </Stack>
             <div className="h-1 bg-white/5 rounded-full overflow-hidden">
               <div
                 className="h-full bg-primary transition-all duration-500 progress-bar-fill"
@@ -545,58 +543,64 @@ const TournamentManage: React.FC = () => {
 
       <div className="p-4 grid grid-cols-1 lg:grid-cols-3 gap-6 max-w-7xl mx-auto">
         {/* Main Control Area */}
-        <div className="lg:col-span-2 space-y-6">
+        <Stack direction="vertical" gap={6} className="lg:col-span-2">
           {error && (
-            <div className="bg-red-500/10 border border-red-500/30 p-4 rounded-xl flex items-center justify-between animate-in fade-in slide-in-from-top-2">
-              <div className="flex items-center gap-3">
+            <Stack direction="horizontal" align="center" justify="between" className="bg-red-500/10 border border-red-500/30 p-4 rounded-xl animate-in fade-in slide-in-from-top-2">
+              <Stack direction="horizontal" align="center" gap={3}>
                 <span className="material-symbols-outlined text-red-500">
                   error
                 </span>
-                <span className="text-sm text-red-400">{error}</span>
-              </div>
-              <button
+                <Text size="sm" color="error">{error}</Text>
+              </Stack>
+              <Button
+                variant="ghost"
+                size="sm"
                 onClick={() => setError(null)}
                 className="text-red-500 hover:text-white"
               >
                 <span className="material-symbols-outlined">close</span>
-              </button>
-            </div>
+              </Button>
+            </Stack>
           )}
 
           {/* Actions Panel */}
           <div className="bg-surface-dark rounded-2xl border border-white/5 p-5 shadow-lg">
-            <h3 className="text-sm font-bold text-slate-400 uppercase tracking-wider mb-4">
+            <Heading level={3} className="text-sm font-bold text-slate-400 uppercase tracking-wider mb-4">
               Phase Controls
-            </h3>
-            <div className="flex flex-wrap gap-3">
+            </Heading>
+            <Stack direction="horizontal" wrap gap={3}>
               {/* Logic for buttons based on phase */}
               {liveTournament.phase.phase === "setup" && (
                 <>
                   {/* Only show open registration if we don't have a pre-filled roster */}
                   {!liveTournament.teams?.length &&
                     !liveTournament.players?.length && (
-                      <button
+                      <Button
+                        variant="primary"
+                        size="sm"
                         onClick={() =>
                           executeTournamentAction({
                             action: "start_registration",
                           })
                         }
-                        className="btn btn-primary btn-sm rounded-lg shadow-lg hover:shadow-primary/20"
+                        className="rounded-lg shadow-lg hover:shadow-primary/20"
                         disabled={loading}
                       >
                         Open Registration
-                      </button>
+                      </Button>
                     )}
                   {(liveTournament.teams?.length || 0) > 0 && (
-                    <button
+                    <Button
+                      variant="secondary"
+                      size="sm"
                       onClick={() =>
                         executeTournamentAction({ action: "start_bracket" })
                       }
-                      className="btn btn-secondary btn-sm rounded-lg"
+                      className="rounded-lg"
                       disabled={loading}
                     >
                       Start with Current Teams
-                    </button>
+                    </Button>
                   )}
                 </>
               )}
@@ -708,7 +712,9 @@ const TournamentManage: React.FC = () => {
                 )}
 
               {/* Danger Zone */}
-              <button
+              <Button
+                variant="danger"
+                size="sm"
                 onClick={() => {
                   if (
                     window.confirm(
@@ -717,21 +723,21 @@ const TournamentManage: React.FC = () => {
                   )
                     executeTournamentAction({ action: "reset_tournament" });
                 }}
-                className="ml-auto px-3 py-2 rounded-lg bg-red-500/10 text-red-500 font-bold hover:bg-red-500 hover:text-white text-xs"
+                className="ml-auto text-xs"
                 disabled={loading}
               >
                 Force Reset
-              </button>
-            </div>
+              </Button>
+            </Stack>
           </div>
 
           {/* Matches Management */}
           <div className="bg-surface-dark rounded-2xl border border-white/5 p-5 shadow-lg">
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-5">
-              <h3 className="text-lg font-bold text-white">Matches</h3>
+            <Stack direction="responsive" align="center" justify="between" gap={4} className="mb-5">
+              <Heading level={3} className="text-lg">Matches</Heading>
 
               {/* Round Selector */}
-              <select
+              <Select
                 value={selectedRound}
                 onChange={(e) => {
                   const val = e.target.value as RoundName;
@@ -739,15 +745,16 @@ const TournamentManage: React.FC = () => {
                   persistSelectedRound(val);
                 }}
                 title="Select Round"
-                className="bg-background-dark border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-primary appearance-none"
+                size="sm"
+                fullWidth={false}
               >
                 {getRoundOptions(liveTournament.bracketType).map((opt) => (
                   <option key={opt.value} value={opt.value}>
                     {opt.label}
                   </option>
                 ))}
-              </select>
-            </div>
+              </Select>
+            </Stack>
 
             {/* Toolbar */}
             <MatchesToolbar
@@ -781,15 +788,17 @@ const TournamentManage: React.FC = () => {
             >
               {currentMatches.length === 0 && (
                 <div className="col-span-full py-10 text-center border-2 border-dashed border-white/5 rounded-xl">
-                  <p className="text-slate-500 mb-2">
+                  <Text size="base" color="muted" className="text-slate-500 mb-2">
                     No matches scheduled for this round
-                  </p>
-                  <button
+                  </Text>
+                  <Button
+                    variant="ghost"
+                    size="sm"
                     onClick={generateMatchesForSelectedRound}
-                    className="text-primary font-bold text-sm hover:underline"
+                    className="text-primary font-bold hover:underline"
                   >
                     Generate Matches
-                  </button>
+                  </Button>
                 </div>
               )}
 
@@ -803,10 +812,10 @@ const TournamentManage: React.FC = () => {
                       : "bg-surface-dark border-white/5"
                     }`}
                 >
-                  <div className="p-3 border-b border-white/5 flex items-center justify-between">
-                    <span className="text-xs font-bold text-slate-500 uppercase">
+                  <Stack direction="horizontal" align="center" justify="between" className="p-3 border-b border-white/5">
+                    <Text as="span" size="xs" className="font-bold text-slate-500 uppercase">
                       Match {match.matchNumber}
-                    </span>
+                    </Text>
                     <span
                       className={`text-[10px] font-bold px-2 py-0.5 rounded-full uppercase ${match.status === "completed"
                         ? "bg-green-500/20 text-green-500"
@@ -817,7 +826,7 @@ const TournamentManage: React.FC = () => {
                     >
                       {match.status.replace("_", " ")}
                     </span>
-                  </div>
+                  </Stack>
 
                   {/* Scoring Component */}
                   <div className="p-3 text-white">
@@ -837,9 +846,9 @@ const TournamentManage: React.FC = () => {
           {/* Bracket Visualization (Only for bracket phase) */}
           {liveTournament.phase.phase === "bracket" && (
             <div className="bg-surface-dark rounded-2xl border border-white/5 p-5 overflow-x-auto shadow-lg">
-              <h3 className="text-sm font-bold text-slate-400 uppercase tracking-wider mb-4">
+              <Heading level={3} className="text-sm font-bold text-slate-400 uppercase tracking-wider mb-4">
                 Bracket View
-              </h3>
+              </Heading>
               <BracketView
                 matches={liveTournament.matches.filter((m) =>
                   ["quarterfinal", "semifinal", "final"].includes(m.round),
@@ -852,10 +861,10 @@ const TournamentManage: React.FC = () => {
               />
             </div>
           )}
-        </div>
+        </Stack>
 
         {/* Sidebar */}
-        <div className="space-y-6">
+        <Stack direction="vertical" gap={6}>
           <LiveStats
             tournamentId={id!}
             refreshInterval={15000}
@@ -868,26 +877,29 @@ const TournamentManage: React.FC = () => {
           {/* Check-In list if active */}
           {liveTournament.phase.phase === "check_in" && (
             <div className="bg-surface-dark rounded-2xl border border-white/5 p-4 shadow-lg">
-              <h3 className="text-sm font-bold text-white mb-3">
+              <Heading level={3} className="text-sm mb-3">
                 Check-In Status
-              </h3>
-              <div className="space-y-2 max-h-[400px] overflow-y-auto custom-scrollbar">
+              </Heading>
+              <Stack direction="vertical" gap={2} className="max-h-[400px] overflow-y-auto custom-scrollbar">
                 {liveTournament.teams.map((team) => {
                   const checkInStatus =
                     liveTournament.checkInStatus[team.teamId];
                   const checkedIn = checkInStatus?.checkedIn;
                   return (
-                    <div
+                    <Stack
                       key={team.teamId}
-                      className="flex items-center justify-between p-2 rounded-lg bg-background-dark border border-white/5 transition-colors hover:bg-white/5"
+                      direction="horizontal"
+                      align="center"
+                      justify="between"
+                      className="p-2 rounded-lg bg-background-dark border border-white/5 transition-colors hover:bg-white/5"
                     >
                       <div>
-                        <p className="text-sm font-bold text-white">
+                        <Text as="p" size="sm" color="white" className="font-bold">
                           {team.teamName}
-                        </p>
-                        <p className="text-[10px] text-slate-500">
+                        </Text>
+                        <Text as="p" size="xs" color="muted" className="text-[10px] text-slate-500">
                           {team.players.map((p) => p.playerName).join(", ")}
-                        </p>
+                        </Text>
                       </div>
                       <button
                         onClick={() => checkInTeam(team.teamId, !checkedIn)}
@@ -897,15 +909,15 @@ const TournamentManage: React.FC = () => {
                           {checkedIn ? "check" : "login"}
                         </span>
                       </button>
-                    </div>
+                    </Stack>
                   );
                 })}
-              </div>
+              </Stack>
             </div>
           )}
-        </div>
+        </Stack>
       </div>
-    </div >
+    </div>
   );
 };
 

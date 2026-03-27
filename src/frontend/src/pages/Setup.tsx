@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import logger from "../utils/logger";
 import { useNavigate } from "react-router-dom";
 import { apiClient } from "../services/api";
-import LoadingSpinner from "../components/ui/LoadingSpinner";
+import { LoadingSpinner, Heading, Text, Button, Stack } from "../components/ui";
 
 const Setup: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
@@ -19,7 +19,6 @@ const Setup: React.FC = () => {
         }
       } catch (err) {
         logger.error("Failed to check system status:", err);
-        // Fallback to login if check fails
         navigate("/login", { replace: true });
       }
     };
@@ -44,7 +43,7 @@ const Setup: React.FC = () => {
       </div>
 
       <div className="relative flex-1 flex flex-col justify-center px-4 sm:px-6 lg:px-8 max-w-md mx-auto w-full z-10 py-10">
-        <div className="flex flex-col gap-6">
+        <Stack direction="vertical" gap={6}>
           {/* Special System Init Card */}
           <div className="relative overflow-hidden bg-[#0f1115] border border-amber-500/30 rounded-xl p-8 shadow-[0_0_50px_rgba(245,158,11,0.1)]">
             {/* Decorative "Terminal" Header */}
@@ -61,34 +60,36 @@ const Setup: React.FC = () => {
                   shield_person
                 </span>
               </div>
-              <h3 className="text-2xl font-bold text-white mb-2">
+              <Heading level={3} className="!text-2xl mb-2">
                 System Not Initialized
-              </h3>
+              </Heading>
               <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-amber-500/10 border border-amber-500/20 text-amber-500 text-xs font-mono font-bold tracking-wider uppercase">
                 <span className="size-1.5 rounded-full bg-amber-500 animate-pulse"></span>
                 Setup Required
               </div>
             </div>
 
-            <p className="text-slate-400 text-sm leading-relaxed text-center mb-8 max-w-sm mx-auto">
+            <Text size="sm" color="muted" className="text-center mb-8 max-w-sm mx-auto leading-relaxed">
               The system has detected that no Super Administrator exists. Please
               create the first account to claim root access and initialize the
               platform.
-            </p>
+            </Text>
 
-            <button
+            <Button
+              variant="primary"
+              fullWidth
               onClick={handleStartSetup}
-              className="w-full h-14 bg-gradient-to-r from-amber-600 to-amber-500 hover:from-amber-500 hover:to-amber-400 text-black text-base font-bold rounded-xl shadow-[0_0_20px_rgba(245,158,11,0.3)] hover:shadow-[0_0_30px_rgba(245,158,11,0.5)] transition-all flex items-center justify-center gap-2 group transform active:scale-[0.99]"
+              icon="person_add"
+              className="h-14 bg-gradient-to-r from-amber-600 to-amber-500 hover:from-amber-500 hover:to-amber-400 shadow-[0_0_20px_rgba(245,158,11,0.3)] hover:shadow-[0_0_30px_rgba(245,158,11,0.5)]"
             >
-              <span className="material-symbols-outlined">person_add</span>
-              <span>Create Admin Account</span>
-            </button>
+              Create Admin Account
+            </Button>
 
-            <p className="text-center mt-4 text-xs text-slate-600 font-mono">
+            <Text size="xs" color="muted" className="text-center mt-4 font-mono text-slate-600">
               WAITING_FOR_ADMIN_REGISTRATION...
-            </p>
+            </Text>
           </div>
-        </div>
+        </Stack>
       </div>
     </div>
   );

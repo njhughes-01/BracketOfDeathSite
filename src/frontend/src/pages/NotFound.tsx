@@ -1,5 +1,6 @@
 import React from "react";
 import { Link } from "react-router-dom";
+import { Heading, Text, Stack, Button } from "../components/ui";
 
 const NotFound: React.FC = () => {
   return (
@@ -16,40 +17,37 @@ const NotFound: React.FC = () => {
           </div>
         </div>
 
-        <h1 className="text-6xl font-black text-white mb-2 tracking-tighter">
+        <Heading level={1} className="!text-6xl font-black mb-2 tracking-tighter">
           404
-        </h1>
-        <h2 className="text-2xl font-bold text-slate-300 mb-6">
+        </Heading>
+        <Heading level={2} className="!text-2xl text-slate-300 mb-6">
           Page Not Found
-        </h2>
-        <p className="text-slate-500 mb-10 text-lg leading-relaxed">
+        </Heading>
+        <Text size="lg" color="muted" className="mb-10 leading-relaxed">
           The ball is out of bounds. The page you're looking for doesn't exist
           or has been moved.
-        </p>
+        </Text>
 
-        <div className="flex flex-col gap-3">
-          <Link
-            to="/dashboard"
-            className="w-full py-4 bg-primary text-black font-bold rounded-xl hover:bg-primary-dark hover:scale-[1.02] active:scale-[0.98] transition-all shadow-lg shadow-primary/20"
-          >
-            Return Home
+        <Stack direction="vertical" gap={3}>
+          <Link to="/dashboard">
+            <Button variant="primary" fullWidth className="py-4 shadow-lg shadow-primary/20">
+              Return Home
+            </Button>
           </Link>
 
           <div className="grid grid-cols-2 gap-3">
-            <Link
-              to="/tournaments"
-              className="py-3 bg-white/5 text-white font-bold rounded-xl border border-white/10 hover:bg-white/10 transition-all text-sm"
-            >
-              Tournaments
+            <Link to="/tournaments">
+              <Button variant="secondary" fullWidth size="sm">
+                Tournaments
+              </Button>
             </Link>
-            <Link
-              to="/players"
-              className="py-3 bg-white/5 text-white font-bold rounded-xl border border-white/10 hover:bg-white/10 transition-all text-sm"
-            >
-              Players
+            <Link to="/players">
+              <Button variant="secondary" fullWidth size="sm">
+                Players
+              </Button>
             </Link>
           </div>
-        </div>
+        </Stack>
       </div>
     </div>
   );

@@ -1,37 +1,38 @@
 import React from "react";
 import { Link } from "react-router-dom";
 import { useAuth } from "../../contexts/AuthContext";
+import { Heading, Text, Button, Stack, Container } from "../ui";
 
 const Header: React.FC = () => {
   const { isAuthenticated, user, logout, loading } = useAuth();
 
   return (
     <header className="bg-white shadow">
-      <div className="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center space-x-4">
+      <Container maxWidth="xl" padding="md" className="py-6">
+        <Stack direction="horizontal" align="center" justify="between">
+          <Stack direction="horizontal" align="center" gap={4}>
             <Link to="/" className="flex items-center space-x-3 group">
-              <img 
-                src="/bod-logo.jpg" 
-                alt="Bracket of Death Logo" 
+              <img
+                src="/bod-logo.jpg"
+                alt="Bracket of Death Logo"
                 className="h-16 w-16 object-contain transition-transform group-hover:scale-105"
               />
               <div>
-                <h1 className="text-3xl font-bold text-gradient">
+                <Heading level={1} className="!text-3xl text-gradient">
                   Bracket of Death
-                </h1>
-                <p className="text-gray-600 text-sm italic">
+                </Heading>
+                <Text size="sm" color="muted" className="italic">
                   Because Tennis
-                </p>
+                </Text>
               </div>
             </Link>
-          </div>
+          </Stack>
 
-          <div className="flex items-center space-x-4">
+          <Stack direction="horizontal" align="center" gap={4}>
             {loading ? (
-              <div className="text-sm text-gray-500">Loading...</div>
+              <Text size="sm" color="muted">Loading...</Text>
             ) : isAuthenticated && user ? (
-              <div className="flex items-center space-x-4">
+              <Stack direction="horizontal" align="center" gap={4}>
                 <div className="text-sm">
                   <span className="text-gray-600">Welcome, </span>
                   <Link
@@ -46,24 +47,20 @@ const Header: React.FC = () => {
                     </span>
                   )}
                 </div>
-                <button
-                  onClick={logout}
-                  className="px-3 py-2 text-sm font-medium text-gray-600 hover:text-gray-900 transition-colors"
-                >
+                <Button variant="ghost" onClick={logout} size="sm">
                   Sign Out
-                </button>
-              </div>
+                </Button>
+              </Stack>
             ) : (
-              <Link
-                to="/login"
-                className="px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-md transition-colors"
-              >
-                Sign In
+              <Link to="/login">
+                <Button variant="primary" size="sm">
+                  Sign In
+                </Button>
               </Link>
             )}
-          </div>
-        </div>
-      </div>
+          </Stack>
+        </Stack>
+      </Container>
     </header>
   );
 };

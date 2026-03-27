@@ -1,5 +1,6 @@
 import React from "react";
 import { Link } from "react-router-dom";
+import { Heading, Text, Container, ResponsiveGrid } from "../components/ui";
 
 const News: React.FC = () => {
   return (
@@ -24,26 +25,26 @@ const News: React.FC = () => {
         </div>
 
         <div className="absolute bottom-0 left-0 right-0 p-6 z-10">
-          <h1 className="text-4xl font-bold text-white shadow-black drop-shadow-md mb-2">
+          <Heading level={1} className="!text-4xl shadow-black drop-shadow-md mb-2">
             News & Updates
-          </h1>
-          <p className="text-slate-300">Latest from the Bracket of Death</p>
+          </Heading>
+          <Text color="muted">Latest from the Bracket of Death</Text>
         </div>
       </div>
 
-      <div className="p-6 max-w-4xl mx-auto w-full text-center space-y-8">
+      <Container padding="md" maxWidth="lg" className="text-center space-y-8">
         <div className="bg-[#1c2230] border border-white/5 rounded-2xl p-8">
           <div className="size-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4 text-primary">
             <span className="material-symbols-outlined text-3xl">campaign</span>
           </div>
-          <h2 className="text-2xl font-bold text-white mb-2">Coming Soon</h2>
-          <p className="text-slate-400 max-w-md mx-auto">
+          <Heading level={2} className="!text-2xl mb-2">Coming Soon</Heading>
+          <Text color="muted" className="max-w-md mx-auto">
             The news feed is currently under construction. Check back later for
             match recaps, player spotlights, and tournament announcements.
-          </p>
+          </Text>
         </div>
 
-        <div className="grid md:grid-cols-2 gap-4 text-left">
+        <ResponsiveGrid cols={{ base: 1, md: 2 }} gap={4} className="text-left">
           <Link
             to="/tournaments"
             className="bg-[#1c2230] border border-white/5 rounded-xl p-5 hover:border-primary/50 transition-all group"
@@ -51,12 +52,12 @@ const News: React.FC = () => {
             <span className="material-symbols-outlined text-primary mb-3">
               trophy
             </span>
-            <h3 className="text-white font-bold mb-1 group-hover:text-primary transition-colors">
+            <Heading level={3} className="!text-base mb-1 group-hover:text-primary transition-colors">
               Upcoming Tournaments
-            </h3>
-            <p className="text-xs text-slate-500">
+            </Heading>
+            <Text size="xs" color="muted">
               View the schedule and register for events.
-            </p>
+            </Text>
           </Link>
           <Link
             to="/rankings"
@@ -65,15 +66,15 @@ const News: React.FC = () => {
             <span className="material-symbols-outlined text-primary mb-3">
               leaderboard
             </span>
-            <h3 className="text-white font-bold mb-1 group-hover:text-primary transition-colors">
+            <Heading level={3} className="!text-base mb-1 group-hover:text-primary transition-colors">
               Season Standings
-            </h3>
-            <p className="text-xs text-slate-500">
+            </Heading>
+            <Text size="xs" color="muted">
               Check who is leading the race for #1.
-            </p>
+            </Text>
           </Link>
-        </div>
-      </div>
+        </ResponsiveGrid>
+      </Container>
     </div>
   );
 };

@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useApi, useMutation } from "../hooks/useApi";
 import apiClient from "../services/api";
-import LoadingSpinner from "../components/ui/LoadingSpinner";
+import { LoadingSpinner, Heading, Text, Button, Input, Select, Textarea, FormField, Stack, Container, ResponsiveGrid } from "../components/ui";
 import type { TournamentInput } from "../types/api";
 
 const TournamentEdit: React.FC = () => {
@@ -33,7 +33,7 @@ const TournamentEdit: React.FC = () => {
     if (tournament) {
       const t = tournament as any;
       setFormData({
-        date: t.date ? new Date(t.date).toISOString().split("T")[0] : "", // Format for date input
+        date: t.date ? new Date(t.date).toISOString().split("T")[0] : "",
         bodNumber: t.bodNumber || 0,
         format: t.format || "Mixed",
         location: t.location || "",
@@ -98,13 +98,10 @@ const TournamentEdit: React.FC = () => {
   if (fetchError || !tournament) {
     return (
       <div className="p-8 text-center bg-background-dark min-h-screen text-white">
-        <h2 className="text-xl font-bold mb-4">Error loading tournament</h2>
-        <button
-          onClick={() => navigate("/tournaments")}
-          className="text-primary hover:underline"
-        >
+        <Heading level={2} className="!text-xl mb-4">Error loading tournament</Heading>
+        <Button variant="ghost" onClick={() => navigate("/tournaments")}>
           Return to Tournaments
-        </button>
+        </Button>
       </div>
     );
   }
@@ -112,158 +109,134 @@ const TournamentEdit: React.FC = () => {
   return (
     <div className="flex flex-col min-h-screen bg-background-dark pb-20">
       {/* Header */}
-      <div className="sticky top-0 z-10 bg-background-dark/80 backdrop-blur-md border-b border-white/5 px-4 py-4 flex items-center gap-3">
-        <button
-          onClick={() => navigate(`/tournaments/${id}`)}
-          className="p-2 -ml-2 rounded-full hover:bg-white/10 text-white transition-colors"
-        >
-          <span className="material-symbols-outlined">arrow_back</span>
-        </button>
-        <h1 className="text-xl font-bold text-white">Edit Tournament</h1>
+      <div className="sticky top-0 z-10 bg-background-dark/80 backdrop-blur-md border-b border-white/5 px-4 py-4">
+        <Stack direction="horizontal" gap={3} align="center">
+          <Button
+            variant="ghost"
+            onClick={() => navigate(`/tournaments/${id}`)}
+            icon="arrow_back"
+            className="-ml-2"
+          />
+          <Heading level={1} className="!text-xl">Edit Tournament</Heading>
+        </Stack>
       </div>
 
-      <div className="flex-1 p-4 max-w-lg mx-auto w-full">
-        <form onSubmit={handleSubmit} className="space-y-6">
-          <div className="space-y-4">
-            <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider pl-1">
-              Details
-            </h3>
+      <Container padding="md" maxWidth="sm" className="flex-1">
+        <form onSubmit={handleSubmit}>
+          <Stack direction="vertical" gap={6}>
+            <div>
+              <Text size="xs" className="font-bold text-slate-500 uppercase tracking-wider pl-1 mb-4">
+                Details
+              </Text>
 
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="block text-sm text-slate-400 mb-1 ml-1">
-                  Date
-                </label>
-                <input
-                  type="date"
-                  name="date"
-                  value={formData.date as string}
-                  onChange={handleChange}
-                  required
-                  className="w-full bg-[#1c2230] border border-white/5 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-primary/50 transition-all"
-                />
+              <Stack direction="vertical" gap={4}>
+                <ResponsiveGrid cols={{ base: 2 }} gap={3}>
+                  <FormField label="Date">
+                    <Input
+                      type="date"
+                      name="date"
+                      value={formData.date as string}
+                      onChange={handleChange}
+                      required
+                    />
+                  </FormField>
+                  <FormField label="BOD #">
+                    <Input
+                      type="number"
+                      name="bodNumber"
+                      value={formData.bodNumber}
+                      onChange={handleChange}
+                      required
+                    />
+                  </FormField>
+                </ResponsiveGrid>
+
+                <FormField label="Location">
+                  <Input
+                    type="text"
+                    name="location"
+                    value={formData.location}
+                    onChange={handleChange}
+                    required
+                  />
+                </FormField>
+
+                <FormField label="Format">
+                  <Select
+                    name="format"
+                    value={formData.format}
+                    onChange={handleChange}
+                  >
+                    {formatOptions.map((option) => (
+                      <option key={option.value} value={option.value}>
+                        {option.label}
+                      </option>
+                    ))}
+                  </Select>
+                </FormField>
+
+                <FormField label="Status">
+                  <Select
+                    name="status"
+                    value={formData.status}
+                    onChange={handleChange}
+                  >
+                    <option value="scheduled">Scheduled</option>
+                    <option value="open">Open</option>
+                    <option value="active">Active</option>
+                    <option value="completed">Completed</option>
+                    <option value="cancelled">Cancelled</option>
+                  </Select>
+                </FormField>
+
+                <FormField label="Advancement Criteria">
+                  <Textarea
+                    name="advancementCriteria"
+                    value={formData.advancementCriteria}
+                    onChange={handleChange}
+                    rows={2}
+                  />
+                </FormField>
+
+                <FormField label="Notes">
+                  <Textarea
+                    name="notes"
+                    value={formData.notes || ""}
+                    onChange={handleChange}
+                    rows={3}
+                  />
+                </FormField>
+
+                <FormField label="Photo Album URL">
+                  <Input
+                    type="text"
+                    name="photoAlbums"
+                    value={formData.photoAlbums || ""}
+                    onChange={handleChange}
+                    placeholder="Optional"
+                  />
+                </FormField>
+              </Stack>
+            </div>
+
+            {saveError && (
+              <div className="p-3 rounded-lg bg-red-500/10 border border-red-500/20 text-red-500 text-sm">
+                Error saving: {saveError}
               </div>
-              <div>
-                <label className="block text-sm text-slate-400 mb-1 ml-1">
-                  BOD #
-                </label>
-                <input
-                  type="number"
-                  name="bodNumber"
-                  value={formData.bodNumber}
-                  onChange={handleChange}
-                  required
-                  className="w-full bg-[#1c2230] border border-white/5 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-primary/50 transition-all"
-                />
-              </div>
-            </div>
+            )}
 
-            <div>
-              <label className="block text-sm text-slate-400 mb-1 ml-1">
-                Location
-              </label>
-              <input
-                type="text"
-                name="location"
-                value={formData.location}
-                onChange={handleChange}
-                required
-                className="w-full bg-[#1c2230] border border-white/5 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-primary/50 transition-all"
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm text-slate-400 mb-1 ml-1">
-                Format
-              </label>
-              <select
-                name="format"
-                value={formData.format}
-                onChange={handleChange}
-                className="w-full bg-[#1c2230] border border-white/5 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-primary/50 transition-all appearance-none"
-              >
-                {formatOptions.map((option) => (
-                  <option key={option.value} value={option.value}>
-                    {option.label}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div>
-              <label className="block text-sm text-slate-400 mb-1 ml-1">
-                Status
-              </label>
-              <select
-                name="status"
-                value={formData.status}
-                onChange={handleChange}
-                className="w-full bg-[#1c2230] border border-white/5 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-primary/50 transition-all appearance-none"
-              >
-                <option value="scheduled">Scheduled</option>
-                <option value="open">Open</option>
-                <option value="active">Active</option>
-                <option value="completed">Completed</option>
-                <option value="cancelled">Cancelled</option>
-              </select>
-            </div>
-
-            <div>
-              <label className="block text-sm text-slate-400 mb-1 ml-1">
-                Advancement Criteria
-              </label>
-              <textarea
-                name="advancementCriteria"
-                value={formData.advancementCriteria}
-                onChange={handleChange}
-                rows={2}
-                className="w-full bg-[#1c2230] border border-white/5 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-primary/50 transition-all"
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm text-slate-400 mb-1 ml-1">
-                Notes
-              </label>
-              <textarea
-                name="notes"
-                value={formData.notes || ""}
-                onChange={handleChange}
-                rows={3}
-                className="w-full bg-[#1c2230] border border-white/5 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-primary/50 transition-all"
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm text-slate-400 mb-1 ml-1">
-                Photo Album URL
-              </label>
-              <input
-                type="text"
-                name="photoAlbums"
-                value={formData.photoAlbums || ""}
-                onChange={handleChange}
-                placeholder="Optional"
-                className="w-full bg-[#1c2230] border border-white/5 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-primary/50 transition-all"
-              />
-            </div>
-          </div>
-
-          {saveError && (
-            <div className="p-3 rounded-lg bg-red-500/10 border border-red-500/20 text-red-500 text-sm">
-              Error saving: {saveError}
-            </div>
-          )}
-
-          <button
-            type="submit"
-            disabled={saveLoading}
-            className="w-full py-4 rounded-xl bg-primary text-white font-bold text-lg shadow-lg shadow-primary/20 disabled:opacity-50 hover:bg-primary-dark transition-all"
-          >
-            {saveLoading ? "Saving..." : "Save Changes"}
-          </button>
+            <Button
+              type="submit"
+              variant="primary"
+              fullWidth
+              disabled={saveLoading}
+              className="py-4 text-lg shadow-lg shadow-primary/20"
+            >
+              {saveLoading ? "Saving..." : "Save Changes"}
+            </Button>
+          </Stack>
         </form>
-      </div>
+      </Container>
     </div>
   );
 };
