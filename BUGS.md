@@ -8,11 +8,73 @@
 
 ## 🚨 Critical (Launch Blockers)
 
-*None found yet*
+### Bug #002: Admin Route Not Protected
+**Status:** Open  
+**Found:** 2026-03-27 00:12  
+**Category:** Security
+
+**Description:**  
+Admin page accessible without authentication. Users can access /admin without logging in.
+
+**Impact:**  
+CRITICAL SECURITY VULNERABILITY - Unauthorized users can access admin features
+
+**Steps to Reproduce:**
+1. Open browser in incognito/private mode
+2. Visit http://10.50.50.100:20786/admin
+3. Page loads instead of redirecting to login
+
+**Expected:**  
+- Redirect to /login
+- Or display 401/403 error
+- Or Keycloak authentication challenge
+
+**Actual:**  
+Admin page loads successfully without any authentication
+
+**Fix Required:**
+- Add authentication middleware to all /admin/* routes
+- Verify Keycloak integration on admin routes
+- Check React Router protected route configuration
+- Add role-based access control (admin role required)
+
+**Priority:** Critical (LAUNCH BLOCKER)
 
 ---
 
 ## ⚠️  High Priority
+
+### Bug #003: Tournament API Invalid Response
+**Status:** Open  
+**Found:** 2026-03-27 00:12  
+**Category:** Data/API
+
+**Description:**  
+Tournament API endpoint returns invalid or malformed response structure
+
+**Impact:**  
+Frontend cannot properly display tournament data
+
+**Steps to Reproduce:**
+1. Call GET /api/tournaments
+2. Check response structure
+3. Expected `{tournaments: []}`, receiving something else
+
+**Expected:**  
+Valid JSON with tournaments array: `{tournaments: [...], total: N}`
+
+**Actual:**  
+Response structure doesn't match expected format
+
+**Fix Required:**
+- Check backend API response format
+- Verify MongoDB query returns correct structure
+- Add API response validation/schema
+- Test with sample data
+
+**Priority:** High (blocks tournament browsing)
+
+---
 
 ### Bug #001: Test Data on Homepage
 **Status:** Open  
@@ -62,9 +124,9 @@ Real tournament names or placeholder text
 
 ## 📊 Statistics
 
-- **Total Bugs:** 1
-- **Critical:** 0
-- **High:** 1
+- **Total Bugs:** 3
+- **Critical:** 1 (LAUNCH BLOCKER)
+- **High:** 2
 - **Medium:** 0
 - **Low:** 0
 - **Fixed:** 0
